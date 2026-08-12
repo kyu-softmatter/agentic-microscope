@@ -302,7 +302,9 @@ The medium refractive index has never been recorded. → Lens 4
 ### D6. Tweezers at 1064 nm heat and leak 🟡
 
 - **Local heating** from water absorption at 1064 nm → viscosity changes, so D
-  changes. In microrheology it contaminates the measured quantity itself
+  changes. In microrheology it contaminates the measured quantity itself.
+  **Not implemented**: `trapping/` computes only `confinement`, `trap_depth`,
+  and `sampling` — Lens 7 is otherwise complete, but has no heating check
 - **Leakage** into the detection path — the reason the optics gate holds its
   grid out to 1100 nm
 - The tweezers are outside MM, so the power leaves no trace in the metadata
@@ -383,4 +385,4 @@ Items **currently missed** because no gate exists:
 | D2 light-driven perturbation | Lens 5 |
 | D3 sample perturbation by the label | Lens 5 |
 | D5 refractive-index mismatch | Lens 4 |
-| D6 tweezers heating | Lens 7 |
+| D6 tweezers heating | Lens 7 — the one gap in an otherwise implemented lens |

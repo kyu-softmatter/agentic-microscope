@@ -302,7 +302,7 @@ class LensVerdict:
   script in `D:\codes` will process the data changes the setting requirements
 - **Implementation**: `.claude/agents/measurement-validity.md`
 
-### Lens 7 · Optical tweezers (conditional) — implemented
+### Lens 7 · Optical tweezers (conditional) — implemented except heating
 
 - **Gates**: G14
 - **Inputs**: particle radius, particle refractive index, medium refractive
@@ -313,12 +313,17 @@ class LensVerdict:
     intermediate regime needs GLMT**
   - Trap stiffness κ, trap depth U/kT, corner frequency `f_c = κ/(2πγ)`
   - Power splitting for multiple traps
-  - Local heating
 - **Cross-lens constraint**: power-spectrum calibration needs `f_s ≳ 10 f_c` →
   passed to the detection lens
 - **⚠ Intermediate regime**: at `a/λ ~ 1` both limits are invalid. **Do not
   answer with an approximation — return BLOCKED**
-- **Remaining**: dial-% → mW measured calibration
+- **⚠ Local heating is NOT implemented.** `trapping/` has only `confinement`,
+  `trap_depth`, and `sampling` — there is no heating computation. Water
+  absorption at 1064 nm changes viscosity and therefore D, which contaminates
+  the measured quantity in microrheology ([06 D6](06-pitfalls.md)). Nothing
+  catches this today, and Lens 5 deliberately does not cover it (it handles
+  visible excitation light only)
+- **Remaining**: dial-% → mW measured calibration; local heating
 - **Implementation**: `trapping/gate.py`
 
 ### Lens 8 · Mechanical & environmental (conditional, >30 min) — not implemented

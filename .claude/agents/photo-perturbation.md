@@ -262,6 +262,12 @@ assumed_inputs:
   Lens 5 handles only sample heating/phototoxicity from general illumination
   (visible excitation light) and does not duplicate the trap-heating verdict — if
   the trap is on, hand that part to Lens 7.
+  **⚠ But Lens 7 does not implement heating** (`trapping/` has only
+  `confinement`, `trap_depth`, `sampling`), so that handoff currently goes
+  nowhere. Do not let it vanish silently: when the trap is on, raise a finding
+  saying trap heating is unowned in practice, and state that D — and therefore
+  any microrheology result — may be contaminated. An unclaimed handoff is the
+  exact failure mode this committee exists to prevent.
 
 ## Knowledge-capture integration
 

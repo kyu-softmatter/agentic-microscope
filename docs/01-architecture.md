@@ -191,7 +191,7 @@ FAIL is already a fix instruction.
 
 | # | Lens | Convened when | Basis of verdict | Implementation |
 |---|---|---|---|---|
-| 7 | **Optical tweezers** | Tweezers in use | Trap stiffness κ, U/kT, corner frequency f_c → computed | `trapping/` ✅ |
+| 7 | **Optical tweezers** | Tweezers in use | Trap stiffness κ, U/kT, corner frequency f_c → computed | `trapping/` ✅ (no heating check — [06 D6](06-pitfalls.md)) |
 | 8 | **Mechanical & environmental** | Long experiments (>30 min) | Drift, vibration, evaporation, PFS lock | Not implemented |
 
 ### Why 4 and 5 are separate

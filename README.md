@@ -57,7 +57,7 @@ Read [the pitfalls](docs/06-pitfalls.md) before starting any implementation.
 | [`optics/`](optics/) | 1 · optics | Implemented |
 | [`detection/`](detection/) | 2 · detection (G5–G9) | Implemented |
 | [`compute/`](compute/) | 3 · compute resources (G12–G13) | Implemented |
-| [`trapping/`](trapping/) | 7 · optical tweezers (G14) | Physics library + committee gate wired. Remaining: measured dial-% → mW calibration |
+| [`trapping/`](trapping/) | 7 · optical tweezers (G14) | Physics library + committee gate wired. Remaining: measured dial-% → mW calibration, and local heating at 1064 nm (not implemented — [06 D6](docs/06-pitfalls.md)) |
 | [`.claude/agents/`](.claude/agents/) | 4 · 5 · 6 | LLM subagent drafts, no code |
 
 The formulas for the unimplemented lenses are collected in
