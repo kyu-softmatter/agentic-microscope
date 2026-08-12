@@ -301,7 +301,7 @@ light_paths:
           Confirmed by user 2026-08-10 (resolved): the dichroic is always "on"
           regardless of CSUW1-Bright state — this element is not removed just
           because you are in Bright Field. Instead EM1/EM2 are set to
-          quad-band (position 0, i.e. "multi") or Open (position 10, i.e.
+          quad-band (position 0, i.e. "multi") or Open (position 9, i.e.
           "empty") (2026-08-11 correction: what was previously recorded as a
           separate internal filter wheel "CSUW1-Filter_Red/Blue" was in fact
           EM1/EM2 — see confocal_scanner below). In other words this path is
