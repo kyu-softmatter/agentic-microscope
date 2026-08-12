@@ -478,7 +478,8 @@ MM .cfg  ──parse──▶  kb/systems/current.md  (slots · positions · lab
                config/channels/*.yaml  (recommended slot settings)
                                │
                           ──generate──▶  MM ConfigGroup preset
-                                         (Phase 2: automatic apply)
+                                         (generate: roadmap Phase 5c;
+                                          apply: roadmap Phase 5d)
 ```
 
 What to extract from the `.cfg`:
