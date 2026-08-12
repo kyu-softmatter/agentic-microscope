@@ -1,59 +1,65 @@
 ---
 id: current-laser-green-band-single-slot
-question: "current-laser 스코프(LUN-F-XL + CSU-W1)에서 여기 488nm·방출
-  500-530nm대인 다이 두 개를 동시에 구분되는 채널로 볼 수 있는가"
+question: "On the current-laser scope (LUN-F-XL + CSU-W1), can two dyes excited at
+  488nm and emitting in the 500-530nm band be seen simultaneously as distinguishable
+  channels"
 source: calculation
 expert: KH
 date: 2026-08-10
 confidence: high
-scope: "config/scopes/current-laser.yaml — LUN-F-XL 4라인(405/488/561/640) +
-  EM1 필터휠 + 561nm 기준 듀얼카메라 스플리터(DM A561LP)"
+scope: "config/scopes/current-laser.yaml — LUN-F-XL 4 lines (405/488/561/640) +
+  EM1 filter wheel + dual-camera splitter at 561nm (DM A561LP)"
 applies_to_systems: [current-laser]
 review_after: 2027-08-10
 supersedes: null
 ---
 
-## 판단
-불가능하다. `optics.cli recommend`로 계산하면 FITC와 YOYO-1(dsDNA 결합형,
-둘 다 em_peak 500-530nm대)은 최적 (라인, 필터, 카메라) 조합이
-488nm / EM1-525/36 / Kinetix_blue로 완전히 동일하게 나온다 — 물리적으로
-같은 채널이라 crosstalk가 사실상 100%다. em_peak nm만 눈으로 비교해서
-"10nm 차이니 괜찮겠지"라고 판단하면 안 되고, 반드시 recommend로 재계산해야
-한다.
+## Verdict
+Impossible. Computed with `optics.cli recommend`, FITC and YOYO-1 (the
+dsDNA-binding form, both with em_peak in the 500-530nm band) come out with exactly
+the same optimal (line, filter, camera) combination: 488nm / EM1-525/36 /
+Kinetix_blue — physically the same channel, so crosstalk is effectively 100%. Do
+not judge by eyeballing em_peak nm and concluding "10nm apart, should be fine";
+always recompute with recommend.
 
-## 왜
-- 여기 라인이 405/488/561/640 네 개뿐이라, 이 대역 다이는 488 라인만
-  실질적으로 쓴다 (405/561/640에서는 여기효율이 0에 가까움 — 실제로
-  FITC의 405nm 후보 brightness는 0.0000으로 계산됨)
-- EM1 필터휠에 500-530nm대를 담당하는 대역이 EM1-525/36 하나뿐이다
-  (88000v2-EM 4-band는 차단 OD가 더 나빠서 순위가 낮음 — 대안이 아님)
-- 듀얼카메라 스플리터(DM A561LP)가 561nm 기준이라, 500-530nm 방출은 항상
-  반사측(Kinetix_blue) 한 곳에만 간다 — 스플리터로도 못 가른다
+## Why
+- There are only four excitation lines, 405/488/561/640, so dyes in this band
+  effectively only use the 488 line (excitation efficiency is near zero at
+  405/561/640 — FITC's 405nm candidate brightness actually computes to 0.0000)
+- The EM1 filter wheel has only one band covering 500-530nm, EM1-525/36
+  (the 88000v2-EM 4-band has worse blocking OD and ranks lower — not an
+  alternative)
+- The dual-camera splitter (DM A561LP) splits at 561nm, so 500-530nm emission
+  always goes to just one side, the reflected side (Kinetix_blue) — the splitter
+  cannot separate them either
 
-## 적용 범위
-- config/scopes/current-laser.yaml 스코프에 한정 (다른 스코프/광원 조합은
-  재계산 필요)
-- em_peak가 대략 495-530nm에 들어오는 다이 쌍 전체에 적용될 것으로 예상됨
-  (FITC/YOYO-1로 확인, 예: AlexaFluor488 + EGFP 조합도 같은 이유로 충돌할
-  가능성이 높음 — 개별 재계산 권장, 이 엔트리가 자동으로 보증하지 않음)
-- 라인 자체가 다른 다이(예: 405 전용 다이)나 순차(시간분할) 촬영에는
-  적용되지 않음 — 이 판단은 "동시" 관찰에만 해당
+## Applicability
+- Limited to the config/scopes/current-laser.yaml scope (other scope/light-source
+  combinations need recomputing)
+- Expected to apply to every dye pair whose em_peak falls roughly within
+  495-530nm (confirmed with FITC/YOYO-1; e.g. an AlexaFluor488 + EGFP combination
+  is likely to clash for the same reason — recompute individually, this entry does
+  not automatically guarantee it)
+- Does not apply to dyes on a different line (e.g. 405-only dyes) or to sequential
+  (time-division) acquisition — this verdict concerns "simultaneous" observation
+  only
 
-## 반증 조건
-이 판단은 파라메트릭(peak_nm + FWHM) 근사 스펙트럼 기반이다
-(evidence: assumed — data/fluorophores.yaml에 FITC/YOYO-1 실측 curves가
-연결돼 있지 않음, data/spectra/README.md 참고). 다음 중 하나라도 관찰되면
-재검토 대상이다:
+## Falsification conditions
+This verdict is based on parametric (peak_nm + FWHM) approximate spectra
+(evidence: assumed — no measured FITC/YOYO-1 curves are linked in
+data/fluorophores.yaml, see data/spectra/README.md). Any one of the following
+observations puts it up for review:
 
-1. FITC와 YOYO-1(dsDNA 결합형)의 실측 흡수/방출 곡선을 data/spectra/에
-   추가하고 fluorophores.yaml의 `curves:`로 연결해 재계산했는데, 최적
-   (라인, 필터, 카메라) 조합이 지금과 달라진다
-2. EM1(또는 EM2) 필터휠에 500-530nm대를 나누는 필터가 새로 추가된다
-   (예: 510/20 같은 좁은 대역)
-3. 듀얼카메라 스플리터가 561nm이 아니라 이 대역(495-530nm) 안에서 나누는
-   파장(예: 510nm)으로 교체된다
+1. Measured absorption/emission curves for FITC and YOYO-1 (dsDNA-binding form)
+   are added to data/spectra/ and linked via `curves:` in fluorophores.yaml, and on
+   recomputation the optimal (line, filter, camera) combination differs from the
+   current one
+2. A filter that divides the 500-530nm band is newly added to the EM1 (or EM2)
+   filter wheel (e.g. a narrow band like 510/20)
+3. The dual-camera splitter is swapped for one that splits at a wavelength inside
+   this band (495-530nm, e.g. 510nm) instead of 561nm
 
-## 관련
-[[fitc-yoyo1-channel-conflict]] (에이전트 메모리) ·
+## Related
+[[fitc-yoyo1-channel-conflict]] (agent memory) ·
 kb/decisions/2026-08-10_fitc-particle-yoyo1-dna-2color.md ·
 config/channels/particle647-yoyo1-2color.yaml

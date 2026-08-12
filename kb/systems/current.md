@@ -1,34 +1,34 @@
 ---
 id: current
 status: current
-fingerprint: null  # TODO: 장치 라벨 집합 + 카메라 시리얼 해시. 자동 인덱서 붙기 전까지 비움.
+fingerprint: null  # TODO: hash of device label set + camera serials. Left empty until the automatic indexer is wired up.
 sources:
   - {kind: mm_config, path: "C:\\Users\\Takatori lab\\Desktop\\Maintanance\\micromanager\\DMD_dualcam.cfg", date: 2026-07-03}
   - {kind: calibration, path: "C:\\Users\\Takatori lab\\Desktop\\Confocal_microscope_conversion_factor(Apr 2025).xlsx", date: 2025-04}
   - {kind: nis_elements_device_manager, path: "live GUI — Device Manager (Nikon Ti2 hardware setup) + Filter Block Settings dialogs (Turret1/DM/Splitter/EM1)", date: 2026-08-10}
   - {kind: nikon_catalog, path: "https://www.microscope.healthcare.nikon.com/products/optics/selector/comparison/ [-179794, -179798, -179802, -1923, -179808, -179810]", date: 2026-08-10}
-  - {kind: purchase_quote, path: "reference/quotes/2024-09-29_nikon-quote-REDACTED_ti2e-csuw1_takatori.md", date: 2024-09-29, note: "Nikon 견적 #REDACTED (Takatori 랩). 대물렌즈 6종·EM1 필터 4종·FilterTurret1 pos0 큐브(MXR00724)·CSU-W1 본체가 부품번호까지 일치 — 해당 필드의 구매 기록 출처로 격상 가능. 카메라 구성은 불일치(견적: Kinetix22+Prime95B, 현재: Kinetix ×2) — 최종 발주 변경 또는 이후 교체, 미확인. 상세 대조는 해당 md 파일 참고."}
-  - {kind: nis_elements_device_manager, path: "live GUI — Filter Block Settings (DM) 재확인 + calibration.cli camera-probe 실측 대조", date: 2026-08-11, note: "DM=CSUW1-Dichroic 동일 소자 확인, EM1=Kinetix_red/EM2=Kinetix_blue 카메라 배정 확정, EM2 필터 구성 독립 확인."}
-  - {kind: calibration, path: kb/calibrations/disk-bandwidth.yaml, date: 2026-08-12, note: "D: 드라이브 지속쓰기 대역폭 206.8 MB/s 실측 (calibration.cli disk-bandwidth, 4GB). G12 예산 = 0.7×206.8 = 144.8 MB/s. MM 실제 저장 폴더와 정확히 일치하는지는 미확인 — 다른 폴더면 재측정."}
-  - {kind: calibration, path: kb/calibrations/camera-readout.yaml, date: 2026-08-12, note: "PVCAM 어댑터 실측 (calibration.cli camera-readout, dual_cam_test.cfg). Timing-ReadoutTimeNs=8,475,000 → row time ≈3531.2 ns/row (ROI 2400 rows). 단위는 property명 근거 추정, 문서 대조 아직 없음."}
-  - {kind: pymmcore_plus_live, path: "DMD_dualcam.cfg 사본(MightexPolygon1000 줄만 제거) — pymmcore-plus로 실제 로드", date: 2026-08-12, note: "Ti2-E__0/CSUW1-Hub/CSUW1-Dichroic/CSUW1-Filter_Red(EM1)/CSUW1-Filter_Blue(EM2)/Kinetix_red/Kinetix_blue/LightEngine/Aura 등 DMD 제외 전 장치 로드 성공, CSUW1-Dichroic state 0(on)·EM1/EM2 state 0(multi) 실측값이 kb 기록과 일치. NikonTi2 어댑터 로드에 Ti2_Mic_Driver.dll(랩 기존 설치에서 복사) 필요했음 — 아래 devices_not_in_mm_config 노트 참고."}
+  - {kind: purchase_quote, path: "reference/quotes/2024-09-29_nikon-quote-REDACTED_ti2e-csuw1_takatori.md", date: 2024-09-29, note: "Nikon quote #REDACTED (Takatori lab). The 6 objectives, 4 EM1 filters, FilterTurret1 pos0 cube (MXR00724), and the CSU-W1 body all match down to the part number — this can be promoted to the purchase-record source for those fields. Camera configuration does not match (quote: Kinetix22+Prime95B, current: Kinetix ×2) — either changed at final order or swapped later, unconfirmed. See that md file for the detailed cross-check."}
+  - {kind: nis_elements_device_manager, path: "live GUI — Filter Block Settings (DM) re-check + calibration.cli camera-probe measured cross-check", date: 2026-08-11, note: "DM=CSUW1-Dichroic confirmed as the same physical element, EM1=Kinetix_red/EM2=Kinetix_blue camera assignment settled, EM2 filter configuration independently confirmed."}
+  - {kind: calibration, path: kb/calibrations/disk-bandwidth.yaml, date: 2026-08-12, note: "D: drive sustained-write bandwidth measured at 206.8 MB/s (calibration.cli disk-bandwidth, 4GB). G12 budget = 0.7×206.8 = 144.8 MB/s. Whether this is exactly the folder MM actually saves to is unconfirmed — if it is a different folder, re-measure."}
+  - {kind: calibration, path: kb/calibrations/camera-readout.yaml, date: 2026-08-12, note: "PVCAM adapter, measured (calibration.cli camera-readout, dual_cam_test.cfg). Timing-ReadoutTimeNs=8,475,000 → row time ≈3531.2 ns/row (ROI 2400 rows). Units assumed from the property name; no document cross-check yet."}
+  - {kind: pymmcore_plus_live, path: "copy of DMD_dualcam.cfg (only the MightexPolygon1000 line removed) — actually loaded via pymmcore-plus", date: 2026-08-12, note: "Ti2-E__0/CSUW1-Hub/CSUW1-Dichroic/CSUW1-Filter_Red(EM1)/CSUW1-Filter_Blue(EM2)/Kinetix_red/Kinetix_blue/LightEngine/Aura — every device except the DMD loaded successfully, and the measured values CSUW1-Dichroic state 0 (on) / EM1,EM2 state 0 (multi) match the kb record. Loading the NikonTi2 adapter required Ti2_Mic_Driver.dll (copied from the lab's existing installation) — see the devices_not_in_mm_config note below."}
 
 stand:
   vendor: Nikon
   model: Ti2-E
   mm_device: Ti2-E__0
-  tube_lens_mm: 200          # Nikon Ti2 표준값. 실측/데이터시트 대조 안 됨 — verify
+  tube_lens_mm: 200          # Nikon Ti2 standard value. Not cross-checked against measurement/datasheet — verify
   autofocus: PFS
   verified: false
 
 cameras:
   - device: Kinetix_red
-    role: Core.Camera (기본 활성 카메라)
+    role: Core.Camera (default active camera)
     vendor: Photometrics
     model: Kinetix
     adapter: PVCAM
     mm_label: Camera-2
-    serial: null             # .cfg에 시리얼 없음 — PVCAM 장치 속성이나 라벨에서 추가 확인 필요
+    serial: null             # no serial in the .cfg — needs further confirmation from PVCAM device properties or the physical label
   - device: Kinetix_blue
     vendor: Photometrics
     model: Kinetix
@@ -36,7 +36,7 @@ cameras:
     mm_label: Camera-1
     serial: null
 
-objectives:            # Nosepiece (6-position). 2026-08-10: label 끝자리는 WD(mm)로 확정 (Nikon 카탈로그 파트넘버 대조). 2026-08-11: 물리 경통 각인 대조도 사용자가 완료·확인.
+objectives:            # Nosepiece (6-position). 2026-08-10: the trailing number in the label is confirmed to be WD(mm) (cross-checked against Nikon catalog part numbers). 2026-08-11: physical barrel engraving cross-check also completed and confirmed by the user.
   - {turret: Nosepiece, position: 0, label: "1-Plan Apo LmbdD20 4x",         mag: 4,   product: "CFI Plan Apo Lambda D 4X",         part_number: MRD70040, na: 0.20, wd_mm: 20,        immersion: air,   cover_glass_mm: "0-0.17",  verified: true, verified_date: 2026-08-10, source: nikon_catalog}
   - {turret: Nosepiece, position: 1, label: "2-Plan Apo LmbdD4 10x",        mag: 10,  product: "CFI Plan Apo Lambda D 10X",        part_number: MRD70170, na: 0.45, wd_mm: 4,         immersion: air,   cover_glass_mm: 0.17,      verified: true, verified_date: 2026-08-10, source: nikon_catalog}
   - {turret: Nosepiece, position: 2, label: "3-Plan Apo LmbdD0.8 20x",      mag: 20,  product: "CFI Plan Apo Lambda D 20X",        part_number: MRD70270, na: 0.80, wd_mm: 0.8,       immersion: air,   cover_glass_mm: 0.17,      verified: true, verified_date: 2026-08-10, source: nikon_catalog}
@@ -45,7 +45,7 @@ objectives:            # Nosepiece (6-position). 2026-08-10: label 끝자리는 
   - {turret: Nosepiece, position: 5, label: "6-Plan Apo LmbdD0.13 100x Oil",mag: 100, product: "CFI Plan Apo Lambda D 100X Oil",   part_number: MRD71970, na: 1.45, wd_mm: 0.13,      immersion: oil,   cover_glass_mm: 0.17,      verified: true, verified_date: 2026-08-10, source: nikon_catalog}
 
 filter_turrets:
-  - device: FilterTurret1     # NIS-Elements 표시명: "Turret1"
+  - device: FilterTurret1     # NIS-Elements display name: "Turret1"
     positions:
       0:
         label: "MXR00724 - LED-DA/FI/TR/Cy5/Cy7-A (DAPI/FITC/TRITC/Cy5/Cy7)"
@@ -62,17 +62,18 @@ filter_turrets:
       4: {label: "5-Empty"}
       5: {label: "6-Empty"}
     note: >
-      2026-08-10 NIS-Elements Device Manager > Filter Block Settings - Turret1에서
-      실측 확인. 과거 MM .cfg 라벨 "1-MXR00724 -Empty"는 오해의 소지가 있었다 —
-      실제로는 position 0에 실물 5-band 큐브가 있고, "Empty"는 표시 형식 문제였던
-      것으로 결론. data/filters.yaml의 "DA/FI/TR10Empty"(kind: unknown, 과거
-      메타데이터 2,312건이 가리키던 그 큐브) 항목이 이걸로 해소됨.
+      Measured and confirmed 2026-08-10 in NIS-Elements Device Manager >
+      Filter Block Settings - Turret1. The old MM .cfg label
+      "1-MXR00724 -Empty" was misleading — position 0 actually holds a
+      physical 5-band cube, and "Empty" was a display-format artifact.
+      This resolves the "DA/FI/TR10Empty" entry in data/filters.yaml
+      (kind: unknown, the cube that 2,312 records of old metadata pointed at).
   - device: FilterTurret2
     positions:
       0:
-        label: "OT 다이크로익 + 750/SP 방출필터"
-        mirror_nm: [[750, null]]     # 750 nm보다 긴 파장만 반사 (1064 nm 트랩광용)
-        emission_nm: [[null, 750]]   # 750/SP: 750 nm 이하만 통과
+        label: "OT dichroic + 750/SP emission filter"
+        mirror_nm: [[750, null]]     # reflects only wavelengths longer than 750 nm (for the 1064 nm trap beam)
+        emission_nm: [[null, 750]]   # 750/SP: passes only below 750 nm
         registry: ["OT-Dichroic-750LP", "OT-EM-750SP"]
         verified: true
         verified_date: 2026-08-11
@@ -83,134 +84,148 @@ filter_turrets:
       4: Empty
       5: Empty
     note: >
-      ⚠ 2026-08-10 정정: 위 "6개 슬롯 전부 비어 있음"은 NIS-Elements Device
-      Manager 미확인 상태에서 쓴 것이었다. 사용자 구술로 광집게(OT) 경로에
-      Turret2가 실제로 쓰인다는 것이 확인됨.
-      **2026-08-11 갱신**: "여기·방출 필터는 없다"던 이전 문장은 틀렸음 —
-      실제로는 부품 두 개가 있다: 다이크로익(750 nm보다 긴 파장만 반사 —
-      1064 nm 트랩광을 대물렌즈 쪽으로 보내고 그보다 짧은 가시광은 투과)과
-      750/SP(shortpass) 방출 필터(750 nm 이상 차단 — 산란된 1064 nm가
-      접안/카메라로 새는 것을 방지). 사용자가 "slot 1"로 지칭 — 다른 항목의
-      1-indexed GUI 라벨 관례를 따라 position 0으로 기록했으나 인덱싱 자체는
-      재확인 전까지 가정. 정확한 vendor/part number는 여전히 미확인 —
-      data/filters.yaml에 `OT-Dichroic-750LP`/`OT-EM-750SP`로 임시 등록.
-      아래 light_paths > optical-tweezers 참고.
+      ⚠ 2026-08-10 correction: the "all six slots empty" above was written
+      before NIS-Elements Device Manager had been checked. User dictation
+      confirms Turret2 is in fact used in the optical tweezers (OT) path.
+      **2026-08-11 update**: the earlier sentence "there are no excitation
+      or emission filters" was wrong — there are actually two parts: a
+      dichroic (reflects only wavelengths longer than 750 nm — sends the
+      1064 nm trap beam toward the objective and transmits shorter visible
+      light) and a 750/SP (shortpass) emission filter (blocks above 750 nm —
+      prevents scattered 1064 nm from leaking into the eyepiece/camera).
+      The user called it "slot 1" — recorded as position 0 following the
+      1-indexed GUI label convention used elsewhere, but the indexing itself
+      is assumed until re-checked. Exact vendor/part number is still
+      unconfirmed — provisionally registered in data/filters.yaml as
+      `OT-Dichroic-750LP`/`OT-EM-750SP`.
+      See light_paths > optical-tweezers below.
 
-optical_path_nis:      # 2026-08-10 NIS-Elements Device Manager로만 확인 — MM .cfg에는 없음
-  # 2026-08-11 정정: 여기 있던 'DM'(다이크로익 빔스플리터, Di01-T405/488/568/647)
-  # 항목은 confocal_scanner > sub_devices > CSUW1-Dichroic와 동일한 물리 소자로
-  # 확인됨 — "외부 DM과는 별개의 두 번째 소자"라던 2026-08-10 구술은 오류였다.
-  # 중복 기록을 없애고 CSUW1-Dichroic 쪽으로 병합. 상세·band 값은 그 항목 참고.
+optical_path_nis:      # confirmed 2026-08-10 via NIS-Elements Device Manager only — not present in the MM .cfg
+  # 2026-08-11 correction: the 'DM' entry that used to be here (dichroic
+  # beamsplitter, Di01-T405/488/568/647) is confirmed to be the same physical
+  # element as confocal_scanner > sub_devices > CSUW1-Dichroic — the 2026-08-10
+  # dictation claiming "a second element separate from the external DM" was wrong.
+  # Duplicate record removed and merged into CSUW1-Dichroic. See that entry for
+  # details and band values.
   - device: Splitter
-    purpose: "듀얼 카메라(C3PO/R2D2) 이미지 스플리터"
+    purpose: "dual-camera (C3PO/R2D2) image splitter"
     positions:
-      0: {label: "100/0 mirror", note: "완전 반사 — 단일 카메라 모드"}
+      0: {label: "100/0 mirror", note: "full reflection — single-camera mode"}
       1: {label: "DM A561LP", mirror_nm: [[561, null]], note: "561 nm longpass", registry: "DM A561LP"}
       2: Empty
     current_position: 1 # DM A561LP
     note: >
-      2026-08-10 사용자 확인: 현재 카메라 2대(Kinetix_red/Kinetix_blue)를 동시에
-      쓰는 구성이고, 이 스플리터가 561 nm 기준으로 방출을 두 카메라에 나눈다
-      (position 1, DM A561LP). 단일 카메라 모드(position 0)가 아님.
-      → optics.Channel은 현재 다이크로익 필드가 하나뿐이라, 메인 컨포칼
-      다이크로익(Di01-T) 다음에 이 스플리터까지 2단으로 파장에 따라 갈라지는
-      구조를 아직 정확히 표현하지 못한다 — 카메라별 채널을 만들려면 Channel에
-      "이 소자의 투과측/반사측 중 어느 쪽으로 가는가"를 표현할 방법이 필요함.
-      대화에서 architecture 확장 방식을 논의 중.
+      Confirmed by user 2026-08-10: the current configuration uses both
+      cameras (Kinetix_red/Kinetix_blue) simultaneously, and this splitter
+      divides the emission between them at 561 nm (position 1, DM A561LP).
+      Not single-camera mode (position 0).
+      → optics.Channel currently has only one dichroic field, so it cannot
+      yet express the two-stage wavelength split — main confocal dichroic
+      (Di01-T) followed by this splitter. Building per-camera channels
+      requires a way for Channel to express "which side of this element does
+      the light go to, transmit or reflect". Architecture extension is being
+      discussed in conversation.
     verified: true
     verified_date: 2026-08-10
   - device: EM1
-    purpose: "방출 필터휠 — Kinetix_red(적색 채널 카메라) 전담"
+    purpose: "emission filter wheel — dedicated to Kinetix_red (red-channel camera)"
     positions:
       0: {label: "multi", registry: null}
       1: {label: "405", registry: null}
       2: {label: "488", registry: null}
       3: {label: "555", registry: null}
       4: {label: "647", registry: null}
-      5: Blocked   # 물리적으로 금속판으로 막혀 빛이 전혀 통과 못함 — 선택 불가 (2026-08-11 확인)
+      5: Blocked   # physically blocked by a metal plate, no light passes at all — not selectable (confirmed 2026-08-11)
       6: Blocked
       7: Blocked
       8: Blocked
-      9: {label: "Open", registry: "EM-Open", note: "빈 슬롯 — 필터 없음, 모든 광원에 대해 완전 개방(전 파장 투과). 2026-08-11 확인. .cfg Label 'open'과 일치."}
+      9: {label: "Open", registry: "EM-Open", note: "empty slot — no filter, fully open for every light source (all wavelengths pass). Confirmed 2026-08-11. Matches .cfg Label 'open'."}
     verified: true
     verified_date: 2026-08-11
     source: mm_config
     note: >
-      **2026-08-11 최종 정정**: 처음에 "88000v2-Quad/455/50/525/36/605/52/
-      705/72"로 기록했던 필터 세트는 EM1의 실제 필터가 아니었다(다른 소자
-      데이터가 잘못 여기 붙었던 것으로 보임 — 정확히 어디서 왔는지는 불명).
-      실제 위치 0-4는 DMD_dualcam.cfg의 CSUW1-Filter_Red Label 값(multi/
-      405/488/555/647)과 일치 — 이게 진짜 값이라고 사용자가 확인. 다만
-      이 5개는 아직 중심파장 숫자만 있고 fwhm·실제 통과대역 데이터가 없어
-      registry: null로 둔다(추측 금지 — data/filters.yaml에 값 생기면 연결).
-      position 5-8은 Blocked(금속판, .cfg Label엔 "b1"~"b4"로 잘못 남아
-      있던 것 — 실제로는 빈 카트리지 자리가 아니라 물리적으로 막혀 있음),
-      9는 Open — .cfg Label "open"과 정확히 일치. 총 10개(0-9), .cfg의
-      실제 슬롯 수와 맞음(2026-08-11 최종 확인).
-      Splitter와 카메라 사이, 카메라 바로 앞에 있다. EM1/EM2 각각 카메라
-      한 대씩 전담.
-      **카메라 배정 확정**: EM1 = Kinetix_red (카메라별 밝기 실측 대조로
-      확인 — 로드맵 Phase 0의 EM1/EM2 카메라 배정 블로커 해소).
-      **정정**: "CSUW1-Filter_Red/Blue와는 별개 — 그쪽은 CSU-W1
-      내부 소자"라던 예전 문장은 틀렸음. 물리 필터휠은 red/blue 담당 각 1개,
-      총 2개뿐이고 confocal_scanner.sub_devices에 따로 있던 CSUW1-Filter_Red
-      가 바로 이 EM1이다 (병합, 아래 confocal_scanner 참고). 컨포컬/와이드필드
-      모드와 무관하게 항상 이 자리에 있다(사용자 확인).
+      **2026-08-11 final correction**: the filter set originally recorded as
+      "88000v2-Quad/455/50/525/36/605/52/705/72" was not EM1's actual filters
+      (another element's data appears to have been attached here by mistake —
+      exactly where it came from is unknown). Real positions 0-4 match the
+      CSUW1-Filter_Red Label values in DMD_dualcam.cfg (multi/405/488/555/647)
+      — the user confirms these are the true values. These 5 have only center
+      wavelength numbers so far, with no fwhm or actual passband data, so they
+      are left as registry: null (no guessing — link them once values exist in
+      data/filters.yaml).
+      Positions 5-8 are Blocked (metal plate; the .cfg Label wrongly carried
+      "b1"~"b4" — these are not empty cartridge slots, they are physically
+      blocked), and 9 is Open — an exact match to .cfg Label "open". Ten total
+      (0-9), matching the actual slot count in the .cfg (final confirmation
+      2026-08-11).
+      Sits between the Splitter and the camera, immediately in front of the
+      camera. EM1/EM2 each serve one camera.
+      **Camera assignment settled**: EM1 = Kinetix_red (confirmed by measured
+      per-camera brightness cross-check — clears the EM1/EM2 camera assignment
+      blocker in roadmap Phase 0).
+      **Correction**: the old sentence "separate from CSUW1-Filter_Red/Blue —
+      those are internal CSU-W1 elements" was wrong. There are only two
+      physical filter wheels, one for red and one for blue, and the
+      CSUW1-Filter_Red that sat separately under confocal_scanner.sub_devices
+      is this very EM1 (merged; see confocal_scanner below). It is always in
+      this position regardless of confocal/widefield mode (user confirmed).
     camera: Kinetix_red
   - device: EM2
-    purpose: "방출 필터휠 — EM1과 동일 구성, Kinetix_blue(청색 채널 카메라) 전담"
+    purpose: "emission filter wheel — identical configuration to EM1, dedicated to Kinetix_blue (blue-channel camera)"
     positions:
       0: {label: "multi", registry: null}
       1: {label: "405", registry: null}
       2: {label: "488", registry: null}
       3: {label: "555", registry: null}
       4: {label: "647", registry: null}
-      5: Blocked   # 물리적으로 금속판으로 막혀 빛이 전혀 통과 못함 — 선택 불가 (2026-08-11 확인)
+      5: Blocked   # physically blocked by a metal plate, no light passes at all — not selectable (confirmed 2026-08-11)
       6: Blocked
       7: Blocked
       8: Blocked
-      9: {label: "Open", registry: "EM-Open", note: "빈 슬롯 — 필터 없음, 모든 광원에 대해 완전 개방(전 파장 투과). 2026-08-11 확인. .cfg Label 'open'과 일치."}
+      9: {label: "Open", registry: "EM-Open", note: "empty slot — no filter, fully open for every light source (all wavelengths pass). Confirmed 2026-08-11. Matches .cfg Label 'open'."}
     camera: Kinetix_blue
     verified: true
     verified_date: 2026-08-11
     source: mm_config
     note: >
-      2026-08-10 사용자 확인: "EM2는 EM1과 동일한 구성" — 그래서 positions는
-      EM1과 같은 필터(부품 스펙 기준)를 그대로 참조했다.
-      **2026-08-11 최종 정정**: 위 EM1과 같은 이유로 "88000v2-Quad/455/50/
-      525/36/605/52/705/72" 세트는 실제 값이 아니었음 — multi/405/488/555/
-      647(position 0-4) + Blocked(5-8) + Open(9)으로 정정, 총 10개(0-9)로
-      .cfg 슬롯 수와 일치. fwhm·실제 통과대역 데이터 없어 registry: null
-      (추측 금지). EM1과 동일 구성임은 NIS-Elements 직접 대조로 확인됨
-      (더 이상 진술 추정 아님).
-      카메라 배정 확정: EM2 = Kinetix_blue (EM1 확정과 함께 실측 대조됨 —
-      위 EM1 note 참고).
+      Confirmed by user 2026-08-10: "EM2 is configured identically to EM1" —
+      so positions simply referenced the same filters as EM1 (by part spec).
+      **2026-08-11 final correction**: for the same reason as EM1 above, the
+      "88000v2-Quad/455/50/525/36/605/52/705/72" set was not the real value —
+      corrected to multi/405/488/555/647 (position 0-4) + Blocked (5-8) +
+      Open (9), ten total (0-9), matching the .cfg slot count. No fwhm or
+      actual passband data, so registry: null (no guessing). That EM2 is
+      identical to EM1 is confirmed by direct NIS-Elements cross-check
+      (no longer an assumption from a statement).
+      Camera assignment settled: EM2 = Kinetix_blue (cross-checked by
+      measurement together with the EM1 determination — see the EM1 note
+      above).
     verified: true
     verified_date: 2026-08-11
 
 light_sources:
   - device: LightEngine
     vendor: Lumencor
-    model: SpectraIII         # 2026-08-10 NIS-Elements Device Manager로 확인 (다이어그램 라벨 "SpectraIII")
-    model_field: GEN3         # MM 어댑터의 통신 프로토콜 세대 표기
+    model: SpectraIII         # confirmed 2026-08-10 via NIS-Elements Device Manager (diagram label "SpectraIII")
+    model_field: GEN3         # the MM adapter's communication-protocol generation designation
     connection: COM3
-    lines_nm_approx: [365, 440, 488, 514, 561, 594, 640]   # 다이어그램 아이콘 판독 — fwhm 미확인
+    lines_nm_approx: [365, 440, 488, 514, 561, 594, 640]   # read off the diagram icons — fwhm unconfirmed
     registry: SpectraIII      # data/light_sources.yaml
     verified_product_name: true
     verified_date: 2026-08-10
     source: nis_elements_device_manager
   - device: Aura
     vendor: Lumencor
-    model: AuraIII            # 2026-08-10 NIS-Elements Device Manager로 확인 (다이어그램 라벨 "AuraIII")
+    model: AuraIII            # confirmed 2026-08-10 via NIS-Elements Device Manager (diagram label "AuraIII")
     model_field: GEN3
     connection: COM7
-    lines_nm_approx: [405, 440, 488, 561, 640]   # 다이어그램 아이콘 판독 — fwhm 미확인
+    lines_nm_approx: [405, 440, 488, 561, 640]   # read off the diagram icons — fwhm unconfirmed
     registry: AuraIII         # data/light_sources.yaml
     verified_product_name: true
     verified_date: 2026-08-10
     source: nis_elements_device_manager
 
-lasers:            # 2026-08-10 NIS-Elements Device Manager로 확인 — MM .cfg에는 등록되어 있지 않음
+lasers:            # confirmed 2026-08-10 via NIS-Elements Device Manager — not registered in the MM .cfg
   - device: LUN-F-XL
     vendor: Nikon
     kind: laser_combiner
@@ -218,17 +233,19 @@ lasers:            # 2026-08-10 NIS-Elements Device Manager로 확인 — MM .cf
     feeds: CSUW1-Hub
     registry: LUN-F-XL        # data/light_sources.yaml
     note: >
-      Di01-T405/488/568/647 다이크로익(confocal_scanner > sub_devices >
-      CSUW1-Dichroic)의 반사대역과 라인이 정확히 일치 — CSU-W1 컨포칼 경로의
-      실제 여기 레이저원임이 강하게 뒷받침됨. SpectraIII/AuraIII는 LED
-      광원이고 이것만 레이저다.
+      The lines match the reflection bands of the Di01-T405/488/568/647
+      dichroic (confocal_scanner > sub_devices > CSUW1-Dichroic) exactly —
+      strong support that this is the actual excitation laser source of the
+      CSU-W1 confocal path. SpectraIII/AuraIII are LED light sources; this is
+      the only laser.
     verified: true
     verified_date: 2026-08-10
     source: nis_elements_device_manager
 
 # ─────────────────────────────────────────────────────────────────────────
-# 광원별 광경로 — 2026-08-10 사용자 구술로 확보. 위에 이미 등록된 장치들을
-# 순서대로 참조만 한다 (장치 자체의 스펙은 여기서 반복하지 않음, docs/08 §6).
+# Light path per light source — obtained 2026-08-10 by user dictation. This
+# only references, in order, devices already registered above (device specs
+# themselves are not repeated here, docs/08 §6).
 # ─────────────────────────────────────────────────────────────────────────
 light_paths:
   - name: confocal-laser
@@ -236,15 +253,16 @@ light_paths:
     order:
       - {stage: source, device: LUN-F-XL, lines_nm: [405, 488, 561, 640]}
       - {stage: dichroic, device: CSUW1-Dichroic, registry: "Di01-T405/488/568/647-13x15x0.5",
-         note: "여기·방출이 같은 소자를 왕복 — 라인에서는 반사, 방출 대역에서는 투과 (사용자 확인). 2026-08-11: 과거 'DM'(외부)/'CSUW1-Dichroic'(내부)을 별개 소자 두 개로 기록했던 것은 오류 — 동일한 하나의 소자로 정정."}
+         note: "excitation and emission make a round trip through the same element — reflected at the lines, transmitted in the emission bands (user confirmed). 2026-08-11: recording the old 'DM' (external) and 'CSUW1-Dichroic' (internal) as two separate elements was an error — corrected to one and the same element."}
       - {stage: sample, device: [Nosepiece, objective, sample]}
-      - {stage: dichroic, device: CSUW1-Dichroic, registry: "Di01-T405/488/568/647-13x15x0.5", note: "돌아오는 방출, 위와 동일 소자"}
+      - {stage: dichroic, device: CSUW1-Dichroic, registry: "Di01-T405/488/568/647-13x15x0.5", note: "returning emission, same element as above"}
       - {stage: splitter, device: Splitter, registry: "DM A561LP", side_by_camera: {Kinetix_red: transmit, Kinetix_blue: reflect}}
       - stage: emission_filter
         note: >
-          EM1/EM2가 Splitter와 카메라 사이, 카메라 바로 앞에 하나씩(arm당
-          하나) 있다. 2026-08-11 확인: EM1 = Kinetix_red 전담, EM2 =
-          Kinetix_blue 전담. EM2 필터 구성도 EM1과 동일함이 독립 확인됨.
+          EM1/EM2 sit between the Splitter and the cameras, one immediately in
+          front of each camera (one per arm). Confirmed 2026-08-11: EM1 is
+          dedicated to Kinetix_red, EM2 to Kinetix_blue. EM2's filter
+          configuration was also independently confirmed identical to EM1.
         by_camera:
           Kinetix_red: {device: EM1}
           Kinetix_blue: {device: EM2}
@@ -257,39 +275,44 @@ light_paths:
       - stage: dmd
         device: MightexPolygon1000
         note: >
-          2026-08-10 사용자 확인: 전 파장대에서 조명 강도와 패턴(형태)을
-          제어하는 pattern illuminator다. 파장선택 기능은 없음 — 계산상
-          스펙트럼 중립(투과율 손실만 있을 수 있음, 값 미확인)으로 취급.
-          3자 대조(물리적 연결 여부)는 여전히 미완료 (위 dmd: 절).
+          Confirmed by user 2026-08-10: a pattern illuminator that controls
+          illumination intensity and pattern (shape) across all wavelengths.
+          No wavelength-selection function — treated as spectrally neutral for
+          calculation (there may be transmission loss; value unconfirmed).
+          The three-way cross-check (whether it is physically connected) is
+          still incomplete (see the dmd: section above).
       - stage: branch
         device: LappMainBranch1
         note: >
-          2026-08-10 사용자 확인 (해소): 기하 비대칭 — SpectraIII는 주광축
-          인라인, Aura는 옆에서 결합. mirror_out: SpectraIII 100% 통과,
-          Aura는 결합 안 됨(0%). mirror_in: 50/50 플레이트라 양쪽 다 50%.
-          자세한 설명은 위 lapp_branch: 절 참고.
+          Confirmed by user 2026-08-10 (resolved): the geometry is asymmetric —
+          SpectraIII is inline on the main optical axis, Aura is coupled in
+          from the side. mirror_out: SpectraIII passes 100%, Aura is not
+          coupled (0%). mirror_in: a 50/50 plate, so both sides get 50%.
+          See the lapp_branch: section above for the full explanation.
       - {stage: excitation_filter, device: FilterTurret1, registry: "MXR00724-EX"}
       - {stage: dichroic, device: FilterTurret1, registry: "MXR00724-DM"}
       - {stage: sample, device: [Nosepiece, objective, sample]}
-      - {stage: dichroic, device: FilterTurret1, registry: "MXR00724-DM", note: "돌아오는 방출, 위와 동일 소자"}
+      - {stage: dichroic, device: FilterTurret1, registry: "MXR00724-DM", note: "returning emission, same element as above"}
       - {stage: emission_filter, device: FilterTurret1, registry: "MXR00724-EM"}
       - stage: internal_dichroic
         device: CSUW1-Dichroic
         registry: "Di01-T405/488/568/647-13x15x0.5"
         note: >
-          2026-08-10 사용자 확인 (해소): CSUW1-Bright 상태와 무관하게
-          다이크로익은 항상 "on"이다 — Bright Field라고 해서 이 소자가
-          빠지지 않는다. 대신 EM1/EM2를 quad-band(position 0, "multi"에
-          해당) 또는 Open(position 10, "empty"에 해당)으로 놓고 쓴다
-          (2026-08-11 정정: 이전에 "CSUW1-Filter_Red/Blue"라는 별개 내부
-          필터휠로 기록했던 것이 실은 EM1/EM2였음— 아래 confocal_scanner
-          참고). 즉 이 경로는 **진짜 백색광 촬영이 아니다** — 다이크로익
-          (4색 노치)과 필터휠 상태에 따라 스펙트럼이 제한된 상태로
-          촬영된다. 2026-08-11: band 값 확인됨 (위 confocal-laser 항목 참고).
+          Confirmed by user 2026-08-10 (resolved): the dichroic is always "on"
+          regardless of CSUW1-Bright state — this element is not removed just
+          because you are in Bright Field. Instead EM1/EM2 are set to
+          quad-band (position 0, i.e. "multi") or Open (position 10, i.e.
+          "empty") (2026-08-11 correction: what was previously recorded as a
+          separate internal filter wheel "CSUW1-Filter_Red/Blue" was in fact
+          EM1/EM2 — see confocal_scanner below). In other words this path is
+          **not true white-light imaging** — imaging happens with the spectrum
+          restricted by the dichroic (4-color notch) and the filter wheel
+          state. 2026-08-11: band values confirmed (see the confocal-laser
+          entry above).
       - {stage: splitter, device: Splitter, registry: "DM A561LP", side_by_camera: {Kinetix_red: transmit, Kinetix_blue: reflect}}
-      - {stage: emission_filter, note: "EM1/EM2, 카메라당 하나씩 — 위 confocal-laser 항목과 동일, 상세는 그쪽 참고"}
+      - {stage: emission_filter, note: "EM1/EM2, one per camera — identical to the confocal-laser entry above, see there for details"}
       - {stage: camera, device: [Kinetix_red, Kinetix_blue]}
-    note: "와이드필드(LED-epi) 조명도 CSU-W1 내부 광학계를 그대로 통과한다 — 다이크로익은 항상 on (2026-08-10 확인)."
+    note: "Widefield (LED-epi) illumination also passes straight through the CSU-W1 internal optics — the dichroic is always on (confirmed 2026-08-10)."
 
   - name: widefield-aura
     source: Aura # registry: AuraIII
@@ -297,23 +320,23 @@ light_paths:
       - {stage: source, device: Aura, lines_nm_approx: [405, 440, 488, 561, 640]}
       - stage: branch
         device: LappMainBranch1
-        note: "위 widefield-spectra3와 동일 — 자세한 설명은 lapp_branch: 절 참고. mirror_in(50/50) 상태여야 Aura가 샘플에 도달한다."
+        note: "Same as widefield-spectra3 above — see the lapp_branch: section for the full explanation. Aura only reaches the sample in the mirror_in (50/50) state."
       - {stage: excitation_filter, device: FilterTurret1, registry: "MXR00724-EX"}
       - {stage: dichroic, device: FilterTurret1, registry: "MXR00724-DM"}
       - {stage: sample, device: [Nosepiece, objective, sample]}
       - {stage: dichroic, device: FilterTurret1, registry: "MXR00724-DM"}
       - {stage: emission_filter, device: FilterTurret1, registry: "MXR00724-EM"}
-      - {stage: internal_dichroic, device: CSUW1-Dichroic, note: "위 widefield-spectra3와 동일 — 항상 on, 진짜 백색광 촬영 아님"}
+      - {stage: internal_dichroic, device: CSUW1-Dichroic, note: "same as widefield-spectra3 above — always on, not true white-light imaging"}
       - {stage: splitter, device: Splitter, registry: "DM A561LP", side_by_camera: {Kinetix_red: transmit, Kinetix_blue: reflect}}
-      - {stage: emission_filter, note: "EM1/EM2, 카메라당 하나씩 — 위 confocal-laser 항목 참고"}
+      - {stage: emission_filter, note: "EM1/EM2, one per camera — see the confocal-laser entry above"}
       - {stage: camera, device: [Kinetix_red, Kinetix_blue]}
 
   - name: transmitted-light
     source: DiaLamp
     order:
-      - {stage: source, device: DiaLamp, note: "백색광"}
+      - {stage: source, device: DiaLamp, note: "white light"}
       - {stage: polarizer, device: null, registry: "Polarizer-Linear",
-         note: "각도조절 가능, 제거가능. MM/NIS 미등록 장치일 수 있음 — 각도 자체는 장부 밖 설정."}
+         note: "angle adjustable, removable. May be a device not registered in MM/NIS — the angle itself is an off-ledger setting."}
       - stage: condenser
         device: CondenserTurret
         positions: {0: "1-ND", 1: "2-Shutter", 2: "3-", 3: "4-", 4: "5-", 5: "6-", 6: "7-"}
@@ -321,127 +344,152 @@ light_paths:
         verified_date: 2026-08-11
         source: mm_config
         note: >
-          ⚠ 신규 발견 (2026-08-10) — 다크필드/브라이트필드 전환 콘덴서.
-          **2026-08-11 해소**: MM .cfg(DMD_dualcam.cfg) 실측 확인 — 별도
-          장치 `CondenserTurret`(어댑터 NikonTi2, Ti2-E__0 하위)로 실제
-          등록되어 있다. "DiaLamp 장치 밑 속성일 것"이라던 이전 추정은
-          틀렸음. Position 0/1만 라벨 있음(ND/Shutter) — 2-6번 라벨은 MM
-          .cfg에 이름이 없어(순수 "3-"~"7-") 실제 정체(다크필드 링 등)는
-          여전히 미확인.
+          ⚠ New discovery (2026-08-10) — the darkfield/brightfield switching
+          condenser.
+          **Resolved 2026-08-11**: measured confirmation from the MM .cfg
+          (DMD_dualcam.cfg) — it is actually registered as its own device
+          `CondenserTurret` (adapter NikonTi2, child of Ti2-E__0). The earlier
+          assumption that it "must be a property under the DiaLamp device" was
+          wrong. Only positions 0/1 have labels (ND/Shutter) — labels 2-6 have
+          no name in the MM .cfg (bare "3-"~"7-"), so what they actually are
+          (darkfield ring, etc.) is still unconfirmed.
       - {stage: sample, device: [Nosepiece, objective, sample]}
-      - {stage: filter_cube, device: FilterTurret1, note: "제거가능 — 형광 큐브가 투과광 경로에 그대로 남아있을 수 있음"}
+      - {stage: filter_cube, device: FilterTurret1, note: "removable — a fluorescence cube may be left sitting in the transmitted-light path"}
       - {stage: analyzer, device: null, registry: "Analyzer-Linear",
-         note: "각도조절 불가능(고정), 제거가능"}
-      - {stage: internal_dichroic, device: CSUW1-Dichroic, note: "위 widefield 항목들과 동일 — 항상 on, 필터휠 empty/multi. 이 경로도 진짜 백색광 촬영이 아니다."}
+         note: "angle not adjustable (fixed), removable"}
+      - {stage: internal_dichroic, device: CSUW1-Dichroic, note: "same as the widefield entries above — always on, filter wheel empty/multi. This path is not true white-light imaging either."}
       - {stage: splitter, device: Splitter, registry: "DM A561LP"}
-      - {stage: emission_filter, note: "EM1/EM2, 카메라당 하나씩 — 위 confocal-laser 항목 참고"}
+      - {stage: emission_filter, note: "EM1/EM2, one per camera — see the confocal-laser entry above"}
       - {stage: camera, device: [Kinetix_red, Kinetix_blue]}
     note: >
-      편광자/검광자는 액정 편광 관찰용 (data/filters.yaml 항목 note와 일치).
-      형광 실험에서는 이 경로 자체가 쓰이지 않으므로 편광자/검광자가 경로에
-      남아있다면 순손실 — docs/01 §6에서 이미 지적된 ablation 후보.
+      The polarizer/analyzer are for liquid-crystal polarization observation
+      (consistent with the note on the data/filters.yaml entry). Fluorescence
+      experiments do not use this path at all, so a polarizer/analyzer left in
+      the path is pure loss — already flagged as an ablation candidate in
+      docs/01 §6.
 
   - name: optical-tweezers
     source: Trap
     order:
-      - {stage: source, device: Trap, registry: "Trap#IR1064", note: "1064 nm, MM 미등록 — 장부 밖(off-ledger)"}
+      - {stage: source, device: Trap, registry: "Trap#IR1064", note: "1064 nm, not registered in MM — off-ledger"}
       - stage: dichroic
         device: FilterTurret2
         registry: "OT-Dichroic-750LP"
         note: >
-          2026-08-10 사용자 확인: FilterTurret2는 이전에 "6개 슬롯 전부
-          비어 있음"으로 기록했으나(위 filter_turrets 절 참고), 실제로는
-          NIR(1064nm) 전용 다이크로익이 있다.
-          **2026-08-11 정정**: "여기·방출 필터는 없다"는 틀렸음 — 750/SP
-          방출 필터도 함께 있다(위 filter_turrets > FilterTurret2 참고).
-          다이크로익은 750 nm보다 긴 파장만 반사(1064 nm을 대물렌즈로 보냄).
+          Confirmed by user 2026-08-10: FilterTurret2 had been recorded as
+          "all six slots empty" (see the filter_turrets section above), but
+          there is in fact a NIR-only (1064 nm) dichroic.
+          **2026-08-11 correction**: "there are no excitation or emission
+          filters" was wrong — there is also a 750/SP emission filter (see
+          filter_turrets > FilterTurret2 above). The dichroic reflects only
+          wavelengths longer than 750 nm (sending 1064 nm to the objective).
       - {stage: sample, device: [Nosepiece, objective, sample]}
       - {stage: emission_filter, device: FilterTurret2, registry: "OT-EM-750SP",
-         note: "750/SP — 750 nm 이상(산란된 1064 nm 트랩광) 차단. 2026-08-11 신규 확인."}
+         note: "750/SP — blocks above 750 nm (scattered 1064 nm trap light). Newly confirmed 2026-08-11."}
     note: >
-      2026-08-10 사용자 확인: 샘플 이후 경로는 전부 차단되어(전 구간
-      가시광~근적외 대역용 필터/다이크로익이 1064nm를 통과시키지 않음)
-      검출 경로 쪽은 광집게 광경로 정리에서 고려할 필요가 없다고 봄 —
-      다만 docs/04 §3의 "1100nm까지 격자를 잡아둔 이유"(누설 확인)는 여전히
-      유효한 별개 우려사항이며, 이 결론과 모순되지 않음(그 확인 자체가
-      바로 "정말 다 차단되는가"를 검증하는 것).
+      Confirmed by user 2026-08-10: everything downstream of the sample is
+      blocked (across the whole path, the visible-to-NIR filters/dichroics do
+      not pass 1064 nm), so the detection path is judged not to need
+      consideration when working out the optical tweezers light path — though
+      docs/04 §3's "reason the grid was extended out to 1100 nm" (leak
+      checking) remains a separate, still-valid concern, and does not
+      contradict this conclusion (that check is precisely what verifies
+      whether everything really is blocked).
 
   - name: known_gaps
     note: >
-      2026-08-11 갱신 (3차) — 해소된 것과 남은 것.
+      Updated 2026-08-11 (3rd pass) — what is resolved and what remains.
 
-      **해소됨:**
-      - CSUW1-Bright 상태와 무관하게 CSUW1-Dichroic는 항상 "on". 와이드필드/
-        투과광 촬영도 이 다이크로익을 그대로 지난다 — 즉 이 랩엔 "진짜
-        백색광" 촬영 경로가 없다.
-      - LappMainBranch1: SpectraIII(인라인)/Aura(측면결합) 기하 비대칭 확인.
-        mirror_out → SpectraIII 100%, Aura 0%. mirror_in → 둘 다 50%.
-        2026-08-11: **용도**까지 확인 — DMD+와이드필드 동시 사용을 위해
-        mirror_in을 쓰고, Aura 50% 손실은 와이드필드에는 강한 광량이
-        필요 없어 감수할 만하다는 사용자 판단.
-      - FilterTurret2에 NIR 전용 다이크로익 존재 확인 (여기·방출 필터 없음).
-        2026-08-11: 슬롯·구성까지 확인(slot 1, 다이크로익[750nm 초과 반사]
-        + 750/SP 방출필터 2부품). vendor/part number는 edge 값만으로 계산에
-        충분하다는 사용자 판단 — 확보되면 갱신, 그전까지 재확인 요청 안 함.
-      - DMD는 전 파장대 조명강도·패턴 제어용 pattern illuminator, 파장선택
-        없음. 2026-08-11: 물리적 연결 여부 확인(docs/02 §4 참고). **같은 날
-        MM .cfg(DMD_dualcam.cfg) 실측으로 MightexPolygon1000 장치 등록도
-        확인** — pymmcore-plus로 제어 가능. 이 프로젝트는 NIS-Elements
-        제어 경로를 쓰지 않기로 결정(2026-08-11, 사용자) — 아래 dmd: 절 참고.
-      - 투과광 콘덴서 확인 (2026-08-11): "DiaLamp 밑 속성일 것"이라던 추정은
-        틀렸음 — MM .cfg에 별도 장치 `CondenserTurret`(NikonTi2 어댑터,
-        Ti2-E__0 하위)로 실제 등록되어 있다. 7-position, position 0="1-ND",
-        1="2-Shutter", 2-6은 라벨 없음("3-"~"7-"). 아래 light_paths >
-        transmitted-light > condenser 참고.
-      - CSUW1-Dichroic의 정확한 band 값 확보 (2026-08-11, Di01-T405/488/
-        568/647-13x15x0.5) — 이전에 별개 소자로 기록했던 optical_path_nis의
-        'DM'과 동일한 물리 소자임도 함께 확인, 병합됨.
-      - EM1/EM2 카메라 배정 확정 (2026-08-11): EM1 = Kinetix_red,
-        EM2 = Kinetix_blue (카메라별 밝기 실측 대조).
-      - EM2 필터 위치별 구성 독립 확인 (2026-08-11) — 더 이상 "EM1과 동일할
-        것"이라는 진술 추정이 아니라 NIS-Elements 직접 대조로 확정.
-      - `CSUW1-Filter_Red`/`CSUW1-Filter_Blue`(CSU-W1 내부 필터휠, EM1/EM2와
-        별개로 기록했던 것)는 EM1/EM2와 동일한 물리 소자였음 확인 (2026-08-11)
-        — 물리 필터휠은 red/blue 담당 각 1개, 총 2개뿐. 컨포컬/와이드필드
-        모드와 무관하게 항상 그 자리에 있다(사용자 확인). confocal_scanner
-        sub_devices의 중복 항목 제거, optical_path_nis > EM1/EM2로 병합.
-      - EM1/EM2 필터 실제 내용 정정 (2026-08-11): 위 병합 과정에서 DMD_
-        dualcam.cfg의 CSUW1-Filter_Red Label을 직접 읽어보니, 처음에 EM1/
-        EM2 필터로 기록했던 "88000v2-quad/455/50/525/36/605/52/705/72"는
-        실제 값이 아니었다(다른 소자 데이터의 오귀속 — data/filters.yaml
-        해당 항목에 정정 주석 남김). 진짜 값은 multi/405/488/555/647
-        (position 0-4) + Blocked(5-8) + Open(9). fwhm·실제 통과대역 데이터가
-        없어 registry: null로 남기고, config/scopes/current-laser.yaml의
-        emission_filters 후보에서도 뺐다 — 계산 후보는 지금 "EM-Open"
-        하나뿐이다. 5개 필터의 실제 스펙 확보가 새로운 남은 일.
+      **Resolved:**
+      - CSUW1-Dichroic is always "on" regardless of CSUW1-Bright state.
+        Widefield and transmitted-light imaging pass through this dichroic
+        too — i.e. this lab has no "true white light" imaging path.
+      - LappMainBranch1: geometric asymmetry confirmed, SpectraIII (inline) /
+        Aura (side-coupled). mirror_out → SpectraIII 100%, Aura 0%.
+        mirror_in → both 50%.
+        2026-08-11: **purpose** confirmed as well — mirror_in is used to run
+        DMD and widefield at the same time, and the user judges the 50% Aura
+        loss acceptable because widefield does not need a high light level.
+      - Existence of a NIR-only dichroic in FilterTurret2 confirmed (no
+        excitation or emission filter).
+        2026-08-11: slot and configuration confirmed as well (slot 1, two
+        parts: dichroic [reflects above 750 nm] + 750/SP emission filter).
+        The user judges the edge values alone sufficient for calculation, so
+        vendor/part number will be updated if obtained but will not be
+        re-requested before then.
+      - The DMD is a pattern illuminator for controlling illumination
+        intensity and pattern across all wavelengths, with no wavelength
+        selection. 2026-08-11: physical connection confirmed (see docs/02 §4).
+        **The same day, measured confirmation from the MM .cfg
+        (DMD_dualcam.cfg) that the MightexPolygon1000 device is registered
+        too** — controllable via pymmcore-plus. This project decided not to
+        use the NIS-Elements control path (2026-08-11, user) — see the dmd:
+        section below.
+      - Transmitted-light condenser confirmed (2026-08-11): the assumption
+        that it "must be a property under DiaLamp" was wrong — it is actually
+        registered in the MM .cfg as its own device `CondenserTurret`
+        (NikonTi2 adapter, child of Ti2-E__0). 7-position, position 0="1-ND",
+        1="2-Shutter", 2-6 unlabeled ("3-"~"7-"). See light_paths >
+        transmitted-light > condenser below.
+      - Exact band values for CSUW1-Dichroic obtained (2026-08-11,
+        Di01-T405/488/568/647-13x15x0.5) — together with confirmation that it
+        is the same physical element as the 'DM' in optical_path_nis that had
+        been recorded separately; merged.
+      - EM1/EM2 camera assignment settled (2026-08-11): EM1 = Kinetix_red,
+        EM2 = Kinetix_blue (measured per-camera brightness cross-check).
+      - EM2's per-position filter configuration independently confirmed
+        (2026-08-11) — no longer an assumption from the statement "it should
+        be the same as EM1", but settled by direct NIS-Elements cross-check.
+      - `CSUW1-Filter_Red`/`CSUW1-Filter_Blue` (the CSU-W1 internal filter
+        wheels, recorded separately from EM1/EM2) are confirmed to be the same
+        physical elements as EM1/EM2 (2026-08-11) — there are only two
+        physical filter wheels, one for red and one for blue. They are always
+        in place regardless of confocal/widefield mode (user confirmed).
+        Duplicate entries under confocal_scanner sub_devices removed, merged
+        into optical_path_nis > EM1/EM2.
+      - EM1/EM2 actual filter contents corrected (2026-08-11): while merging
+        the above, reading the CSUW1-Filter_Red Label in DMD_dualcam.cfg
+        directly showed that the "88000v2-quad/455/50/525/36/605/52/705/72"
+        originally recorded as the EM1/EM2 filters was not the real value
+        (misattributed data from another element — a correction note was left
+        on the corresponding data/filters.yaml entry). The true values are
+        multi/405/488/555/647 (position 0-4) + Blocked (5-8) + Open (9).
+        With no fwhm or actual passband data they are left as registry: null,
+        and they were also dropped from the emission_filters candidates in
+        config/scopes/current-laser.yaml — the only calculation candidate now
+        is "EM-Open". Obtaining the real specs of the 5 filters is a new open
+        item.
 
-      **아직 남은 것:**
-      (1) EM1/EM2 position 0-4(multi/405/488/555/647)의 실제 fwhm·통과대역
-          스펙 — 확보 전까지 emission_filters 계산 후보는 "EM-Open" 하나뿐.
-      이 절이 추적하던 나머지 광경로 항목은 2026-08-11 기준 해소됐다.
-      (남은 실측은 이 절의 범위 밖: 조명 광량 파워미터 실측 등 로드맵
-      Phase 0의 다른 항목 — [07 로드맵](../../docs/07-roadmap.md) 참고.)
+      **Still open:**
+      (1) The actual fwhm/passband specs of EM1/EM2 positions 0-4
+          (multi/405/488/555/647) — until obtained, the only
+          emission_filters calculation candidate is "EM-Open".
+      The remaining light-path items this section was tracking are resolved as
+      of 2026-08-11. (Remaining measurements are outside this section's scope:
+      power-meter measurement of illumination light level and other roadmap
+      Phase 0 items — see [07 roadmap](../../docs/07-roadmap.md).)
 
 dmd:
   device: MightexPolygon1000
   vendor: Mightex
   model: Polygon1000
   mm_device: MightexPolygon1000   # DMD_dualcam.cfg: "Device,MightexPolygon1000,MightexPolygon1000,MightexPolygon1000"
-  control: pymmcore-plus   # 2026-08-11 프로젝트 결정: NIS-Elements 경로 안 씀, MM 등록 장치는 전부 pymmcore-plus로
+  control: pymmcore-plus   # 2026-08-11 project decision: the NIS-Elements path is not used; every MM-registered device goes through pymmcore-plus
   verified: true
   verified_date: 2026-08-11
   source: mm_config
   note: >
-    **2026-08-11**: 물리적으로 연결되어 있음을 확인 (docs/02 §4 DMD 행,
-    "물리적 존재" 해소). MM .cfg(DMD_dualcam.cfg) 실측으로 MightexPolygon1000
-    장치 등록도 확인 — pymmcore-plus로 제어 가능. **프로젝트 결정
-    (2026-08-11, 사용자)**: 이 프로젝트는 NIS-Elements 제어 경로를 쓰지
-    않는다 — DMD를 포함해 앞으로의 자동화(로드맵 Phase 5)는 MM에 등록된
-    장치라면 pymmcore-plus로만 제어한다.
-    3자 대조는 아직 완전히 끝나지 않았다.
-    기능은 2026-08-10 사용자 확인: 전 파장대에서 조명 강도·패턴(형태)을
-    제어하는 pattern illuminator — 파장선택 기능 없음. light_paths >
-    widefield-spectra3 참고.
+    **2026-08-11**: confirmed physically connected (docs/02 §4 DMD row,
+    "physical existence" resolved). Measured confirmation from the MM .cfg
+    (DMD_dualcam.cfg) that the MightexPolygon1000 device is registered too —
+    controllable via pymmcore-plus. **Project decision (2026-08-11, user)**:
+    this project does not use the NIS-Elements control path — all future
+    automation (roadmap Phase 5), DMD included, controls MM-registered
+    devices via pymmcore-plus only.
+    The three-way cross-check is not yet fully complete.
+    Function confirmed by user 2026-08-10: a pattern illuminator controlling
+    illumination intensity and pattern (shape) across all wavelengths — no
+    wavelength-selection function. See light_paths > widefield-spectra3.
 
 confocal_scanner:
   device: CSUW1-Hub
@@ -449,13 +497,15 @@ confocal_scanner:
   model: CSU-W1
   connection: COM10
   sub_devices:
-    # 2026-08-11 정정: 여기 있던 CSUW1-Filter_Red(wheel 1)/CSUW1-Filter_Blue
-    # (wheel 2)는 실제로는 optical_path_nis의 EM1/EM2와 동일한 물리 필터휠
-    # 이었다 (사용자 확인: "I have two physical filter wheels. one is only
-    # for the camera-red, the other(EM2) is only for the camera-blue" — CSU-W1
-    # 내부의 별개 소자가 아니었음). 여기 있던 위치값(multi/405/488/555/647/
-    # b1-b4/open)은 실측 검증 없이 기록된 것이었고, EM1/EM2 쪽 값(실측·
-    # verified: true)이 맞다. 중복 제거, optical_path_nis > EM1/EM2 참고.
+    # 2026-08-11 correction: the CSUW1-Filter_Red (wheel 1) / CSUW1-Filter_Blue
+    # (wheel 2) that used to be here were in fact the same physical filter
+    # wheels as EM1/EM2 in optical_path_nis (user confirmed: "I have two
+    # physical filter wheels. one is only for the camera-red, the other(EM2) is
+    # only for the camera-blue" — they were not separate elements inside the
+    # CSU-W1). The position values that were here (multi/405/488/555/647/
+    # b1-b4/open) had been recorded without measured verification; the EM1/EM2
+    # values (measured, verified: true) are the correct ones. Duplicates
+    # removed, see optical_path_nis > EM1/EM2.
     - device: CSUW1-Dichroic
       positions:
         0: {label: "Di01-T405/488/568/647-13x15x0.5", mirror_nm: [[404,406],[487,489],[561,568],[633,647]], registry: "Di01-T405/488/568/647-13x15x0.5"}
@@ -466,46 +516,52 @@ confocal_scanner:
       verified_date: 2026-08-11
       source: nis_elements_device_manager
       note: >
-        2026-08-10 사용자 확인: 현재 "on". 컨포컬 레이저 4색(405/488/561/640)
-        분리용 multiband. b1/b2는 빈 카트리지 자리.
-        **2026-08-11**: band 값 확보 (Di01-T405/488/568/647-13x15x0.5,
-        NIS-Elements Mirror 표시값 404-406/487-489/561-568/633-647 nm).
-        이전에 별개 소자로 기록했던 optical_path_nis의 'DM'과 동일한 물리
-        소자임도 함께 확인됨 (2026-08-10 구술 오류 정정) — 그 항목은 여기로
-        병합. light_paths > confocal-laser 참고.
+        Confirmed by user 2026-08-10: currently "on". A multiband for
+        separating the 4 confocal laser colors (405/488/561/640). b1/b2 are
+        empty cartridge slots.
+        **2026-08-11**: band values obtained
+        (Di01-T405/488/568/647-13x15x0.5, NIS-Elements Mirror display values
+        404-406/487-489/561-568/633-647 nm). Confirmed at the same time to be
+        the same physical element as the 'DM' in optical_path_nis that had
+        been recorded separately (correcting the 2026-08-10 dictation error) —
+        that entry is merged here. See light_paths > confocal-laser.
     - {device: CSUW1-Bright, positions: {0: Confocal, 1: "Bright Field"}}
     - {device: CSUW1-Port, positions: {0: blue_only, 1: blue_red, 2: red_only}}
     - {device: CSUW1-Shutter}
 
-light_path:               # LightPath device — 접안/좌우 포트 선택
+light_path:               # LightPath device — eyepiece / left-right port selection
   device: LightPath
   positions: {0: EYE, 1: R100, 2: AUX, 3: L100}
 
 intermediate_magnification:
   device: IntermediateMagnification
-  values: [1.0, 1.5]        # 배율 보정계수 표(Sheet1)의 열 헤더와 일치
+  values: [1.0, 1.5]        # matches the column headers of the magnification conversion-factor table (Sheet1)
 
 lapp_branch:
   device: LappMainBranch1
   positions: {0: mirror_in, 1: mirror_out}
-  current_position: 0 # mirror_in — 사용자 확인 시점 상태로 추정, 상시 고정인지는 미확인
+  current_position: 0 # mirror_in — assumed to be the state at the time of user confirmation; whether it is permanently fixed is unconfirmed
   note: >
-    2026-08-10 사용자 확인 (완전히 해소됨). 두 광원이 기하적으로 비대칭이다:
-    SpectraIII는 주 광축에 인라인으로 들어오고, Aura는 옆에서 들어와 이
-    미러로 주 광축에 결합된다.
-      - mirror_out (미러 없음, 빈 자리와 동일): SpectraIII 인라인 빔은
-        방해물이 없어 100% 그대로 샘플로 간다. Aura는 결합해줄 것이 없어
-        샘플에 전혀 도달하지 못한다.
-      - mirror_in (50/50 플레이트 삽입): 어느 쪽에서 들어오든 50%는
-        투과, 50%는 반사 — 그 결과 SpectraIII 인라인 빔의 50%가 계속
-        진행하고, 동시에 Aura 빔의 50%가 반사되어 같은 주 광축에 합류한다.
-    출처: 사용자 구술 (kb/systems/current.md 편집 시점 대화).
+    Confirmed by user 2026-08-10 (fully resolved). The two light sources are
+    geometrically asymmetric: SpectraIII enters inline on the main optical
+    axis, and Aura enters from the side and is coupled onto the main axis by
+    this mirror.
+      - mirror_out (no mirror, equivalent to an empty slot): the SpectraIII
+        inline beam has nothing in its way and goes 100% to the sample. Aura
+        has nothing to couple it in, so it does not reach the sample at all.
+      - mirror_in (50/50 plate inserted): whichever side light comes from,
+        50% transmits and 50% reflects — so 50% of the SpectraIII inline beam
+        continues on, and at the same time 50% of the Aura beam is reflected
+        and joins the same main optical axis.
+    Source: user dictation (conversation at the time kb/systems/current.md was
+    edited).
 
-    **2026-08-11 용도 확인**: mirror_in을 쓰는 이유는 DMD 패턴 조명과
-    와이드필드(Aura)를 동시에 쓰고 싶을 때다 — Aura 광량이 50% 손실되지만,
-    와이드필드 이미징은 보통 강한 광량이 필요 없어서 그 손실을 감수할 만
-    하다는 사용자 판단. mirror_out은 그 조합이 필요 없을 때(Aura 안 씀,
-    SpectraIII 인라인 100% 유지).
+    **2026-08-11 purpose confirmed**: mirror_in is used when you want DMD
+    pattern illumination and widefield (Aura) at the same time — Aura loses
+    50% of its light level, but the user judges that loss acceptable since
+    widefield imaging usually does not need a high light level. mirror_out is
+    for when that combination is not needed (Aura unused, SpectraIII inline
+    kept at 100%).
   verified: true
   verified_date: 2026-08-10
   source: user_dictation
@@ -524,140 +580,169 @@ pixel_size_calibration:
     "60x":  {"1x": 0.10833, "1.5x": 0.07222}
     "100x": {"1x": 0.065,   "1.5x": 0.04333}
 
-devices_not_in_mm_config:   # docs/02 §4 "3자 대조표" — MM .cfg에 없는 별도 제어 장치
-  - {name: "피에조 스테이지 (Prior/Queensgate NPC-D, Nanobench 6000)", control: "별도 Python (hardware/piezo_stage.py)", mm_registered: false, python_control: confirmed, confirmed_date: 2026-08-10}
-  - {name: "광집게 (Aresis Tweez 305/310, Tweez 300)", control: "별도 Python (hardware/optical_tweezers.py, TCP 2070)", mm_registered: false, python_control: confirmed, confirmed_date: 2026-08-10}
-  - name: "LUN-F-XL 레이저 콤바이너 (405/488/561/640)"
-    control: "없음 — 아직 어떤 프로그래밍 인터페이스에도 연결 안 됨"
+devices_not_in_mm_config:   # docs/02 §4 "three-way cross-check table" — separately controlled devices absent from the MM .cfg
+  - {name: "piezo stage (Prior/Queensgate NPC-D, Nanobench 6000)", control: "separate Python (hardware/piezo_stage.py)", mm_registered: false, python_control: confirmed, confirmed_date: 2026-08-10}
+  - {name: "optical tweezers (Aresis Tweez 305/310, Tweez 300)", control: "separate Python (hardware/optical_tweezers.py, TCP 2070)", mm_registered: false, python_control: confirmed, confirmed_date: 2026-08-10}
+  - name: "LUN-F-XL laser combiner (405/488/561/640)"
+    control: "none — not yet connected to any programming interface"
     mm_registered: false
     python_control: not_connected
     confirmed_date: 2026-08-12
     note: >
-      2026-08-10 사용자 구술로는 "Python 제어 가능 확인"이었으나 어떤
-      인터페이스였는지 기록이 없었음. 2026-08-12 grep/pymmcore-plus 실제
-      로드로 MM 미등록은 확정했으나, 그때는 "숨은 경로가 어딘가 있을
-      것"이라고 잘못 가정했음. **2026-08-12 사용자 정정**: 아직 연결
-      자체를 안 했다 — 즉 찾아야 할 기존 경로가 있는 게 아니라, 앞으로
-      연결 작업(Nikon SDK 설치, 시리얼/USB 결선 등) 자체를 새로 해야
-      하는 상태다. 이 프로젝트는 NIS-Elements 경로를 안 쓰기로 했으므로
-      ([[project-pymmcore-only-no-nis]]) 그 연결이 이뤄지면 pymmcore-plus로
-      닿을 수 있는지부터 다시 확인 필요 — 착수 전.
-  - name: "CSUW1-Dichroic / EM1(CSUW1-Filter_Red) / EM2(CSUW1-Filter_Blue) 필터 요소 (컨포칼 경로)"
+      User dictation on 2026-08-10 said "Python control confirmed", but there
+      was no record of which interface. On 2026-08-12, grep and an actual
+      pymmcore-plus load settled that it is not registered in MM, but at that
+      point it was wrongly assumed that "there must be a hidden path
+      somewhere". **2026-08-12 user correction**: the connection has simply
+      not been made yet — i.e. there is no existing path to find; the
+      connection work itself (installing the Nikon SDK, wiring serial/USB,
+      etc.) still has to be done. Since this project decided not to use the
+      NIS-Elements path ([[project-pymmcore-only-no-nis]]), once that
+      connection is made the first thing to re-check is whether pymmcore-plus
+      can reach it — not started.
+  - name: "CSUW1-Dichroic / EM1(CSUW1-Filter_Red) / EM2(CSUW1-Filter_Blue) filter elements (confocal path)"
     control: pymmcore-plus
     mm_registered: true
     python_control: confirmed
     confirmed_date: 2026-08-12
     note: >
-      **2026-08-12 해소**: DMD_dualcam.cfg(사본, MightexPolygon1000만 제거)를
-      pymmcore-plus로 실제 로드해 세 장치 모두 라이브로 값 읽음 —
+      **Resolved 2026-08-12**: DMD_dualcam.cfg (a copy with only
+      MightexPolygon1000 removed) was actually loaded via pymmcore-plus and
+      all three devices read live —
       CSUW1-Dichroic state 0/"on", CSUW1-Filter_Red(EM1) state 0/"multi",
-      CSUW1-Filter_Blue(EM2) state 0/"multi" — 전부 이 문서의 기존 기록과
-      일치. "NIS-Elements 전용"이라던 이전 가정은 틀렸음 — 애초에 MM
-      `.cfg`의 `Device,CSUW1-Dichroic,...`/`Device,CSUW1-Filter_Red,...`/
-      `Device,CSUW1-Filter_Blue,...` 줄로 정식 등록되어 있었다(위
-      confocal_scanner, optical_path_nis > EM1/EM2 참고) — NIS-Elements는
-      그저 이 장치들을 *관찰*하는 데 쓴 도구였을 뿐, 유일한 제어 경로는
-      아니었다.
-  - name: "Splitter (듀얼 카메라 이미지 스플리터, DM A561LP)"
-    control: "없음 — 아직 어떤 프로그래밍 인터페이스에도 연결 안 됨"
+      CSUW1-Filter_Blue(EM2) state 0/"multi" — all matching this document's
+      existing record. The earlier assumption that they were "NIS-Elements
+      only" was wrong — they were properly registered all along by the MM
+      `.cfg` lines `Device,CSUW1-Dichroic,...`/`Device,CSUW1-Filter_Red,...`/
+      `Device,CSUW1-Filter_Blue,...` (see confocal_scanner and
+      optical_path_nis > EM1/EM2 above) — NIS-Elements was merely the tool
+      used to *observe* these devices, not the only control path.
+  - name: "Splitter (dual-camera image splitter, DM A561LP)"
+    control: "none — not yet connected to any programming interface"
     mm_registered: false
     python_control: not_connected
     confirmed_date: 2026-08-12
     note: >
-      위 CSUW1 그룹과 같이 재확인하다가 갈라짐: **Splitter는 이 폴더의
-      .cfg 9개 어디에도 `Device,` 줄이 없고, pymmcore-plus 실제 로드
-      결과(getLoadedDevices())에도 없다** — CSUW1-Dichroic/EM1/EM2와
-      달리 MM 미등록이 확정. **2026-08-12 사용자 정정**: LUN-F-XL과
-      마찬가지로 "찾아야 할 숨은 경로"가 아니라 **아직 연결을 안 한
-      상태** — optical_path_nis > Splitter 항목은 NIS-Elements Device
-      Manager로 관찰만 한 것이고, 프로그래밍 제어는 아예 시도된 적이
-      없다. 현재는 수동 조작만 가능한 상태로 보고, 연결 작업이 이뤄지면
-      pymmcore-plus 경로 여부를 다시 확인.
+      Split off while re-checking together with the CSUW1 group above:
+      **the Splitter has no `Device,` line in any of the 9 .cfg files in this
+      folder, and does not appear in the actual pymmcore-plus load
+      (getLoadedDevices()) either** — unlike CSUW1-Dichroic/EM1/EM2, its
+      absence from MM is settled. **2026-08-12 user correction**: as with
+      LUN-F-XL, this is not a "hidden path to be found" but **a connection
+      that has not been made yet** — the optical_path_nis > Splitter entry was
+      observation only, via NIS-Elements Device Manager; programmatic control
+      has never even been attempted. For now treat it as manual operation
+      only, and re-check the pymmcore-plus path once the connection work is
+      done.
 
-# 2026-08-10 사용자 구술: 위 두 항목뿐 아니라 현미경 스탠드(Ti2-E)·컨포칼
-# (CSU-W1)·DMD(Polygon1000)까지 포함해 이 dossier에 등장하는 모든 장비를
-# Python으로 제어할 수 있음을 확인했다고 함. 스탠드/컨포칼/DMD는 이미 MM
-# .cfg 등록 장치라 pymmcore-plus 경로로 통할 가능성이 높다고 봤음.
+# 2026-08-10 user dictation: beyond the two items above, the user says Python
+# control has been confirmed for every piece of equipment appearing in this
+# dossier, including the microscope stand (Ti2-E), the confocal (CSU-W1), and
+# the DMD (Polygon1000). The stand/confocal/DMD are already MM .cfg-registered
+# devices, so the pymmcore-plus path was judged likely to work for them.
 #
-# 2026-08-11 확정 (마이크로스코프 PC 실제 접속): DMD는 MM .cfg에 실제
-# 등록되어 있음을 grep으로 직접 확인(위 dmd: 절 참고). 그리고 **프로젝트
-# 결정**: 이 프로젝트는 NIS-Elements 제어 경로를 쓰지 않는다 — 위
-# LUN-F-XL/CSUW1-Dichroic 등 NIS-Elements 전용으로 남아있던 항목들도
-# "재확인 예정"이 아니라 이제 이 결정에 따라 판단할 것. MM 미등록 장치
-# (레이저 콤바이너, 컨포칼 내부 필터 요소 등)는 여전히 pymmcore-plus로
-# 닿지 않으므로 그 경로를 어떻게 확보할지는 별개 문제로 남는다.
+# 2026-08-11 settled (actual access to the microscope PC): the DMD was
+# confirmed directly by grep to be registered in the MM .cfg (see the dmd:
+# section above). And a **project decision**: this project does not use the
+# NIS-Elements control path — items that had remained NIS-Elements-only, such
+# as LUN-F-XL/CSUW1-Dichroic above, are now to be judged by this decision
+# rather than marked "to be re-checked". Devices not registered in MM (the
+# laser combiner, internal confocal filter elements, etc.) are still
+# unreachable via pymmcore-plus, so how to obtain that path remains a separate
+# problem.
 #
-# 2026-08-12 재확인 (마이크로스코프 PC, pymmcore-plus 실제 로드로 검증):
-# 위 devices_not_in_mm_config 세 항목이 CSUW1-Dichroic/EM1/EM2(해소,
-# pymmcore-plus 확인) vs LUN-F-XL/Splitter(미해결, MM 미등록 확정)로
-# 갈렸다 — 각 항목 note 참고. 부수적으로 환경 이슈 하나 발견·해소:
-# `mmcore install`로 받은 pymmcore-plus 자체 MM 빌드(interface v75)는
-# `Ti2_Mic_Driver.dll`(Nikon 벤더 SDK)이 빠져 있어 NikonTi2 어댑터가
-# 아예 로드되지 않았음 — 랩 기존 설치(`C:\Program Files\Micro-Manager-2.0`)
-# 에서 그 DLL만 복사해 해소(재현 가능, 어댑터 DLL 자체는 안 건드림).
-# 이 복사가 없으면 스탠드·CSU-W1을 포함한 모든 NikonTi2 하위 장치가
-# pymmcore-plus에서 로드 실패한다 — Phase 5a(상태 읽기) 착수 전 다시
-# 필요할 수 있는 조치.
+# 2026-08-12 re-check (microscope PC, verified by an actual pymmcore-plus
+# load): the three devices_not_in_mm_config items above split into
+# CSUW1-Dichroic/EM1/EM2 (resolved, confirmed via pymmcore-plus) vs
+# LUN-F-XL/Splitter (unresolved, absence from MM settled) — see each item's
+# note. One incidental environment issue was found and fixed along the way:
+# the pymmcore-plus in-house MM build obtained via `mmcore install`
+# (interface v75) is missing `Ti2_Mic_Driver.dll` (the Nikon vendor SDK), so
+# the NikonTi2 adapter would not load at all — fixed by copying just that DLL
+# from the lab's existing installation (`C:\Program Files\Micro-Manager-2.0`)
+# (reproducible; the adapter DLL itself was not touched).
+# Without that copy, every NikonTi2 child device — including the stand and the
+# CSU-W1 — fails to load under pymmcore-plus. This step may be needed again
+# before starting Phase 5a (state readout).
 ---
 
-## 확보 경위
+## How this was obtained
 
-이 dossier는 사용자가 제공한 두 파일에서 그대로 추출한 것이다:
+This dossier is extracted verbatim from two files the user provided:
 
-1. `DMD_dualcam.cfg` — Micro-Manager 설정 파일 (Configurator가 2026-07-03 15:32 PDT 생성).
-   README에서 "최우선 · 미확보"로 표시했던 **현재 시스템 MM `.cfg`**가 이것이다.
-2. `Confocal_microscope_conversion_factor(Apr 2025).xlsx` — Kinetix 카메라 기준
-   배율별(4x~100x) × 중간배율(1x/1.5x) 유효 픽셀 크기 실측표. 로드맵 Phase 0의
-   "픽셀 크기 실측 교정" 항목이 이걸로 채워진다.
-3. **NIS-Elements Device Manager 실측 (2026-08-10)** — 사용자가 NIS-Elements를 켜고
-   Device Manager > Hardware Configurations 및 각 필터 요소의 Filter Block
-   Settings 대화상자를 직접 캡처해 전달. MM .cfg에서 라벨만 있고 내용을 몰랐던
-   `FilterTurret1` 위치 0(MXR00724)의 실제 통과대역을 확인했고, MM .cfg에
-   아예 등록되지 않은 컨포칼 경로 필터 요소(DM/Splitter/EM1)와 레이저
-   콤바이너(LUN-F-XL)를 새로 발견했다. `optical_path_nis`, `lasers`,
-   `light_sources`(LightEngine/Aura 제품명) 항목이 이 소스에서 나왔다.
-4. **Nikon Objective Selector 카탈로그 대조 (2026-08-10)** — `.cfg`의 6개 대물렌즈
-   라벨 문자열을 니콘 공식 제품 비교 페이지(파트넘버 기준)와 대조해 NA·WD·커버글라스·
-   침액·파트넘버를 확정했다. `objectives` 항목 전체가 이 소스에서 나왔다.
+1. `DMD_dualcam.cfg` — the Micro-Manager configuration file (created by
+   Configurator 2026-07-03 15:32 PDT). This is the **current-system MM `.cfg`**
+   that the README marked "top priority · not yet obtained".
+2. `Confocal_microscope_conversion_factor(Apr 2025).xlsx` — a measured table of
+   effective pixel size for the Kinetix camera, per magnification (4x-100x) ×
+   intermediate magnification (1x/1.5x). This fills the "measured pixel-size
+   calibration" item in roadmap Phase 0.
+3. **NIS-Elements Device Manager measurement (2026-08-10)** — the user opened
+   NIS-Elements and captured the Device Manager > Hardware Configurations view
+   and the Filter Block Settings dialog of each filter element directly. This
+   confirmed the actual passbands of `FilterTurret1` position 0 (MXR00724),
+   which had only a label and no known contents in the MM .cfg, and newly
+   discovered the confocal-path filter elements (DM/Splitter/EM1) and the laser
+   combiner (LUN-F-XL), which are not registered in the MM .cfg at all. The
+   `optical_path_nis`, `lasers`, and `light_sources` (LightEngine/Aura product
+   names) entries came from this source.
+4. **Nikon Objective Selector catalog cross-check (2026-08-10)** — the 6
+   objective label strings in the `.cfg` were cross-checked against Nikon's
+   official product comparison page (by part number) to settle NA, WD,
+   coverslip, immersion medium, and part number. The entire `objectives` entry
+   came from this source.
 
-## 시리얼/모델 번호 — 확보된 것과 안 된 것
+## Serial/model numbers — what was obtained and what was not
 
-`.cfg` 파일 자체는 대부분 장치 이름과 어댑터만 기록하고 시리얼은 남기지 않는다.
-이번 추출에서 실제로 찾은 코드성 문자열은 **`MXR00724`** 하나뿐이다
-(`FilterTurret1` 0번 슬롯 라벨 `"1-MXR00724 -Empty"`). Nikon 필터 큐브 카탈로그
-번호로 보이지만 그 슬롯 자체는 `Empty`로 기록되어 있어 실물이 있는지도 불확실하다.
+The `.cfg` file itself mostly records only device names and adapters, leaving
+out serials. The only code-like string actually found in this extraction is
+**`MXR00724`** (the `FilterTurret1` slot 0 label `"1-MXR00724 -Empty"`). It
+looks like a Nikon filter cube catalog number, but the slot itself is recorded
+as `Empty`, so even whether the physical part is present is uncertain.
 
-카메라(Kinetix ×2), DMD(Polygon1000), 컨포칼(CSU-W1), 광원(Lumencor ×2)은 전부
-**모델명만 확인되고 시리얼은 `.cfg`에 없다** — 실제 장비 라벨을 보거나 해당 소프트웨어의
-"장치 정보/About" 화면에서 읽어야 한다. 이전 세션에서 피에조 스테이지는 이미 라이브
-쿼리로 시리얼을 확보할 수 있는 명령(`identity.hardware.serial.get` 등)을 확인해뒀다
-([hardware/piezo_stage.py](../../hardware/piezo_stage.py)) — 필요하면 실행해서 채울 수 있다.
+For the cameras (Kinetix ×2), DMD (Polygon1000), confocal (CSU-W1), and light
+sources (Lumencor ×2), **only model names are confirmed; the serials are not in
+the `.cfg`** — they have to be read off the physical equipment labels or from
+the "device info/About" screen of the respective software. In an earlier
+session, commands that can obtain the piezo stage serial by live query
+(`identity.hardware.serial.get`, etc.) were already identified
+([hardware/piezo_stage.py](../../hardware/piezo_stage.py)) — these can be run
+to fill it in if needed.
 
-## 확인이 필요한 항목 (verified: false로 표시된 것들)
+## Items needing confirmation (those marked verified: false)
 
-- ~~대물렌즈 라벨의 마지막 숫자가 NA인지 WD(mm)인지~~ → **2026-08-10 해소.**
-  니콘 공식 카탈로그(Objective Selector, 파트넘버 대조)로 6개 전부 확인 — 끝자리는
-  전부 **WD(mm)**다. 20x(`LmbdD0.8`)만 NA(0.80)와 WD(0.8mm)가 우연히 같은 값이라
-  혼란의 원인이었다. **2026-08-11 완전 해소**: 물리 경통 각인 대조(렌즈가
-  실제로 그 라벨과 같은 물건인지, 교체·오표기 여부)도 사용자가 직접 확인
-  완료 — 로드맵 Phase 0의 이 항목은 끝.
-- ~~`LightEngine`/`Aura` 두 Lumencor 장치의 정확한 제품명~~ → **2026-08-10 해소.**
-  NIS-Elements Device Manager에서 `LightEngine`=SpectraIII, `Aura`=AuraIII로 확인.
-  단, 두 장치의 라인별 중심파장은 다이어그램 아이콘 판독값(근사)이라 fwhm과
-  실제 카탈로그 스펙 대조는 아직 안 됨.
-- ~~`MightexPolygon1000`(DMD)의 실제 물리적 연결 여부~~ → **2026-08-11 해소.**
-  물리적으로 연결되어 있음을 사용자가 확인 — [02 §4](../../docs/02-knowledge-base.md)
-  3자 대조표의 "DMD: 물리적 존재" 칸도 함께 갱신. MM/NIS 등록 여부·제어
-  주체는 여전히 미확인 (위 `dmd:` 절 참고).
-- ~~`LappMainBranch1`의 용도~~ → **2026-08-10 동작 해소, 2026-08-11 용도 추가.**
-  mirror_in/out의 물리적 동작은 2026-08-10에 확인됐고, 2026-08-11에 **왜**
-  mirror_in을 쓰는지(DMD+와이드필드 동시 사용, Aura 50% 손실을 감수할 만한
-  이유)까지 확인됨 — 위 `lapp_branch` 절 참고.
-- ~~두 카메라(Kinetix_blue/red)와 CSU-W1, DMD, 두 광원 전부 시리얼 번호 미확보~~
-  → **2026-08-11: 사용자 판단으로 불필요 — 더 이상 확인 대상 아님.**
+- ~~Whether the last number in an objective label is NA or WD(mm)~~ →
+  **resolved 2026-08-10.** All 6 confirmed against Nikon's official catalog
+  (Objective Selector, part-number cross-check) — the trailing figure is
+  **WD(mm)** in every case. Only 20x (`LmbdD0.8`) happens to have the same
+  value for NA (0.80) and WD (0.8mm), which was the source of the confusion.
+  **Fully resolved 2026-08-11**: the user also personally completed the
+  physical barrel engraving cross-check (whether each lens really is the part
+  its label claims, and whether anything was swapped or mislabeled) — this
+  roadmap Phase 0 item is done.
+- ~~The exact product names of the two Lumencor devices `LightEngine`/`Aura`~~ →
+  **resolved 2026-08-10.** Confirmed in NIS-Elements Device Manager as
+  `LightEngine`=SpectraIII, `Aura`=AuraIII. However, the per-line center
+  wavelengths of both devices are approximate readings off diagram icons, so
+  fwhm and a cross-check against the actual catalog specs are still not done.
+- ~~Whether `MightexPolygon1000` (the DMD) is actually physically connected~~ →
+  **resolved 2026-08-11.** The user confirmed it is physically connected — the
+  "DMD: physical existence" cell of the three-way cross-check table in
+  [02 §4](../../docs/02-knowledge-base.md) was updated at the same time.
+  Whether it is registered in MM/NIS, and which software controls it, is still
+  unconfirmed (see the `dmd:` section above).
+- ~~The purpose of `LappMainBranch1`~~ → **behavior resolved 2026-08-10,
+  purpose added 2026-08-11.** The physical behavior of mirror_in/out was
+  confirmed on 2026-08-10, and on 2026-08-11 **why** mirror_in is used (DMD +
+  widefield simultaneously; why the 50% Aura loss is worth accepting) was
+  confirmed too — see the `lapp_branch` section above.
+- ~~Serial numbers not obtained for either camera (Kinetix_blue/red), the
+  CSU-W1, the DMD, or either light source~~
+  → **2026-08-11: judged unnecessary by the user — no longer an item to
+  confirm.**
 
-## 관련 문서
+## Related documents
 
-- [02 지식베이스 §3 시스템 dossier](../../docs/02-knowledge-base.md) — 이 파일이 따르는 스키마
-- [02 §4 3자 대조표](../../docs/02-knowledge-base.md) — MM/NIS/실물 대조가 왜 필요한지
-- [07 로드맵 Phase 0](../../docs/07-roadmap.md) — 이 dossier가 채우는 항목들
+- [02 Knowledge base §3 system dossier](../../docs/02-knowledge-base.md) — the schema this file follows
+- [02 §4 three-way cross-check table](../../docs/02-knowledge-base.md) — why MM/NIS/physical cross-checking is needed
+- [07 Roadmap Phase 0](../../docs/07-roadmap.md) — the items this dossier fills

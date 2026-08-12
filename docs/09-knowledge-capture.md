@@ -1,267 +1,298 @@
-# 09 · 전문성 포착
+# 09 · Expertise capture
 
-> **상태: 스케치.**
+> **Status: sketch.**
 
-## 0. 이 프로젝트의 진짜 목적
+## 0. The real purpose of this project
 
-> "내가 가진 장비와 실험에 대한 전문성을 후배들에게 일일이 알려주기보다는,
-> 내 지식 수준을 가진 에이전트를 개발해서 더 쉽고 범용적으로 쓰고 싶다."
+> "Rather than explaining my expertise about my instruments and experiments to
+> each junior one at a time, I want to build an agent that carries my level of
+> knowledge, so it can be used more easily and more generally."
 
-즉 이 시스템은 **설정 계산기가 아니라 전문성 이식 장치**다.
-계산 게이트는 그 절반이고, 나머지 절반은 **계산으로 나오지 않는 지식**이다.
+So this system is **not a settings calculator but an expertise transplant
+device**. The computational gates are half of it; the other half is **knowledge
+that no computation produces**.
 
 ```
-계산으로 나오는 것            계산으로 안 나오는 것
-──────────────────           ─────────────────────────────────
-투과율, SNR, 표본화          이 시료는 준비 후 30분이면 조성이 변한다
-덫 강성, 데이터율            이 염료는 이 계면에 비특이 흡착한다
-회절 한계, 광자수지          647 노출이 500 ms까지 갔다는 건 광량 부족이라는 뜻이다
-                             이 대물은 보정링을 안 맞추면 20 µm 이상에서 못 쓴다
-                             이 실험은 시료 준비가 8할이다
+What computation gives           What computation does not
+─────────────────────────        ──────────────────────────────────────────────
+transmission, SNR, sampling      this sample changes composition 30 min after prep
+trap stiffness, data rate        this dye adsorbs non-specifically at this interface
+diffraction limit,               a 647 exposure that reached 500 ms means the light
+photon budget                        level was insufficient
+                                 this objective is unusable past 20 µm unless the
+                                     correction collar is set
+                                 sample preparation is 80% of this experiment
 ```
 
-오른쪽이 전부 사용자 머릿속에만 있다. 데이터시트에도 논문에도 없다.
-**그걸 대화에서 뽑아내 저장하는 것이 이 문서의 주제다.**
+Everything on the right lives only in the user's head. It is in no datasheet and
+no paper. **Extracting it from conversation and storing it is the subject of this
+document.**
 
 ---
 
-## 1. 지식의 출처와 지위
+## 1. The source and standing of knowledge
 
-모든 KB 항목은 출처를 달고 다닌다. 출처가 신뢰도와 **반박 방법**을 정한다.
+Every KB entry carries its source. The source sets its trustworthiness and **how
+it can be refuted**.
 
-| 출처 | 신뢰도 | 반박 방법 | 예 |
+| Source | Trust | How to refute | Example |
 |---|---|---|---|
-| `measurement` | 최고 | 재측정 | 파워미터 실측 mW |
-| `datasheet` | 높음 | 부품번호 확인 | 필터 투과 곡선 |
-| `calculation` | 입력만큼 | 입력을 검증 | 수집효율 0.352 |
-| `expert-judgment` | 반증 전까지 유효 | 반증 조건 관찰 | "이 시료는 30분이면 변한다" |
-| `literature` | 인용 필요 | 원문 확인 | Savin-Doyle 블러 보정 |
-| `precedent` | 약함 | 물리 게이트 | "지난번엔 80 ms 썼다" |
+| `measurement` | highest | re-measure | measured mW from a power meter |
+| `datasheet` | high | check the part number | filter transmission curve |
+| `calculation` | as good as its inputs | validate the inputs | collection efficiency 0.352 |
+| `expert-judgment` | valid until falsified | observe the falsifying condition | "this sample changes within 30 minutes" |
+| `literature` | citation required | check the original | Savin-Doyle blur correction |
+| `precedent` | weak | the physics gates | "we used 80 ms last time" |
 
-**`precedent`가 가장 약하다.** 과거에 그렇게 했다는 건 그게 옳았다는 뜻이 아니다.
+**`precedent` is the weakest.** That it was done that way in the past does not
+mean it was right.
 → [06 §E1](06-pitfalls.md)
 
 ---
 
-## 2. 엔트리 형식
+## 2. Entry format
 
 `kb/expertise/<id>.md`
 
 ```yaml
 ---
 id: 647-exposure-500ms-means-underpowered
-question: "647 채널 노출이 500 ms까지 올라간 것은 무슨 뜻인가"
+question: "What does it mean that the 647 channel exposure climbed to 500 ms"
 source: expert-judgment
 expert: KH
 date: 2026-08-08
 confidence: high
-scope: "Lumencor Spectra X Red 라인, 100x oil, 647 계열 염료"
-applies_to_systems: [legacy-nikon-prime95b]   # 시스템 종속이면 명시
+scope: "Lumencor Spectra X Red line, 100x oil, 647-family dyes"
+applies_to_systems: [legacy-nikon-prime95b]   # state it if system-dependent
 review_after: 2027-08-08
 supersedes: null
 ---
 
-## 판단
-647 채널 노출이 500 ms에 몰려 있다는 것은 최적화된 값이 아니라
-**상한에 부딪힌 값**이다. 광량이 부족했다는 신호로 읽어야 한다.
+## Judgment
+That the 647 channel exposures pile up at 500 ms means this is not an optimized
+value but **a value pinned against a ceiling**. Read it as a signal that the
+light level was insufficient.
 
-## 왜  ← 이게 없으면 저장하지 않는다
-· 500 ms에 764건이 몰려 있고 그 위로 분포가 없다 = 사람이 고른 게 아니라 한계다
-· 그 조건에서는 2 Hz 이상 촬영이 불가능해 시간 분해능이 희생된다
-· 488 채널은 5–2000 ms로 넓게 퍼져 있다 = 647만 특이하게 막혀 있었다
+## Why  ← without this it does not get stored
+· 764 acquisitions pile up at 500 ms with no distribution above it = a limit, not
+  a human choice
+· at that setting nothing faster than 2 Hz is possible, so time resolution is
+  sacrificed
+· the 488 channel spreads widely across 5–2000 ms = only 647 was peculiarly
+  blocked
 
-## 적용 범위
-· Spectra X Red(640 nm)로 647 계열을 여기할 때
-· 다른 광원·다른 염료에는 그대로 적용 안 됨
+## Scope
+· when exciting 647-family dyes with Spectra X Red (640 nm)
+· does not carry over to other light sources or other dyes
 
-## 반증 조건  ← 무엇이 관찰되면 이 판단이 틀린 것인가
-· 광량 실측 결과 Red 라인이 샘플면에서 충분한 mW를 내고 있었다면,
-  원인은 광량이 아니라 방출 경로(큐브가 647을 안 통과)다
-· → 그 경우 이 엔트리는 폐기하고 B1(필터 미상) 쪽으로 통합
+## Falsifying condition  ← what observation would make this judgment wrong
+· if a measurement shows the Red line delivering sufficient mW at the sample
+  plane, the cause is not the light level but the emission path (the cube does
+  not pass 647)
+· → in that case retire this entry and merge it into B1 (filter unknown)
 
-## 관련
+## Related
 [[filter-cube-does-not-pass-647]]  [[measure-illumination-power-first]]
 ```
 
-**`왜`와 `반증 조건`이 필수다.**
+**`Why` and `Falsifying condition` are mandatory.**
 
-- `왜`가 없으면 후배가 일반화할 수 없다.
-  "노출 80 ms 써" → 다른 시료에 그대로 쓴다 → 실패.
-  "이 시료는 표백이 빨라 duty 30% 이하여야 하고, 12 Hz에서 그게 80 ms" → 일반화된다.
-- `반증 조건`이 없으면 지식이 **영원히 늙지 않는다.** 장비가 바뀌어도 살아남아
-  틀린 조언을 한다.
-
----
-
-## 3. 포착 경로 셋
-
-### (a) 기회 포착 — 대화 중
-
-사용자가 비자명한 판단을 말하면 에이전트가 감지하고 저장을 제안한다.
-
-감지 신호:
-- 데이터에 없는 인과 주장 ("~라서 ~하다")
-- 조건부 규칙 ("~일 때는 ~해야 한다")
-- 부정 규칙 ("~는 하면 안 된다")
-- 예외 ("보통은 ~인데 이 경우는 ~")
-- 정정 (에이전트의 말을 사용자가 고칠 때) ← **가장 값어치 있다**
-
-```
-사용자: 팔로이딘으로 액틴 레올로지 재면 안 돼. 필라멘트를 안정화시켜서.
-
-에이전트: KB에 남길까요?
-  id:     phalloidin-stabilizes-actin
-  판단:   팔로이딘 표지는 액틴 레올로지 측정에 부적합
-  왜:     F-액틴을 안정화 → 필라멘트 길이 분포와 동역학이 바뀜
-          = 측정 대상 자체를 변경
-  범위:   액틴 레올로지. 구조 관찰에는 문제 없음
-  반증:   ?  ← 이 판단이 틀리려면 무엇이 관찰되어야 합니까?
-```
-
-마지막 질문을 항상 한다. 반증 조건은 사용자만 댈 수 있다.
-
-### (b) 공백 주도 — 게이트가 큐를 만든다
-
-**이게 가장 효율적인 경로다.**
-
-게이트가 `BLOCKED`를 내거나 질문을 할 때마다 그것이 곧 KB 공백이다.
-사용자가 답하면 답과 함께 **판단 근거**를 저장한다.
-
-```
-게이트:   BLOCKED — 'DA/FI/TR10Empty' 통과대역 미상
-에이전트: 이 큐브가 실제로 뭔지 아십니까?
-사용자:   아 그거 사실 quad-band야. 라벨이 옛날 거라 안 바뀐 거고.
-에이전트: → data/filters.yaml 갱신 + kb/expertise 엔트리 생성
-          "MM 라벨은 부품 교체 후 갱신되지 않는 경우가 있다.
-           라벨을 부품의 근거로 삼지 말 것."
-```
-
-두 번째 저장이 진짜 소득이다. 부품 정보는 한 번 쓰이고, **"라벨을 믿지 마라"는
-일반 규칙은 계속 쓰인다.**
-
-### (c) 계획 인터뷰 — 주기적
-
-에이전트가 KB의 빈 영역을 스스로 찾아 묻는다.
-
-```
-아직 안 물어본 것들:
-· 챔버 두께를 어떻게 정하십니까? (kb/samples 전체에 비어 있음)
-· ATPS 시료의 유효 수명은 얼마입니까?
-· 어떤 신호를 보면 "이 데이터는 버려야 한다"고 판단하십니까?
-   ← 이건 특히 중요합니다. 실패 판정 기준이 KB에 하나도 없습니다.
-```
-
-**"무엇을 보면 실패라고 판단하는가"** 는 전문가만 아는 지식이고,
-후배가 가장 늦게 배우는 것이다. 우선순위를 높게 둔다.
+- Without `Why` a junior cannot generalize.
+  "Use 80 ms exposure" → applied verbatim to another sample → failure.
+  "This sample bleaches fast, so duty has to stay under 30%, and at 12 Hz that is
+  80 ms" → generalizes.
+- Without a `Falsifying condition`, knowledge **never ages.** It survives an
+  instrument change and goes on giving wrong advice.
 
 ---
 
-## 4. 계산과 전문가 판단이 충돌할 때
+## 3. Three capture paths
 
-**계산이 자동으로 이기지 않는다.**
+### (a) Opportunistic capture — during conversation
+
+When the user states a non-obvious judgment, the agent detects it and proposes
+storing it.
+
+Detection signals:
+- a causal claim that is not in the data ("because X, Y")
+- a conditional rule ("when X, you have to Y")
+- a prohibition ("never do X")
+- an exception ("usually X, but in this case Y")
+- a correction (the user fixing what the agent said) ← **the most valuable**
 
 ```
-계산:     SNR 8.2 — 충분
-사용자:   아니 그 조건에서 안 보여.
+User:  Don't measure actin rheology with phalloidin. It stabilizes the filaments.
+
+Agent: Store this in the KB?
+  id:        phalloidin-stabilizes-actin
+  judgment:  phalloidin labeling is unsuitable for actin rheology measurement
+  why:       stabilizes F-actin → filament length distribution and dynamics
+             change = the measured object itself is altered
+  scope:     actin rheology. No problem for structural observation
+  falsify:   ?  ← what would have to be observed for this judgment to be wrong?
 ```
 
-이때 순서:
+That last question is always asked. Only the user can supply a falsifying
+condition.
 
-1. **계산의 입력을 먼저 의심한다.** 대개 빠진 항이 있다.
-   위 사례라면 배경 형광이 모델에 없다 — 실제로 현재 SNR 식에
-   `N_bg`가 사용자 입력이고 기본값이 없다
-2. 입력이 맞는데도 어긋나면 **모델이 부족한 것**이다
-3. 어느 쪽이든 **충돌 자체를 KB에 기록한다**
+### (b) Gap-driven — the gates build the queue
+
+**This is the most efficient path.**
+
+Every time a gate returns `BLOCKED` or asks a question, that is a KB gap. When
+the user answers, store the answer together with **the basis for the judgment**.
+
+```
+Gate:   BLOCKED — passband of 'DA/FI/TR10Empty' unknown
+Agent:  Do you know what this cube actually is?
+User:   Oh, that one is really a quad-band. The label is just old and never got
+        updated.
+Agent:  → update data/filters.yaml + create a kb/expertise entry
+        "MM labels are sometimes not updated after a part is swapped.
+         Never take a label as evidence for a part."
+```
+
+The second store is the real gain. The part information gets used once;
+**the general rule "do not trust the label" keeps getting used.**
+
+### (c) Planned interview — periodic
+
+The agent finds the empty regions of the KB itself and asks.
+
+```
+Not yet asked:
+· How do you decide chamber thickness? (empty across all of kb/samples)
+· What is the useful lifetime of an ATPS sample?
+· What signal makes you decide "this data has to be thrown out"?
+   ← This one matters most. There is not a single failure criterion in the KB.
+```
+
+**"What tells you it failed"** is knowledge only the expert holds, and the last
+thing a junior learns. Give it high priority.
+
+---
+
+## 4. When computation and expert judgment conflict
+
+**Computation does not win automatically.**
+
+```
+Computation:  SNR 8.2 — sufficient
+User:         No, you can't see anything at that setting.
+```
+
+The order of operations then:
+
+1. **Suspect the computation's inputs first.** Usually a term is missing.
+   In the case above, background fluorescence is not in the model — and indeed in
+   the current SNR formula `N_bg` is a user input with no default
+2. If the inputs are right and it still disagrees, **the model is inadequate**
+3. Either way, **record the conflict itself in the KB**
 
 ```yaml
 id: atps-background-fluorescence-dominates
 source: expert-judgment + calculation-mismatch
 ---
-## 관찰된 불일치
-광자수지 계산은 SNR 8.2를 예측했으나 실제로는 입자가 보이지 않았다.
-## 원인 (가설)
-덱스트란 상 자체의 자가형광이 배경에 들어간다. 현재 모델에 없는 항.
-## 조치
-· 배경 실측 프레임을 획득 프로토콜에 추가
-· kb/samples/atps-dextran-peg.md 에 배경 수준 기록
-· 렌즈 6: 배경 실측 없으면 SNR을 "상한값"으로만 보고하도록
+## Observed mismatch
+The photon budget predicted SNR 8.2, but in practice the particles were invisible.
+## Cause (hypothesis)
+Autofluorescence of the dextran phase itself enters the background. A term absent
+from the current model.
+## Action
+· Add a measured background frame to the acquisition protocol
+· Record the background level in kb/samples/atps-dextran-peg.md
+· Lens 6: with no measured background, report SNR only as an "upper bound"
 ```
 
-**충돌 지점에서 가장 좋은 지식이 나온다.** 그래서 충돌을 숨기지 않는다.
+**The best knowledge comes out at the point of conflict.** So conflicts are not
+hidden.
 
 ---
 
-## 5. 교육 모드
+## 5. Teaching mode
 
-같은 답이라도 상대에 따라 다르게 낸다.
+The same answer is delivered differently depending on who is asking.
 
-| 상대 | 출력 |
+| Audience | Output |
 |---|---|
-| 전문가(사용자) | 결론 + 숫자. 근거는 접어둠 |
-| 후배 | 결론 + **왜** + 출처 + 무엇을 확인해야 하는지 |
-| 후배(첫 실험) | 위 + 실패 신호 + 무엇을 물어야 하는지 |
+| Expert (the user) | Conclusion + numbers. Basis folded away |
+| Junior | Conclusion + **why** + source + what to verify |
+| Junior (first experiment) | The above + failure signatures + what to ask |
 
 ```
-후배: ATPS에서 647 입자 추적하려는데 노출 얼마로 할까요?
+Junior: I want to track 647 particles in ATPS — what exposure should I use?
 
-에이전트:
-  80 ms 로 시작하세요. 다만 왜 그 값인지가 중요합니다.
+Agent:
+  Start at 80 ms. But why that value is what matters.
 
-  ① 계의 특성 시간이 50 ms입니다 → 최소 20 Hz 필요
-  ② 모션블러 때문에 duty는 30% 이하 → 노출 ≤ 15 ms 여야 합니다
-  ③ 그런데 광자수지상 15 ms로는 SNR이 2.1밖에 안 나옵니다
+  ① The system's characteristic time is 50 ms → at least 20 Hz is needed
+  ② Motion blur caps duty at 30% → the exposure has to be ≤ 15 ms
+  ③ But by the photon budget, 15 ms only gives SNR 2.1
 
-  ②와 ③이 충돌합니다. 80 ms는 ③을 택하고 ②를 포기한 값이고,
-  그러면 MSD에 계통 편향이 생깁니다 → Savin-Doyle 보정을 반드시 적용하세요.
+  ② and ③ conflict. 80 ms takes ③ and gives up ②, and that puts a systematic
+  bias in the MSD → you must apply the Savin-Doyle correction.
 
-  더 나은 길: 16-bit readout으로 바꾸면 잡음이 3.4배 줄어
-  15 ms에서도 SNR 7이 나옵니다. 이쪽을 먼저 시도하세요.
+  A better route: switching to 16-bit readout cuts noise 3.4×, so even 15 ms
+  gives SNR 7. Try that first.
 
-  근거: 계산 [광자수지 세부] · 특성시간 [kb/samples/atps]
-        블러 보정 [Savin & Doyle 2005] · 전문가 판단 [[647-exposure-...]]
+  Basis: calculation [photon budget detail] · characteristic time
+         [kb/samples/atps] · blur correction [Savin & Doyle 2005]
+         · expert judgment [[647-exposure-...]]
 
-  실패 신호: 궤적이 자주 끊기면 SNR 문제입니다.
-             MSD 기울기가 lag에 따라 휘면 블러/드랍 문제입니다.
+  Failure signatures: trajectories breaking often means an SNR problem.
+                      An MSD slope that bends with lag means blur/drops.
 ```
 
-**답만 주면 후배가 안 큰다.** 충돌과 선택을 보여주는 게 핵심이다.
+**Hand over only the answer and the junior does not grow.** Showing the conflict
+and the choice is the point.
 
 ---
 
-## 6. 노후화 관리
+## 6. Managing staleness
 
-지식은 상한다. 특히 시스템 종속 지식은 장비가 바뀌면 즉시 위험해진다.
+Knowledge spoils. System-dependent knowledge in particular turns dangerous the
+moment the instrument changes.
 
-- 모든 엔트리에 `review_after`
-- `applies_to_systems`가 있는 엔트리는 시스템 지문이 바뀌면 **자동 재검토 플래그**
-- `supersedes` / `superseded_by`로 이력 유지 — 삭제하지 않는다
-  (왜 생각이 바뀌었는지가 그 자체로 지식이다)
-- `precedent` 출처 엔트리는 물리 게이트가 반증하면 자동 강등
+- `review_after` on every entry
+- an entry with `applies_to_systems` gets an **automatic re-review flag** when
+  the system fingerprint changes
+- keep the history through `supersedes` / `superseded_by` — nothing is deleted
+  (why the thinking changed is itself knowledge)
+- entries sourced from `precedent` are demoted automatically when a physics gate
+  refutes them
 
-시스템 교체 시: `kb/systems/_transitions/<old>-to-<new>.md`를 만들면서
-해당 시스템에 묶인 expertise 엔트리를 전부 목록화하고 하나씩 판정한다.
+On a system swap: while writing
+`kb/systems/_transitions/<old>-to-<new>.md`, enumerate every expertise entry tied
+to that system and rule on each one.
 → [03 §7](03-cross-system-transfer.md)
 
 ---
 
-## 7. 에이전트가 지켜야 할 규칙
+## 7. Rules the agent must follow
 
-1. **저장 전에 항상 보여주고 확인받는다.** 사용자 말을 임의로 요약해 저장하지 않는다
-2. **`왜`가 없으면 저장하지 않는다.** 물어본다
-3. **`반증 조건`을 항상 묻는다**
-4. **출처를 섞지 않는다.** 계산 결과와 전문가 판단을 한 엔트리에 뭉치지 않는다
-5. **추측을 KB에 넣지 않는다.** 에이전트 자신의 추론은 출처가 될 수 없다
-   → [01 §3 원칙 1](01-architecture.md)
-6. 사용자가 에이전트를 **정정하면 최우선으로 포착한다.** 정정은 밀도 높은 지식이다
-7. KB를 인용할 때 **항상 링크**한다. 출처 없는 조언은 하지 않는다
+1. **Always show it and get confirmation before storing.** Never store an
+   arbitrary summary of what the user said
+2. **Do not store without a `Why`.** Ask for it
+3. **Always ask for the `Falsifying condition`**
+4. **Do not mix sources.** Never lump a computed result and an expert judgment
+   into one entry
+5. **Never put a guess in the KB.** The agent's own inference cannot be a source
+   → [01 §3 Principle 1](01-architecture.md)
+6. When the user **corrects** the agent, capture it first. A correction is dense
+   knowledge
+7. **Always link** when citing the KB. No advice without a source
 
 ---
 
-## 8. 열린 질문
+## 8. Open questions
 
-- [ ] 포착 제안을 얼마나 자주 할 것인가 — 너무 잦으면 대화가 끊긴다
-- [ ] 대화 로그 자체를 보관할 것인가 (재추출 가능성 vs 잡음)
-- [ ] 여러 사람의 판단이 충돌하면 (사용자 vs 다른 연구원)
-- [ ] 후배가 KB에 쓸 수 있게 할 것인가 — 검토 절차가 필요할 듯
-- [ ] `D:\experiment method`의 기존 프로토콜 문서를 KB로 흡수할 것인가
-- [ ] 실패 사례를 어떻게 유도할 것인가 — 성공만 기록되면 KB가 편향된다
+- [ ] How often to offer a capture — too often and the conversation breaks up
+- [ ] Whether to retain the conversation logs themselves (re-extraction potential
+      vs noise)
+- [ ] What to do when judgments from different people conflict (the user vs
+      another researcher)
+- [ ] Whether to let juniors write to the KB — a review procedure seems necessary
+- [ ] Whether to absorb the existing protocol documents in
+      `D:\experiment method` into the KB
+- [ ] How to elicit failure cases — if only successes get recorded the KB is
+      biased

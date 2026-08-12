@@ -1,178 +1,194 @@
-# 03 · 시스템 간 설정 이전
+# 03 · Cross-system setting transfer
 
-> **상태: 스케치.** 절차는 확정 제안, 변환표는 현재 시스템 확정 후 채운다.
+> **Status: sketch.** The procedure is a settled proposal; the conversion table
+> gets filled in once the current system is settled.
 
-이 프로젝트의 존재 이유. 과거 데이터는 지금 없는 현미경에서 나왔고,
-앞으로도 시스템은 계속 바뀐다.
+The reason this project exists. Past data came from a microscope that no longer
+exists, and systems will keep changing.
 
 ---
 
-## 1. 문제
+## 1. The problem
 
 ```
-아카이브 2,343건                        현재 시스템
-─────────────────────                   ──────────────
-Prime 95B 25mm, 11 µm                   ? (미확정)
-Lumencor Spectra X                      ? + 장치 추가 예정
+Archive, 2,343 acquisitions             Current system
+───────────────────────────             ──────────────
+Prime 95B 25mm, 11 µm                   ? (undetermined)
+Lumencor Spectra X                      ? + devices to be added
 Nikon Ti + PFS                          ?
-DA/FI/TR 큐브 1개                        ?
-100x Oil 위주                            ?
-                                        피에조 (MM·NIS 밖)
+DA/FI/TR cube ×1                        ?
+100x Oil mostly                         ?
+                                        piezo (outside MM and NIS)
 ```
 
-`Exposure=500ms, Spectra-Red_Level=10` 을 그대로 옮기면 **틀린다.**
-카메라 QE·픽셀 피치, 광원 출력·스펙트럼, 필터 투과율이 전부 다르기 때문이다.
+Confirmed values for the current system: `kb/systems/current.md`.
+
+Carrying `Exposure=500ms, Spectra-Red_Level=10` over verbatim is **wrong**,
+because camera QE and pixel pitch, source output and spectrum, and filter
+transmission all differ.
 
 ---
 
-## 2. 무엇이 이전되고 무엇이 안 되는가
+## 2. What transfers and what does not
 
-| 설정 | 그대로 이전 | 물리량 경유 | 재계산 필요 | 비고 |
+| Setting | Transfers as-is | Via physical quantity | Needs recomputation | Note |
 |---|:---:|:---:|:---:|---|
-| 노출시간 (ms) | ❌ | ✅ | | 필요 광자수를 매개로 |
-| 광원 레벨 (%) | ❌ | ✅ | | mW/cm² @sample 경유 |
-| 광원 라인 | ❌ | ✅ | | 중심파장·대역폭 경유 |
-| 필터 | ❌ | ✅ | | 통과대역 경유 |
-| 대물렌즈 | ❌ | | ✅ | NA·배율로 재선택 |
-| binning | ❌ | | ✅ | 유효 픽셀 크기 목표에서 |
-| ROI | ❌ | | ✅ | 시야·프레임레이트 목표에서 |
-| readout/gain 모드 | ❌ | | ✅ | 잡음·속도 요구에서 |
-| **프레임레이트** | ✅ | | | 시료의 시간 스케일이 정한다 |
-| **유효 픽셀 크기** | ✅ | | | 작업이 정한다 |
-| **필요 SNR** | ✅ | | | 목표 정밀도가 정한다 |
-| **총 광자 dose 상한** | ✅ | | | 시료가 정한다 |
-| **여기/방출 대역** | ✅ | | | 염료가 정한다 |
+| Exposure time (ms) | ❌ | ✅ | | mediated by the required photon count |
+| Light level (%) | ❌ | ✅ | | via mW/cm² @sample |
+| Source line | ❌ | ✅ | | via center wavelength and bandwidth |
+| Filter | ❌ | ✅ | | via passband |
+| Objective | ❌ | | ✅ | reselected from NA and magnification |
+| binning | ❌ | | ✅ | from the effective-pixel-size target |
+| ROI | ❌ | | ✅ | from the field-of-view and frame-rate targets |
+| readout/gain mode | ❌ | | ✅ | from the noise and speed requirements |
+| **Frame rate** | ✅ | | | the sample's timescale sets it |
+| **Effective pixel size** | ✅ | | | the task sets it |
+| **Required SNR** | ✅ | | | the target precision sets it |
+| **Total photon dose ceiling** | ✅ | | | the sample sets it |
+| **Excitation/emission bands** | ✅ | | | the dye sets it |
 
-**오른쪽 5개가 실제로 이전되는 것들이다.** 나머지는 그 5개를 만족시키기 위한
-장비별 수단일 뿐이다.
+**The five in bold are what actually transfers.** The rest are per-instrument
+means of satisfying those five.
 
-> 이 표가 곧 사고의 전환이다. "지난번에 뭘 썼지?"가 아니라
-> **"지난번에 무엇을 달성했지?"** 를 묻는다.
-
----
-
-## 3. 이전 절차
-
-```
-① 선례 검색
-   시료계 + 염료 + 작업(imaging/tracking/frap) + 시간스케일로 SQL 질의
-   → 후보 획득 N건
-
-② 물리량 추출  (구 시스템 프로파일 필요)
-   각 후보에서 tier-3 값을 계산
-   → 달성된 유효픽셀, 여기대역, 조도, dose, 실측fps, (가능하면) SNR
-
-③ 목표 물리량 확정
-   후보들 중 "잘 나온 것"의 물리량을 목표로 삼음
-   ⚠ "잘 나온 것"의 판정 근거가 kb/decisions에 있어야 함. 없으면 사람에게 물음
-
-④ 현재 장비로 역산  (현 시스템 프로파일 필요)
-   목표 물리량 → 이 장비에서 그걸 내는 설정 조합
-   자유도가 남으면 [04 §1 결정 순서]로 좁힘
-
-⑤ 게이트 통과
-   하드 게이트 14개 + 위원회 6+2
-
-⑥ 잔여 불확실성 명시
-   역산에 쓴 값 중 assumed인 것 전부 나열
-```
+> This table is the shift in thinking. Not "what did I use last time?" but
+> **"what did I achieve last time?"**
 
 ---
 
-## 4. 역산 공식
+## 3. Transfer procedure
 
-### 노출시간
+```
+① Precedent search
+   SQL query on sample system + dye + task (imaging/tracking/frap) + timescale
+   → N candidate acquisitions
 
-목표 검출 광자수 `N_target`를 유지하려면:
+② Extract physical quantities  (needs the old system profile)
+   Compute the tier-3 values for each candidate
+   → achieved effective pixel, excitation band, irradiance, dose,
+     measured fps, (where possible) SNR
+
+③ Fix the target physical quantities
+   Take the physical quantities of whichever candidate "came out well"
+   ⚠ the basis for "came out well" has to be in kb/decisions. If it is not,
+     ask the human
+
+④ Back-calculate for the current instrument  (needs the current system profile)
+   target physical quantities → the setting combination that produces them on
+   this instrument
+   If degrees of freedom remain, narrow them with [04 §1 decision order]
+
+⑤ Pass the gates
+   14 hard gates + the committee's 6+2
+
+⑥ State the residual uncertainty
+   List every value used in the back-calculation that was assumed
+```
+
+---
+
+## 4. Back-calculation formulas
+
+### Exposure time
+
+To hold the target detected photon count `N_target`:
 
 $$t_{\exp}^{\text{new}} = t_{\exp}^{\text{old}} \times
 \frac{k_{det}^{\text{old}}}{k_{det}^{\text{new}}}$$
 
-`k_det`는 [04 §3](04-decision-engine.md)의 사슬 전체 곱. 실무적으로는:
+`k_det` is the product of the whole chain in
+[04 §3](04-decision-engine.md). In practice:
 
 $$\frac{k_{det}^{\text{new}}}{k_{det}^{\text{old}}} =
-\underbrace{\frac{I^{\text{new}}}{I^{\text{old}}}}_{\text{조도}} \times
+\underbrace{\frac{I^{\text{new}}}{I^{\text{old}}}}_{\text{irradiance}} \times
 \underbrace{\frac{\eta_{geo}^{\text{new}}}{\eta_{geo}^{\text{old}}}}_{\text{NA}} \times
-\underbrace{\frac{T_{em}^{\text{new}}}{T_{em}^{\text{old}}}}_{\text{방출경로}} \times
-\underbrace{\frac{QE^{\text{new}}}{QE^{\text{old}}}}_{\text{카메라}}$$
+\underbrace{\frac{T_{em}^{\text{new}}}{T_{em}^{\text{old}}}}_{\text{emission path}} \times
+\underbrace{\frac{QE^{\text{new}}}{QE^{\text{old}}}}_{\text{camera}}$$
 
-각 인자는 `optics/`가 이미 계산한다. **조도 비만 실측이 없어 막혀 있다.**
+`optics/` already computes each factor. **Only the irradiance ratio is blocked,
+for want of a measurement.**
 
-### 픽셀 크기 목표 유지
+### Holding the pixel-size target
 
 $$M^{\text{new}} = \frac{p_{\text{sensor}}^{\text{new}} \times B^{\text{new}}}
 {p_{\text{sample}}^{\text{target}}}$$
 
-가용 배율 조합(대물 × 중간배율 × binning) 중 목표에 가장 가까운 것을 고른다.
-정확히 일치하지 않는 게 보통이므로, **어느 쪽으로 벗어나는지가 중요하다** —
-추적이면 `σ_PSF` 쪽으로, 형태 관찰이면 Nyquist 쪽으로.
+Among the available magnification combinations (objective × intermediate
+magnification × binning), pick the one closest to the target. An exact match is
+unusual, so **which way it misses matters** — toward `σ_PSF` for tracking,
+toward Nyquist for morphology.
 
-### 프레임레이트 실현성
+### Frame-rate realizability
 
 $$f^{\text{new}} \le \frac{1}{\max\left(t_{\exp}^{\text{new}},\;
 h_{ROI} \times t_{\text{row}}^{\text{new}}\right)}$$
 
-`t_row`는 카메라마다 다르다. 구 셋업은 10.28 µs/행([04 §5](04-decision-engine.md)).
-**새 카메라에서 반드시 다시 측정해야 한다** — 메타데이터의 `ReadoutTimeNs`를
-ROI 높이로 나누면 나온다.
+`t_row` differs per camera. The old setup was 10.28 µs/row
+([04 §5](04-decision-engine.md)). **It has to be measured again on every new
+camera** — divide the metadata's `ReadoutTimeNs` by the ROI height (the current
+camera's measured value: `kb/calibrations/camera-readout.yaml`).
 
 ---
 
-## 5. ⚠ 지금 이 절차가 작동하지 않는 지점
+## 5. ⚠ Where this procedure does not work today
 
-| 막힌 곳 | 왜 | 해소 방법 | 비용 |
+| Blocker | Why | How to clear it | Cost |
 |---|---|---|---|
-| **조도 실측 없음** | `power_at_sample_mw`가 전부 비어 있음. 구·신 양쪽 다 | 파워미터로 라인×대물×레벨 측정 | 30분, 구 시스템은 이미 불가능 |
-| 구 시스템 방출경로 미상 | 큐브·휠 부품 미확정 | 실물 확인 | — |
-| 구 시스템 NA 미검증 | 메타데이터에 NA 없음 | 실물 각인 | — |
-| 배경 잡음 미기록 | SNR 역산 불가 | 획득마다 암/배경 프레임 | 획득당 수 초 |
+| **No measured irradiance** | `power_at_sample_mw` is empty everywhere, on both the old and the new system | Power-meter measurement of line × objective × level | 30 min, and already impossible for the old system |
+| Old system's emission path unknown | Cube and wheel parts undetermined | Physical inspection | — |
+| Old system's NA unverified | No NA in the metadata | Barrel engraving | — |
+| Background noise unrecorded | SNR cannot be back-calculated | Dark/background frames with every acquisition | A few seconds per acquisition |
 
-**구 시스템은 이미 없거나 바뀌었으므로 소급 측정이 불가능하다.**
-따라서 아카이브에서 이전 가능한 것은 **절대 광자수지가 아니라 상대 관계**뿐이다:
+**The old system is already gone or changed, so retroactive measurement is
+impossible.** What can transfer out of the archive is therefore **not an
+absolute photon budget but relative relations**:
 
-- ✅ "이 시료를 100x로 찍었을 때 유효 픽셀 110 nm에서 추적이 됐다" → 이전 가능
-- ✅ "647 채널은 노출 500 ms가 필요했다 = 광량이 부족했다" → 정성적 신호로 이전 가능
-- ✅ "duty 28%에서 모션블러 편향이 10% 이하였다" → 이전 가능
-- ❌ "Spectra Red 10%가 적정 광량이다" → **이전 불가**
+- ✅ "tracking worked on this sample at 100x with an effective pixel of 110 nm"
+  → transferable
+- ✅ "the 647 channel needed a 500 ms exposure = the light level was
+  insufficient" → transferable as a qualitative signal
+- ✅ "at duty 28% the motion blur bias was under 10%" → transferable
+- ❌ "Spectra Red 10% is the right light level" → **not transferable**
 
-> 그래서 우선순위가 "현재 시스템 광량 실측"이다. 한 번 하면 앞으로의 데이터는
-> 전부 이전 가능해진다.
-
----
-
-## 6. 실전 예시 (스케치 — 현재 시스템 확정 후 채움)
-
-**요구**: ATPS dextran-rich 상의 647 표지 입자 추적, 목표 정밀도 10 nm,
-특성시간 50 ms
-
-```
-① 선례:  DEX647 / tracking / ATPS  →  134건
-② 물리량:  p_sample 110 nm, 100x NA1.45, exposure 80 ms,
-           실측 fps ~11, duty 88%(!), 조도 unknown
-③ 목표:   p_sample 100–120 nm,  f ≥ 20 Hz,  duty ≤ 30%,  N ≥ ? 광자
-           ⚠ 선례의 duty 88%는 모션블러 편향 29% — 목표로 삼으면 안 됨
-④ 역산:   [현재 시스템 프로파일 필요]
-⑤ 게이트: [실행]
-⑥ 불확실: [나열]
-```
-
-②→③에서 **선례를 그대로 목표로 삼지 않았다**는 게 요점이다.
-선례에 결함이 있으면(여기서는 duty 88%) 물리 게이트가 그것을 잡아낸다.
-**선례는 출발점이지 정답이 아니다.**
+> Which is why the priority is "measure the current system's light level." Do it
+> once and everything acquired from then on becomes transferable.
 
 ---
 
-## 7. 시스템 변경 시 해야 할 일
+## 6. Worked example (sketch — filled in once the current system is settled)
 
-새 `.cfg`가 들어올 때마다:
+**Request**: track 647-labeled particles in the dextran-rich phase of an ATPS,
+target precision 10 nm, characteristic time 50 ms
 
-1. 지문 계산 → 기존 시스템인지 새 시스템인지 판정
-2. 새 시스템이면 `kb/systems/<id>.md` 생성, 이전 것은 `status: legacy`로
-3. **두 dossier의 diff를 `kb/systems/_transitions/<old>-to-<new>.md`에 기록**
-   - 무엇이 바뀌었나 (카메라? 광원? 필터? 대물?)
-   - 각 변경이 이전 공식의 어느 인자에 영향을 주나
-   - 소급 재해석이 필요한 과거 데이터가 있나
-4. 새 시스템의 교정 체크리스트 실행 (§5의 4개 항목)
-5. 교정 전까지 모든 게이트는 `evidence: assumed` → `advances: NO`
+```
+① precedent:  DEX647 / tracking / ATPS  →  134 acquisitions
+② physical:   p_sample 110 nm, 100x NA1.45, exposure 80 ms,
+              measured fps ~11, duty 88%(!), irradiance unknown
+③ target:     p_sample 100–120 nm,  f ≥ 20 Hz,  duty ≤ 30%,  N ≥ ? photons
+              ⚠ the precedent's duty 88% means 29% motion blur bias — not a
+                target to adopt
+④ back-calc:  [needs the current system profile]
+⑤ gates:      [run]
+⑥ uncertain:  [list]
+```
 
-이 diff 파일이 곧 변환표다.
+The point of ②→③ is that **the precedent was not adopted as the target**. When
+the precedent is defective (duty 88% here), the physics gates catch it.
+**A precedent is a starting point, not the answer.**
+
+---
+
+## 7. What to do when the system changes
+
+Every time a new `.cfg` arrives:
+
+1. Compute the fingerprint → decide whether this is a known system or a new one
+2. If new, create `kb/systems/<id>.md` and mark the previous one `status: legacy`
+3. **Record the diff of the two dossiers in
+   `kb/systems/_transitions/<old>-to-<new>.md`**
+   - What changed (camera? light source? filters? objective?)
+   - Which factor of the transfer formula each change affects
+   - Whether any past data needs retroactive reinterpretation
+4. Run the new system's calibration checklist (the four items in §5)
+5. Until calibration is done, every gate is `evidence: assumed` → `advances: NO`
+
+That diff file is the conversion table.

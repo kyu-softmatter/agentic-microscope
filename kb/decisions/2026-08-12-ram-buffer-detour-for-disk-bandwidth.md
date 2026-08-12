@@ -1,90 +1,103 @@
-# 2026-08-12 · 디스크 대역폭 우회 — RAM 선촬영 후 flush
+# 2026-08-12 · Disk bandwidth detour — acquire to RAM first, then flush
 
-> `docs/02 §9`의 결정 로그 양식은 **실제로 실행한 실험 결과**를 위한 것이다.
-> 이 항목은 아직 실행 전 설계 아이디어라 "실제로 쓴 설정"·"결과" 대신
-> "제안한 우회법"·"계산 근거"·"남은 확인사항"을 적는다. 실제로 이 방식을
-> 구현·실행하면 이 파일에 결과를 추가하거나 별도 결정 로그를 만들 것.
+> The decision-log format in `docs/02 §9` is meant for **results of experiments
+> actually run**. This entry is a design idea not yet executed, so instead of
+> "settings actually used" and "result" it records "the proposed detour", "the
+> basis for the calculation", and "remaining items to confirm". If this approach
+> is actually implemented and run, add the result to this file or create a
+> separate decision log.
 
-## 요구
+## Request
 
-Kinetix 듀얼캠(Kinetix_red/Kinetix_blue), 카메라당 2400×2400 ROI, 200 fps,
-60초 촬영이 이 시스템에서 가능한지 확인.
+Confirm whether Kinetix dual-cam (Kinetix_red/Kinetix_blue), 2400×2400 ROI per
+camera, 200 fps, 60 s acquisition is possible on this system.
 
-## 게이트 출력 (`compute.cli check`, 실제 실행)
+## Gate output (`compute.cli check`, actually run)
 
 ```
 python -m compute.cli check --width 4800 --height 2400 --fps 200 \
     --disk-bandwidth-mb-s 206.8 --ram-budget-mb 16000 \
     --acquisition-duration-s 60 --free-disk-gb 2559
 ```
-(가로폭 2배 트릭으로 듀얼캠 합산 바이트량을 표현 — `compute.checks`는 단일
-스트림 기준이라 두 카메라 합산은 수동으로 반영해야 함.)
+(The doubled-width trick expresses the combined byte rate of both cameras —
+`compute.checks` works on a single stream, so summing two cameras has to be
+reflected manually.)
 
-결과: **FAIL / INFEASIBLE**
-- `data_rate.exceeds_disk`: margin 0.03 — 필요 4608 MB/s (2400×2400×2bytes×200fps×2대)
-  vs 디스크 예산 145 MB/s (D: 드라이브 실측 206.8 MB/s × 0.7, [kb/calibrations/disk-bandwidth.yaml](../calibrations/disk-bandwidth.yaml))
-  → **약 32배 초과**. 실시간 디스크 쓰기로는 이 조합이 안 됨 (silent frame drop).
-- `buffer.too_small`: margin 0.69 — RAM 16GB 버퍼로 3.5초치만 (5초 기준 미달)
+Result: **FAIL / INFEASIBLE**
+- `data_rate.exceeds_disk`: margin 0.03 — requires 4608 MB/s (2400×2400×2bytes×200fps×2 cameras)
+  vs a disk budget of 145 MB/s (D: drive measured 206.8 MB/s × 0.7, [kb/calibrations/disk-bandwidth.yaml](../calibrations/disk-bandwidth.yaml))
+  → **roughly 32× over**. This combination does not work with real-time disk
+  writing (silent frame drop).
+- `buffer.too_small`: margin 0.69 — a 16GB RAM buffer holds only 3.5 s worth
+  (below the 5 s criterion)
 
-병목은 D: 드라이브 자체(SATA SSD급, ~207 MB/s)가 이 데이터율을 감당 못 하는 것.
-ROI/fps로 풀려면: 200fps 유지 시 ROI ≤ 카메라당 ~425×425 px, 또는 2400×2400
-유지 시 ~6 fps까지 낮춰야 함.
+The bottleneck is the D: drive itself (SATA SSD class, ~207 MB/s) being unable to
+sustain this data rate. To resolve it via ROI/fps: keeping 200fps requires
+ROI ≤ ~425×425 px per camera, or keeping 2400×2400 requires dropping to ~6 fps.
 
-## 제안한 우회법: RAM 선촬영 → 촬영 후 flush
+## Proposed detour: acquire into RAM first → flush after acquisition
 
-촬영 중엔 디스크에 안 쓰고 프레임을 전부 RAM(numpy 배열 등)에 쌓은 뒤,
-촬영이 끝나고 나서 디스크로 flush. 이러면 실시간 디스크 대역폭 제약(G12)이
-없어지고, 제약이 **"전체 촬영 데이터가 RAM에 들어가는가"**로 바뀐다
-(G13b 용량 체크와 같은 형태지만 기준이 디스크가 아니라 RAM).
+During acquisition, do not write to disk; accumulate every frame in RAM (numpy
+array or similar), then flush to disk once acquisition is over. This removes the
+real-time disk bandwidth constraint (G12) and changes the constraint to
+**"does the entire acquisition fit in RAM"** (the same shape as the G13b capacity
+check, but against RAM instead of disk).
 
-### 계산 근거
+### Basis for the calculation
 
-시스템 총 RAM: 255.65 GB (측정 시점 idle 사용량 ~29.8 GB, 여유 ~226 GB).
-2400×2400 듀얼캠 데이터율 = 23.04 MB/frame-pair × fps.
+Total system RAM: 255.65 GB (idle usage at measurement time ~29.8 GB, headroom
+~226 GB).
+2400×2400 dual-cam data rate = 23.04 MB/frame-pair × fps.
 
-| 시나리오 | 필요 RAM | 판정 |
+| Scenario | RAM required | Verdict |
 |---|---|---|
-| 200 fps × 60 s (원래 목표) | ~276 GB | ❌ 총 RAM(255.65GB)보다 큼 — 전체를 다 써도 불가 |
-| 200 fps × 55 s | ~253 GB | ⚠ 거의 전량, OS/MM 여유 없음 — 위험 |
-| 200 fps × **43 s** | ~200 GB | ✅ 55GB 여유 두고 안전 |
-| **145 fps** × 60 s | ~200 GB | ✅ 60초 유지, fps만 낮춤 |
-| 200 fps × 30 s | ~138 GB | ✅ 여유 있음 |
+| 200 fps × 60 s (original goal) | ~276 GB | ❌ larger than total RAM (255.65GB) — impossible even using all of it |
+| 200 fps × 55 s | ~253 GB | ⚠ practically the entire machine, no headroom for OS/MM — risky |
+| 200 fps × **43 s** | ~200 GB | ✅ safe, leaves 55GB headroom |
+| **145 fps** × 60 s | ~200 GB | ✅ keeps 60 s, only lowers fps |
+| 200 fps × 30 s | ~138 GB | ✅ comfortable headroom |
 
-촬영 후 디스크 flush 시간 (D: 실측 206.8 MB/s 기준): 200 GB ≈ 16분 (비실시간,
-그동안 이 드라이브로 다른 촬영 불가).
+Post-acquisition disk flush time (at the measured D: 206.8 MB/s): 200 GB ≈ 16
+minutes (non-real-time; no other acquisition to this drive during that window).
 
-### 구현 상 걸림돌 (미확인)
+### Implementation obstacle (unconfirmed)
 
-Micro-Manager 기본 저장 방식(원형 버퍼 → 계속 디스크로 흘려보냄)은 이
-"다 찍고 한번에 쓰기" 패턴을 기본으로 지원하지 않을 가능성이 높다.
-[project_pymmcore_only_no_nis 결정](../../docs/07-roadmap.md)에 따라 이
-프로젝트는 NIS-Elements 대신 pymmcore-plus로 직접 장치를 제어하기로 했으므로,
-MM의 표준 스트리밍 저장 대신 **pymmcore-plus로 프레임을 직접 polling해서
-preallocated numpy 배열에 채우고, 끝난 뒤 저장하는 커스텀 캡처 루프**를
-짜야 할 것으로 보인다 — 아직 코드로 구현/검증 안 됨.
+Micro-Manager's default save mechanism (circular buffer → continuously drained to
+disk) most likely does not support this "acquire everything, write once" pattern
+out of the box. Since, per the
+[project_pymmcore_only_no_nis decision](../../docs/07-roadmap.md), this project
+controls devices directly with pymmcore-plus instead of NIS-Elements, it looks
+like we will have to write **a custom capture loop that polls frames directly via
+pymmcore-plus into a preallocated numpy array and saves once finished**, rather
+than MM's standard streaming save — not yet implemented or verified in code.
 
-## 구현한 것 (2026-08-12)
+## What was implemented (2026-08-12)
 
-| 파일 | 역할 |
+| File | Role |
 |---|---|
-| [`calibration/ram_capture.py`](../../calibration/ram_capture.py) | `capture_burst_to_ram()` — MMCore 시퀀스 획득으로 프레임을 preallocated numpy 배열에 채움 (디스크 미기록). `flush_to_disk()` — 캡처 끝난 뒤 `.npy`로 저장(fsync 포함), 처리량 리포트 |
+| [`calibration/ram_capture.py`](../../calibration/ram_capture.py) | `capture_burst_to_ram()` — fills a preallocated numpy array with frames via MMCore sequence acquisition (nothing written to disk). `flush_to_disk()` — saves to `.npy` after capture ends (fsync included), reports throughput |
 | CLI `python -m calibration.cli ram-burst <cfg> --camera <label> --n-frames <N> [--out <path>]` | |
-| [`tests/test_ram_capture.py`](../../tests/test_ram_capture.py) | pymmcore-plus 데모카메라로 3개 테스트 통과 (요청 프레임 수만큼 캡처, 잘못된 입력 거부, flush 후 round-trip 일치) |
+| [`tests/test_ram_capture.py`](../../tests/test_ram_capture.py) | tests pass against the pymmcore-plus demo camera (captures as many frames as requested, rejects invalid input, round-trip match after flush) |
 
-**실측 확인된 것**: 데모카메라(512×512, 16bit) 기준 8프레임 91 fps 캡처, 5프레임
-플러시 89 MB/s — 플러밍 자체는 동작. **아직 미확인**: 랩의 실제 PVCAM/Kinetix
-어댑터 대상 실행, 그리고 **듀얼카메라 동시 캡처** (`capture_burst_to_ram()`은
-카메라 1대 기준 — 두 카메라를 동시에 돌리려면 스레드 2개 또는 `CMMCorePlus`
-인스턴스 2개로 호출해야 하는데, 실제 어댑터에서 정말 동시에 도는지 직렬화되는지
-미확인, 추측 금지).
+**Confirmed by measurement**: on the demo camera (512×512, 16bit), 8-frame capture
+at 91 fps and 5-frame flush at 89 MB/s — the plumbing itself works.
+**Still unconfirmed**: running against the lab's real PVCAM/Kinetix adapter, and
+**simultaneous dual-camera capture** (`capture_burst_to_ram()` assumes one camera —
+running two at once requires either 2 threads or 2 `CMMCorePlus` instances, and
+whether the real adapter actually runs them concurrently or serializes them is
+unconfirmed; no guessing).
 
-## 남은 확인사항
+## Remaining items to confirm
 
-- [x] 실제 MM/pymmcore-plus로 "촬영 중 디스크 미기록, RAM만 채우기"가 되는지 확인
-      → 데모카메라로 구현·검증 완료 (`calibration/ram_capture.py`)
-- [ ] 실제 Kinetix/PVCAM 어댑터 대상으로 재검증 (데모카메라와 실제 어댑터의
-      시퀀스 획득 동작이 같다고 가정하지 말 것)
-- [ ] 듀얼카메라(Kinetix_red/Kinetix_blue) 동시 캡처가 실제로 동시에 도는지 확인
-- [ ] 촬영 중 다른 프로세스(DMD·피에조·광집게 제어, OS)가 실제로 얼마나 RAM을
-      쓰는지 실측 — 위 표의 "55GB 여유"는 idle 기준 추정값
-- [ ] 이 방식을 `compute.checks`에 새 체크(예: G13d "RAM capacity")로 코드화할지 결정
+- [x] Confirm that "no disk writing during acquisition, RAM only" actually works
+      with real MM/pymmcore-plus
+      → implemented and verified on the demo camera (`calibration/ram_capture.py`)
+- [ ] Re-verify against the real Kinetix/PVCAM adapter (do not assume the demo
+      camera and the real adapter behave identically for sequence acquisition)
+- [ ] Confirm whether dual-camera (Kinetix_red/Kinetix_blue) capture really runs
+      concurrently
+- [ ] Measure how much RAM other processes (DMD/piezo/optical tweezers control, the
+      OS) actually use during acquisition — the "55GB headroom" in the table above
+      is an idle-based estimate
+- [ ] Decide whether to encode this approach in `compute.checks` as a new check
+      (e.g. G13d "RAM capacity")

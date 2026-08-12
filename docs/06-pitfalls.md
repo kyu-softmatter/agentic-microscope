@@ -1,133 +1,150 @@
-# 06 · 주의할 점
+# 06 · Pitfalls
 
-이 데이터·이 과학에서 **실제로 틀리기 쉬운 것들**. 일반론이 아니라
-아카이브 2,343건에서 확인된 것과, 이 랩의 측정에 직결되는 것만 적는다.
+**What actually goes wrong** with this data and this science. Not generalities —
+only what was confirmed across the 2,343 archived acquisitions and what bears
+directly on this lab's measurements.
 
-각 항목에 **어느 게이트/렌즈가 잡는가**를 붙였다. 게이트가 없는 항목은
-아직 아무도 안 잡고 있다는 뜻이다.
+Each item is tagged with **which gate/lens catches it**. An item with no gate
+means nothing catches it yet.
 
 ---
 
-## A. 데이터·메타데이터
+## A. Data & metadata
 
-### A1. `PixelSizeUm`이 전 파일에서 `0.0` 이다 🔴
+### A1. `PixelSizeUm` is `0.0` in every file 🔴
 
-픽셀 크기 교정이 Micro-Manager에 설정된 적이 없다. **2,343건 전부.**
+Pixel size calibration was never set in Micro-Manager. **All 2,343
+acquisitions.**
 
-- 지금까지의 모든 공간 측정(MSD, 확산계수, 입자 크기, 계면 위치)은
-  **외부 교정값**에 의존하고 있고, 그 값이 어디서 왔는지 메타데이터에 없다
-- `11 µm / 배율`로 계산할 수는 있지만 실측 교정과 3–5% 어긋나는 게 보통이다
-- 확산계수는 픽셀 크기의 **제곱**에 비례한다. 3% 오차 → D에서 6% 오차
+- Every spatial measurement so far (MSD, diffusion coefficient, particle size,
+  interface position) rests on an **external calibration value**, and the
+  metadata does not say where that value came from
+- You can compute `11 µm / magnification`, but that normally disagrees with a
+  measured calibration by 3–5%
+- The diffusion coefficient scales as the **square** of pixel size. 3% error →
+  6% error in D
 
-**조치**: 배율 조합별로 스테이지 마이크로미터/격자로 실측하고,
-MM2의 `ConfigPixelSize`에 등록한다. 그러면 이후 데이터에는 자동으로 남는다.
-→ 게이트 없음. **렌즈 6(측정 타당성)이 잡아야 함**
+**Action**: measure it with a stage micrometer/grid for each magnification
+combination and register it in MM2's `ConfigPixelSize`. From then on it is
+recorded automatically.
+→ No gate. **Lens 6 (Measurement validity) must catch this**
 
-### A2. MM 1.4와 2.0의 스키마가 다르다 🟡
+### A2. MM 1.4 and 2.0 have different schemas 🟡
 
-세대 A(2,137건 = 91%)는 MM 1.4.23이다.
+Generation A (2,137 acquisitions = 91%) is MM 1.4.23.
 
 | | MM 1.4 | MM 2.0 |
 |---|---|---|
-| 픽셀 | `PixelSize_um` | `PixelSizeUm` |
-| ROI | `Summary.ROI` 배열 | FrameKey 문자열 |
-| 시작시각 | **없음** | `StartTime` |
-| 프레임의 카메라 | **없음** | `Camera` |
+| Pixel | `PixelSize_um` | `PixelSizeUm` |
+| ROI | `Summary.ROI` array | FrameKey string |
+| Start time | **absent** | `StartTime` |
+| Camera per frame | **absent** | `Camera` |
 
-**하나의 파서로 처리하면 데이터의 91%를 놓친다.**
-현재 시스템은 MM2 확정이지만, 아카이브 읽기용 레거시 파서는 계속 필요하다.
+**A single parser loses 91% of the data.**
+The current system is settled on MM2, but the legacy parser for reading the
+archive is still needed.
 
-### A3. 컴퓨터 이름으로 시스템을 구분하면 틀린다 🟡
+### A3. Identifying a system by computer name is wrong 🟡
 
-PC 이름이 3개인데 하드웨어 지문은 사실상 한 계열이다. 반대로 같은 PC에서
-장치 구성이 바뀌기도 했다(세대 B에 `LightEngine` 추가).
+There are three PC names but the hardware fingerprints are effectively one
+family. Conversely, the device configuration changed on the same PC
+(`LightEngine` added in generation B).
 
-**조치**: 지문 = 장치 라벨 집합 + 카메라 칩/시리얼 해시.
+**Action**: fingerprint = set of device labels + hash of camera chip/serial.
 
-### A4. 터렛 위치는 고정 식별자가 아니다 🟡
+### A4. Turret position is not a stable identifier 🟡
 
-터렛 4번이 세대 사이에 `Plan Apo Lmbd 60x Oil` → `Plan Apo VC 60x WI`로
-**물리적으로 교체**되었다. 위치 번호로 렌즈를 식별하면 침지와 NA가 통째로 틀린다.
+Turret position 4 was **physically swapped** between generations,
+`Plan Apo Lmbd 60x Oil` → `Plan Apo VC 60x WI`. Identify the objective by
+position number and immersion and NA come out wholly wrong.
 
-### A5. 장치 라벨에 오타가 있다 🟢
+### A5. Device labels contain typos 🟢
 
-`Prime95B` 20건이 `Pirme95B`로 기록되어 있다 (config의 오타).
-별칭 테이블 없이 라벨 매칭하면 그 20건이 사라진다.
+20 acquisitions record `Prime95B` as `Pirme95B` (a typo in the config).
+Match labels without an alias table and those 20 disappear.
 
-### A6. 폴더명의 `Las` 토큰이 두 가지 뜻이다 🟡
+### A6. The `Las` token in folder names means two different things 🟡
 
-- `Las10` → 세기 10%
-- `Las488` → 파장 488 nm
-- `Las555_5` → 555 nm 라인을 5%
+- `Las10` → 10% level
+- `Las488` → 488 nm wavelength
+- `Las555_5` → the 555 nm line at 5%
 
-숫자가 350–800 정수면 파장으로 해석해야 한다. 안 그러면 "레이저 488%"가 된다.
+An integer in 350–800 has to be read as a wavelength. Otherwise you get "laser
+at 488%".
 
-### A7. 폴더명이 메타데이터보다 정직한 경우가 있다 🟡
+### A7. Sometimes the folder name is more honest than the metadata 🟡
 
-세대 C는 `IntermediateMagnification` 장치가 없는 config로 촬영되어
-1.5x가 **폴더명에만** 남았다. 장치가 등록되어 있어도 *그 config로 촬영했는지*는
-별개 문제다.
+Generation C was shot with a config that had no `IntermediateMagnification`
+device, so the 1.5x survives **only in the folder name**. Even when a device is
+registered, whether *that config was the one used for the acquisition* is a
+separate question.
 
-**교훈**: 메타데이터와 폴더명이 어긋나면 **불일치 자체를 기록**하고 사람에게 묻는다.
-자동으로 한쪽을 고르면 안 된다.
+**Lesson**: when metadata and folder name disagree, **record the disagreement
+itself** and ask the human. Never pick a side automatically.
 
 ---
 
-## B. 광학
+## B. Optics
 
-### B1. 필터 정보가 사실상 없다 🔴
+### B1. Filter information is effectively absent 🔴
 
-| 항목 | 상태 |
+| Item | State |
 |---|---|
-| `FilterTurret1-Label` | `1-DA/FI/TR10Empty` 2,312건 — 문자열이 뭉개져 부품 특정 불가 |
-| `Wheel-A-Label` | `Filter-0` 2,292건 — **위치 라벨이 .cfg에 등록 안 됨** |
+| `FilterTurret1-Label` | `1-DA/FI/TR10Empty` in 2,312 acquisitions — the string is mangled, the part cannot be identified |
+| `Wheel-A-Label` | `Filter-0` in 2,292 acquisitions — **the position labels were never registered in the .cfg** |
 
-그리고 **`DA/FI/TR`(3-band)로 647-Cy5를 764건 촬영했다.** 물리적으로 앞뒤가 안 맞는다.
-큐브가 실제로는 4-band이거나, 휠이 방출 선택을 하는데 안 보이거나, 라벨이 틀렸다.
+And **764 acquisitions shot 647-Cy5 through `DA/FI/TR` (3-band).** That does not
+add up physically. Either the cube is really a 4-band, or the wheel is selecting
+emission and is invisible, or the label is wrong.
 
-→ 광학계 게이트가 이 채널을 `BLOCKED`로 거절한다. **의도된 동작이다.**
-> **`.cfg`를 받으면 제일 먼저 `Label,` 줄이 있는지 확인할 것.**
-> 없으면 필터 휠은 앞으로도 영원히 `Filter-0`으로 기록된다.
+→ The optics gate rejects this channel as `BLOCKED`. **That is intended
+behavior.**
+> **On receiving a `.cfg`, the first thing to check is whether it has `Label,`
+> lines.** Without them the filter wheel will be recorded as `Filter-0` forever.
 
-### B2. 두 개의 광원이 동시에 config에 있다 🟡
+### B2. Two light sources sit in the config at once 🟡
 
-세대 B는 `Spectra`(Spectra X)와 `LightEngine`(Spectra III)이 둘 다 등록되어 있고,
-쓰지 않는 쪽의 레벨값도 메타데이터에 그대로 남는다.
+Generation B has both `Spectra` (Spectra X) and `LightEngine` (Spectra III)
+registered, and the level values of the unused one persist in the metadata.
 
-**활성 조명은 `Core-Shutter`로 판정해야 한다.** 레벨값만 보면 틀린다.
+**The active illumination must be determined from `Core-Shutter`.** Read the
+level values alone and you get it wrong.
 
-### B3. 광경로가 카메라로 안 갈 수 있다 🟡
+### B3. The light path may not go to the camera 🟡
 
-`LightPath-Label`: `4-L100`(카메라 100%) 1,728건 vs `3-AUX` 564건.
-AUX로 가 있으면 카메라 신호가 없거나 크게 줄어든다.
-"신호가 약하다"의 원인이 광량이 아니라 여기일 수 있다.
-→ 게이트 `path.port_split` ✅
+`LightPath-Label`: `4-L100` (100% to camera) in 1,728 acquisitions vs `3-AUX` in
+564. Parked on AUX, the camera signal is absent or much reduced.
+"The signal is weak" may be caused by this rather than by the light level.
+→ Gate `path.port_split` ✅
 
-### B4. 필터를 빼면 신호가 오른다 — 하지만 대개 빼면 안 된다 🔴
+### B4. Removing a filter raises the signal — but usually you must not 🔴
 
-ablation 계산에서 방출필터를 빼면 신호가 +43% 오른다고 나온다.
-**근사 스펙트럼의 이상적인 차단 바닥 때문에 생기는 착시다.** 실제 유리에서는
-후방산란 여기광이 신호를 덮는다.
+The ablation calculation says removing the emission filter raises the signal by
++43%. **That is an illusion produced by the idealized blocking floor of the
+approximated spectra.** In real glass, backscattered excitation light swamps the
+signal.
 
-→ 구현에서 세 겹으로 막아둠:
-1. 방출경로에 스펙트럼 선택 요소가 하나뿐이면 무조건 `required`
-2. 근사 스펙트럼이면 차단 요구를 5 OD → 7 OD로 올림
-3. 근사 스펙트럼이면 `remove`가 아니라 `candidate` (벤치 확인 전까지 지시 아님)
+→ Guarded three ways in the implementation:
+1. If the emission path has only one spectrally selective element, it is
+   unconditionally `required`
+2. With approximated spectra, the blocking requirement rises 5 OD → 7 OD
+3. With approximated spectra the verdict is `candidate`, not `remove` (not an
+   instruction until confirmed on the bench)
 
-### B5. 대물 NA를 올리는 건 생각만큼 안 남는다 🟢
+### B5. Raising objective NA buys less than you think 🟢
 
-| 개입 | 수집 효율 이득 | 비용 |
+| Intervention | Collection efficiency gain | Cost |
 |---|---|---|
-| NA 1.45 → 1.49 | **×1.15** | 대물렌즈 $$$ |
-| 12bit → 16bit readout | **×3.4** (잡음) | 무료 |
+| NA 1.45 → 1.49 | **×1.15** | objective $$$ |
+| 12bit → 16bit readout | **×3.4** (noise) | free |
 
-직관과 반대다. → [05 §4](05-consensus-gate.md) 민감도 분석
+The opposite of intuition. → [05 §4](05-consensus-gate.md) sensitivity analysis
 
 ---
 
-## C. 검출·정량
+## C. Detection & quantification
 
-### C1. 온카메라 despeckle 후처리가 켜져 있다 🔴
+### C1. On-camera despeckle post-processing is enabled 🔴
 
 ```
 Prime95B-PP  1   ENABLED: Yes     DESPECKLE BRIGHT LOW/HIGH, threshold 125
@@ -136,215 +153,234 @@ Prime95B-PP  3   ENABLED: Yes     DESPECKLE DARK HIGH,       threshold 80
 Prime95B-PP  4   ENABLED: Yes     threshold 75
 ```
 
-**전 세대에서 켜져 있었다.** despeckle은 임계값을 넘는 픽셀을 이웃값으로 대체한다.
-그 결과:
+**It was on in every generation.** Despeckle replaces pixels crossing the
+threshold with a neighbor value. As a result:
 
-- 픽셀값 **선형성이 깨진다** → 광도 정량 불가
-- 잡음이 **공간적으로 상관된다** → 서브픽셀 위치추정의 최대우도 가정이 무너짐
-- 어두운 단일입자가 "dark speckle"로 오인되어 **지워질 수 있다**
-- 그런데 이미지는 오히려 깨끗해 보인다 → **알아채기 어렵다**
+- pixel-value **linearity breaks** → no photometric quantification
+- noise becomes **spatially correlated** → the maximum-likelihood assumption of
+  subpixel localization collapses
+- a dim single particle mistaken for a "dark speckle" **can be erased**
+- and the image looks cleaner for it → **hard to notice**
 
-정량 실험에서는 꺼야 한다. 이미 찍은 데이터는 소급 복구 불가.
-→ 게이트 없음. **렌즈 6이 잡아야 함**
+It must be off for quantitative experiments. Data already taken cannot be
+recovered retroactively.
+→ No gate. **Lens 6 must catch this**
 
-### C2. 12-bit 모드의 양자화 잡음이 read noise를 압도한다 🟡
+### C2. Quantization noise in 12-bit mode swamps read noise 🟡
 
-| 모드 | e⁻/ADU | 양자화잡음 | read noise | 실효 |
+| Mode | e⁻/ADU | Quantization noise | read noise | Effective |
 |---|---|---|---|---|
 | 100MHz 16bit / HDR | 1.22 | 0.35 e⁻ | ~1.3 | **1.35 e⁻** |
 | 200MHz 12bit / Full well | 15.14 | **4.37 e⁻** | ~1.6 | **4.65 e⁻** |
 
-속도 위해 12-bit를 고르면 실효 잡음이 **3.4배**. 약신호에서 SNR도 3.4배 손해.
-`full_well`과 `bit_depth`가 메타데이터에 있으므로 이건 항상 계산 가능하다.
+Choose 12-bit for speed and effective noise is **3.4×**. At weak signal that is
+3.4× worse SNR too. `full_well` and `bit_depth` are in the metadata, so this is
+always computable.
 
-### C3. 롤링셔터는 **행 수**에만 반응한다 🟡
+### C3. A rolling shutter responds only to the **row count** 🟡
 
-행 시간 **10.28 µs** (아카이브 두 파일에서 독립 확인).
+Row time **10.28 µs** (independently confirmed in two archive files).
 
-- 1608행 → 16.53 ms → 60.5 fps
-- 176행 → 1.81 ms → 553 fps
-- **폭을 줄여도 전혀 안 빨라진다**
+- 1608 rows → 16.53 ms → 60.5 fps
+- 176 rows → 1.81 ms → 553 fps
+- **narrowing the width buys nothing at all**
 
-아카이브의 크롭이 대체로 정사각형인데, 속도가 목적이었다면
-**가로로 긴 ROI가 같은 화소수에서 훨씬 빠르다.**
+The crops in the archive are mostly square. If speed was the goal, **a wide,
+short ROI is far faster at the same pixel count.**
 
-추가로 롤링셔터는 행마다 노출 시각이 다르다. 빠르게 움직이는 대상은
-기하 왜곡이 생긴다.
+A rolling shutter also exposes each row at a different time. Fast-moving targets
+acquire geometric distortion.
 
-### C4. 요청 프레임레이트와 실측이 3배 차이 났다 🔴
+### C4. Requested and measured frame rate differed by 3× 🔴
 
-노출 10 ms, ROI 176행 → 카메라 한계 ~85 Hz.
-그런데 `ActualInterval-ms = 35.67` → **실측 28 Hz.**
+10 ms exposure, 176-row ROI → camera limit ~85 Hz.
+But `ActualInterval-ms = 35.67` → **measured 28 Hz.**
 
-카메라가 병목이 아니다. MM 오버헤드 / 디스크 / 순환버퍼 중 하나.
+The camera is not the bottleneck. It is MM overhead, disk, or the circular
+buffer.
 
-**KB에는 반드시 `measured_fps`를 기록해야 한다.** 요청값만 남기면
-선례가 거짓말을 한다. → 게이트 G12 G13 (미구현)
+**The KB must record `measured_fps`.** Keep only the requested value and
+precedent lies. → Gates G12 G13
 
-### C5. 프레임 드랍은 조용히 일어난다 🔴
+### C5. Frame drops happen silently 🔴
 
-버퍼가 데이터율을 못 따라가면 프레임이 버려지는데 **에러가 안 난다.**
-`ElapsedTime-ms` 간격이 불규칙해지는 것으로만 드러난다.
+When the buffer cannot keep up with the data rate, frames are discarded and **no
+error is raised.** It surfaces only as irregular `ElapsedTime-ms` intervals.
 
-MSD 계산에서 lag time이 틀리면 확산계수가 통째로 틀린다.
+Get the lag time wrong in an MSD calculation and the diffusion coefficient is
+wholly wrong.
 
-**조치**: 획득 후 `ElapsedTime` 차분의 분산을 항상 확인한다.
-아카이브에도 지금 바로 적용할 수 있고, 해야 한다.
+**Action**: always check the variance of `ElapsedTime` differences after
+acquisition. This can be applied to the archive right now, and should be.
 
-### C6. 픽셀을 잘게 쪼갤수록 좋다는 건 틀렸다 🔴
+### C6. "Finer pixels are always better" is false 🔴
 
-| 작업 | 최적 픽셀 | 100x/NA1.45, 668 nm |
+| Task | Optimal pixel | 100x/NA1.45, 668 nm |
 |---|---|---|
-| 형태·구조 관찰 | Nyquist `p ≤ r/2` | ≤ 140 nm |
-| **단일입자 추적** | `p ≈ σ_PSF` | ≈ 100 nm |
+| Morphology & structure observation | Nyquist `p ≤ r/2` | ≤ 140 nm |
+| **Single-particle tracking** | `p ≈ σ_PSF` | ≈ 100 nm |
 
 $$\sigma_{\text{loc}}^2 = \frac{\sigma^2 + p^2/12}{N} + \frac{8\pi(\sigma^2+p^2/12)^2 b^2}{p^2 N^2}$$
 
-배경 항이 `1/p²`이라 **픽셀을 키우면 좋아진다.** 유한한 최적점이 있다.
-추적 실험에 Nyquist를 기계적으로 적용하면 정밀도가 나빠진다.
+The background term goes as `1/p²`, so **larger pixels make it better.** There
+is a finite optimum. Apply Nyquist mechanically to a tracking experiment and
+precision gets worse.
 
-→ 게이트 G5. **작업 종류가 없으면 기본값 쓰지 말고 물어야 한다.**
+→ Gate G5. **With no task type given, do not fall back to a default — ask.**
 
 ---
 
-## D. 시료·광물리
+## D. Sample & photophysics
 
-### D1. 모션블러가 MSD를 계통적으로 편향시킨다 🔴
+### D1. Motion blur biases MSD systematically 🔴
 
-**이 랩의 마이크로레올로지에서 가장 위험한 항목.**
+**The most dangerous item in this lab's microrheology.**
 
 $$\langle \Delta x^2 \rangle_{\text{meas}}(\tau) = 2D\left(\tau - \frac{t_{\exp}}{3}\right) + 2\varepsilon^2$$
 
-- 블러 항 `−2D·t_exp/3` : MSD **과소평가**
-- 정적 오차 `+2ε²` : MSD **과대평가**
+- Blur term `−2D·t_exp/3` : MSD **underestimated**
+- Static error `+2ε²` : MSD **overestimated**
 
-두 항이 짧은 lag에서 상쇄되어 **그럴듯하지만 기울기가 틀린 직선**이 나온다.
-GSER로 넘기면 `G*(ω)`가 통째로 틀린다. 그리고 그래프는 멀쩡해 보인다.
+At short lags the two terms cancel and out comes **a plausible straight line
+with the wrong slope**. Push it through GSER and `G*(ω)` is wholly wrong. And
+the plot looks fine.
 
-게이트: `t_exp < 0.3 τ_min` (duty ≤ 30%).
-아카이브의 28%는 우연히 만족하지만, 647 채널(노출 500 ms)은 확인 필요.
+Gate: `t_exp < 0.3 τ_min` (duty ≤ 30%).
+28% of the archive happens to satisfy it, but the 647 channel (500 ms exposure)
+needs checking.
 
-### D2. 여기광이 시료를 구동한다 🔴
+### D2. The excitation light drives the sample 🔴
 
-`Active particle control`, `ATPS motility induced partitioning` — 광구동 능동 콜로이드.
-**여기광은 측정 도구가 아니라 실험 변수다.**
+`Active particle control`, `ATPS motility induced partitioning` — light-driven
+active colloids. **The excitation light is an experimental variable, not a
+measurement tool.**
 
-- 광학계 렌즈: "SNR 위해 광량 올려라"
-- 광섭동 렌즈: "그 빛이 입자를 밀고 있다"
+- Optics lens: "raise the light level for SNR"
+- Photo-perturbation lens: "that light is pushing the particle"
 
-이 충돌을 드러내는 것이 위원회를 나눈 이유다.
-비슷한 경우: LC 광배열, FRAP의 이미징광이 이미 표백을 시작함, 광가교.
+Surfacing this conflict is the reason the committee is split.
+Similar cases: LC photo-alignment, FRAP where the imaging light has already
+begun bleaching, photo-crosslinking.
 
-### D3. 팔로이딘은 액틴을 안정화한다 🔴
+### D3. Phalloidin stabilizes actin 🔴
 
-`Phal647`로 액틴 레올로지를 측정한다면 **측정 대상 자체를 바꾸고 있다.**
-팔로이딘은 F-액틴을 안정화해서 필라멘트 길이 분포와 동역학을 변경한다.
+Measure actin rheology with `Phal647` and **you are changing the very thing you
+measure.** Phalloidin stabilizes F-actin, altering the filament length
+distribution and the dynamics.
 
-표지가 시료를 바꾸는 사례는 이것만이 아니다:
-- **ATTO 647N**: 소수성이 강해 계면·소수성 도메인에 비특이 흡착 → ATPS 분배 왜곡
-- **덱스트란-647**: 분자량이 상 분배와 D를 결정 — 기록 안 하면 재현 불가
-- **Acridine Orange**: 결합 상태에 따라 방출이 526 → 650 nm로 **이동**.
-  단일 스펙트럼으로 모델링하면 647 채널 크로스토크가 완전히 틀린다
+This is not the only case where the label changes the sample:
+- **ATTO 647N**: strongly hydrophobic, so it adsorbs non-specifically at
+  interfaces and hydrophobic domains → distorts ATPS partitioning
+- **Dextran-647**: molecular weight decides the phase partitioning and D — not
+  reproducible if unrecorded
+- **Acridine Orange**: emission **shifts** 526 → 650 nm with binding state.
+  Model it with a single spectrum and the 647-channel crosstalk is completely
+  wrong
 
-### D4. 결합체 이름은 형광단 이름이 아니다 🟡
+### D4. A conjugate name is not a fluorophore name 🟡
 
-`SA647`, `DEX647`, `Phal647`은 전부 "647 뭔가"일 뿐이다.
-Alexa 647 / ATTO 647N / DyLight 650은 ε, Φ, 광안정성이 크게 다르다.
+`SA647`, `DEX647`, `Phal647` all mean nothing more than "something 647".
+Alexa 647 / ATTO 647N / DyLight 650 differ widely in ε, Φ, and photostability.
 
 | | ε (M⁻¹cm⁻¹) | Φ | ε·Φ |
 |---|---|---|---|
 | Alexa 647 | 270,000 | 0.33 | 89,100 |
 | ATTO 647N | 150,000 | 0.65 | **97,500** |
 
-ε만 보면 Alexa가 1.8배 밝아 보이지만 **실제 밝기는 ATTO가 약간 높다.**
-그리고 **DOL**(분자당 형광단 수)이 몇 배를 더 바꾼다.
+By ε alone Alexa looks 1.8× brighter, but **the actual brightness is slightly
+higher for ATTO.** And **DOL** (fluorophores per molecule) moves it by another
+several-fold.
 
-### D5. ATPS는 두 상의 굴절률이 다르다 🟡
+### D5. ATPS has different refractive indices in its two phases 🟡
 
-같은 시야 안에서 상마다 수차가 다르다. 계면을 가로지르는 초점 이동이 생긴다.
-깊이 방향 측정이나 계면 근처 추적에서는 무시할 수 없다.
+Within one field of view the aberration differs per phase. Crossing the
+interface produces a focal shift. Not negligible for depth-direction
+measurements or for tracking near the interface.
 
-배지 굴절률이 기록된 적이 없다. → 렌즈 4
+The medium refractive index has never been recorded. → Lens 4
 
-### D6. 광집게 1064 nm는 가열하고 누설한다 🟡
+### D6. Tweezers at 1064 nm heat and leak 🟡
 
-- 물의 1064 nm 흡수로 **국소 가열** → 점성이 바뀌면 D가 바뀐다.
-  마이크로레올로지에서는 측정량 자체를 오염시킨다
-- 검출 경로로의 **누설** — 광학 게이트가 1100 nm까지 격자를 잡아둔 이유
-- 광집게는 MM 밖이라 출력이 메타데이터에 안 남는다 (폴더명 `OT0.005`만)
+- **Local heating** from water absorption at 1064 nm → viscosity changes, so D
+  changes. In microrheology it contaminates the measured quantity itself
+- **Leakage** into the detection path — the reason the optics gate holds its
+  grid out to 1100 nm
+- The tweezers are outside MM, so the power leaves no trace in the metadata
+  (only the folder name `OT0.005`)
 
-### D7. PFS가 켜져 있어도 잠기지 않을 수 있다 🟡
+### D7. PFS can be on without being locked 🟡
 
-`PFS-FocusMaintenance: On` 인데 `PFS in Range: Out of Range`인 세션이 있다.
-켜짐 상태만 기록하면 초점이 실제로 유지됐는지 알 수 없다.
-**둘 다 기록해야 한다.**
+There are sessions with `PFS-FocusMaintenance: On` but `PFS in Range: Out of
+Range`. Record only the on state and you cannot tell whether focus was actually
+held. **Both must be recorded.**
 
 ---
 
-## E. 방법론
+## E. Methodology
 
-### E1. 선례를 그대로 목표로 삼으면 안 된다 🔴
+### E1. Do not take a precedent as the target 🔴
 
-"지난번에 이렇게 찍었으니 이렇게 하자"는 **과거의 실수를 복제한다.**
+"We shot it this way last time, so let's do that" **replicates past mistakes.**
 
-예: DEX647 추적 선례의 duty cycle이 88%였다 → 모션블러 편향 29%.
-이걸 목표로 삼으면 편향을 대물림한다.
+Example: the DEX647 tracking precedent ran an 88% duty cycle → 29% motion blur
+bias. Take that as the target and the bias is inherited.
 
-**선례는 출발점이고, 물리 게이트가 심판이다.**
+**Precedent is the starting point; the physics gates are the judge.**
 → [03 §6](03-cross-system-transfer.md)
 
-### E2. `BLOCKED`와 `FAIL`은 다르다 🟡
+### E2. `BLOCKED` and `FAIL` are different 🟡
 
-- `FAIL` — 이 설정은 물리적으로 나쁘다 → **설정을 바꾼다**
-- `BLOCKED` — 판정할 근거가 없다 → **측정하거나 데이터시트를 찾는다**
+- `FAIL` — this setting is physically bad → **change the setting**
+- `BLOCKED` — there is no basis to judge → **measure it or find the datasheet**
 
-둘을 뭉뚱그리면 "게이트가 자꾸 막네" 하고 끄게 된다.
+Blur the two and the reaction becomes "the gate keeps blocking me" — then it
+gets turned off.
 
-### E3. 카탈로그 값으로 계산한 PASS는 PASS가 아니다 🔴
+### E3. A PASS computed from catalog values is not a PASS 🔴
 
-차단(OD)과 크로스토크는 스펙트럼의 **먼 날개**에서 결정된다.
-파라메트릭 근사는 정확히 거기서 쓸모없다. 피크 위치만 맞다.
+Blocking (OD) and crosstalk are decided in the **far wings** of the spectra.
+A parametric approximation is useless exactly there. Only the peak position is
+right.
 
-→ `Verdict.evidence`로 강제. `PASS` + `assumed` = `advances: NO`
+→ Enforced through `Verdict.evidence`. `PASS` + `assumed` = `advances: NO`
 
-### E4. 이진 판정은 게이트를 무력화한다 🟡
+### E4. A binary verdict disables the gate 🟡
 
-측정 한계에서 찍어야 하는 실험이 실재한다. `FAIL`만 내면 사람이 게이트를 끈다.
+Experiments that must be shot at the measurement limit do exist. Return only
+`FAIL` and the human turns the gate off.
 
-**난이도 등급 + 개선 제안**으로 대체했다.
-"이 실험은 HARD입니다. 진행 가능하되 이런 조건이 붙습니다.
-16-bit로 바꾸면 ×3.4 개선됩니다." → [05](05-consensus-gate.md)
+Replaced with **difficulty grade + improvement proposals**.
+"This experiment is HARD. You may proceed, with these conditions attached.
+Switching to 16-bit improves it ×3.4." → [05](05-consensus-gate.md)
 
-### E5. 개선안도 게이트를 다시 통과해야 한다 🟡
+### E5. An improvement has to pass the gates again 🟡
 
-- 광량 2배 → SNR ×1.4, **표백 dose 2배** (G10 재확인)
-- binning 2×2 → SNR ×2, **유효픽셀 110→220 nm** (추적이면 G5 파괴)
-- 16-bit 전환 → 잡음 ×0.29, **최대 fps 감소** (G9 재확인)
+- 2× light → SNR ×1.4, **2× bleaching dose** (recheck G10)
+- 2×2 binning → SNR ×2, **effective pixel 110→220 nm** (destroys G5 if tracking)
+- switch to 16-bit → noise ×0.29, **max fps drops** (recheck G9)
 
-**공짜 개선은 없다.** 민감도 분석은 반드시 부작용을 함께 낸다.
-
----
-
-## 심각도 범례
-
-🔴 결과가 틀리거나 실험이 무의미해짐 — 반드시 대응
-🟡 품질·효율 손실, 또는 잘못된 해석 위험
-🟢 알아두면 좋음
+**No improvement is free.** A sensitivity analysis must always report the side
+effects along with the gain.
 
 ---
 
-## 아직 아무도 안 잡는 것
+## Severity legend
 
-게이트가 없어서 **현재 놓치고 있는** 항목:
+🔴 The result is wrong or the experiment becomes meaningless — must be addressed
+🟡 Loss of quality or efficiency, or risk of misinterpretation
+🟢 Good to know
 
-| 항목 | 담당 예정 |
+---
+
+## Nothing catches these yet
+
+Items **currently missed** because no gate exists:
+
+| Item | Owner |
 |---|---|
-| A1 픽셀 교정 부재 | 렌즈 6 |
-| C1 despeckle 후처리 | 렌즈 6 |
-| C4 C5 프레임 드랍 | 렌즈 3 (G12 G13) |
-| C6 표본화 | 렌즈 2 (G5) |
-| D1 모션블러 | 렌즈 2 (G8) |
-| D2 광구동 | 렌즈 5 |
-| D3 표지의 시료 섭동 | 렌즈 5 |
-| D5 굴절률 부정합 | 렌즈 4 |
-| D6 광집게 가열 | 렌즈 7 |
+| A1 missing pixel calibration | Lens 6 |
+| C1 despeckle post-processing | Lens 6 |
+| D2 light-driven perturbation | Lens 5 |
+| D3 sample perturbation by the label | Lens 5 |
+| D5 refractive-index mismatch | Lens 4 |
+| D6 tweezers heating | Lens 7 |
