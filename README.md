@@ -1,60 +1,76 @@
 # experimentalist
 
-실험을 구상하고 현미경 설정을 제안하는 에이전트.
+An agent that designs experiments and proposes microscope settings.
 
-과거에 촬영한 현미경 메타데이터와 하드웨어 스펙을 지식베이스로 만들고, 새 실험의
-목적을 입력하면 **현재 장비에서 실행 가능한 설정**을 근거와 함께 제안한다.
-제안은 광학·콜로이드·하드웨어·이론 네 관점의 검토를 모두 통과해야 확정된다.
-
----
-
-## 현재 상태
-
-**설계 완료 + 계산 렌즈 4개(1·2·3·7) 구현.** 설계 문서 9편, 광학계·검출계·
-전산자원 세 위원 모두 동작(테스트 26+33+19개), 광집게 위원회 게이트까지
-연결(테스트 42개, 2026-08-10). 렌즈 2(`detection/`)·3(`compute/`)은 2026-08-11에
-렌즈 1과 같은 전체 스키마(`feasibility` 등급 포함)로 구현됨. 판단 렌즈
-4·5·6·8(사람/광표백/측정타당성/기계환경)은 아직 미구현이고, 지금 막혀
-있는 것은 대부분 코드가 아니라 **사실**이다 — 게이트는 돌아가는데 계산할
-입력(조명 광량이 최우선)이 없어서 `BLOCKED`을 낸다.
-남은 하드웨어 실측 중 조명 광량을 뺀 나머지는 [`calibration/`](calibration/)에
-실행 스크립트가 준비되어 있다. → [Phase 0](docs/07-roadmap.md)
-
-구현 착수 전에 [주의할 점](docs/06-pitfalls.md)을 먼저 읽을 것.
+It builds a knowledge base from past microscope metadata and hardware specs;
+given the goal of a new experiment, it proposes **settings that are executable on
+the current instrument**, with the reasoning attached. A proposal is confirmed
+only once it passes review by every subsystem lens of the committee — optics,
+detection, compute resources, sample geometry, photo-perturbation, and
+measurement validity, plus optical tweezers and mechanical/environmental when
+those apply.
 
 ---
 
-## 문서 지도
+## Current status
 
-| 문서 | 내용 |
+**Design complete; the four computational lenses (1 · 2 · 3 · 7) are
+implemented.** Nine design documents, with the optics, detection, and compute
+lenses all functional and the optical-tweezers lens wired through to its
+committee gate. The three judgment lenses (4 · 5 · 6 — sample geometry,
+photo-perturbation, measurement validity) exist as LLM subagent drafts in
+[`.claude/agents/`](.claude/agents/) with no code behind them yet; lens 8
+(mechanical/environmental) has not been started.
+
+What is blocking progress is mostly **facts, not code** — the gates run, but
+return `BLOCKED` for want of measured inputs. Illumination power at the sample is
+the top blocker: `power_at_sample_mw` is empty for every registered light source,
+and it cannot be substituted by code (a power meter is required). The remaining
+hardware measurements have runnable scripts in
+[`calibration/`](calibration/), and results already collected are in
+[`kb/calibrations/`](kb/calibrations/). → [Phase 0](docs/07-roadmap.md)
+
+Read [the pitfalls](docs/06-pitfalls.md) before starting any implementation.
+
+---
+
+## Document map
+
+| Document | Contents |
 |---|---|
-| [01 아키텍처](docs/01-architecture.md) | 전체 설계도, 레이어, 5개 설계 원칙, 위원회 구성, 폴더 구조 |
-| [02 지식베이스](docs/02-knowledge-base.md) | 3-tier 정규화, **장치 연결상태 3자 대조**, 장부 밖 설정, SQLite 스키마 |
-| [03 시스템 간 이전](docs/03-cross-system-transfer.md) | 현재 장비 ≠ 과거 장비. 무엇이 이전되고 무엇이 안 되는가 |
-| [04 결정 엔진](docs/04-decision-engine.md) | 결정 순서, 광자수지·SNR·표본화·타이밍 계산식, 하드 게이트 14개 |
-| [05 위원회](docs/05-consensus-gate.md) | hard/bias/soft 구분, **난이도 등급**, **개선 제안(민감도 분석)**, 교착 처리 |
-| [06 주의할 점](docs/06-pitfalls.md) | 이 데이터·이 과학에서 실제로 틀리기 쉬운 것 — 실측 근거 |
-| [07 로드맵](docs/07-roadmap.md) | Phase 0(근거 확보) → 5(조작 자동화). 지금 당장 가치 나오는 것 3가지 |
-| [08 광학계 렌즈 설계](docs/08-optical-path-spec.md) | 검토위원 계산 구조(체크 레지스트리), 하드웨어 YAML 기술 형식 |
-| [09 전문성 포착](docs/09-knowledge-capture.md) | **대화에서 지식을 뽑아 KB로.** 이 프로젝트의 진짜 목적 |
-| [관찰된 시스템](reference/observed-systems.md) | ⚠ **구 셋업** 인벤토리. 메타데이터 2,343건 전수 스캔 |
-| [Nikon 구매 견적서 (2024-09-29)](reference/quotes/2024-09-29_nikon-quote-REDACTED_ti2e-csuw1_takatori.md) | Ti2E+CSU-W1 최초 견적. 부품번호 다수가 현재 시스템과 대조됨 |
+| [01 Architecture](docs/01-architecture.md) | Overall design, layers, 5 design principles, committee composition, folder structure |
+| [02 Knowledge base](docs/02-knowledge-base.md) | 3-tier normalization, **three-way device wiring cross-check**, off-ledger settings, SQLite schema |
+| [03 Cross-system transfer](docs/03-cross-system-transfer.md) | Current instrument ≠ past instrument. What transfers and what does not |
+| [04 Decision engine](docs/04-decision-engine.md) | Decision order, photon budget / SNR / sampling / timing formulas, the 14 hard gates |
+| [05 Committee](docs/05-consensus-gate.md) | hard/bias/soft distinction, **difficulty grades**, **improvement proposals (sensitivity analysis)**, deadlock handling |
+| [06 Pitfalls](docs/06-pitfalls.md) | What actually goes wrong in this data and this science — grounded in measured evidence |
+| [07 Roadmap](docs/07-roadmap.md) | Phase 0 (secure the evidence) → 5 (automate manipulation). Three things that pay off immediately |
+| [08 Optics lens design](docs/08-optical-path-spec.md) | Reviewer computation structure (check registry), hardware YAML description format |
+| [09 Expertise capture](docs/09-knowledge-capture.md) | **From conversation into the KB.** The real purpose of this project |
+| [Observed systems](reference/observed-systems.md) | ⚠ **Old setup** inventory. Full scan of 2,343 metadata records |
+| [Nikon quote (2024-09-29)](reference/quotes/2024-09-29_nikon-quote-REDACTED_ti2e-csuw1_takatori.md) | Original Ti2E+CSU-W1 quote. Many part numbers cross-checked against the current system |
 
-**코드**: [`optics/`](optics/) — 위원회 렌즈 1(광학계). 구현 완료, 테스트 26개 통과.
-[`detection/`](detection/) — 렌즈 2(검출계, G5–G9), 구현 완료(2026-08-11),
-테스트 33개. [`compute/`](compute/) — 렌즈 3(전산자원, G12–G13), 구현
-완료(2026-08-11), 테스트 19개. [`trapping/`](trapping/) — 렌즈 7(광집게),
-물리 라이브러리 + 위원회 게이트 연결 완료(2026-08-10), 테스트 42개. 남은 건
-다이얼%→mW 실측 캘리브레이션뿐. 판단 렌즈(4·5·6·8)는 미구현이고 계산식은
-04에 정리되어 있다.
+**Code**
+
+| Module | Lens | Status |
+|---|---|---|
+| [`optics/`](optics/) | 1 · optics | Implemented |
+| [`detection/`](detection/) | 2 · detection (G5–G9) | Implemented |
+| [`compute/`](compute/) | 3 · compute resources (G12–G13) | Implemented |
+| [`trapping/`](trapping/) | 7 · optical tweezers (G14) | Physics library + committee gate wired. Remaining: measured dial-% → mW calibration |
+| [`.claude/agents/`](.claude/agents/) | 4 · 5 · 6 | LLM subagent drafts, no code |
+
+The formulas for the unimplemented lenses are collected in
+[04](docs/04-decision-engine.md).
 
 ```bash
 .venv\Scripts\python -m optics.cli check config/channels/proposed-2color.yaml
 ```
 
-[`calibration/`](calibration/) — Phase 0 하드웨어 실측 스크립트(디스크 대역폭·카메라
-행 시간·EM1/EM2 카메라 판별). 마이크로스코프 PC 재연결 시 실행하도록 준비됨,
-조명 광량만 예외(파워미터 실측 필요, 코드로 대체 불가).
+[`calibration/`](calibration/) — Phase 0 hardware measurement scripts (disk
+bandwidth, camera row time, EM1/EM2 camera identification). Ready to run on
+reconnecting to the microscope PC. Illumination power is the one exception: it
+needs a power meter and cannot be replaced by code.
 
 ```bash
 .venv\Scripts\python -m calibration.cli disk-bandwidth D:\data\_bench --size-gb 4
@@ -62,41 +78,51 @@
 
 ---
 
-## 이 프로젝트가 푸는 문제
+## The problem this project solves
 
-일반적인 "현미경 설정 추천 챗봇"과 다른 점 세 가지.
+Three things set it apart from a generic "microscope settings recommendation
+chatbot."
 
-**1. 과거 설정을 그대로 복사할 수 없다.**
-`D:\data`의 2,343건은 특정 Nikon + Photometrics 조합에서 나왔고, 현재 운용 중인
-시스템은 그것과 다르다. 따라서 `Exposure=80ms, Level=5` 같은 장치값은 이전 불가능하다.
-이전 가능한 것은 그 설정이 만들어낸 **물리량**(샘플면 광자속, 유효 픽셀 크기, 여기/방출
-대역, 광자 예산)이다. 물리량으로 환산 → 현재 장비로 재투영하는 것이 이 시스템의 축이다.
+**1. Past settings cannot be copied verbatim.**
+The 2,343 records in `D:\data` came from one particular Nikon + Photometrics
+combination, and the system in use now is different. So device values like
+`Exposure=80ms, Level=5` are not transferable. What is transferable are the
+**physical quantities** that setting produced — photon flux at the sample,
+effective pixel size, excitation/emission bands, photon budget. Converting to
+physical quantities and reprojecting onto the current instrument is the axis of
+this system.
 → [03](docs/03-cross-system-transfer.md)
 
-**2. 조명은 측정 도구가 아니라 실험 변수일 수 있다.**
-광구동 능동 콜로이드, FRAP, 광유도 응집 같은 계에서 여기광은 시료를 **구동한다**.
-"SNR을 위해 광량을 올린다"는 순수 광학적으로는 옳지만 콜로이드 관점에서는 실험을
-망칠 수 있다. 이 충돌을 잡아내려고 관점을 나눈다.
+**2. Illumination can be an experimental variable, not a measurement tool.**
+In systems like light-driven active colloids, FRAP, or photo-induced
+aggregation, the excitation light **drives** the sample. "Raise the light for
+SNR" is correct in purely optical terms and can ruin the experiment in colloidal
+terms. The lenses are separated to catch that conflict.
 → [05](docs/05-consensus-gate.md)
 
-**3. 최적 설정은 분석 목적에 종속된다.**
-같은 시료라도 형태 관찰이냐 입자 추적이냐에 따라 최적 픽셀 크기와 노출시간이
-**반대 방향**으로 간다. Nyquist를 기계적으로 적용하면 마이크로레올로지에서 틀린 답이 나온다.
+**3. The optimal setting depends on the analysis goal.**
+For the same sample, the optimal pixel size and exposure time run in **opposite
+directions** depending on whether you are observing morphology or tracking
+particles. Applying Nyquist mechanically gives the wrong answer for
+microrheology.
 → [06 §1](docs/06-pitfalls.md)
 
 ---
 
-## 사용 자료
+## Sources used
 
-| 자료 | 위치 | 상태 |
+| Source | Location | Status |
 |---|---|---|
-| Micro-Manager 획득 메타데이터 2,343건 | `D:\data\**\*_metadata.txt` | 확보 (30 GB) |
-| ND2 / LIF (Nikon·Leica 별도 시스템) | `D:\data\**\*.nd2`, `*.lif` | 확보, 파서 미구현 |
-| 실험 프로토콜 | `D:\experiment method` | 확보, 미연동 |
-| 분석 코드 | `D:\codes` | 확보, 미연동 |
-| **현재 시스템 MM `.cfg`** | `kb/systems/current.md` | 확보 (`DMD_dualcam.cfg`, 2026-07-03) — 시리얼 대부분 미확보 |
-| 픽셀 크기 실측 교정 | `kb/systems/current.md` | 확보 (Kinetix, 4x~100x × 1x/1.5x, 2025-04) |
-| **하드웨어 스펙 문서** | 위치 미지정 | **미확보** |
+| Micro-Manager acquisition metadata, 2,343 records | `D:\data\**\*_metadata.txt` | Obtained (30 GB) |
+| ND2 / LIF (separate Nikon and Leica systems) | `D:\data\**\*.nd2`, `*.lif` | Obtained, parser not implemented |
+| Experiment protocols | `D:\experiment method` | Obtained, not yet integrated |
+| Analysis code | `D:\codes` | Obtained, not yet integrated |
+| **Current system MM `.cfg`** | `kb/systems/current.md` | Obtained (`DMD_dualcam.cfg`, 2026-07-03) — most serials not yet obtained |
+| Measured pixel size calibration | `kb/systems/current.md` | Obtained (Kinetix, 4x–100x × 1x/1.5x, 2025-04) |
+| Camera row time, disk bandwidth | `kb/calibrations/` | Obtained (2026-08-12) |
+| **Illumination power at sample** | `data/light_sources.yaml` | **Not obtained — top blocker** |
+| **Hardware spec documents** | Location unspecified | **Not obtained** |
 
-현재 작업 PC와 현미경 PC가 분리되어 있어, 라이브 연결은 범위 밖이다.
-지금은 오프라인 추천만 만든다. → [07](docs/07-roadmap.md)
+The working PC and the microscope PC are separate, so a live connection is out of
+scope. For now this produces offline recommendations only.
+→ [07](docs/07-roadmap.md)
