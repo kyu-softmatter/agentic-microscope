@@ -183,7 +183,7 @@ FAIL is already a fix instruction.
 | 1 | **Optics** | Filters, dichroics, mirrors, ND, objective, light path | Spectral integration → fully deterministic | `optics/` ✅ |
 | 2 | **Detection** | Exposure, binning, ROI, readout, gain, frame interval | Photon budget, SNR, sampling → deterministic | `detection/` ✅ |
 | 3 | **Compute resources** | Frame rate, buffer, storage, processing | Bandwidth and capacity arithmetic → deterministic | `compute/` ✅ |
-| 4 | **Sample geometry & optics** | Objective choice, immersion, coverslip, focal depth | Refractive index, WD, aberration → semi-deterministic | `.claude/agents/sample-optics.md` (draft, no code) |
+| 4 | **Sample geometry & optics** | Objective choice, immersion, coverslip, focal depth | Refractive index, WD, aberration → semi-deterministic | `sample/` ✅ (G15–G19) + `.claude/agents/sample-optics.md` for the qualitative half |
 | 5 | **Photo-perturbation** | Light level, illumination duty, total dose | Bleaching, heating, light-driving → semi-deterministic | `.claude/agents/photo-perturbation.md` (draft, no code) |
 | 6 | **Measurement validity** | Whether all of the above yields the intended physical quantity without bias | Bias computation + qualitative | `.claude/agents/measurement-validity.md` (draft, no code) |
 

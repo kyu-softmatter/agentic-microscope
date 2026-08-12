@@ -248,10 +248,12 @@ class LensVerdict:
   differences → drop detection. Applicable to the existing archive today
 - **Implementation**: `compute/gate.py`
 
-### Lens 4 · Sample geometry & optics — agent draft, no code
+### Lens 4 · Sample geometry & optics — implemented
 
 - **Owns**: objective choice, immersion, coverslip thickness, imaging depth,
   chamber
+- **Gates**: G15 (NA feasibility) G16 (working distance) G17 (refractive-index
+  mismatch) G18 (coverslip thickness) G19 (count in field · overlap)
 - **Key questions**
   - Refractive-index matching: immersion / coverslip / medium / sample
   - Imaging depth × RI mismatch → spherical aberration, focal shift
@@ -265,7 +267,21 @@ class LensVerdict:
   - [ ] Is this an objective with a correction collar, and was it adjusted
   - [ ] Does the imaging depth exceed 10 µm (if so, aberration must be
         quantified)
-- **Implementation**: `.claude/agents/sample-optics.md`
+- **Specialty**: catches a physical impossibility nothing else does — G15 refuses
+  an objective used in the wrong immersion medium.
+  `optics.components.Objective.collection_efficiency` clamps that case with
+  `min(na/n, 1.0)` and returns a plausible collection efficiency instead
+- **⚠ G17 is a screening heuristic**, not wave optics. It gates on the
+  `depth × |Δn|` product (limit 1.85 µm, anchored on this checklist's own 10 µm
+  trigger at the oil-into-water mismatch of 0.185) and reports the paraxial
+  focal-shift ratio. It decides whether a real aberration calculation is owed;
+  it is not that calculation, and the ratio is not a correction factor
+- **Remaining**: measured sample-medium refractive index (the default 1.333 is
+  assumed, so verdicts do not advance); per-phase RI for ATPS, which currently
+  BLOCKs by design
+- **Implementation**: `sample/gate.py`, plus
+  `.claude/agents/sample-optics.md` for the qualitative half (chamber, sample
+  concentration judgement, multiple scattering)
 
 ### Lens 5 · Photo-perturbation — agent draft, no code
 

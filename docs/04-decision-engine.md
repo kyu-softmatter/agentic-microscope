@@ -405,6 +405,14 @@ All decided in code. If even one fails, the proposal is void.
 | G12 | Data rate | `< 0.7 ×` disk bandwidth | measured disk bandwidth | measurement required |
 | G13 | Buffer | `≥ 5 seconds' worth` | RAM, frame size | computable |
 | G14 | Tweezers sampling | `f_s ≥ 10 f_c` | κ, viscosity, particle radius | BLOCKED |
+| G15 | NA feasibility | `NA ≤ n_immersion` | NA, immersion medium | BLOCKED |
+| G16 | Working distance | free WD `≥` imaging depth | WD, imaging depth, coverslip | BLOCKED |
+| G17 | Refractive-index mismatch | `depth × \|Δn\| ≤ 1.85 µm` (screening) | immersion n, medium n, depth | BLOCKED |
+| G18 | Coverslip thickness | `\|actual − design\| ≤ 5 µm`, or collar adjusted | coverslip thickness | assumed (design value) |
+| G19 | Count in field · overlap | nearest neighbour `≥ 3 ×` resolution | concentration, field size, λ_em | skipped (INFO) |
+
+G15–G19 are lens 4's, and the numbers are new — this table previously stopped
+at G14 because lens 4 had no gate IDs at all.
 
 **`BLOCKED` is not `FAIL`.** FAIL means "this setting is physically bad";
 BLOCKED means "there is no basis on which to decide." Neither advances to the
@@ -428,3 +436,4 @@ next step, but the action differs: FAIL means change the setting, BLOCKED means
 | §7 statistical power (G11) | | ❌ |
 | §8 compute resources (G12, G13) | `compute.gate.evaluate` | ✅ covered by tests (2026-08-11) |
 | §9 tweezers (G14) | `trapping.gate.evaluate` (corner frequency → required fps) | ✅ covered by tests |
+| sample geometry (G15–G19) | `sample.gate.evaluate` (RI mismatch, WD, coverslip, overlap) | ✅ covered by tests (2026-08-12) |
