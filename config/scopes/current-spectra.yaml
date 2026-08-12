@@ -1,16 +1,19 @@
-# 시스템 프로파일 — 와이드필드 LED-epi 조명 (Lumencor SpectraIII / MM 장치명
-# LightEngine), MXR00724 5-band 큐브를 통과해 CSU-W1 유닛(내부 다이크로익
-# "on" 고정 + 스플리터 + EM1/EM2)까지 가는 경로.
+# System profile — widefield LED-epi illumination (Lumencor SpectraIII / MM
+# device name LightEngine), through the MXR00724 5-band cube to the CSU-W1
+# unit (internal dichroic fixed "on" + splitter + EM1/EM2).
 #
-# 출처: kb/systems/current.md > light_paths > widefield-spectra3 (2026-08-10
-# 사용자 구술로 확보). config/scopes/current-laser.yaml과의 차이는 딱 하나 —
-# 광원과, 그 광원이 지나는 고정 큐브(MXR00724 여기/다이크로익/방출) 뿐이다.
-# 그 뒤(스플리터~EM1/EM2~카메라)는 모든 광원이 공유하는 동일한 하드웨어다.
+# Source: kb/systems/current.md > light_paths > widefield-spectra3 (obtained
+# 2026-08-10 by user dictation). Exactly one thing differs from
+# config/scopes/current-laser.yaml — the light source, and the fixed cube it
+# passes through (MXR00724 excitation/dichroic/emission). Everything after
+# that (splitter~EM1/EM2~cameras) is the same hardware every light source
+# shares.
 #
-# 참고: DMD(패턴 조명, 파장선택 없음)와 LappMainBranch1(브랜치 미러, 광량
-# 배분만 바꾸고 스펙트럼엔 영향 없음)은 여기서 다루지 않는다 — 둘 다
-# "어느 파장이 통과하는가"엔 관여하지 않으므로 이 스크리닝에 넣을 이유가
-# 없다(kb/systems/current.md 해당 노트 참고).
+# Note: the DMD (pattern illumination, no wavelength selection) and
+# LappMainBranch1 (branch mirror, changes only the light-level split with no
+# spectral effect) are not covered here — neither has any part in "which
+# wavelengths pass", so there is no reason to put them in this screening
+# (see the relevant notes in kb/systems/current.md).
 
 scope:
   name: current-spectra
@@ -20,19 +23,21 @@ scope:
 
   source:
     device: LightEngine # data/light_sources.yaml#LightEngine (registry: SpectraIII)
-    # 다이어그램 판독값, fwhm/실측파워 없음 — kb/systems/current.md 참고.
-    # 실제로 이 중 몇 개가 MXR00724-EX를 통과하는지는 스크리닝 계산이 알려준다.
+    # Read off the diagram, no fwhm or measured power — see kb/systems/current.md.
+    # How many of these actually pass through MXR00724-EX is what the
+    # screening calculation tells you.
     lines: ["365", "440", "488", "514", "561", "594", "640"]
 
-  # MXR00724 큐브 — 현재 FilterTurret1에 설치된 유일한 큐브라 고정으로 취급.
-  # (개별 교체 가능하다고 정정했지만(2026-08-10), "지금 뭐가 꽂혀 있는가"는
-  # 이거 하나뿐이다.)
+  # MXR00724 cube — the only cube currently installed in FilterTurret1, so it
+  # is treated as fixed. (Corrected 2026-08-10 to note that it is individually
+  # replaceable, but "what is plugged in right now" is only this one.)
   excitation: ["MXR00724-EX"]
   dichroic: "MXR00724-DM"
-  emission_fixed: ["MXR00724-EM"] # 큐브 자체의 5-band 방출필터, 항상 경로에 있음
+  emission_fixed: ["MXR00724-EM"] # the cube's own 5-band emission filter, always in the path
 
-  # 이 아래는 config/scopes/current-laser.yaml과 동일 — CSU-W1 스플리터
-  # 이후 공유 하드웨어. current-laser.yaml의 주석 참고.
+  # Everything below is identical to config/scopes/current-laser.yaml — shared
+  # hardware from the CSU-W1 splitter onward. See the comments in
+  # current-laser.yaml.
   emission_filters:
     - "88000v2-EM"
     - "EM1-455/50"

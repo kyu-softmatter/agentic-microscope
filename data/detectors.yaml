@@ -1,9 +1,10 @@
 # Detector registry.
 #
-# `qe_curve` 는 {파장: QE} 매핑이거나 data/spectra/ 아래 2열 파일 경로.
-# QE 곡선이 없으면 `qe_peak` 평탄값으로 대체되고, 게이트는 confidence를
-# low로 낮춘다. 647 nm 대역에서 BSI sCMOS의 QE는 피크 대비 20-30% 떨어지므로
-# 평탄 근사는 적색 채널에서 특히 낙관적이다.
+# `qe_curve` is either a {wavelength: QE} mapping or a path to a 2-column file
+# under data/spectra/. Without a QE curve the flat `qe_peak` value is used instead
+# and the gate drops confidence to low. In the 647 nm band the QE of a BSI sCMOS
+# falls 20-30% below peak, so the flat approximation is especially optimistic in
+# the red channel.
 
 detectors:
 
@@ -14,35 +15,39 @@ detectors:
     sensor_px: [3200, 3200]
     pixel_um: 6.5
     type: "back-illuminated sCMOS"
-    shutter: rolling   # "Effective Global Shutter" 모드도 지원 (데이터시트, 아래 modes 참고)
+    shutter: rolling   # also supports "Effective Global Shutter" mode (datasheet, see modes below)
     qe_peak: 0.95
-    full_well_e: null   # ⚠ 데이터시트(3쪽)에 자체가 없음. Prime95B처럼 메타데이터 실측값도
-                         # 아직 없음 — 다른 카메라 스펙을 빌려오지 않는다(파일 헤더 원칙과 동일).
-    dark_e_per_s: null   # ⚠ 위와 동일 이유로 미확인.
-    read_noise_e: null   # ⚠ 모드별로 1.2~2.0 e- 사이(아래 modes). 실제 랩이 어느 모드를
-                          # 쓰는지 미확인이라 대표값 하나를 임의로 못 고른다.
+    full_well_e: null   # ⚠ absent from the datasheet (p. 3) entirely. No Prime95B-style
+                         # measured value from metadata either — we do not borrow another
+                         # camera's spec (same principle as the file header).
+    dark_e_per_s: null   # ⚠ unconfirmed for the same reason as above.
+    read_noise_e: null   # ⚠ between 1.2~2.0 e- depending on mode (modes below). Which mode
+                          # the lab actually uses is unconfirmed, so one representative
+                          # value cannot be picked arbitrarily.
     verified: true
     verified_date: 2026-08-10
     source: "Photometrics Kinetix sCMOS Camera Datasheet, Rev A0-09152020 (Teledyne Photometrics, teledynevisionsolutions.com)"
     note: >
-      ⚠ kb/systems/current.md의 두 카메라(Kinetix_red/Kinetix_blue) 라벨은
-      "Kinetix"이고 "Kinetix22"가 아니다. Nikon 견적서(2024-09-29, #REDACTED)는
-      Kinetix22+Prime95B 구성이었지만 실제 설치는 Kinetix x2로 바뀐 것으로
-      보인다(대조는 reference/quotes/2024-09-29_..._takatori.md 참고) — 발주
-      변경인지 이후 교체인지는 미확인. 이 항목은 표준 Kinetix
-      (3200x3200, 20.8x20.8mm, 6.5um)이고 Kinetix22(5.7MP, 15.6x15.6mm)와는
-      스펙이 다르므로 혼용하지 말 것.
+      ⚠ The two cameras in kb/systems/current.md (Kinetix_red/Kinetix_blue) are
+      labeled "Kinetix", not "Kinetix22". The Nikon quote (2024-09-29, #REDACTED)
+      was a Kinetix22+Prime95B configuration, but the actual installation appears
+      to have changed to Kinetix x2 (for the cross-check see
+      reference/quotes/2024-09-29_..._takatori.md) — whether this was an order
+      change or a later replacement is unconfirmed. This entry is the standard
+      Kinetix (3200x3200, 20.8x20.8mm, 6.5um) and its specs differ from
+      Kinetix22 (5.7MP, 15.6x15.6mm), so do not mix the two up.
 
-      Prime95B는 현재 시스템에서 사용하지 않는다(2026-08-10 사용자 확인) —
-      config/channels/proposed-2color.yaml·legacy-observed.yaml의 Prime95B는
-      과거/예시 참조용으로만 남겨둔 것이고 이 항목과 무관하다.
+      Prime95B is not used in the current system (2026-08-10 user confirmation) —
+      the Prime95B in config/channels/proposed-2color.yaml·legacy-observed.yaml is
+      kept only as a historical/example reference and is unrelated to this entry.
 
-      인터페이스(PCI-Express vs USB3.2)에 따라 프레임레이트가 5배 이상
-      갈린다(아래 modes) — 실제 랩 PC가 어느 인터페이스로 연결됐는지
-      미확인. PVCAM 장치 속성이나 케이블/카드 확인 필요.
+      Frame rate differs by more than 5x depending on the interface (PCI-Express
+      vs USB3.2) (modes below) — which interface the actual lab PC is connected
+      through is unconfirmed. Check the PVCAM device properties or the cable/card.
 
-    # 데이터시트 "Camera Modes" 표 그대로. bit_depth·read_noise·frame_rate가
-    # 세 모드에서 함께 바뀌므로(Prime95B와 동일하게) 하나로 묶어서 등록.
+    # Straight from the datasheet "Camera Modes" table. bit_depth, read_noise and
+    # frame_rate change together across the three modes (as with Prime95B), so they
+    # are registered as a single block.
     modes:
       Speed:
         bit_depth: 8
@@ -50,37 +55,39 @@ detectors:
         cooling_c: 5
         line_time_us: 0.625
         frame_rate_fps_full_frame: {pcie: 500, usb: 83}
-        note: "최고속. 세 모드 중 read noise가 가장 높다(2.0 e-)."
+        note: "Fastest. Highest read noise of the three modes (2.0 e-)."
       Sensitivity:
         bit_depth: 12
         read_noise_e: 1.2
         cooling_c: 0
         line_time_us: 3.53125
         frame_rate_fps_full_frame: {pcie: 88, usb: 38}
-        note: "CMS(correlated multi-sampling)로 read noise 최저. 속도를 희생."
+        note: "Lowest read noise via CMS (correlated multi-sampling). Sacrifices speed."
       DynamicRange:
         bit_depth: 16
         read_noise_e: 1.6
         cooling_c: 0
         line_time_us: 3.749
         frame_rate_fps_full_frame: {pcie: 83, usb: 34}
-        note: "16비트. full well 미확인이라 실제 다이내믹레인지 수치는 계산 불가."
+        note: "16-bit. full well unconfirmed, so the actual dynamic range cannot be computed."
 
-    # ROI를 좁힐 때 프레임레이트가 어떻게 올라가는지 — 트랩 비드 트래킹처럼
-    # 좁은 관심영역으로 대역폭을 끌어올리는 경우에 참고 (트랩 위치검출
-    # 대역폭 논의는 kb/systems/current.md > light_paths > optical-tweezers
-    # 및 이전 대화 참고). 전부 데이터시트 Frame Rate 표, Speed(8bit) 모드 기준.
+    # How the frame rate rises as the ROI is narrowed — for reference when pushing
+    # bandwidth up with a narrow region of interest, as in trapped-bead tracking
+    # (for the trap position-detection bandwidth discussion see
+    # kb/systems/current.md > light_paths > optical-tweezers and earlier
+    # conversations). All from the datasheet Frame Rate table, Speed (8bit) mode.
     frame_rate_by_roi_fps:
-      note: "행(row) 수를 줄인 ROI. 열은 3200 고정. PCI-E / USB 순서."
+      note: "ROI with reduced row count. Columns fixed at 3200. PCI-E / USB order."
       "3200x3200": {pcie: 500, usb: 83}
       "3200x2304": {pcie: 694, usb: 115}
       "3200x2048": {pcie: 781, usb: 129}
       "3200x1600": {pcie: 1000, usb: 166}
 
-    # 그래프(데이터시트 3쪽)를 눈으로 읽은 근사값 — 실측 디지타이즈가 아니다.
-    # Prime95B qe_curve와 동일한 수준의 근사(house style, qe_verified: false).
-    # 격자선(200/300/.../1100nm, 0/10/.../100%)만 기준으로 읽었고 그 사이
-    # 세부 굴곡(380-430nm 부근의 이중 피크 등)은 반영하지 않았다.
+    # Approximate values read off the graph (datasheet p. 3) by eye — not a measured
+    # digitization. Same level of approximation as the Prime95B qe_curve
+    # (house style, qe_verified: false). Read only against the grid lines
+    # (200/300/.../1100nm, 0/10/.../100%); fine structure in between (such as the
+    # double peak near 380-430nm) is not reflected.
     qe_curve:
       "200": 0.22
       "300": 0.30
@@ -98,13 +105,14 @@ detectors:
       "950": 0.20
       "1000": 0.13
       "1100": 0.05
-    qe_verified: false   # ⚠ 그래프 육안 판독. 정밀 계산 필요해지면 Photometrics에
-                          # 곡선 CSV/데이터 요청해서 교체할 것.
+    qe_verified: false   # ⚠ read off the graph by eye. If precise calculation becomes
+                          # necessary, request the curve CSV/data from Photometrics
+                          # and replace this.
 
   Prime95B:
     model: "Photometrics Prime 95B 25mm"
     vendor: Photometrics
-    aliases: [Pirme95B]          # ← MM config의 실제 오타. 20건.
+    aliases: [Pirme95B]          # ← actual typo in the MM config. 20 records.
     chip: GS144BSI
     sensor_px: [1608, 1608]
     pixel_um: 11.0
@@ -115,16 +123,18 @@ detectors:
     dark_e_per_s: 0.5
     verified: false
     note: >
-      ⚠ 1608x1608 배열이므로 표준 Prime 95B(18mm, 1200x1200)가 아니라
-      **25mm 버전**이다. pixel_um 11.0은 그 전제에서의 값이며 데이터시트
-      확인이 필요하다. 이 숫자가 틀리면 모든 공간·광도 계산이 함께 틀린다.
+      ⚠ A 1608x1608 array means this is not the standard Prime 95B (18mm,
+      1200x1200) but the **25mm version**. pixel_um 11.0 is the value under that
+      premise and needs datasheet confirmation. If this number is wrong, every
+      spatial and photometric calculation is wrong with it.
 
-      실측 확인된 것 (메타데이터):
+      Measured and confirmed (metadata):
         FullWellCapacity 62000 e-  (200MHz 12bit / Gain "1-Full well")
         Offset           100 ADU
-        CCDTemperature   -14.9 C (설정 -15)
+        CCDTemperature   -14.9 C (setpoint -15)
 
-    # 실제로 사용된 두 가지 모드만 등록. gain/readout/bitdepth는 상관되어 있다.
+    # Only the two modes actually used are registered. gain/readout/bitdepth are
+    # correlated.
     modes:
       HDR-16bit:
         readout_rate: "100MHz 16bit"
@@ -132,7 +142,7 @@ detectors:
         bit_depth: 16
         read_noise_e: 1.3
         full_well_e: 80000
-        note: "관찰 1,270건. 다이내믹레인지 우선"
+        note: "1,270 records observed. Dynamic range prioritized"
       FullWell-12bit:
         readout_rate: "200MHz 12bit"
         gain: "1-Full well"
@@ -140,9 +150,9 @@ detectors:
         read_noise_e: 1.6
         full_well_e: 62000
         note: >
-          관찰 1,069건. 속도 우선. 12bit이므로 ADU당 전자수가 커서
-          양자화 잡음이 read noise를 넘길 수 있다 —
-          약신호 정량에서는 16bit 모드가 유리하다.
+          1,069 records observed. Speed prioritized. Being 12bit, electrons per
+          ADU are large, so quantization noise can exceed read noise —
+          for weak-signal quantitation the 16bit mode is better.
 
     qe_curve:
       "400": 0.55
@@ -156,9 +166,9 @@ detectors:
       "800": 0.48
       "850": 0.33
       "900": 0.20
-    qe_verified: false     # ⚠ 데이터시트 곡선으로 교체할 것
+    qe_verified: false     # ⚠ replace with the datasheet curve
 
-    # ── 정량성에 직접 영향 ────────────────────────────────────────────────
+    # ── Directly affects quantitation ───────────────────────────────────
     post_processing:
       observed_state: enabled
       features:
@@ -167,7 +177,8 @@ detectors:
         - "PP 3 DESPECKLE DARK HIGH (threshold 80)"
         - "PP 4 (threshold 75, min ADU 200)"
       note: >
-        ⚠ 전 세대에서 PVCAM 온카메라 despeckle이 켜져 있었다.
-        픽셀값 선형성과 잡음 독립성을 깨뜨리므로 광도 정량과 서브픽셀
-        위치추정의 전제가 성립하지 않는다. 정량 실험에서는 꺼야 한다.
+        ⚠ PVCAM on-camera despeckle was enabled in every generation.
+        It breaks pixel-value linearity and noise independence, so the premises of
+        photometric quantitation and sub-pixel position estimation do not hold.
+        It must be turned off for quantitative experiments.
         (docs/06-pitfalls.md §4)

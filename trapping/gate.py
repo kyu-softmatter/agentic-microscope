@@ -1,8 +1,8 @@
 """The trapping lens: committee member #7 (conditional -- called only when
-optical tweezers are in use, docs/01-architecture.md "조건부 소집").
+optical tweezers are in use, docs/01-architecture.md "Conditional").
 
 Mirrors optics.gate's Phase 0 / Phase 1 / Phase 2 structure and Verdict
-schema (docs/08 "다른 렌즈에도 같은 구조를 쓴다"):
+schema (docs/08 "The same structure is used for the other lenses"):
 
     Phase 0   input availability -> BLOCKED if a required fact is missing
     Phase 1   every check runs and returns a margin

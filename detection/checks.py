@@ -447,12 +447,12 @@ GRADES: list[tuple[float, str]] = [
 ]
 
 GRADE_NOTES = {
-    "ROUTINE": "여유 있음. 실패하면 설정 탓이 아니다.",
-    "COMFORTABLE": "정상 범위.",
-    "TIGHT": "여유 없음. 시료 준비 품질이 결과를 좌우한다.",
-    "HARD": "한계에서 동작. 진행 가능하나 성공률과 재현성이 낮다.",
-    "MARGINAL": "데이터는 나오지만 해석에 큰 주의가 필요하다.",
-    "INFEASIBLE": "개선 없이는 불가능하다.",
+    "ROUTINE": "Comfortable headroom. If it fails, the settings are not to blame.",
+    "COMFORTABLE": "Normal range.",
+    "TIGHT": "No headroom. Sample preparation quality decides the outcome.",
+    "HARD": "Operating at the limit. May proceed, but low success rate and poor reproducibility.",
+    "MARGINAL": "Data comes out, but interpret with great care.",
+    "INFEASIBLE": "Impossible without improvement.",
 }
 
 

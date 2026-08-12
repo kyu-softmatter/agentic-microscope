@@ -1,7 +1,8 @@
 """Software laser-power dial (0-100%) -> incident power per trap.
 
 Two facts turn this from a placeholder into a real number, and neither is
-known yet (see docs/02-knowledge-base.md "수령 예정": "광집게 출력 실측"):
+known yet (see docs/02-knowledge-base.md "Pending": "Optical tweezers power
+measurement"):
 
 1. dial% -> watts at the sample / objective back-aperture -- a calibration
    curve that has to be measured with a power meter at a handful of dial
@@ -77,8 +78,9 @@ def power_per_trap(
 
     Splitting the beam into N traps divides the power among them -- this is
     not optional bookkeeping, it is the dominant effect of adding traps on
-    each trap's stiffness (see docs/05-consensus-gate.md lens 7: "다중 덫이면
-    출력 분배"). Returns a list of length ``n_traps``; with no ``weights`` it
+    each trap's stiffness (see docs/05-consensus-gate.md lens 7:
+    "Power splitting for multiple traps"). Returns a list of length
+    ``n_traps``; with no ``weights`` it
     is an ideal equal split, ``[P(dial)/N] * N``.
 
     ``weights`` are per-trap fractions of the total (e.g. measured per-order

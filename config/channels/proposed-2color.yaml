@@ -1,10 +1,11 @@
-# 2채널(488 / 647) 구성 제안 예시 — 스펙이 다 채워졌을 때 게이트가 어떤
-# 숫자를 내는지 보여주는 참조용.
+# Example 2-channel (488 / 647) proposal — a reference showing what numbers the
+# gate produces once the specs are all filled in.
 #
 #   python -m optics.cli check config/channels/proposed-2color.yaml
 #
-# 일부러 문제를 하나 심어두었다: 488 채널의 여기 경로에 편광자가 남아 있다.
-# 편광 실험이 아니므로 순손실이고, ablation 분석이 이를 "remove"로 잡아내야 한다.
+# One problem is planted on purpose: a polarizer is left in the 488 channel's
+# excitation path. Not a polarization experiment, so it is pure loss, and the
+# ablation analysis must catch it as "remove".
 
 channels:
   - name: "488"
@@ -17,7 +18,7 @@ channels:
       verified_na: true
     detector: Prime95B
     source: [Spectra, Cyan]
-    excitation: ["FF01-475/35", "Polarizer-Linear"]   # <- 남아 있는 편광자
+    excitation: ["FF01-475/35", "Polarizer-Linear"]   # <- the leftover polarizer
     dichroic: "Di03-R405/488/561/635"
     emission: ["FF01-525/45"]
     port_fraction: 1.0

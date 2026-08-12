@@ -1,7 +1,7 @@
 """Live Micro-Manager queries via pymmcore-plus.
 
 For the two Phase-0 items that need a live device connection rather than a
-one-off measurement: camera row time (``ReadoutTimeNs / ROI높이``) and which
+one-off measurement: camera row time (``ReadoutTimeNs / ROI height``) and which
 physical camera EM1/EM2 each feed (docs/07-roadmap.md, kb/systems/current.md
 "known_gaps"). Needs a working Micro-Manager 2.0 device-adapter install
 (``mmcore install``, or the lab's own MM2 setup) -- meant to run on the

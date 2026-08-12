@@ -1,6 +1,6 @@
 """Ray-optics verification of the GOA MATLAB trap-force model.
 
-Committee lens #7 in the making (docs/01-architecture.md "조건부 소집"), kept
+Committee lens #7 in the making (docs/01-architecture.md "Conditional"), kept
 deliberately narrow for now: a single homogeneous sphere in the ray-optics
 regime, ported from ``D:\\codes\\Geometric_optics_approximation\\GOA_ab.m``,
 plus the two facts that script does not model -- a 0-100% software power
@@ -19,7 +19,8 @@ dial and power-splitting across simultaneous traps.
     verdict = evaluate(setup)   # confinement, trap depth (U/kT), G14 sampling
 
 Committee-gate schema (``Check`` / ``CheckResult`` / ``Verdict``) now mirrors
-``optics.gate`` (docs/08 "다른 렌즈에도 같은 구조를 쓴다"). Still not covered:
+``optics.gate`` (docs/08 "The same structure is used for the other lenses").
+Still not covered:
 Janus/coated beads, ellipsoids, birefringent LC droplets (only ``GOA_ab.m``
 is ported), and a measured dial%->mW calibration curve.
 """

@@ -1,10 +1,11 @@
-# 시스템 프로파일 — 와이드필드 LED-epi 조명 (Lumencor AuraIII / MM 장치명
-# Aura), MXR00724 5-band 큐브를 통과해 CSU-W1 유닛까지 가는 경로.
+# System profile — widefield LED-epi illumination (Lumencor AuraIII / MM
+# device name Aura), through the MXR00724 5-band cube to the CSU-W1 unit.
 #
-# config/scopes/current-spectra.yaml과 구조가 완전히 같고 광원만 다르다 —
-# Aura는 DMD를 거치지 않는다(SpectraIII 전용, kb/systems/current.md 참고).
-# 그 차이도 스펙트럼엔 영향 없으므로(파장선택 기능 없는 patterned
-# illuminator) 이 스크리닝에는 어차피 안 보인다.
+# Structurally identical to config/scopes/current-spectra.yaml, only the light
+# source differs — Aura does not pass through the DMD (SpectraIII only, see
+# kb/systems/current.md). That difference has no spectral effect either (a
+# patterned illuminator with no wavelength-selection function), so it does not
+# show up in this screening anyway.
 
 scope:
   name: current-aura

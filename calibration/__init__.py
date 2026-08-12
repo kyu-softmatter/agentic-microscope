@@ -2,7 +2,8 @@
 
 Scripts to run once this repo is reconnected to the microscope PC -- the
 work PC this repo otherwise targets never touches real hardware (see
-README "현재 작업 PC와 현미경 PC가 분리되어 있어"). Deliberately excludes
+README "The working PC and the microscope PC are separate").
+Deliberately excludes
 illumination power (``power_at_sample_mw``): that one needs a power meter at
 the sample plane, not code, and is being measured separately.
 
