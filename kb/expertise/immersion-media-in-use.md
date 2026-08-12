@@ -66,12 +66,13 @@ order of -3e-4 to -4e-4 per °C, so a few degrees of room-temperature drift shif
 by ~1e-3 — comparable to the dispersion above. Room temperature is not recorded
 anywhere. Relevant to Lens 4 and to Lens 8 (mechanical & environmental).
 
-## What is still NOT known
+## The sample medium is a separate value
 This entry covers the **immersion** refractive index only. The **sample medium**
-refractive index (the buffer the sample sits in) is still unrecorded — that is the
-gap `docs/06-pitfalls.md` D5 refers to, and it is what a Lens 4 RI-mismatch gate
-needs in addition to the values above. For ATPS the two phases have different RI,
-so one number will not do.
+refractive index now has a recorded default of 1.333 (assumed, not measured) —
+see [[sample-medium-refractive-index]]. Combining the two gives a 0.185 mismatch on
+both oil objectives and zero on the 40x WI, which is the substance of
+`docs/06-pitfalls.md` D5. ATPS remains excluded from that default: its two phases
+have different RI, so one number will not do.
 
 ## Falsification conditions
 1. The lab switches oil type (Type N nd = 1.515 vs Type F nd = 1.518 — the two are
