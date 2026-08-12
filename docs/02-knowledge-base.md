@@ -29,9 +29,10 @@ kb\
 │   └── 2026-08-08-atps-647-tracking.md
 │
 ├── calibrations\               measured values. date and measurer mandatory
-│   ├── pixel-size.yaml
-│   ├── illumination-power.yaml
-│   └── disk-bandwidth.yaml
+│   ├── camera-readout.yaml     ✅ measured 2026-08-12
+│   ├── disk-bandwidth.yaml     ✅ measured 2026-08-12
+│   ├── illumination-power.yaml planned — the top blocker
+│   └── pixel-size.yaml         planned; values currently live in systems/current.md
 │
 ├── expertise\                  expertise captured from conversation → 09
 │
@@ -83,7 +84,7 @@ sources:                   # what this dossier was derived from
   - {kind: calibration, path: kb/calibrations/..., date: ...}
 
 stand:      {vendor: Nikon, model: ?, tube_lens_mm: 200, autofocus: PFS}
-camera:     {ref: data/detectors.yaml#<key>}
+cameras:    [{ref: data/detectors.yaml#<key>}]    # a list — the current system has two Kinetix
 objectives: [{turret: 1, label: ..., mag: ..., na: ..., immersion: ..., verified: false}]
 filters:    [{turret: 1, ref: data/filters.yaml#<key>}]
 wheels:     [{device: Wheel-A, positions: {0: ..., 1: ...}}]
