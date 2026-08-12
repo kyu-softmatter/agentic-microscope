@@ -1,0 +1,72 @@
+# 입자 라벨을 647-class 빨강으로 바꾼 실채널 구성 — FITC/YOYO-1 동일채널 충돌
+# (kb/systems/current.md, config/scopes/current-laser.yaml 계산 결과) 대신
+# YOYO-1(DNA, 488/초록) + 647-class(입자, 640/빨강)로 물리적으로 분리한 안.
+#
+#   python -m optics.cli check config/channels/particle647-yoyo1-2color.yaml
+#
+# 기대: 두 채널 다 grade HARD (margin 0.87) — evidence: assumed 라서
+# 차단요구가 7 OD로 올라가는데 다이크로익 노치 실측 실측값이 없어 근사
+# (peak_transmission/reflection 전형값, data/filters.yaml 상단 노트) 라서
+# 아직 PASS는 아님. crosstalk는 두 채널이 서로 margin 커야 정상
+# (recommend 스크리닝 때 10.0 나왔음 — 여기서는 check가 실제 채널 간
+# 크로스토크를 다시 계산한다).
+#
+# ⚠ dye: ATTO647N은 예시다. 실제 입자에 붙인 컨쥬게이트가 AlexaFluor647 /
+# Cy5 / SA647(streptavidin) / DEX647(dextran) / Phal647(phalloidin) 등
+# 다르면 그 이름으로 바꿀 것 — 이 파장대 다이들은 광학 숫자(여기효율/차단/
+# 크로스토크)는 서로 거의 안 갈리지만, 실제로 뭘 썼는지는 화학적 사실이라
+# 임의로 대입하면 안 된다.
+#
+# ⚠ objective는 100x Oil (na 1.45, Nosepiece position 5, MRD71970)로
+# 넣었다 — kb/systems/current.md > objectives가 verified: true로 바뀌어
+# 있어 실제 값이지만, "이 실험에 이 대물을 쓴다"는 건 사용자가 확정한 게
+# 아니라 이 파일 작성 시점의 기본값이다. 다른 대물(예: 40x WI, DNA 늘림
+# 트위저 세팅이면 water immersion이 더 맞을 수 있음)을 쓴다면 이 블록을
+# 바꿔서 다시 확인할 것.
+#
+# ⚠ detector: Kinetix는 data/detectors.yaml에 등록은 돼 있음(QE curve,
+# pixel_um 포함). 하지만 read_noise_e는 카메라 모드(Speed/Sensitivity/
+# DynamicRange, 1.2~2.0 e- 사이)가 미확정이라 null이고, full_well_e/
+# dark_e_per_s는 데이터시트 자체에 값이 없어 null이다. `optics.cli check`가
+# 이 세 값이 있어야 SNR/새추레이션을 계산하므로, 실제 쓰는 모드를 확정하기
+# 전까지는 이 채널로 BLOCKED가 뜬다 (docs/02 §10 참고).
+#
+# 스플리터(DM A561LP)는 Channel 모델에 다이크로익 필드가 하나뿐이라
+# `dichroic:`(메인 Di01-T) 다음 단으로 emission 리스트에 얹었다 —
+# optics/recommend.py의 splitter 처리와 동일한 방식
+# ({ref: registry, side: reflect|transmit}).
+
+channels:
+  - name: "DNA-YOYO1"
+    dye: YOYO1
+    objective:
+      label: "6-Plan Apo LmbdD0.13 100x Oil"
+      magnification: 100
+      na: 1.45
+      immersion: oil
+      verified_na: true
+    detector: Kinetix
+    source: [LUN-F-XL, "488"]
+    excitation: []   # 레이저 라인 자체가 이미 좁음, 별도 여기필터 없음 (scope 노트)
+    dichroic: "Di01-T405/488/568/647-13x15x0.5"
+    emission:
+      - {ref: "DM A561LP", side: reflect}   # 561nm 반사측 = Kinetix_blue
+      - "EM1-525/36"
+    port_fraction: 1.0
+
+  - name: "Particle-647"
+    dye: ATTO647N   # 실제 컨쥬게이트 이름으로 교체할 것 (위 노트)
+    objective:
+      label: "6-Plan Apo LmbdD0.13 100x Oil"
+      magnification: 100
+      na: 1.45
+      immersion: oil
+      verified_na: true
+    detector: Kinetix
+    source: [LUN-F-XL, "640"]
+    excitation: []
+    dichroic: "Di01-T405/488/568/647-13x15x0.5"
+    emission:
+      - {ref: "DM A561LP", side: transmit}  # 561nm 투과측 = Kinetix_red
+      - "EM1-705/72"
+    port_fraction: 1.0

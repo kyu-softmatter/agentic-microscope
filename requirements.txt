@@ -1,0 +1,9 @@
+numpy>=2.0
+pyyaml>=6.0
+pytest>=8.0
+
+# Only calibration/mm_live.py (camera readout time, EM1/EM2 camera probing)
+# needs this -- it's imported lazily, so the rest of the repo doesn't require
+# it. Also needs a working Micro-Manager device-adapter install: run
+# `mmcore install`, or use the lab's own MM2 setup on the microscope PC.
+pymmcore-plus>=0.13

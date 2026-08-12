@@ -1,0 +1,37 @@
+# 시스템 프로파일 — 와이드필드 LED-epi 조명 (Lumencor AuraIII / MM 장치명
+# Aura), MXR00724 5-band 큐브를 통과해 CSU-W1 유닛까지 가는 경로.
+#
+# config/scopes/current-spectra.yaml과 구조가 완전히 같고 광원만 다르다 —
+# Aura는 DMD를 거치지 않는다(SpectraIII 전용, kb/systems/current.md 참고).
+# 그 차이도 스펙트럼엔 영향 없으므로(파장선택 기능 없는 patterned
+# illuminator) 이 스크리닝에는 어차피 안 보인다.
+
+scope:
+  name: current-aura
+  path: "Widefield LED-epi (AuraIII / Aura) through MXR00724 cube"
+  source_of_truth: kb/systems/current.md
+  verified_date: 2026-08-10
+
+  source:
+    device: Aura # data/light_sources.yaml#Aura (registry: AuraIII)
+    lines: ["405", "440", "488", "561", "640"]
+
+  excitation: ["MXR00724-EX"]
+  dichroic: "MXR00724-DM"
+  emission_fixed: ["MXR00724-EM"]
+
+  emission_filters:
+    - "88000v2-EM"
+    - "EM1-455/50"
+    - "EM1-525/36"
+    - "EM1-605/52"
+    - "EM1-705/72"
+
+  splitter:
+    registry: "DM A561LP"
+    cameras:
+      Kinetix_red: transmit
+      Kinetix_blue: reflect
+
+  detector: Kinetix
+  objective: null

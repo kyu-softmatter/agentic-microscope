@@ -1,0 +1,377 @@
+# Filter / dichroic / path-element registry.
+#
+# ── 스키마 ────────────────────────────────────────────────────────────────
+# filters:
+#   <name>:
+#     kind:  bandpass | multiband | longpass | shortpass | dichroic |
+#            mirror | nd | polarizer | window
+#     vendor / part_number
+#     # 통과대역 지정 방법 (위에서부터 우선)
+#     curve:            <data/spectra/ 아래 2열 파일>   ← 가장 정확
+#     bands:            [[center, fwhm], ...]           ← multiband
+#     center_nm / fwhm_nm                               ← 단일 bandpass
+#     edge_nm / transition_nm                           ← long/short pass, dichroic
+#     od:               <ND만>
+#     peak_transmission: 0-1 (기본 0.95)
+#     blocking_od:      대역 밖 차단 (기본 6)
+#     reflection:       {curve|bands|...}  ← dichroic 반사율을 따로 줄 때
+#     removable:        false 면 ablation 대상에서 제외 (구조물)
+#     purpose:          왜 경로에 있는지 (제거 제안의 근거가 됨)
+#     position:         excitation | emission | shared
+#
+# ── 중요 ──────────────────────────────────────────────────────────────────
+# parametric(center/fwhm/edge)은 **triage 전용**이다. 실제 필터의 edge는
+# 훨씬 가파르고 blocking은 파장 의존적이다. 여기 쓰는 `blocking_od: 6` 평탄
+# 바닥은 먼 날개에서 낙관적이다. 판정을 확정하려면 vendor 곡선을 받아
+# data/spectra/ 에 넣고 `curve:` 로 연결할 것.
+# Semrock/IDEX와 Chroma 모두 사이트에서 txt로 곡선을 제공한다.
+
+filters:
+
+  # ══════════════════════════════════════════════════════════════════════
+  # 현재 시스템에서 실제로 관찰된 것 — 전부 미확정
+  # ══════════════════════════════════════════════════════════════════════
+  "DA/FI/TR10Empty":
+    kind: unknown          # ← 일부러 unknown. 게이트가 BLOCKED를 내도록.
+    position: shared
+    removable: false
+    purpose: "FilterTurret1 위치 1의 유일한 큐브"
+    note: >
+      ⚠ 메타데이터 2,312건 전부 이 라벨이다. 이름은 DAPI/FITC/TRITC
+      3-band 세트를 가리키는데 실제로는 647-Cy5 채널을 764건 촬영했다.
+      3-band 큐브로는 647 nm 방출이 거의 통과하지 않는다.
+      가능성: (a) 실제로는 4-band(DA/FI/TR/Cy5) 큐브인데 라벨이 잘림,
+              (b) Wheel-A가 방출 선택을 하는데 위치 라벨이 없어 안 보임,
+              (c) 라벨과 실물이 다름.
+      → MM .cfg + 큐브 실물의 각인·부품번호 확인 전까지 광학 게이트는
+        이 채널을 판정할 수 없다.
+      → **2026-08-10 해소:** NIS-Elements Device Manager > Filter Block
+        Settings - Turret1에서 위치 1(=MM 위치 0)의 실물을 확인했다. 정체는
+        "MXR00724 - LED-DA/FI/TR/Cy5/Cy7-A", 5-band 큐브. 아래
+        `MXR00724-EX`/`MXR00724-DM`/`MXR00724-EM` 세 항목이 그 구성요소다.
+        이 항목(`kind: unknown`)은 legacy-observed.yaml이 의도적으로 BLOCKED를
+        재현하는 데 쓰이므로 남겨두되, 실사용 채널 설정에는 새 항목을 쓸 것.
+
+  "Wheel-A:Filter-0":
+    kind: unknown
+    position: emission
+    purpose: "Sutter Lambda 필터휠 위치 0"
+    note: >
+      ⚠ 메타데이터 2,292건이 전부 `Filter-0`. MM config에 휠 위치 이름이
+      등록되어 있지 않아 어떤 방출 필터였는지 복원 불가.
+      → .cfg에 위치별 라벨을 등록하는 것이 가장 시급한 조치.
+      → 2026-08-10 NIS-Elements에서 확인된 방출 필터휠 `EM1`(아래 참고)과
+        동일 물리 장치일 가능성이 있으나 이름·위치 인덱스가 대조되지 않아
+        미확인으로 남긴다.
+
+  # ══════════════════════════════════════════════════════════════════════
+  # 예시 항목 (실제 보유 필터로 교체할 것)
+  # ══════════════════════════════════════════════════════════════════════
+  "FF01-475/35":
+    kind: bandpass
+    vendor: Semrock
+    center_nm: 475
+    fwhm_nm: 35
+    peak_transmission: 0.93
+    blocking_od: 6
+    position: excitation
+    purpose: "488 여기 대역 정형"
+
+  "FF01-525/45":
+    kind: bandpass
+    vendor: Semrock
+    center_nm: 525
+    fwhm_nm: 45
+    peak_transmission: 0.93
+    blocking_od: 6
+    position: emission
+    purpose: "GFP/FITC/Alexa488 방출"
+
+  "FF01-640/14":
+    kind: bandpass
+    vendor: Semrock
+    center_nm: 640
+    fwhm_nm: 14
+    peak_transmission: 0.93
+    blocking_od: 6
+    position: excitation
+    purpose: "640 여기 대역 정형"
+
+  "FF01-692/40":
+    kind: bandpass
+    vendor: Semrock
+    center_nm: 692
+    fwhm_nm: 40
+    peak_transmission: 0.95
+    blocking_od: 6
+    position: emission
+    purpose: "Cy5/Alexa647/ATTO647N 방출"
+
+  "FF01-676/29":
+    kind: bandpass
+    vendor: Semrock
+    center_nm: 676
+    fwhm_nm: 29
+    peak_transmission: 0.95
+    blocking_od: 6
+    position: emission
+    purpose: "647 계열 방출 (좁은 대역, 크로스토크 억제용)"
+
+  "FF01-585/40":
+    kind: bandpass
+    vendor: Semrock
+    center_nm: 585
+    fwhm_nm: 40
+    peak_transmission: 0.93
+    blocking_od: 6
+    position: emission
+    purpose: "TRITC 방출"
+
+  "Di03-R405/488/561/635":
+    kind: multiband        # 다이크로익이지만 통과대역이 여러 개
+    vendor: Semrock
+    bands: [[525, 45], [600, 52], [685, 40]]
+    peak_transmission: 0.93
+    position: shared
+    removable: false
+    purpose: "4-band 다이크로익 예시"
+    note: "반사대역 405/488/561/635. reflection을 1-T로 근사하고 있음."
+
+  "FF650-Di01":
+    kind: dichroic
+    vendor: Semrock
+    edge_nm: 650
+    transition_nm: 8
+    peak_transmission: 0.93
+    position: shared
+    removable: false
+    purpose: "640 여기 / 650 이상 방출 분리 (단일 밴드)"
+
+  # ══════════════════════════════════════════════════════════════════════
+  # 현재 시스템 — NIS-Elements Device Manager 실측 확인 (2026-08-10)
+  # kb/systems/current.md의 filter_turrets / optical_path_nis 참고.
+  # 각 range는 다이얼로그의 "From X To Y nm" 표시를 그대로 옮긴 것. bands: 는
+  # 그 표시값을 [center, fwhm]로 산술 변환한 것뿐이고, 다이크로익 항목에서
+  # 그게 반사대역인지 통과대역인지는 부품별로 다르다 — 파일 상단 "중요" 문단
+  # 대로 vendor 곡선 대조 전까지 triage 전용으로만 쓸 것.
+  # ══════════════════════════════════════════════════════════════════════
+
+  "MXR00724-EX":
+    kind: multiband
+    vendor: Nikon
+    part_number: MXR00724
+    bands: [[378, 50], [474, 24], [554.5, 21], [635, 16], [735, 26]]
+    position: excitation
+    removable: true
+    purpose: "5-band 큐브(DAPI/FITC/TRITC/Cy5/Cy7)의 exciter — Ti2 FilterTurret1 position 1"
+    note: >
+      NIS-Elements 'Excitation' 표시값: 353-403, 462-486, 544-565, 627-643,
+      722-748 nm. ⚠ 2026-08-10: exciter/emitter는 다이크로익과 달리 큐브
+      프레임에서 개별 교체 가능한 별개 유닛이다 — 큐브 전체를 통으로 취급하지
+      말 것. ablation 분석에서도 독립적으로 뺄 수 있는 요소로 판단한다
+      (`removable: false`였던 이전 값은 틀렸음).
+    verified: true
+
+  "MXR00724-DM":
+    kind: multiband
+    vendor: Nikon
+    part_number: MXR00724
+    bands: [[432, 36], [514.5, 31], [595.5, 31], [681, 40], [808.5, 81]]
+    position: shared
+    removable: false
+    purpose: "5-band 큐브(DAPI/FITC/TRITC/Cy5/Cy7)의 다이크로익 — Ti2 FilterTurret1 position 1"
+    note: >
+      NIS-Elements 'Mirror' 표시값: 414-450, 499-530, 580-611, 661-701,
+      768-849 nm. 반사대역인지 통과대역인지 미확정 — vendor 곡선 대조 필요.
+    verified: true
+
+  "MXR00724-EM":
+    kind: multiband
+    vendor: Nikon
+    part_number: MXR00724
+    bands: [[440, 40], [520.5, 21], [606, 34], [694, 34], [808.5, 81]]
+    position: emission
+    removable: true
+    purpose: "5-band 큐브(DAPI/FITC/TRITC/Cy5/Cy7)의 emitter — Ti2 FilterTurret1 position 1"
+    note: >
+      NIS-Elements 'Emission' 표시값: 420-460, 510-531, 589-623, 677-711,
+      768-849 nm. ⚠ 2026-08-10: exciter/emitter는 다이크로익과 달리 큐브
+      프레임에서 개별 교체 가능한 별개 유닛이다 — 큐브 전체를 통으로 취급하지
+      말 것. ablation 분석에서도 독립적으로 뺄 수 있는 요소로 판단한다
+      (`removable: false`였던 이전 값은 틀렸음).
+    verified: true
+
+  "Di01-T405/488/568/647-13x15x0.5":
+    kind: dichroic
+    vendor: Semrock
+    part_number: "Di01-T405/488/568/647-13x15x0.5"
+    # 단일 광대역 "band"로 flat top을 표현하는 트릭. center/fwhm이 격자
+    # (300-1100nm) 밖까지 넉넉히 걸쳐 있어 격자 전체가 평평한 top에 들어간다.
+    # 목적은 물리가 아니라 measured=False 플래그다 — Spectrum.constant()로
+    # 만들면 "측정됨"으로 잘못 표시된다 (아래 참고).
+    bands: [[700, 1000]]
+    peak_transmission: 0.90
+    reflection:
+      bands: [[405, 2], [488, 2], [564.5, 7], [640, 14]]
+      peak_transmission: 0.92
+    position: shared
+    removable: false
+    purpose: "405/488/561/640 4-라인 레이저 여기/방출 분리 — NIS 'DM'(CSU-W1 경로), position 1. LUN-F-XL 레이저 라인과 대응"
+    note: >
+      NIS-Elements 'Mirror' 표시값: 404-406, 487-489, 561-568, 633-647 nm —
+      Di01-T 시리즈 특성상 각 레이저 라인에서만 좁게 반사(notch)하고 나머지는
+      광대역으로 투과하는 노치 다이크로익이다 (MXR00724-DM과 폭이 다른 이유).
+
+      ⚠ 2026-08-10 정정: 이전 항목은 `kind: multiband` + 최상위 `bands:`에 이
+      반사대역을 직접 넣었다. 이 파일의 규약상 최상위 `bands`/`center_nm`은
+      **투과대역**이고 `kind: dichroic|mirror`가 아니면 반사율 자동유도(1-T)도
+      안 걸리므로, 실제로는 `optics/components.py`가 이 소자를
+      "4개 레이저 라인에서만 통과, 그 사이는 전부 6 OD 차단"하는 요소로
+      계산했다 — 노트에 적힌 실제 동작과 정반대다. 그 결과 이 다이크로익을
+      쓰는 모든 채널에서 방출 스펙트럼이 거의 전부 잘려나가 여기결합·방출수집이
+      허구로 0에 가깝게 나왔다 (CSU-W1/LUN-F-XL 레이저 경로 전체가 영향받음).
+      `reflection:`로 반사대역을 분리하고 최상위는 광대역 투과로 바꿨다.
+      투과 0.90 / 반사 0.92는 Semrock Di01-T 시리즈 전형값이며 실측 아님 —
+      vendor 곡선 확보 전까지 근사(고로 measured=False 유지, 위 참고).
+    verified: true
+
+  "DM A561LP":
+    kind: dichroic # longpass였던 것을 dichroic으로: reflection이 1-T로 자동
+    # 유도되게 함. 단일 edge라 이 근사가 합리적 (Di01-T 같은 다중 노치와 다름).
+    # 디테일(실측 곡선 등)은 추후 보정.
+    edge_nm: 561
+    position: shared
+    removable: true
+    purpose: "561 nm 기준 듀얼 카메라 채널 분리 — NIS 'Splitter', position 1 (kb/systems/current.md)"
+    note: >
+      2026-08-10 사용자 확인: 현재 Splitter가 이 위치(다이얼 표시 "position 2",
+      kb/systems/current.md의 0-index로는 1)에 있고 카메라 2대(Kinetix_red/
+      Kinetix_blue) 동시 사용 중. Kinetix_red = 투과측(>561nm, 긴 파장),
+      Kinetix_blue = 반사측(<561nm, 짧은 파장) — 이름이 곧 배정과 일치한다.
+    verified: true
+
+  # ⚠ 2026-08-11 정정: 아래 5개("88000v2-EM"~"EM1-705/72")는 원래 EM1의
+  # 필터로 기록됐으나, 실제 EM1/EM2 필터는 이게 아니었음이 확인됐다(진짜
+  # 값은 multi/405/488/555/647 — kb/systems/current.md > optical_path_nis
+  # > EM1 참고, DMD_dualcam.cfg의 CSUW1-Filter_Red Label과 일치). 이 5개가
+  # 실제로 어느 소자를 가리키는지는 불명 — 삭제하지 않고 보존, EM1/EM2
+  # 참조에서는 제외.
+  "88000v2-EM":
+    kind: multiband
+    vendor: Chroma        # 넘버링 관례상 추정 — vendor 미확인
+    part_number: "88000v2"
+    bands: [[457.5, 55], [535, 30], [610, 40], [710, 60]]
+    position: emission
+    purpose: "4-band 동시 방출 관찰 — 원래 NIS 'EM1' position 1로 기록했으나 오귀속으로 정정됨(위 주석 참고)"
+    note: "NIS-Elements 표시값: 430-485, 520-550, 590-630, 680-740 nm"
+    verified: true
+
+  "EM1-455/50":
+    kind: bandpass
+    center_nm: 455
+    fwhm_nm: 50
+    position: emission
+    purpose: "DAPI/blue 방출 — 원래 NIS 'EM1' position 2로 기록했으나 오귀속으로 정정됨(위 주석 참고)"
+    verified: true
+
+  "EM1-525/36":
+    kind: bandpass
+    center_nm: 525
+    fwhm_nm: 36
+    position: emission
+    purpose: "FITC/green 방출 — 원래 NIS 'EM1' position 3으로 기록했으나 오귀속으로 정정됨(위 주석 참고)"
+    verified: true
+
+  "EM1-605/52":
+    kind: bandpass
+    center_nm: 605
+    fwhm_nm: 52
+    position: emission
+    purpose: "TRITC/orange-red 방출 — 원래 NIS 'EM1' position 4로 기록했으나 오귀속으로 정정됨(위 주석 참고)"
+    verified: true
+
+  "EM1-705/72":
+    kind: bandpass
+    center_nm: 705
+    fwhm_nm: 72
+    position: emission
+    purpose: "far-red 방출 — 원래 NIS 'EM1' position 5로 기록했으나 오귀속으로 정정됨(위 주석 참고)"
+    verified: true
+
+  "EM-Open":
+    kind: window
+    peak_transmission: 1.0
+    position: emission
+    removable: false
+    purpose: "빈 슬롯(필터 없음) — EM1/EM2 position 9. 모든 광원에 대해 완전 개방, 전 파장 투과"
+    note: >
+      2026-08-11 사용자 확인. position 5-8(Blocked)와 구분됨 — 그쪽은 금속판
+      으로 물리적으로 막혀 있어 선택 불가지만, 여긴 정말로 필터가 없는
+      열린 슬롯이다. kb/systems/current.md > optical_path_nis > EM1/EM2 참고.
+    verified: true
+
+  # ══════════════════════════════════════════════════════════════════════
+  # 광집게(OT) 경로 — FilterTurret2 slot 1 (2026-08-11 사용자 구술)
+  # kb/systems/current.md > filter_turrets > FilterTurret2 참고.
+  # ══════════════════════════════════════════════════════════════════════
+  "OT-Dichroic-750LP":
+    kind: dichroic
+    edge_nm: 750
+    position: shared
+    removable: false
+    purpose: "광집게(1064nm) 결합용 — Ti2 FilterTurret2 slot 1. 750nm보다 긴 파장만 반사, 짧은 파장(가시광)은 투과"
+    note: >
+      2026-08-11 사용자 구술. vendor/part number 미확인 — edge 값(750nm)만
+      확인됨.
+    verified: true
+
+  "OT-EM-750SP":
+    kind: shortpass
+    edge_nm: 750
+    position: emission
+    removable: false
+    purpose: "광집게(1064nm) 트랩광 차단용 — Ti2 FilterTurret2 slot 1. 750nm 이상 차단"
+    note: >
+      2026-08-11 사용자 구술: "multi-photon filter 750/SP". vendor/part
+      number 미확인.
+    verified: true
+
+  # ══════════════════════════════════════════════════════════════════════
+  # 감쇠·편광 요소 — ablation 분석의 주요 대상
+  # ══════════════════════════════════════════════════════════════════════
+  "ND-0.6":
+    kind: nd
+    od: 0.6
+    position: excitation
+    purpose: "여기광 감쇠 (25%)"
+    note: >
+      광원 레벨을 낮출 수 있다면 ND는 불필요하다. 단, Lumencor의 낮은 %
+      구간은 선형성이 나쁠 수 있어 ND로 감쇠하고 광원은 선형 구간에서
+      쓰는 편이 재현성이 좋은 경우가 있다. 검출계 렌즈와 함께 판단할 것.
+
+  "ND-1.0":
+    kind: nd
+    od: 1.0
+    position: excitation
+    purpose: "여기광 감쇠 (10%)"
+
+  "Polarizer-Linear":
+    kind: polarizer
+    peak_transmission: 0.42
+    position: excitation
+    purpose: "액정 편광 관찰용 기신광자"
+    note: >
+      편광 실험이 아닐 때 경로에 남아 있으면 순손실 58%다.
+      ablation이 가장 흔하게 잡아내는 항목.
+
+  "Analyzer-Linear":
+    kind: polarizer
+    peak_transmission: 0.42
+    position: emission
+    purpose: "액정 편광 관찰용 검광자"
+
+  "Mirror-Ag-Broadband":
+    kind: mirror
+    peak_transmission: 0.97
+    position: emission
+    purpose: "AUX 경로 접기"

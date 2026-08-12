@@ -1,0 +1,175 @@
+# Light-source registry.
+#
+# ── 스키마 ────────────────────────────────────────────────────────────────
+# light_sources:
+#   <device-label-as-in-micromanager>:
+#     model / vendor
+#     lines:
+#       <line-name-as-in-metadata>:
+#         center_nm / fwhm_nm      또는  curve: <파일>
+#         max_power_mw:            광원 출력 (샘플면 아님)
+#         power_at_sample_mw:      { <대물렌즈 라벨>: mW at 100% level }
+#         linear_in_level:         % 설정이 출력에 선형인가
+#
+# ── 왜 power_at_sample_mw 가 결정적인가 ──────────────────────────────────
+# 메타데이터에는 `Spectra-Red_Level: 10` 처럼 **퍼센트만** 남는다.
+# 퍼센트는 장비가 바뀌면 아무 의미가 없다. 다른 현미경으로 설정을 옮기려면
+# 반드시 물리량(샘플면 mW 또는 W/cm²)을 거쳐야 한다.
+#
+# 이 값이 비어 있으면:
+#   · 절대 광자예산 계산 불가 → 노출시간을 처음부터 계산해줄 수 없음
+#   · 상대(선례 기반) 추천만 가능하고, 그것도 같은 장비 안에서만 유효
+#
+# 측정 방법 (한 번만 하면 되고 30분이면 끝난다):
+#   1. 대물렌즈 자리에 파워미터 센서를 놓는다 (대물 제거 후 후면 초점면이
+#      아니라, 실제 시료 위치에서 재는 것이 맞다)
+#   2. 각 라인 × 각 대물렌즈 × 레벨 10/25/50/75/100% 로 mW 기록
+#   3. 조명 면적(FOV)으로 나눠 W/cm² 환산 → 그 값을 여기 적는다
+#   4. 선형성이 깨지는 하한 레벨을 note에 남긴다
+
+light_sources:
+
+  # ══════════════════════════════════════════════════════════════════════
+  # 세대 A·B에서 실제 사용된 광원 (MM 장치 라벨: `Spectra`)
+  # 관찰된 라인: Red(429+134+61건), Cyan(115+76+76+20+12건), Green(14+6+3건)
+  # ══════════════════════════════════════════════════════════════════════
+  Spectra:
+    model: "Lumencor Spectra X"
+    vendor: Lumencor
+    note: >
+      ⚠ 공칭 카탈로그 중심파장·반치폭이다. 실제 장착된 필터 세트에 따라
+      다를 수 있고, Green/Yellow는 YG 필터 삽입 여부로 555/585가 바뀐다
+      (메타데이터의 `Spectra-YG_Filter` 값 확인).
+      출력 실측값이 하나도 없어 현재 절대 광자예산 계산은 불가능하다.
+    lines:
+      Violet:
+        center_nm: 395
+        fwhm_nm: 25
+        power_at_sample_mw: {}
+      Blue:
+        center_nm: 440
+        fwhm_nm: 20
+        power_at_sample_mw: {}
+      Cyan:
+        center_nm: 470
+        fwhm_nm: 24
+        power_at_sample_mw: {}
+        note: "488-GFP 채널에 사용됨. 관찰된 레벨 2·5·10·50·100%"
+      Teal:
+        center_nm: 508
+        fwhm_nm: 25
+        power_at_sample_mw: {}
+      Green:
+        center_nm: 555
+        fwhm_nm: 28
+        power_at_sample_mw: {}
+        note: "555-TRITC 채널. YG 필터 상태에 따라 585로 바뀔 수 있음"
+      Yellow:
+        center_nm: 585
+        fwhm_nm: 29
+        power_at_sample_mw: {}
+      Red:
+        center_nm: 640
+        fwhm_nm: 30
+        power_at_sample_mw: {}
+        note: >
+          647-Cy5 채널. 관찰된 레벨 5·7·8·10·13·100%.
+          해당 채널 노출이 500 ms에 몰려 있는 것으로 보아 광량이
+          부족했을 가능성이 높다 — 실측 후 재검토 대상.
+      White:
+        center_nm: 0
+        fwhm_nm: 0
+        note: "광대역. 파장 모델 없음 — 사용 시 곡선 필요"
+
+  # ══════════════════════════════════════════════════════════════════════
+  # 세대 B·C에 존재 (MM 장치 라벨: `LightEngine`)
+  # 2026-08-10 NIS-Elements Device Manager로 제품명 SpectraIII 확인, 라인은
+  # 다이어그램 아이콘에서 판독한 근사 중심파장(7채널) — fwhm은 미확인.
+  # ══════════════════════════════════════════════════════════════════════
+  LightEngine:
+    model: "Lumencor Spectra III"     # 2026-08-10 확인 (이전 추정 "8-NII-XS"는 폐기 — 실제로는 7채널)
+    vendor: Lumencor
+    connection: "192.168.201.200 (Ethernet)"
+    note: >
+      ⚠ 42건이 `Core-Shutter = LightEngine` 인데도 스캔 범위에서
+      비영 세기가 관찰되지 않았다. 속성 이름이 다르거나 실제 조명 경로가
+      달랐다는 뜻. .cfg 확인 필요.
+      2026-08-10: NIS-Elements 다이어그램에서 7개 LED 라인의 중심파장만
+      판독했다(365/440/488/514/561/594/640). fwhm과 실측 파워는 여전히 없음
+      — 아래 fwhm_nm은 카탈로그 근사 placeholder이지 실측이 아니다.
+    lines:
+      "365": { center_nm: 365, fwhm_nm: 20, power_at_sample_mw: {}, note: "fwhm 미확인 placeholder" }
+      "440": { center_nm: 440, fwhm_nm: 20, power_at_sample_mw: {}, note: "fwhm 미확인 placeholder" }
+      "488": { center_nm: 488, fwhm_nm: 20, power_at_sample_mw: {}, note: "fwhm 미확인 placeholder" }
+      "514": { center_nm: 514, fwhm_nm: 20, power_at_sample_mw: {}, note: "fwhm 미확인 placeholder" }
+      "561": { center_nm: 561, fwhm_nm: 20, power_at_sample_mw: {}, note: "fwhm 미확인 placeholder" }
+      "594": { center_nm: 594, fwhm_nm: 20, power_at_sample_mw: {}, note: "fwhm 미확인 placeholder" }
+      "640": { center_nm: 640, fwhm_nm: 20, power_at_sample_mw: {}, note: "fwhm 미확인 placeholder" }
+
+  # ══════════════════════════════════════════════════════════════════════
+  # 2026-08-10 NIS-Elements Device Manager로 확인 (MM 장치 라벨: `Aura`)
+  # 제품명 AuraIII, 5채널. 중심파장은 다이어그램 아이콘 판독 — fwhm 미확인.
+  # ══════════════════════════════════════════════════════════════════════
+  Aura:
+    model: "Lumencor Aura III"
+    vendor: Lumencor
+    connection: COM7
+    note: "2026-08-10 NIS-Elements Device Manager로 제품명 확인. fwhm/실측 파워 없음."
+    lines:
+      "405": { center_nm: 405, fwhm_nm: 20, power_at_sample_mw: {}, note: "fwhm 미확인 placeholder" }
+      "440": { center_nm: 440, fwhm_nm: 20, power_at_sample_mw: {}, note: "fwhm 미확인 placeholder" }
+      "488": { center_nm: 488, fwhm_nm: 20, power_at_sample_mw: {}, note: "fwhm 미확인 placeholder" }
+      "561": { center_nm: 561, fwhm_nm: 20, power_at_sample_mw: {}, note: "fwhm 미확인 placeholder" }
+      "640": { center_nm: 640, fwhm_nm: 20, power_at_sample_mw: {}, note: "fwhm 미확인 placeholder" }
+
+  # ══════════════════════════════════════════════════════════════════════
+  # 레이저 — 2026-08-10 NIS-Elements Device Manager로 확인. MM .cfg에는
+  # 등록되어 있지 않다 (NIS-Elements 전용 제어). CSU-W1 컨포칼 여기광원.
+  # ══════════════════════════════════════════════════════════════════════
+  LUN-F-XL:
+    model: "Nikon LUN-F-XL laser combiner"
+    vendor: Nikon
+    connection: null
+    note: >
+      4-라인 레이저 유닛, CSU-W1 스피닝 디스크로 급전. 라인 파장은
+      NIS-Elements 다이어그램 아이콘 판독. Di01-T405/488/568/647 다이크로익
+      (data/filters.yaml)의 반사대역과 정확히 일치해 신뢰도가 높다.
+      fwhm은 레이저 다이오드 전형값(~1-2 nm)으로 근사, 실측 아님.
+      실측 파워(power_at_sample_mw)는 없음 — 절대 광자예산 계산 불가.
+    lines:
+      "405": { center_nm: 405, fwhm_nm: 1, power_at_sample_mw: {} }
+      "488": { center_nm: 488, fwhm_nm: 1, power_at_sample_mw: {} }
+      "561": { center_nm: 561, fwhm_nm: 1, power_at_sample_mw: {} }
+      "640": { center_nm: 640, fwhm_nm: 1, power_at_sample_mw: {} }
+
+  # ══════════════════════════════════════════════════════════════════════
+  # 투과광
+  # ══════════════════════════════════════════════════════════════════════
+  DiaLamp:
+    model: "Nikon transmitted-light lamp"
+    note: >
+      `DiaLamp-Intensity` 관찰값 예: 1901 (단위 불명, DAC counts로 추정).
+      명시야 촬영 1,186건의 셔터 장치. 색온도가 노출·색재현에 영향을 주므로
+      정량 비교 시 동일 세기 유지 필요.
+    lines:
+      LAMP:
+        center_nm: 550
+        fwhm_nm: 300
+        note: "광대역 근사. 정량 계산에는 실측 스펙트럼 필요"
+
+  # ══════════════════════════════════════════════════════════════════════
+  # 광집게 — 조명이 아니라 섭동원이지만 광경로를 공유한다
+  # ══════════════════════════════════════════════════════════════════════
+  Trap:
+    model: "(미확인) 광집게 레이저"
+    note: >
+      폴더명의 `OT<값>` 토큰(0.005 ~ 0.2)이 출력 설정으로 보인다.
+      MM 장치로 등록되어 있지 않아 메타데이터에 남지 않는다.
+      1064 nm라면 (a) 물 흡수로 국소 가열, (b) 검출 경로로의 누설을
+      확인해야 한다 — 광학 게이트가 1100 nm까지 격자를 잡아둔 이유.
+    lines:
+      IR1064:
+        center_nm: 1064
+        fwhm_nm: 2
+        max_power_mw: null
+        power_at_sample_mw: {}

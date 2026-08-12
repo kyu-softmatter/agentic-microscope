@@ -1,0 +1,350 @@
+# Fluorophore registry.
+#
+# ── 스키마 ────────────────────────────────────────────────────────────────
+# fluorophores:
+#   <canonical-name>:
+#     aliases:          [폴더명·프로토콜에서 쓰는 다른 이름들]
+#     abs_peak_nm:      흡수 피크
+#     abs_fwhm_nm:      흡수 반치폭   (curves 없을 때만 사용)
+#     em_peak_nm:       방출 피크
+#     em_fwhm_nm:       방출 반치폭   (curves 없을 때만 사용)
+#     ext_coeff_M1cm1:  몰흡광계수 ε
+#     quantum_yield:    형광양자수율 Φ
+#     lifetime_ns:      형광수명
+#     photostability:   low | medium | high
+#     bleach_photons:   표백 전 평균 방출 광자수 (있으면 광자예산 게이트가 씀)
+#     curves:                       ← 있으면 무조건 이쪽이 우선
+#       absorption: <data/spectra/ 아래 파일>
+#       emission:   <data/spectra/ 아래 파일>
+#     verified:         true 이면 실측/데이터시트 확인 완료
+#     note:             주의사항
+#
+# ── 중요 ──────────────────────────────────────────────────────────────────
+# 아래 값들은 전부 **카탈로그 공칭값**이고 `verified: false` 다.
+# parametric band(peak+FWHM)는 피크 위치는 맞지만 **날개(wing)가 틀린다.**
+# 크로스토크와 여기광 차단(blocking) 판정은 전적으로 날개에서 결정되므로,
+# 최종 판정을 낼 때는 반드시 실측 스펙트럼을 data/spectra/ 에 넣을 것.
+# 게이트는 curves 없이 계산하면 confidence를 low로 낮춘다.
+#
+# FPbase(https://www.fpbase.org)에서 대부분의 스펙트럼을 csv로 받을 수 있다.
+
+fluorophores:
+
+  # ── 647 계열 ─────────────────────────────────────────────────────────────
+  AlexaFluor647:
+    aliases: [AF647, Alexa647, "Alexa Fluor 647"]
+    abs_peak_nm: 650
+    abs_fwhm_nm: 38
+    em_peak_nm: 668
+    em_fwhm_nm: 44
+    ext_coeff_M1cm1: 270000
+    quantum_yield: 0.33
+    lifetime_ns: 1.0
+    photostability: high
+    verified: false
+    note: >
+      ⚠ 몰흡광계수는 반응기 화학종에 따라 Thermo 자체 제품페이지에서도
+      갈린다 (NHS ester 270000 / maleimide 265000 / hydrazide 250000;
+      구 Handbook 수치는 239000). 위 값은 NHS ester 기준. 실측 곡선은
+      못 찾음 — FPbase(자동 fetch 차단됨)나 Thermo SpectraViewer(JS 앱,
+      자동 fetch 타임아웃)를 브라우저로 직접 확인할 것.
+
+  ATTO647N:
+    aliases: [Atto647, Atto647N, "ATTO 647N"]
+    abs_peak_nm: 644
+    abs_fwhm_nm: 38
+    em_peak_nm: 669
+    em_fwhm_nm: 45
+    ext_coeff_M1cm1: 150000
+    quantum_yield: 0.65
+    lifetime_ns: 3.5
+    photostability: high
+    verified: false
+    note: >
+      소수성이 강해 표면·소수성 도메인에 비특이 흡착하는 경향이 있다.
+      ATPS 실험에서 상 분배 자체를 왜곡할 수 있으니 시료계 렌즈에서 확인할 것.
+
+      644/669 nm, ext_coeff 150000, QY 0.65는 FluoroFinder·Dempsey 2011·
+      fluorophores.tugraz.at(substance/763)에서 삼중 확인됨. AAT Bioquest의
+      NHS ester 데이터시트 한 곳만 흡수 663 nm로 다르게 적어놨는데, 이쪽이
+      오기로 보임. lifetime_ns=3.5는 이번 조사에서 재확인 못 함(University
+      of Arizona 출처 페이지가 DNS 자체가 죽어 있음) — 기존 값 유지, 후속
+      검증 필요. 실측 곡선 못 찾음(tugraz 상세페이지는 500 에러 지속).
+
+  SYTO61:
+    aliases: [SYTO61, "SYTO 61", "SYTO-61"]
+    abs_peak_nm: 628
+    abs_fwhm_nm: 30
+    em_peak_nm: 645
+    em_fwhm_nm: 35
+    quantum_yield: 0.18
+    photostability: medium
+    verified: false
+    note: >
+      핵산 결합형 다이. 위 628/645 nm, QY 0.18(cresyl violet 기준 상대
+      측정, ~100 bp DNA : 1 dye)은 제조사 1차 문서(Molecular Probes
+      MP 11340, Table 1)에서 나온 값 — 2차 정리 사이트(tugraz 618/650,
+      FluoroFinder 615/648)와는 다르니 1차 문서 쪽을 신뢰. 몰흡광계수는
+      어디서도 못 찾음(제조사도 SYTO 계열 전체에 대해 ">50000"이라는
+      뭉뚱그린 값만 제공, 다이별 표 없음). 결합 전 자유형광은 매우
+      낮다고만 알려져 있고 정량값 없음. 전체 스펙트럼 문서(TD 11341)는
+      원래 URL이 죽어 있어 못 구함 — 사람이 직접 찾아보면 좋음. 실측
+      곡선 없음.
+
+  Cy5:
+    aliases: [cy5]
+    abs_peak_nm: 649
+    abs_fwhm_nm: 40
+    em_peak_nm: 670
+    em_fwhm_nm: 45
+    ext_coeff_M1cm1: 250000
+    quantum_yield: 0.27
+    lifetime_ns: 1.0
+    photostability: medium
+    verified: false
+    note: >
+      광이성질화(cis-trans)로 blinking이 있다. 단일입자 추적에서 궤적이
+      끊기는 원인이 될 수 있음. 양자수율은 출처마다 0.20~0.28로 갈린다
+      (AAT Bioquest 0.2 / FluoroFinder 0.27 / Dempsey 2011 0.28); 실측
+      곡선은 못 찾음 — FPbase 스펙트럼 뷰어(자동 fetch 차단됨, 브라우저로
+      직접 확인) 또는 fluorophores.tugraz.at/substance/655 참고.
+
+  # ── 488/녹색 계열 ────────────────────────────────────────────────────────
+  AlexaFluor488:
+    aliases: [AF488, Alexa488, std488]
+    abs_peak_nm: 495
+    abs_fwhm_nm: 35
+    em_peak_nm: 519
+    em_fwhm_nm: 45
+    ext_coeff_M1cm1: 73000
+    quantum_yield: 0.92
+    lifetime_ns: 4.1
+    photostability: high
+    verified: false
+    note: "`std488`이 이 염료인지 확인 필요 — 폴더명 토큰만으로는 특정 불가."
+
+  FITC:
+    aliases: [fitc, MQFITC]
+    abs_peak_nm: 495
+    abs_fwhm_nm: 35
+    em_peak_nm: 519
+    em_fwhm_nm: 45
+    ext_coeff_M1cm1: 75000
+    quantum_yield: 0.92
+    lifetime_ns: 4.1
+    photostability: low
+    verified: false
+    note: >
+      pH 의존성이 크다 (pKa≈6.4). pH 6에서는 pH 8 대비 밝기가 크게 떨어진다.
+      광표백도 빠르므로 FRAP 이외의 장시간 촬영에는 부적합.
+
+      data/spectra/fitc_abs.txt, fitc_em.txt에 PhotochemCAD 실측 곡선이
+      있지만 이건 FITC가 아니라 모체 형광단인 플루오레세인을 염기성
+      에탄올 용매에서 잰 것 — 방출 피크가 540 nm로 수용액 FITC(519 nm)
+      보다 20 nm 이상 붉은쪽으로 밀려 있다. 용매 불일치가 crosstalk 계산을
+      오히려 왜곡할 수 있어 curves:로 기본 연결하지 않았다. 정확도가
+      피크 위치보다 날개 모양이 더 중요한 계산(차단 OD 등)에 쓸 거면
+      직접 검토 후 연결할 것.
+
+  EGFP:
+    aliases: [GFP, egfp]
+    abs_peak_nm: 488
+    abs_fwhm_nm: 40
+    em_peak_nm: 507
+    em_fwhm_nm: 45
+    ext_coeff_M1cm1: 56000
+    quantum_yield: 0.60
+    lifetime_ns: 2.6
+    photostability: medium
+    verified: false
+
+  AcridineOrange:
+    aliases: [AO488, AO]
+    abs_peak_nm: 500
+    abs_fwhm_nm: 45
+    em_peak_nm: 526
+    em_fwhm_nm: 55
+    ext_coeff_M1cm1: 53000
+    quantum_yield: 0.20
+    lifetime_ns: 2.0
+    photostability: low
+    verified: false
+    note: >
+      ⚠ 결합 상태에 따라 방출이 크게 이동한다 (DNA 결합 ~490-502/520-530 nm
+      녹색, RNA/산성 소포 결합 ~460/640-650 nm 적색). 단일 스펙트럼으로
+      모델링하면 틀린다. 647 채널과의 크로스토크 계산 시 반드시 실측
+      스펙트럼을 쓸 것. lifetime_ns=2.0은 ISS 표(인산완충 pH 7.8) 값.
+
+      data/spectra/acridineorange_abs.txt, _em.txt에 PhotochemCAD 실측
+      곡선이 있지만 염기성 에탄올 용매의 자유형 다이 스펙트럼이다 —
+      흡수 피크가 431 nm로 DNA 결합형 수용액 스펙트럼(~490-502 nm)과
+      60 nm 넘게 어긋난다. 여기효율 계산에 쓰면 오히려 크게 틀리므로
+      curves:로 연결하지 않았다.
+
+  ATTO488:
+    aliases: [Atto488, "ATTO 488"]
+    abs_peak_nm: 500
+    abs_fwhm_nm: 30
+    em_peak_nm: 520
+    em_fwhm_nm: 40
+    ext_coeff_M1cm1: 90000
+    quantum_yield: 0.80
+    lifetime_ns: 4.1
+    photostability: high
+    verified: true
+    curves:
+      absorption: atto488_abs.txt
+      emission: atto488_em.txt
+    note: >
+      ATTO-TEC/Leica 공식 데이터시트 값 (PBS, pH 7.4 기준). 실측 곡선은
+      제조사가 직접 공개한 파일(downloads.leica-microsystems.com)에서
+      받았다 — 이번에 확보한 다이 중 유일하게 상태(수용액)까지 일치하는
+      진짜 실측 곡선.
+
+  DragonGreen:
+    aliases: ["Dragon Green", DragonGreen]
+    abs_peak_nm: 480
+    abs_fwhm_nm: 40
+    em_peak_nm: 520
+    em_fwhm_nm: 45
+    photostability: unknown
+    verified: false
+    note: >
+      ⚠ Bangs Laboratories의 비드 염색용 프로프라이어터리 다이 — CAS 번호도
+      화학구조도 공개돼 있지 않다. 확인 가능한 건 제조사 데이터시트(PDS 704,
+      DG06M 카탈로그)의 "480/520 nm, 플루오레세인 필터셋과 호환되는 대체품"
+      이라는 문구뿐. 몰흡광계수·양자수율·수명 전부 공개된 곳 없음 —
+      플루오레세인/FITC 값을 대입하지 말 것(제조사도 "유사 대체품"이라고만
+      하지 동일하다고는 안 함). bangslabs.com은 자동 fetch 전부 403 차단됨,
+      필요하면 사람이 브라우저로 technical-library 페이지를 직접 확인.
+
+  YOYO1:
+    aliases: ["YOYO-1", "YOYO 1"]
+    abs_peak_nm: 491
+    abs_fwhm_nm: 25
+    em_peak_nm: 509
+    em_fwhm_nm: 30
+    ext_coeff_M1cm1: 98900
+    quantum_yield: 0.52
+    lifetime_ns: 3.5
+    photostability: medium
+    verified: false
+    note: >
+      ⚠ 위 값은 전부 dsDNA 결합 상태 기준(Thermo MAN0001843, Table 1).
+      자유형 YOYO-1은 사실상 무형광(QY<0.1%, 결합 시 500배~1000배 이상
+      증강)이므로 자유형 파라미터는 별도로 없음 — 결합 안 된 다이가 섞인
+      샘플을 모델링해야 한다면 무형광으로 취급할 것.
+
+      결합 화학량론: bis-intercalation, 포화 시 ~1 dye : 3.5-4 bp
+      (Rye 1992; Molecules 2021, 26, 3748). dsDNA에 결합하면 등고선 길이가
+      늘어난다 — Kundukad 2014(Soft Matter)는 포화 결합(1:4 bp)에서 +38%
+      (1000 bp 기준 328→453 nm), Günther 2010(자기집게, 1:3.2 bp)은 +47%를
+      보고. 지속길이(persistence length)는 평형 상태(AFM/자기집게)에서는
+      거의 안 변한다는 쪽과, 광집게로 늘릴 때 유리 다이가 비평형적으로
+      재분배되며 감소한 것처럼 보인다는 쪽이 갈린다(Kundukad 2014 논의) —
+      광집게 DNA 늘림 실험을 설계한다면 이 비평형 아티팩트 가능성을
+      염두에 둘 것. 실측 스펙트럼 곡선은 못 찾음.
+
+  # ── 555/TRITC 계열 ───────────────────────────────────────────────────────
+  TRITC:
+    aliases: [TRITC555, tritc]
+    abs_peak_nm: 547
+    abs_fwhm_nm: 38
+    em_peak_nm: 573
+    em_fwhm_nm: 45
+    ext_coeff_M1cm1: 85000
+    quantum_yield: 0.28
+    photostability: medium
+    verified: false
+
+  AlexaFluor555:
+    aliases: [AF555, Alexa555, "Alexa Fluor 555"]
+    abs_peak_nm: 555
+    abs_fwhm_nm: 35
+    em_peak_nm: 565
+    em_fwhm_nm: 40
+    ext_coeff_M1cm1: 155000
+    quantum_yield: 0.10
+    lifetime_ns: 0.3
+    photostability: high
+    verified: false
+    note: >
+      자유형(비접합) 다이 기준. 몰흡광계수는 Wikipedia/AAT Bioquest 155000,
+      Berlier 2003(1차 문헌) 150000으로 출처 간 소폭 차이. QY 0.10, lifetime
+      0.3 ns는 Wikipedia 및 Gebhardt 2021(ChemPhysChem)의 재측정치(0.33-
+      0.35 ns)와 대체로 일치. Cy3보다 광안정성이 훨씬 좋음(95초 조사 후
+      Cy3 ~75% vs AF555 ~90% 잔존, Berlier 2003). 실측 곡선 못 찾음 — Thermo
+      SpectraViewer/AAT Bioquest 뷰어 모두 JS 전용이라 자동 fetch 불가,
+      브라우저로 직접 확인 필요.
+
+  ATTO550:
+    aliases: [Atto550, "ATTO 550"]
+    abs_peak_nm: 554
+    abs_fwhm_nm: 30
+    em_peak_nm: 576
+    em_fwhm_nm: 40
+    ext_coeff_M1cm1: 120000
+    quantum_yield: 0.80
+    lifetime_ns: 3.6
+    photostability: high
+    verified: true
+    curves:
+      absorption: atto550_abs.txt
+      emission: atto550_em.txt
+    note: >
+      ⚠ 요청받은 "ATTO 555"는 이번 조사에서 실존 제품인지 확인 못 했다 —
+      현재 ATTO-TEC/Leica 카탈로그에도, 다이 전체를 정리한 Jena Bioscience
+      표에도 그 이름이 없다(550과 565는 있음). ATTO-TEC는 ATTO 550을
+      "Alexa Fluor 555 대체품"으로 직접 홍보하므로, "555" 요청이 이 다이를
+      가리켰을 가능성이 높다고 보고 이름을 ATTO550으로 등록해뒀다. 실제로
+      찾던 게 ATTO 565였거나, fluorophores.tugraz.at/substance/239(553/568
+      nm로 "ATTO 555"라 표기됨, 상세페이지는 500 에러라 실체 미확인)였을
+      수도 있으니 확인 후 필요하면 alias나 별도 항목을 추가할 것. 실측
+      곡선은 ATTO-TEC/Leica 공식 파일(PBS)로 확보.
+
+  # ── 결합체(conjugate) ────────────────────────────────────────────────────
+  # 아래는 폴더명 토큰이지 염료 이름이 아니다. 실제 형광단이 무엇인지
+  # 확정되기 전에는 게이트가 BLOCKED를 낸다.
+  SA647:
+    aliases: ["Streptavidin-647"]
+    abs_peak_nm: 650
+    abs_fwhm_nm: 38
+    em_peak_nm: 668
+    em_fwhm_nm: 44
+    ext_coeff_M1cm1: 270000
+    quantum_yield: 0.33
+    photostability: high
+    verified: false
+    note: >
+      ⚠ 형광단 미확정. Alexa 647 값으로 임시 채워둠. 실제 제품이
+      Alexa Fluor 647 / ATTO 647N / DyLight 650 중 무엇인지 확인 필요.
+      스트렙타비딘 1분자당 형광단 수(DOL)도 밝기를 몇 배 바꾼다.
+
+  DEX647:
+    aliases: ["Dextran-647"]
+    abs_peak_nm: 650
+    abs_fwhm_nm: 38
+    em_peak_nm: 668
+    em_fwhm_nm: 44
+    ext_coeff_M1cm1: 270000
+    quantum_yield: 0.33
+    photostability: high
+    verified: false
+    note: >
+      ⚠ 형광단·분자량 미확정. 덱스트란 분자량(3k/10k/70k/500k)이 ATPS 상분배와
+      확산계수를 결정하므로 FRAP·분배 실험에서는 필수 정보다.
+
+  Phal647:
+    aliases: ["Phalloidin-647"]
+    abs_peak_nm: 650
+    abs_fwhm_nm: 38
+    em_peak_nm: 668
+    em_fwhm_nm: 44
+    ext_coeff_M1cm1: 270000
+    quantum_yield: 0.33
+    photostability: high
+    verified: false
+    note: >
+      ⚠ 형광단 미확정. 팔로이딘은 액틴 필라멘트를 **안정화**한다 —
+      액틴 레올로지 측정에서는 측정 대상 자체를 바꾸는 섭동이다.
+      시료계 렌즈에서 반드시 확인.

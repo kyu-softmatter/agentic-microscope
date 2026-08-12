@@ -1,0 +1,31 @@
+# Per-row readout time of the Kinetix cameras (PVCAM adapter), for
+# ReadoutTimeNs / ROI_height. Measured with
+# `python -m calibration.cli camera-readout <cfg> --unit ns`
+# (calibration/mm_live.py). See docs/07-roadmap.md Phase 0.
+
+- adapter: PVCAM
+  cameras: [Camera-1, Camera-2]   # same PVCAM library mapping as Kinetix_blue/Kinetix_red in DMD_dualcam.cfg
+  config_used: "C:\\Users\\Takatori lab\\Desktop\\Maintanance\\micromanager\\dual_cam_test.cfg"
+  property: Timing-ReadoutTimeNs
+  raw_value: 8475000.0000
+  unit_assumed: ns
+  roi_height_rows: 2400
+  row_time_ns: 3531.2
+  date: 2026-08-12
+  measured_by: agent (Claude Code, on microscope PC per user confirmation)
+  verified: true
+  note: >
+    Property name (`Timing-ReadoutTimeNs`) literally spells out the unit --
+    treated as strong evidence, not confirmed against a written Photometrics/
+    PVCAM SDK doc. If that written confirmation later contradicts "ns",
+    correct this file and docs/07-roadmap.md.
+
+    Loaded via `dual_cam_test.cfg` (PVCAM-only, no NikonTi2/Mightex devices)
+    rather than the canonical `DMD_dualcam.cfg`, because pymmcore-plus's own
+    auto-installed Micro-Manager build (interface v75) can load PVCAM/CSUW1/
+    NikonTi2 fine but has no `MightexPolygon1000` adapter (the DMD's vendor
+    support package is a separate, older install pinned to interface v71 --
+    see devices_not_in_mm_config note in kb/systems/current.md). ROI height
+    (2400 rows) is whatever was saved in that .cfg's last-used ROI, not
+    necessarily the sensor's full/current height -- re-check before using in
+    a real acquisition-time budget.

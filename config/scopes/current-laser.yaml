@@ -1,0 +1,67 @@
+# 시스템 프로파일 — CSU-W1 스피닝디스크 컨포칼 (LUN-F-XL 레이저 콤바이너) 경로.
+#
+# kb/systems/current.md의 lasers / optical_path_nis 절을 optics.recommend가
+# 소비할 수 있는 최소 형태로 옮긴 것. "레이저"라고 부를 수 있는 광원은
+# LUN-F-XL 하나뿐이다 (LightEngine/Aura는 LED — kb/systems/current.md 참고).
+#
+# 여기 적힌 것은 전부 "실제로 이 슬롯에 물리적으로 무엇이 있는가"다.
+# 그게 괜찮은가(=검증)는 optics/checks.py가, 어느 조합이 나은가(=추천)는
+# optics/recommend.py가 계산한다. 이 파일 자체는 로직을 담지 않는다
+# (docs/08 §6 참고).
+
+scope:
+  name: current-laser
+  path: "CSU-W1 spinning-disk confocal, LUN-F-XL laser excitation"
+  source_of_truth: kb/systems/current.md
+  verified_date: 2026-08-10
+
+  source:
+    device: LUN-F-XL # data/light_sources.yaml#LUN-F-XL
+    lines: ["405", "488", "561", "640"]
+
+  # 여기측 정형 필터 없음 — 레이저 라인 자체가 이미 ~1-2nm이고, 다이크로익
+  # 노치가 여기 청소를 겸한다 (kb/systems/current.md > lasers 노트).
+  excitation: []
+
+  dichroic: "Di01-T405/488/568/647-13x15x0.5" # data/filters.yaml, 고정, 제거불가
+
+  # EM1/EM2 방출 필터휠 — 카메라 arm마다 하나씩, 구성이 동일함이 독립
+  # 확인됨 (kb/systems/current.md > optical_path_nis > EM1/EM2, 2026-08-11).
+  # EM1=Kinetix_red, EM2=Kinetix_blue로 카메라 배정도 확정됐지만, 구성이
+  # 같으므로 계산에는 영향 없음 — 두 카메라 다 이 목록에서 고른다.
+  #
+  # 2026-08-11 정정: position 0-4의 실제 필터는 multi/405/488/555/647(DMD_
+  # dualcam.cfg의 CSUW1-Filter_Red Label과 일치)이지만, fwhm·실제 통과대역
+  # 데이터가 없어 data/filters.yaml에 아직 등록 못 함(추측 금지) — 등록되기
+  # 전까지 후보에서 제외. "88000v2-EM"/"EM1-455/50" 등 예전에 여기 있던
+  # 5개는 EM1/EM2의 실제 필터가 아니었음(오귀속으로 정정, data/filters.yaml
+  # 해당 항목 주석 참고) — 제거.
+  emission_filters:
+    # position 5-8: Blocked(금속판으로 막힘, 선택 불가) — 후보에서 제외.
+    - "EM-Open" # position 9 — 필터 없음(open), 전 파장 투과. 2026-08-11 확인.
+
+  # 듀얼카메라 이미지 스플리터 (kb/systems/current.md > optical_path_nis >
+  # Splitter, 2026-08-10 사용자 확인: position 1 "DM A561LP" 활성, 카메라
+  # 2대 동시 사용 중). 561nm 기준으로 방출을 갈라 각 카메라로 보낸다 —
+  # Kinetix_red=투과측(>561, 긴 파장), Kinetix_blue=반사측(<561, 짧은 파장).
+  # optics.recommend는 각 (염료,라인,필터) 후보를 두 카메라 다 계산해서
+  # 실제로 신호가 더 크게 떨어지는 쪽을 그 후보의 카메라로 보고한다.
+  splitter:
+    registry: "DM A561LP"
+    cameras:
+      Kinetix_red: transmit
+      Kinetix_blue: reflect
+
+  # ⚠ 실제 카메라는 Kinetix(x2)인데 data/detectors.yaml에 아직 없다.
+  # 이름을 "Kinetix"로 그대로 둔다 — Prime95B로 대체하면 다른 QE 곡선을
+  # 조용히 빌려오는 셈이라 하지 않는다 (optics/gate.py의 원칙과 동일).
+  # 등록 전까지 QE는 평탄 0.8 placeholder로 계산되고 evidence는 assumed로
+  # 잡힌다. data/detectors.yaml에 Kinetix 데이터시트 QE 곡선을 추가할 것.
+  detector: Kinetix
+
+  # NA 미확인 (kb/systems/current.md > objectives, 전부 verified: false).
+  # optics.recommend가 쓰는 네 체크(excitation/stokes/blocking/collection)는
+  # NA를 쓰지 않으므로 이 스크리닝 단계에는 지장이 없다 — 하지만 이 결과가
+  # `optics.cli check`의 최종 판정을 대신하지는 않는다. 실험 전에는 반드시
+  # 대물 NA를 채우고 `optics.cli check`로 다시 확인할 것.
+  objective: null

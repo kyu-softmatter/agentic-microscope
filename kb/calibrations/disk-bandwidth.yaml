@@ -1,0 +1,22 @@
+# Sustained sequential write bandwidth of the acquisition disk (G12 input).
+# Measured with `python -m calibration.cli disk-bandwidth <dir> --size-gb 4`
+# (calibration/disk_bandwidth.py) -- random-data write + fsync, so OS
+# write-behind cache can't inflate the result. See docs/04-decision-engine.md
+# §9: G12 gates camera data rate at 0.7x this value.
+
+- directory: "D:\\Kyu Hwan Choi\\_bench"
+  disk: "D:"
+  size_gb: 4.0
+  seconds: 19.3
+  mb_per_s: 206.8
+  date: 2026-08-12
+  measured_by: agent (Claude Code, on microscope PC per user confirmation)
+  method: calibration.disk_bandwidth.measure_write_bandwidth
+  verified: true
+  note: >
+    D: is the 11 TB data drive (2.56 TB free at measurement time), used for
+    Kyu_Hwan's own data folders -- confirmed on the microscope PC, not the
+    offline work PC. Not yet confirmed this is the literal folder
+    Micro-Manager streams multi-page TIFFs into for this system's
+    acquisitions; re-measure pointed at the actual MM save directory if it
+    differs. G12 budget from this value: 0.7 * 206.8 = 144.8 MB/s.
