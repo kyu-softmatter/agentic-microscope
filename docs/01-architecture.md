@@ -1,93 +1,107 @@
-# 01 · 아키텍처
+# 01 · Architecture
 
-## 0. 한 문장 요약
+## 0. One-sentence summary
 
-과거 촬영 메타데이터를 **물리량으로 정규화한 지식베이스**로 만들고, 새 실험 요구를
-받으면 **현재 장비로 재투영한 설정안**을 생성한 뒤, **계통별 위원회의 만장일치**를
-통과한 것만 확정한다.
-
----
-
-## 1. 왜 평범한 챗봇으로는 안 되는가
-
-세 가지 구조적 제약이 설계를 결정한다.
-
-**(1) 과거 설정은 그대로 복사할 수 없다.**
-아카이브 2,343건은 지금 없는 셋업에서 나왔다. `Exposure=500ms, Spectra-Red_Level=10`
-같은 장치값은 카메라·광원·필터가 바뀌면 무의미하다. 이전 가능한 것은 그 설정이
-만든 **물리량**뿐이다 — 샘플면 광자속, 유효 픽셀 크기, 여기/방출 대역, 총 광자 dose.
-
-**(2) 계산 가능한 것을 추론하면 안 된다.**
-광학 투과율, SNR, 표본화, 덫 강성은 전부 닫힌 형태로 계산된다. LLM이 "대략 이 정도면
-괜찮습니다"라고 답하는 순간 이 프로젝트는 실패한다. 계산은 코드가 하고, LLM은
-**입력을 모으고 결과를 해석**한다.
-
-**(3) 관점마다 최적해가 반대로 간다.**
-광구동 능동 입자에서 광학계는 "SNR 위해 광량 ↑"라 하고 광섭동 관점은 "그 빛이 입자를
-밀고 있다"고 한다. 형태 관찰과 입자 추적은 최적 픽셀 크기가 반대다. 단일 관점의
-최적화는 조용히 틀린 답을 낸다.
+Turn past acquisition metadata into a **knowledge base normalized to physical
+quantities**; when a new experimental request arrives, generate a **setting
+proposal reprojected onto the current instrument**, and confirm only what passes
+**unanimous consent of a per-subsystem committee**.
 
 ---
 
-## 2. 레이어
+## 1. Why an ordinary chatbot will not do
+
+Three structural constraints determine the design.
+
+**(1) Past settings cannot be copied verbatim.**
+The 2,343 archived acquisitions came from a setup that no longer exists. Device
+values like `Exposure=500ms, Spectra-Red_Level=10` are meaningless once the
+camera, light source, or filters change. The only transferable content is the
+**physical quantities** that setting produced — photon flux at the sample,
+effective pixel size, excitation/emission bands, total photon dose.
+
+**(2) Anything computable must not be guessed.**
+Optical transmission, SNR, sampling, and trap stiffness all have closed forms.
+The moment an LLM answers "roughly this much should be fine," this project has
+failed. Code does the computing; the LLM **gathers inputs and interprets
+results**.
+
+**(3) Optima run in opposite directions depending on the lens.**
+For a light-driven active particle, the optics lens says "raise the light for
+SNR" while the photo-perturbation lens says "that light is pushing the
+particle." Morphology observation and particle tracking want opposite pixel
+sizes. Single-lens optimization produces quietly wrong answers.
+
+---
+
+## 2. Layers
 
 ```
-┌─ L0  자료 (읽기 전용) ─────────────────────────────────────────────────┐
-│  MM 메타데이터 *_metadata.txt   MM .cfg   NIS-Elements 설정            │
-│  하드웨어 데이터시트   필터/염료 스펙트럼 곡선   프로토콜 문서          │
-│  분석 코드 (D:\codes)  ← 어떤 분석을 할지가 설정 요구사항을 정한다     │
+┌─ L0  Sources (read-only) ──────────────────────────────────────────────┐
+│  MM metadata *_metadata.txt   MM .cfg   NIS-Elements settings          │
+│  Hardware datasheets   filter/dye spectral curves   protocol documents │
+│  Analysis code (D:\codes)  ← which analysis you run sets the           │
+│                              setting requirements                      │
 └────────────────────────────────────────────────────────────────────────┘
                                    │
-┌─ L1  수집·정규화 ──────────────────────────────────────────────────────┐
-│  스트리밍 파서 (헤더만 읽음: Summary + 첫 FrameKey + tail)             │
-│  MM 1.4 / 2.0 이중 스키마 처리                                          │
-│  3-tier 정규화:  raw  →  device  →  physical                            │
-│  시스템 지문(fingerprint)으로 "어느 현미경인가" 자동 판정               │
+┌─ L1  Ingest & normalize ───────────────────────────────────────────────┐
+│  Streaming parser (headers only: Summary + first FrameKey + tail)      │
+│  Handles the MM 1.4 / 2.0 dual schema                                  │
+│  3-tier normalization:  raw  →  device  →  physical                    │
+│  System fingerprint decides "which microscope is this" automatically   │
 └────────────────────────────────────────────────────────────────────────┘
                                    │
-┌─ L2  지식베이스 (영속) ────────────────────────────────────────────────┐
-│  kb/systems/     시스템별 dossier + 장치 연결상태 3자 대조표           │
-│  kb/envelope.db  정량 인덱스 (질의용)                                   │
-│  kb/samples/     시료계별 이미징 레시피                                 │
-│  kb/decisions/   과거 추천 + 실제 결과  ← 학습 루프                     │
-│  data/           염료·필터·광원·검출기 레지스트리 (스펙트럼 포함)       │
+┌─ L2  Knowledge base (persistent) ──────────────────────────────────────┐
+│  kb/systems/       per-system dossier + three-way device wiring cross- │
+│                    check                                               │
+│  kb/calibrations/  measured hardware calibrations                      │
+│  kb/decisions/     past recommendations + actual outcomes ← learning   │
+│                    loop                                                │
+│  kb/expertise/     expertise extracted from conversation               │
+│  data/             dye / filter / light source / detector registries   │
+│                    (spectra included)                                  │
 └────────────────────────────────────────────────────────────────────────┘
                                    │
-┌─ L3  추론 ─────────────────────────────────────────────────────────────┐
-│  선례 검색  →  물리량 환산  →  현재 장비로 재투영  →  제약 해 찾기     │
-│  (요구 SNR / 시간해상도 / 광자예산 하에서 노출·광량·binning·ROI 결정)  │
+┌─ L3  Inference ────────────────────────────────────────────────────────┐
+│  Search precedent → convert to physical quantities → reproject onto    │
+│  the current instrument → solve the constraints                        │
+│  (choose exposure, light level, binning, ROI under a required SNR /    │
+│   time resolution / photon budget)                                     │
 └────────────────────────────────────────────────────────────────────────┘
                                    │
-┌─ L4  위원회 ───────────────────────────────────────────────────────────┐
-│  하드 게이트(코드)  +  계통별 렌즈 6+2                                  │
-│  전원 ADVANCE 아니면 통과 못 함. FAIL은 반드시 수정 지시를 동반.        │
+┌─ L4  Committee ────────────────────────────────────────────────────────┐
+│  Hard gates (code)  +  per-subsystem lenses 6+2                        │
+│  Nothing passes unless every lens ADVANCEs. Every FAIL must carry a    │
+│  concrete fix instruction.                                             │
 └────────────────────────────────────────────────────────────────────────┘
                                    │
-┌─ L5  산출 ─────────────────────────────────────────────────────────────┐
-│  설정 제안서 (근거 · 가정 · 불확실성 · 대안)                            │
-│  MM Channel 프리셋 / 장부 밖 설정 체크리스트                            │
-│  실험 기획서                                                            │
+┌─ L5  Output ───────────────────────────────────────────────────────────┐
+│  Setting proposal (rationale · assumptions · uncertainty · alternatives)│
+│  MM Channel preset / off-ledger settings checklist                     │
+│  Experiment plan                                                       │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 3. 핵심 설계 원칙
+## 3. Core design principles
 
-### 원칙 1 — 계산으로 판정, 추론 금지
+### Principle 1 — Judge by computation, never by inference
 
-계산 가능한 값을 LLM이 어림하지 않는다. 입력이 없으면 **거절**한다.
+The LLM does not estimate a value that can be computed. If the input is
+missing, it **refuses**.
 
-코드에 강제되어 있다. `optics.gate.Verdict`는 두 축을 분리한다:
+This is enforced in code. `optics.gate.Verdict` separates two axes:
 
-| 축 | 뜻 |
+| Axis | Meaning |
 |---|---|
-| `status` | 물리적으로 타당한가 (`PASS` / `PASS_WITH_CHANGES` / `FAIL` / `BLOCKED`) |
-| `evidence` | 그 판정에 쓴 값이 실측인가 (`measured`) 추정인가 (`assumed`) |
-| `advances` | **`passed and evidence == "measured"`** — 위원회가 보는 건 이것뿐 |
+| `status` | Is it physically sound (`PASS` / `PASS_WITH_CHANGES` / `FAIL` / `BLOCKED`) |
+| `evidence` | Were the values used measured (`measured`) or estimated (`assumed`) |
+| `advances` | **`passed and evidence == "measured"`** — this is all the committee looks at |
 
-카탈로그 공칭값으로 계산하면 `status: PASS` 여도 `advances: NO` 다.
-그리고 `assumed_inputs`에 무엇을 추정했는지 전부 나열한다.
+If the computation ran on nominal catalog values, `advances` is `NO` even when
+`status` is `PASS`. Everything that was estimated is listed in
+`assumed_inputs`.
 
 ```
 evidence: assumed   confidence: low   advances: NO
@@ -95,159 +109,209 @@ assumed:  ATTO647N spectra, FF01-692/40, Plan Apo 100x Oil transmission,
           Spectra.Red power at sample
 ```
 
-### 원칙 2 — 3-tier 정규화, 물리량만 이전
+### Principle 2 — 3-tier normalization; only physical quantities transfer
 
 ```
-tier 1  raw       "Spectra-Red_Level": "10"      원본 그대로. 절대 유실 안 됨.
-tier 2  device    광원=Spectra, 라인=Red, 10%     장비 종속. 같은 시스템 안에서만 유효.
-tier 3  physical  640±15 nm, ? mW/cm² @ sample    장비 무관. 이것만 시스템 간 이전.
+tier 1  raw       "Spectra-Red_Level": "10"      Verbatim. Never lost.
+tier 2  device    source=Spectra, line=Red, 10%  Instrument-bound. Valid only
+                                                 within the same system.
+tier 3  physical  640±15 nm, ? mW/cm² @ sample   Instrument-independent. Only
+                                                 this transfers across systems.
 ```
 
-tier 3가 비어 있으면(= 광량 실측이 없으면) 시스템 간 이전은 **불가능**하다.
-현재 아카이브가 정확히 그 상태다. *(상세: 03 시스템 간 이전 — 미작성)*
+If tier 3 is empty (i.e. there is no measured light level), cross-system
+transfer is **impossible**. That is exactly the state of the current archive.
+→ [03](03-cross-system-transfer.md)
 
-### 원칙 3 — 장부 밖(off-ledger) 설정을 1급 시민으로
+### Principle 3 — Off-ledger settings are first-class citizens
 
-MM이 기록하지 않는 설정이 실재한다.
+Settings that MM does not record do exist.
 
-| 항목 | 상태 | 어디에만 남나 |
+| Item | Status | Where it survives |
 |---|---|---|
-| 광집게 출력 | **장부 밖** — 출력 실측 예정 | 폴더명 `OT0.005` |
-| 피에조 스테이지 | **장부 밖** — MM·NIS 미등록, 별도 프로그램 | 아무데도 없음 |
-| 필터휠 위치 | 등록됨, **라벨 미등록** — 위치 정보 수령 예정 | `Filter-0`으로만 기록 |
-| 1.5x 중간배율 | **MM 등록됨** (현재 시스템) | 아카이브 세대 C에서만 누락되어 있었음 |
+| Optical tweezers power | **Off-ledger** — power measurement pending | Folder name `OT0.005` |
+| Piezo stage | **Off-ledger** — not registered in MM or NIS, separate program | Nowhere |
+| Filter wheel position | Registered, **label not registered** — position info pending | Recorded only as `Filter-0` |
+| 1.5x intermediate magnification | **Registered in MM** (current system) | Was missing only in archive generation C |
 
-→ 획득마다 `acquisition.yaml` 사이드카를 남기고, 에이전트가 장부 밖 항목을
-명시적으로 물어서 채운다. 안 물어보면 영원히 유실된다.
+→ Leave an `acquisition.yaml` sidecar for every acquisition, and have the agent
+explicitly ask for the off-ledger items to fill it. If it does not ask, the
+information is lost forever.
 
-> 아카이브 세대 C는 `IntermediateMagnification` 장치가 config에 없는 상태로
-> 촬영되어 1.5x가 폴더명에만 남았다. 장치가 등록되어 있어도 **그 config로
-> 촬영했는지**가 별개 문제라는 사례다. 지문에 장치 목록을 넣는 이유.
+> Archive generation C was recorded with no `IntermediateMagnification` device
+> in the config, so the 1.5x survives only in the folder name. It shows that a
+> device being registered is a separate question from **whether that config was
+> the one used for the acquisition**. This is why the fingerprint includes the
+> device list.
 
-### 원칙 4 — 지식베이스는 텍스트
+### Principle 4 — The knowledge base is text
 
-`kb/`는 markdown + SQLite. 사람이 열어서 고칠 수 있고, git으로 이력이 남고,
-에이전트가 grep할 수 있다. 벡터DB나 불투명한 임베딩 저장소를 쓰지 않는다 —
-"왜 이 값을 추천했나"를 추적할 수 없게 되기 때문이다.
+`kb/` is markdown + SQLite. A human can open and fix it, git keeps its history,
+and the agent can grep it. No vector DB and no opaque embedding store — those
+make "why was this value recommended" untraceable.
 
-### 원칙 5 — 만장일치, 단 교착은 사람에게
+### Principle 5 — Unanimous consent, but deadlocks go to the human
 
-전원 ADVANCE만 통과. 하지만 6개 렌즈 만장일치는 교착하기 쉬우므로:
+Only unanimous ADVANCE passes. But unanimity across six lenses deadlocks
+easily, so:
 
-- 모든 FAIL은 **구체적 수정 지시**를 동반해야 한다 (불평 금지)
-- 수정 → 재심의 루프는 **최대 3회**
-- 3회 안에 수렴 못 하면 **상충 자체를 사람에게 제시**한다:
-  "광섭동은 광량 5% 이하를 요구하고 검출계는 20 Hz에서 SNR 5를 위해 30% 이상을
-  요구합니다. 양립 불가입니다. (a) 프레임레이트 10 Hz로 낮추거나 (b) 더 밝은
-  염료로 바꾸거나 (c) 광구동 섭동을 감수하고 진행 — 선택이 필요합니다."
+- Every FAIL must carry a **concrete fix instruction** (no complaining)
+- The revise → re-review loop runs **at most 3 times**
+- If it does not converge within 3 rounds, **present the conflict itself to the
+  human**:
+  "Photo-perturbation requires ≤5% light level; detection requires ≥30% to
+  reach SNR 5 at 20 Hz. These are incompatible. (a) Lower the frame rate to
+  10 Hz, (b) switch to a brighter dye, or (c) accept the light-driven
+  perturbation and proceed — a choice is needed."
 
-이게 실패가 아니라 **정상 동작**이다. 물리적으로 양립 불가한 요구를 억지로
-봉합하는 것이 실패다.
+This is **correct behavior, not failure**. Failure would be forcibly papering
+over physically incompatible requirements.
 
 ---
 
-## 4. 위원회 구성
+## 4. Committee composition
 
-계통별(subsystem)로 나눈다. 분야별(광학/콜로이드/이론)로 나누면 관할이 겹쳐
-"다들 대충 괜찮다"는 판정이 나온다. 계통별이면 **각 렌즈가 소유하는 설정 항목**이
-명확해서 FAIL이 곧 수정 지시가 된다.
+The split is by subsystem. Splitting by discipline (optics / colloids / theory)
+overlaps jurisdictions and yields "everyone thinks it's roughly fine" verdicts.
+Splitting by subsystem makes **the settings each lens owns** unambiguous, so a
+FAIL is already a fix instruction.
 
-### 상시 소집 (6)
+### Standing (6)
 
-| # | 렌즈 | 소유 설정 | 판정 근거 | 구현 |
+| # | Lens | Settings owned | Basis of verdict | Implementation |
 |---|---|---|---|---|
-| 1 | **광학계** | 필터·다이크로익·미러·ND·대물·광경로 | 스펙트럼 적분 → 완전 결정론적 | `optics/` ✅ |
-| 2 | **검출계** | 노출·binning·ROI·readout·gain·프레임간격 | 광자수지·SNR·표본화 → 결정론적 | 미구현 |
-| 3 | **전산자원** | 프레임레이트·버퍼·저장·처리 | 대역폭·용량 산술 → 결정론적 | 미구현 |
-| 4 | **시료 기하·광학** | 대물 선택·침지·커버글라스·초점깊이 | 굴절률·WD·수차 → 반결정론적 | 미구현 |
-| 5 | **광섭동** | 광량·조명 duty·총 dose | 표백·가열·광구동 → 반결정론적 | 미구현 |
-| 6 | **측정 타당성** | 위 결과가 원하는 물리량을 편향 없이 주는가 | 편향 계산 + 정성 | 미구현 |
+| 1 | **Optics** | Filters, dichroics, mirrors, ND, objective, light path | Spectral integration → fully deterministic | `optics/` ✅ |
+| 2 | **Detection** | Exposure, binning, ROI, readout, gain, frame interval | Photon budget, SNR, sampling → deterministic | `detection/` ✅ |
+| 3 | **Compute resources** | Frame rate, buffer, storage, processing | Bandwidth and capacity arithmetic → deterministic | `compute/` ✅ |
+| 4 | **Sample geometry & optics** | Objective choice, immersion, coverslip, focal depth | Refractive index, WD, aberration → semi-deterministic | `.claude/agents/sample-optics.md` (draft, no code) |
+| 5 | **Photo-perturbation** | Light level, illumination duty, total dose | Bleaching, heating, light-driving → semi-deterministic | `.claude/agents/photo-perturbation.md` (draft, no code) |
+| 6 | **Measurement validity** | Whether all of the above yields the intended physical quantity without bias | Bias computation + qualitative | `.claude/agents/measurement-validity.md` (draft, no code) |
 
-### 조건부 소집 (2)
+### Conditional (2)
 
-| # | 렌즈 | 소집 조건 | 판정 근거 |
-|---|---|---|---|
-| 7 | **광집게** | 광집게 사용 시 | 덫 강성 κ, U/kT, 코너주파수 f_c → 계산 |
-| 8 | **기계·환경** | 장시간(>30분) 실험 | 드리프트·진동·증발·PFS 잠금 |
+| # | Lens | Convened when | Basis of verdict | Implementation |
+|---|---|---|---|---|
+| 7 | **Optical tweezers** | Tweezers in use | Trap stiffness κ, U/kT, corner frequency f_c → computed | `trapping/` ✅ |
+| 8 | **Mechanical & environmental** | Long experiments (>30 min) | Drift, vibration, evaporation, PFS lock | Not implemented |
 
-### 왜 4번과 5번을 나눴나
+### Why 4 and 5 are separate
 
-시료의 **기하/광학적 성질**과 **광반응성**은 요구 전문성이 다르고 결론이 정반대로 간다.
-한 렌즈에 묶으면 이 충돌이 보이지 않는다.
+A sample's **geometric/optical properties** and its **photoresponsiveness**
+demand different expertise and lead to opposite conclusions. Bundling them into
+one lens hides that conflict.
 
-### 렌즈 간 교차 제약 (한 렌즈만으로는 안 잡히는 것)
+### Cross-lens constraints (what no single lens catches)
 
-이게 위원회를 두는 진짜 이유다.
+This is the real reason for having a committee.
 
-| 제약 | 관련 렌즈 | 내용 |
+| Constraint | Lenses | Content |
 |---|---|---|
-| 모션 블러 | 2 ↔ 6 | 노출 중 입자 이동거리가 PSF를 넘으면 MSD가 **과소평가**된다 |
-| 덫 강성 vs 샘플링 | 7 ↔ 2 | 파워스펙트럼 교정에는 `f_s ≳ 10·f_c` 필요. 레이저 출력을 올리면 f_c가 올라가 프레임레이트 요구가 따라 올라간다 |
-| 광량 vs 광구동 | 1 ↔ 5 | SNR을 위한 증광이 능동입자를 구동한다 |
-| ROI vs 통계 | 3 ↔ 6 | ROI를 줄여 속도를 얻으면 시야 안 입자 수가 줄어 통계력이 떨어진다 |
-| 픽셀 크기 | 2 ↔ 6 | 형태 관찰은 Nyquist, 입자 추적은 σ_PSF ≈ 픽셀이 최적. **방향이 반대** |
-| 침지 vs 깊이 | 4 ↔ 1 | 굴절률 부정합은 깊이에 비례해 구면수차를 키운다. ATPS는 두 상의 RI가 다르다 |
+| Motion blur | 2 ↔ 6 | If particle travel during exposure exceeds the PSF, MSD is **underestimated** |
+| Trap stiffness vs sampling | 7 ↔ 2 | Power-spectrum calibration needs `f_s ≳ 10·f_c`. Raising laser power raises f_c, which raises the frame-rate requirement |
+| Light level vs light-driving | 1 ↔ 5 | The extra light needed for SNR drives active particles |
+| ROI vs statistics | 3 ↔ 6 | Shrinking the ROI for speed reduces the particle count in the field, weakening statistical power |
+| Pixel size | 2 ↔ 6 | Morphology wants Nyquist; tracking is optimal at σ_PSF ≈ pixel. **Opposite directions** |
+| Immersion vs depth | 4 ↔ 1 | Refractive-index mismatch grows spherical aberration in proportion to depth. In ATPS the two phases have different RI |
 
 ---
 
-## 5. 폴더 구조
+## 5. Folder structure
 
 ```
-D:\experimentalist\
+experimentalist/
 │
-├── README.md                     프로젝트 개요 + 문서 지도
+├── README.md                     Project overview + document map
 ├── requirements.txt
 │
-├── docs\                         ← 설계 문서
-│   ├── 01-architecture.md        (이 파일)
-│   ├── 02-knowledge-base.md      KB 스키마 · 장치 연결상태 3자 대조 · 장부 밖 설정
-│   ├── 03-cross-system-transfer.md   시스템 간 설정 이전
-│   ├── 04-decision-engine.md     결정 순서 · 계산식 · 하드게이트 14개
-│   ├── 05-consensus-gate.md      위원회 · 난이도 등급 · 개선 제안
-│   ├── 06-pitfalls.md            실측 근거 기반 함정 목록
-│   ├── 07-roadmap.md             Phase 0-5
-│   ├── 08-optical-path-spec.md   렌즈 계산 구조 · 하드웨어 YAML 형식
-│   └── 09-knowledge-capture.md   전문성 포착 — 이 프로젝트의 진짜 목적
+├── docs\                         ← design documents
+│   ├── 01-architecture.md        (this file)
+│   ├── 02-knowledge-base.md      KB schema · three-way wiring cross-check · off-ledger settings
+│   ├── 03-cross-system-transfer.md   transferring settings between systems
+│   ├── 04-decision-engine.md     decision order · formulas · the 14 hard gates
+│   ├── 05-consensus-gate.md      committee · difficulty grades · improvement proposals
+│   ├── 06-pitfalls.md            pitfall list grounded in measured evidence
+│   ├── 07-roadmap.md             Phase 0–5
+│   ├── 08-optical-path-spec.md   lens computation structure · hardware YAML format
+│   └── 09-knowledge-capture.md   expertise capture — the real purpose of this project
 │
-├── reference\
-│   └── observed-systems.md       ⚠ 구 셋업 인벤토리 (현재 시스템 아님)
+├── .claude\agents\               ← judgment lenses as LLM subagents (draft, no code)
+│   ├── sample-optics.md          lens 4
+│   ├── photo-perturbation.md     lens 5
+│   └── measurement-validity.md   lens 6
 │
-├── optics\                       ← 렌즈 1: 구현 완료, 테스트 26개 통과
-│   ├── spectra.py                Spectrum 타입, 곡선 로딩, 대역 근사
-│   ├── components.py             염료·필터·다이크로익·광원·대물·검출기
-│   ├── path.py                   광경로 모델, 처리량, ablation 분석
-│   ├── checks.py                 체크 레지스트리 · margin · 난이도 등급
-│   ├── gate.py                   Phase 0/1/2 집계 + evidence 분리
+├── optics\                       ← lens 1 (optics)
+│   ├── spectra.py                Spectrum type, curve loading, band approximation
+│   ├── components.py             dyes · filters · dichroics · sources · objectives · detectors
+│   ├── path.py                   light-path model, throughput, ablation analysis
+│   ├── checks.py                 check registry · margin · difficulty grade
+│   ├── gate.py                   Phase 0/1/2 aggregation + evidence separation
 │   ├── build.py                  dict/YAML → Channel
+│   ├── recommend.py              setting recommendation
 │   └── cli.py                    `python -m optics.cli check <config>`
 │
-├── data\                         ← 레지스트리 (사람이 채우는 곳)
-│   ├── fluorophores.yaml         염료 (← 스펙트럼 업로드 예정)
-│   ├── filters.yaml              필터·다이크로익·ND·편광자
-│   ├── light_sources.yaml        광원 라인 + 샘플면 출력 실측값
-│   ├── detectors.yaml            카메라
-│   └── spectra\                  실측 곡선 (vendor txt/csv)
+├── detection\                    ← lens 2 (detection, G5–G9)
+│   ├── photometry.py             photon budget, SNR
+│   ├── timing.py                 frame timing, rolling shutter
+│   ├── checks.py  gate.py  setup.py  cli.py
+│
+├── compute\                      ← lens 3 (compute resources, G12–G13)
+│   ├── resources.py              data rate, buffer, capacity
+│   ├── checks.py  gate.py  setup.py  cli.py
+│
+├── trapping\                     ← lens 7 (optical tweezers, G14)
+│   ├── laser.py                  laser and beam
+│   ├── dynamics.py               trap stiffness, corner frequency
+│   ├── goa.py                    generalized optical approach
+│   ├── checks.py  gate.py  cli.py
+│
+├── calibration\                  ← Phase 0 hardware measurement scripts
+│   ├── disk_bandwidth.py         sustained disk write bandwidth
+│   ├── mm_live.py                camera row time, EM1/EM2 camera identification
+│   ├── ram_capture.py            RAM buffer capture
+│   └── cli.py
+│
+├── hardware\                     ← off-ledger device control
+│   ├── optical_tweezers.py
+│   ├── piezo_stage.py
+│   └── piezo\vendor\             vendor DLL + adapter
+│
+├── data\                         ← registries (filled in by hand)
+│   ├── fluorophores.yaml         dyes
+│   ├── filters.yaml              filters · dichroics · ND · polarizers
+│   ├── light_sources.yaml        source lines + measured power at sample
+│   ├── detectors.yaml            cameras
+│   └── spectra\                  measured curves (vendor txt/csv)
 │
 ├── config\
-│   ├── channels\                 채널 구성 예제
-│   └── scopes\                   (예정) 시스템 프로파일
+│   ├── channels\                 channel configuration examples
+│   └── scopes\                   system profiles
 │
-├── kb\                           (예정) 지식베이스
+├── kb\                           ← knowledge base
+│   ├── systems\current.md        current system dossier
+│   ├── calibrations\             measured calibrations
+│   ├── decisions\                past recommendations + outcomes
+│   └── expertise\                expertise captured from conversation
+│
+├── reference\
+│   ├── observed-systems.md       ⚠ old-setup inventory (not the current system)
+│   └── quotes\                   purchase quotes
+│
+├── manual\                       vendor manuals (DMD · optical tweezers · piezo stage)
 └── tests\
-    └── test_optics.py            26 passed
 ```
 
 ---
 
-## 6. 지금 실제로 동작하는 것
+## 6. What actually works today
 
-렌즈 1(광학계)만 구현되어 있고, 의도한 대로 **거절한다**.
+The four computational lenses (1 · 2 · 3 · 7) are implemented, and they
+**refuse** as intended.
 
 ```bash
 python -m optics.cli check config/channels/legacy-observed.yaml
 ```
 
-과거 셋업을 그대로 넣으면:
+Feed in the old setup as-is:
 
 ```
 channel: 647-Cy5 (as observed)   dye: SA647   ->  BLOCKED - insufficient information
@@ -260,8 +324,8 @@ channel: 647-Cy5 (as observed)   dye: SA647   ->  BLOCKED - insufficient informa
          Element 'Wheel-A:Filter-0' has no passband on record
 ```
 
-스펙을 다 채운 2채널 제안을 넣으면 실제 숫자가 나오고, 근사값이 섞여 있으면
-`advances: NO`로 잡힌다:
+Feed in a two-channel proposal with the specs filled in and real numbers come
+out; if approximations are mixed in, it is caught as `advances: NO`:
 
 ```
 excitation efficiency   36.8%      spectral collection   21.1%
@@ -270,29 +334,32 @@ excitation blocking     11.5 OD    Stokes headroom       25 nm
 Rayleigh resolution      281 nm    depth of field       483 nm
 
 [WARN] emission.peak_clipped
-       검출 대역이 672 nm에서 시작 — ATTO647N 방출 피크(669 nm)를 지났다.
-       가장 밝은 부분을 버리고 있다.
+       Detection band starts at 672 nm — past the ATTO647N emission peak
+       (669 nm). You are discarding the brightest part.
 
 element ablation
-  candidate  FF01-640/14      signal +104%  근사 스펙트럼 기반이므로 벤치에서
-                                            확인 전까지 지시 아님
-  required   FF01-692/40      signal  +43%  빼면 차단이 5.6 OD로 떨어짐
-  required   Di03-R405/...    signal   +0%  구조 요소
+  candidate  FF01-640/14      signal +104%  based on approximate spectra, so
+                                            not an instruction until confirmed
+                                            on the bench
+  required   FF01-692/40      signal  +43%  removing it drops blocking to 5.6 OD
+  required   Di03-R405/...    signal   +0%  structural element
 ```
 
-`ablation`이 이 렌즈의 핵심 기능이다. **"필터를 빼면 어떻게 되는가"를 추측이 아니라
-실제로 곱셈에서 제거해보고 재계산한다.** 신호가 오르고 차단·크로스토크가 여전히
-만족되면 제거를 제안하고, 아니면 왜 필요한지를 숫자로 설명한다.
+`ablation` is this lens's key capability. **It answers "what happens if I remove
+this filter" by actually removing the term from the product and recomputing,
+not by guessing.** If signal rises while blocking and crosstalk still hold, it
+proposes removal; otherwise it explains in numbers why the element is needed.
 
 ---
 
-## 7. 다음 순서
+## 7. What comes next
 
-1. **현재 시스템 `.cfg` 확보** → NIS-Elements와 3자 대조 → `reference/current-system.md`
-2. **렌즈 2·3(검출계·전산자원)** — 둘 다 순수 계산. 식은 [04](04-decision-engine.md) §4·§5·§8에 정리됨
-3. **렌즈 7(광집게)** — MATLAB 코드·논문 수령 후
-4. **L1 인덱서** — 아카이브 2,343건 → SQLite
-5. **에이전트 층** — `CLAUDE.md` + 스킬 + 위원회 오케스트레이션
+1. **Judgment lenses 4 · 5 · 6** — agent definitions are drafted in
+   `.claude/agents/`; they still need to be wired into committee orchestration
+2. **Lens 8 (mechanical & environmental)** — not started
+3. **L1 indexer** — the 2,343 archived acquisitions → SQLite
+4. **Agent layer** — `CLAUDE.md` + skills + committee orchestration
 
-남은 설계 문서: 02(지식베이스) · 03(시스템 간 이전) · 05(위원회 상세) ·
-06(주의할 점) · 07(로드맵).
+What is blocking progress is mostly **facts, not code**: the gates run but
+return `BLOCKED` for want of measured inputs, illumination power above all.
+→ [Phase 0](07-roadmap.md)

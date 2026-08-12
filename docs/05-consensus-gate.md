@@ -1,157 +1,171 @@
-# 05 · 위원회와 실현가능성 판정
+# 05 · The committee and feasibility verdicts
 
-> **상태: 스케치.** 등급 체계·판정 스키마는 확정 제안, 렌즈별 체크리스트는 초안.
-
----
-
-## 1. 이진 판정을 버린다
-
-초기 설계는 `PASS`/`FAIL`이었다. 그건 틀렸다.
-
-**측정 한계에서 찍어야 하는 실험이 실재한다.** 신호가 약한 게 알고 있는 사실이고,
-그래도 데이터가 필요한 경우가 있다. 그때 게이트가 `FAIL`만 내면 두 가지 중 하나가
-일어난다 — 사람이 게이트를 끄거나, 게이트를 무시하는 습관이 든다. 둘 다 최악이다.
-
-대신 **얼마나 어려운지**를 말하고, **무엇을 고치면 쉬워지는지**를 계산해서 보여준다.
+> **Status: sketch.** The grading scheme and verdict schema are settled
+> proposals; the per-lens checklists are drafts.
 
 ---
 
-## 2. 게이트를 세 종류로 나눈다
+## 1. Drop the binary verdict
 
-미달했을 때의 **결과**가 다르므로 처리도 달라야 한다.
+The initial design was `PASS`/`FAIL`. That was wrong.
 
-| 종류 | 미달하면 | 진행 | 예 |
+**Experiments that must be shot at the measurement limit do exist.** Sometimes
+the signal being weak is a known fact and the data is needed anyway. If the gate
+can only return `FAIL` in that situation, one of two things happens — the human
+turns the gate off, or the human forms the habit of ignoring it. Both are the
+worst outcome.
+
+Instead, say **how hard it is**, and compute and show **what would make it
+easier**.
+
+---
+
+## 2. Three kinds of gate
+
+The **consequence** of falling short differs, so the handling must differ too.
+
+| Kind | If it falls short | Proceed | Examples |
 |---|---|---|---|
-| **soft** | 품질이 나빠질 뿐. 데이터는 유효 | ✅ 난이도 표시 후 진행 | SNR 부족, 표본화 부족, 통계력 부족 |
-| **bias** | **결과가 틀린다.** 데이터는 나오지만 해석이 어긋남 | ⚠ 보정식 있으면 진행 + 보정 **필수**, 없으면 중단 | 모션블러, 후처리 필터, 픽셀교정 없음, 광구동 섭동 |
-| **hard** | 아예 동작 안 함 | ❌ 중단 | 여기광 차단 부족, 여기 결합 0, 데이터율 초과(드랍), 포화 |
+| **soft** | Quality degrades only. The data stays valid | ✅ Proceed after flagging the difficulty | Insufficient SNR, insufficient sampling, insufficient statistical power |
+| **bias** | **The result is wrong.** Data comes out, but the interpretation is off | ⚠ Proceed with **mandatory** correction if a correction formula exists; stop if not | Motion blur, post-processing filters, missing pixel calibration, light-driven perturbation |
+| **hard** | It simply does not work | ❌ Stop | Insufficient excitation blocking, zero excitation coupling, data rate exceeded (drops), saturation |
 
-`bias`가 가장 위험하다. **데이터가 그럴듯하게 나오기 때문에** 사후에 알아채기 어렵다.
-[04 §5](04-decision-engine.md)의 모션블러가 대표적이다 — MSD가 직선으로 나오는데
-기울기가 틀리다.
+`bias` is the most dangerous. **Because the data comes out looking plausible**,
+it is hard to notice after the fact. The motion blur case in
+[04 §5](04-decision-engine.md) is the canonical example — MSD comes out as a
+straight line with the wrong slope.
 
-### 14개 게이트 분류
+### Classification of the 14 gates
 
-| 게이트 | 종류 | 미달 시 |
+| Gate | Kind | If it falls short |
 |---|---|---|
-| G1 여기 결합 | hard | 신호 없음 |
-| G2 방출 수집 | soft | 노출 늘리면 됨 (dose 증가) |
-| G3 여기광 차단 | hard | 배경이 신호를 덮음 |
-| G4 크로스토크 | bias | 언믹싱 없으면 채널 오염 |
-| G5 표본화 | soft/bias | 형태관찰=soft, 추적=**bias** (위치추정 편향) |
-| G6 포화 | hard | 값이 잘림 → 복구 불가 |
-| G7 SNR | soft | 지저분할 뿐 |
-| G8 모션블러 | **bias** | MSD 과소평가. 보정식 있음 |
-| G9 프레임레이트 실현성 | hard | 요청대로 안 돌아감 |
-| G10 광표백 | bias | 강도 감쇠 → 보정 필요 |
-| G11 통계력 | soft | 오차막대가 커질 뿐 |
-| G12 데이터율 | hard | **조용한 프레임 드랍** |
-| G13 버퍼 | hard | 〃 |
-| G14 광집게 샘플링 | bias | κ 교정값이 틀림 |
+| G1 Excitation coupling | hard | No signal |
+| G2 Emission collection | soft | Increase exposure (dose rises) |
+| G3 Excitation blocking | hard | Background swamps signal |
+| G4 Crosstalk | bias | Channel contamination without unmixing |
+| G5 Sampling | soft/bias | Morphology = soft, tracking = **bias** (localization bias) |
+| G6 Saturation | hard | Values clip → unrecoverable |
+| G7 SNR | soft | Merely noisy |
+| G8 Motion blur | **bias** | MSD underestimated. Correction formula exists |
+| G9 Frame-rate realizability | hard | Does not run as requested |
+| G10 Photobleaching | bias | Intensity decay → correction needed |
+| G11 Statistical power | soft | Error bars merely widen |
+| G12 Data rate | hard | **Silent frame drops** |
+| G13 Buffer | hard | ″ |
+| G14 Tweezers sampling | bias | κ calibration value is wrong |
 
 ---
 
-## 3. 난이도 등급
+## 3. Difficulty grades
 
-각 게이트는 **여유(margin)** 를 배수로 낸다: `m = 달성값 / 요구값`.
+Each gate reports its **margin** as a ratio: `m = achieved / required`.
 
-| m | 등급 | 뜻 |
+| m | Grade | Meaning |
 |---|---|---|
-| ≥ 3 | **ROUTINE** | 여유. 실패하면 설정 탓이 아님 |
-| 1.5 – 3 | **COMFORTABLE** | 정상 |
-| 1.0 – 1.5 | **TIGHT** | 조건이 조금만 어긋나도 실패. 시료 준비 품질이 결과를 좌우 |
-| 0.5 – 1.0 | **HARD** | 한계에서 동작. 성공률 낮고 재현성 나쁨. **진행 가능** |
-| 0.2 – 0.5 | **MARGINAL** | 데이터는 나오지만 해석에 큰 주의. bias 게이트면 사실상 무의미 |
-| < 0.2 | **INFEASIBLE** | 개선 없이는 불가 |
+| ≥ 3 | **ROUTINE** | Comfortable headroom. If it fails, the settings are not to blame |
+| 1.5 – 3 | **COMFORTABLE** | Normal |
+| 1.0 – 1.5 | **TIGHT** | Fails if conditions slip even slightly. Sample preparation quality decides the outcome |
+| 0.5 – 1.0 | **HARD** | Operating at the limit. Low success rate, poor reproducibility. **May proceed** |
+| 0.2 – 0.5 | **MARGINAL** | Data comes out but interpret with great care. Effectively meaningless for a bias gate |
+| < 0.2 | **INFEASIBLE** | Impossible without improvement |
 
-전체 등급 = **가장 나쁜 soft/bias 게이트의 등급**. hard 게이트가 하나라도
-`m < 1`이면 등급과 무관하게 중단.
+The overall grade = **the grade of the worst soft/bias gate**. If any hard gate
+has `m < 1`, stop regardless of the grade.
 
-### 출력 형식
+### Output format
 
 ```
-실현가능성:  HARD  (m = 0.64, 결정 게이트: G7 SNR)
+feasibility:  HARD  (m = 0.64, deciding gate: G7 SNR)
 
-  hard 게이트   전부 통과 ✅
-  bias 게이트   G8 모션블러 m=0.9 → 보정 필수 (Savin-Doyle)
-  soft 게이트   G7 SNR m=0.64  ← 병목
-                G11 통계력 m=1.8
+  hard gates   all pass ✅
+  bias gates   G8 motion blur m=0.9 → correction mandatory (Savin-Doyle)
+  soft gates   G7 SNR m=0.64  ← bottleneck
+               G11 statistical power m=1.8
 
-이 실험은 가능하지만 어렵습니다.
-· 예상 SNR 3.2 (목표 5). 위치추정 정밀도 16 nm (목표 10 nm)
-· 개별 궤적은 지저분하고, 앙상블 평균에서만 신뢰할 만한 결과가 나옵니다
-· 시료 준비 품질(배경 형광, 비특이 흡착)이 성패를 가릅니다
-· 모션블러 보정을 반드시 적용하세요. 안 하면 G'가 계통적으로 낮게 나옵니다
+This experiment is possible but hard.
+· Expected SNR 3.2 (target 5). Localization precision 16 nm (target 10 nm)
+· Individual trajectories will be noisy; only the ensemble average will give a
+  trustworthy result
+· Sample preparation quality (background fluorescence, non-specific adsorption)
+  decides success or failure
+· Apply the motion blur correction. Without it, G' comes out systematically low
 ```
 
 ---
 
-## 4. 개선 제안 — 민감도 분석
+## 4. Improvement proposals — sensitivity analysis
 
-**"어렵다"고만 말하면 쓸모없다. 무엇을 고치면 되는지 계산해서 보여준다.**
+**Saying only "this is hard" is useless. Compute and show what to fix.**
 
-병목 게이트의 여유를 각 파라미터로 편미분해서, 개입별 이득 배수를 낸다.
-개입은 비용 계층으로 묶는다.
+Take the partial derivative of the bottleneck gate's margin with respect to each
+parameter, and report a gain multiplier per intervention. Group interventions
+into cost tiers.
 
-### 계층
+### Tiers
 
-| 계층 | 예 | 비용 |
+| Tier | Examples | Cost |
 |---|---|---|
-| **0 · 설정** | readout 모드, binning, ROI, 노출, 광량 | 무료·즉시 |
-| **1 · 광경로** | 필터 제거/교체, 광경로 100% 전환, ND 제거 | 무료 ~ 부품값 |
-| **2 · 시약** | 더 밝은 염료, 표지 밀도, 소광 방지제, 굴절률 정합 | 저렴 |
-| **3 · 부품** | 방출필터, 다이크로익, 대물렌즈 | $$ |
-| **4 · 장비** | 카메라, 광원 | $$$$ |
-| **5 · 설계** | 측정량 변경, 시간해상도 양보, 시료계 변경 | 개념 |
+| **0 · Settings** | Readout mode, binning, ROI, exposure, light level | Free, immediate |
+| **1 · Light path** | Remove/swap a filter, switch light path to 100%, remove ND | Free ~ part cost |
+| **2 · Reagents** | Brighter dye, labeling density, antifade, refractive-index matching | Cheap |
+| **3 · Parts** | Emission filter, dichroic, objective | $$ |
+| **4 · Instruments** | Camera, light source | $$$$ |
+| **5 · Design** | Change the measured quantity, concede time resolution, change the sample system | Conceptual |
 
-### 출력 예 (SNR 1.6× 부족한 상황)
+### Example output (SNR short by 1.6×)
 
 ```
-개선 후보 — 계산된 이득
+improvement candidates — computed gains
 
-계층 0 (무료)
-  200MHz 12bit → 100MHz 16bit        ×3.4   실효 잡음 4.65→1.35 e-
-                                            단 최대 fps 확인 필요 (G9 재검토)
-  광량 2배                            ×1.4   √2 (산탄잡음 한계라서)
-                                            ⚠ 광표백 dose 2배 → G10 재확인
-  binning 2x2                         ×2.0   단 유효픽셀 110→220 nm
-                                            ⚠ 추적이면 G5 bias → 권장 안 함
+tier 0 (free)
+  200MHz 12bit → 100MHz 16bit        ×3.4   effective noise 4.65→1.35 e-
+                                            but check max fps (revisit G9)
+  2× light level                      ×1.4   √2 (shot-noise limited)
+                                            ⚠ 2× bleaching dose → recheck G10
+  2x2 binning                         ×2.0   but effective pixel 110→220 nm
+                                            ⚠ G5 bias if tracking → not advised
 
-계층 1 (부품 or 무료)
-  방출필터 692/40 → 685/70            ×1.4   수집 21% → 30%
-  광경로 AUX → L100                   ×?     현재 100%면 이득 없음
+tier 1 (parts or free)
+  emission filter 692/40 → 685/70     ×1.4   collection 21% → 30%
+  light path AUX → L100               ×?     no gain if already at 100%
 
-계층 2 (시약)
+tier 2 (reagents)
   ATTO647N → Alexa Fluor 647          ×1.8   ε 150k→270k
-                                            ⚠ Φ 0.65→0.33이라 실제로는 ×0.9
-                                            → 밝기 ε·Φ 로는 오히려 손해
-  소광방지제(Trolox/GLOX) 첨가         ×?     표백 억제. 정량 불가, 문헌값 필요
+                                            ⚠ Φ 0.65→0.33, so actually ×0.9
+                                            → a net loss in brightness ε·Φ
+  add antifade (Trolox/GLOX)          ×?     suppresses bleaching. Not
+                                            quantifiable; needs literature values
 
-계층 3 (부품)
-  대물 NA 1.45 → 1.49                 ×1.15  η_geo 0.352→0.404
-                                            비용 대비 효율 나쁨
+tier 3 (parts)
+  objective NA 1.45 → 1.49            ×1.15  η_geo 0.352→0.404
+                                            poor cost-effectiveness
 
-계층 5 (설계)
-  프레임레이트 20 → 10 Hz             ×1.4   노출 2배 → √2
-                                            ⚠ 특성시간 50 ms를 놓칠 위험
+tier 5 (design)
+  frame rate 20 → 10 Hz               ×1.4   2× exposure → √2
+                                            ⚠ risks missing the 50 ms
+                                              characteristic time
 ```
 
-**요점 세 가지가 이 표에서 바로 보인다:**
+**Three points are immediately visible in this table:**
 
-1. **가장 큰 이득이 가장 싸다** — readout 모드 전환 ×3.4가 대물렌즈 교체 ×1.15보다
-   훨씬 크고 무료다. 직관은 반대로 간다.
-2. **더 밝아 보이는 염료가 실제로는 어두울 수 있다** — ε만 보면 안 되고 `ε·Φ`를 봐야 한다.
-3. **모든 개선이 다른 게이트를 건드린다** — 광량 2배는 표백 2배, binning은 표본화 파괴.
-   따라서 **개선안도 게이트를 다시 통과해야 한다.**
+1. **The largest gain is the cheapest** — switching readout mode at ×3.4 is far
+   larger than swapping the objective at ×1.15, and it is free. Intuition runs
+   the other way.
+2. **A dye that looks brighter can actually be dimmer** — ε alone is not enough;
+   you have to look at `ε·Φ`.
+3. **Every improvement touches another gate** — 2× light is 2× bleaching;
+   binning destroys sampling. So **improvement proposals must pass the gates
+   again too.**
 
-### 구현
+### Implementation
 
-각 게이트에 `sensitivity()` 를 붙인다: 파라미터 → 여유의 편미분(또는 유한차분).
-개입 카탈로그(`data/interventions.yaml`)에 각 개입이 어떤 파라미터를 얼마나
-바꾸는지 적어두고, 조합해서 랭킹한다.
+Attach a `sensitivity()` to each gate: parameter → partial derivative (or finite
+difference) of the margin. Record in an intervention catalog
+(`data/interventions.yaml`) which parameters each intervention changes and by
+how much, then combine and rank them.
 
 ```yaml
-# data/interventions.yaml (스케치)
+# data/interventions.yaml (sketch)
 - id: readout_16bit
   tier: 0
   cost: free
@@ -166,181 +180,220 @@
 
 ---
 
-## 5. 위원회 렌즈
+## 5. Committee lenses
 
-[01 §4](01-architecture.md)의 상세. 각 렌즈는 같은 스키마로 답한다.
+Details for [01 §4](01-architecture.md). Every lens answers with the same
+schema.
 
 ```python
 @dataclass
 class LensVerdict:
     lens: str
     feasibility: str          # ROUTINE .. INFEASIBLE
-    margins: dict[str, float] # 게이트별 m
+    margins: dict[str, float] # m per gate
     evidence: str             # measured | assumed
     assumed_inputs: list[str]
     findings: list[Finding]   # severity, code, message, action, numbers
-    interventions: list[Intervention]   # 개선 제안 + 계산된 이득
+    interventions: list[Intervention]   # improvement proposals + computed gains
     advances: bool            # feasibility >= TIGHT and evidence == measured
                               #   and no hard gate below 1.0
 ```
 
-### 렌즈 1 · 광학계 — 구현 완료
+### Lens 1 · Optics — implemented
 
-- **소유**: 여기필터, 다이크로익, 방출필터, ND, 편광자, 미러, 광경로 포트, 대물
-- **게이트**: G1 G2 G3 G4
-- **특기**: ablation 분석 — 각 요소를 실제로 곱셈에서 빼보고 재계산해서
-  제거 가능 여부를 판정
-- **구현**: `optics/gate.py`
+- **Owns**: excitation filter, dichroic, emission filter, ND, polarizer,
+  mirrors, light-path port, objective
+- **Gates**: G1 G2 G3 G4
+- **Specialty**: ablation analysis — actually remove each element from the
+  product, recompute, and decide whether it can be dropped
+- **Implementation**: `optics/gate.py`
 
-### 렌즈 2 · 검출계
+### Lens 2 · Detection — implemented
 
-- **소유**: 노출, binning, ROI, readout 모드, gain, bit depth, 프레임 간격, 트리거
-- **게이트**: G5 G6 G7 G8 G9
-- **핵심 질문**
-  - 계의 특성 시간 대비 프레임레이트가 충분한가
-  - 노출 중 시료가 얼마나 움직이는가 (모션블러)
-  - 픽셀 크기가 **작업에 맞는가** (형태관찰 vs 추적 — 방향이 반대)
-  - 양자화 잡음이 read noise를 넘지 않는가
-  - 밝은 부분이 포화되지 않는가
-- **체크리스트**
-  - [ ] 작업 종류가 명시되었는가 (없으면 질문)
-  - [ ] `t_row` 실측값이 있는가
-  - [ ] 배경 잡음 실측이 있는가 (없으면 SNR은 상한값)
-  - [ ] 롤링셔터: 빠른 대상에서 행별 시간차가 문제 되는가
+- **Owns**: exposure, binning, ROI, readout mode, gain, bit depth, frame
+  interval, trigger
+- **Gates**: G5 G6 G7 G8 G9
+- **Key questions**
+  - Is the frame rate sufficient relative to the system's characteristic time
+  - How far does the sample move during the exposure (motion blur)
+  - Is the pixel size **right for the task** (morphology vs tracking — opposite
+    directions)
+  - Does quantization noise stay below read noise
+  - Do the bright regions avoid saturation
+- **Checklist**
+  - [ ] Has the task type been stated (if not, ask)
+  - [ ] Is there a measured `t_row`
+  - [ ] Is there a measured background noise level (without it, SNR is an upper
+        bound)
+  - [ ] Rolling shutter: does the row-to-row time offset matter for a fast
+        target
+- **Implementation**: `detection/gate.py`
 
-### 렌즈 3 · 전산자원
+### Lens 3 · Compute resources — implemented
 
-- **소유**: 데이터율, 순환버퍼, 저장 용량, 실시간 처리, CPU/RAM
-- **게이트**: G12 G13
-- **핵심 질문**
-  - `R = W·H·2·f` 가 디스크 지속쓰기 대역폭의 70% 미만인가
-  - 버퍼가 5초분 이상인가
-  - 총 용량이 여유 공간 안에 들어가는가
-  - 온라인 처리(추적·압축)를 붙이면 프레임당 CPU 시간 < 1/f 인가
-  - RAM이 버퍼 + OS + 분석을 감당하는가
-- **특기**: **조용한 실패를 잡는 유일한 렌즈.** 프레임 드랍은 에러를 내지 않고
-  `ElapsedTime-ms` 간격 이상으로만 드러난다
-- **사후 검증**: 획득 후 `ElapsedTime` 차분의 분산 → 드랍 검출. 지금 아카이브에도
-  적용 가능
+- **Owns**: data rate, circular buffer, storage capacity, real-time processing,
+  CPU/RAM
+- **Gates**: G12 G13
+- **Key questions**
+  - Is `R = W·H·2·f` below 70% of sustained disk write bandwidth
+  - Does the buffer hold at least 5 seconds
+  - Does the total volume fit in the free space
+  - With online processing (tracking, compression) attached, is CPU time per
+    frame < 1/f
+  - Can RAM carry the buffer + OS + analysis
+- **Specialty**: **the only lens that catches silent failure.** Frame drops
+  raise no error and surface only as `ElapsedTime-ms` intervals larger than
+  expected
+- **Post-hoc verification**: after acquisition, the variance of `ElapsedTime`
+  differences → drop detection. Applicable to the existing archive today
+- **Implementation**: `compute/gate.py`
 
-### 렌즈 4 · 시료 기하·광학
+### Lens 4 · Sample geometry & optics — agent draft, no code
 
-- **소유**: 대물 선택, 침지, 커버글라스 두께, 관찰 깊이, 챔버
-- **핵심 질문**
-  - 굴절률 정합: 침지 / 커버글라스 / 배지 / 시료
-  - 관찰 깊이 × 굴절률 부정합 → 구면수차, 초점 이동
-  - WD가 관찰 깊이 + 커버글라스를 감당하는가
-  - **ATPS는 두 상의 굴절률이 다르다** — 상마다 다른 수차
-  - 시료 농도 → 시야 내 개수, 겹침, 다중산란
-  - 커버글라스 두께 오차 (#1.5 = 170±5 µm, 실제는 더 벌어짐)
-- **체크리스트**
-  - [ ] 배지 굴절률이 기록되었는가
-  - [ ] 보정링이 있는 대물인가, 조정했는가
-  - [ ] 관찰 깊이가 10 µm를 넘는가 (넘으면 수차 정량 필요)
+- **Owns**: objective choice, immersion, coverslip thickness, imaging depth,
+  chamber
+- **Key questions**
+  - Refractive-index matching: immersion / coverslip / medium / sample
+  - Imaging depth × RI mismatch → spherical aberration, focal shift
+  - Does the WD cover the imaging depth + coverslip
+  - **ATPS has different refractive indices in the two phases** — different
+    aberration per phase
+  - Sample concentration → count in field, overlap, multiple scattering
+  - Coverslip thickness tolerance (#1.5 = 170±5 µm; the real spread is wider)
+- **Checklist**
+  - [ ] Has the medium's refractive index been recorded
+  - [ ] Is this an objective with a correction collar, and was it adjusted
+  - [ ] Does the imaging depth exceed 10 µm (if so, aberration must be
+        quantified)
+- **Implementation**: `.claude/agents/sample-optics.md`
 
-### 렌즈 5 · 광섭동
+### Lens 5 · Photo-perturbation — agent draft, no code
 
-- **소유**: 광량, 조명 duty, 총 dose, 파장 선택
-- **게이트**: G10
-- **핵심 질문**
-  - 광표백: 영상 전체에서 몇 % 사라지는가
-  - **여기광이 시료를 구동하는가** — 광구동 능동입자, 광가교, LC 광배열
-  - 국소 가열: 흡수 × 조도. 광집게 1064 nm는 물 흡수로 가열
-  - 광독성 (생체 시료)
-  - 삼중항 shelving / blinking
-- **특기**: **이 렌즈만이 "조명은 측정 도구가 아니라 실험 변수"라고 말할 수 있다.**
-  광학계 렌즈는 SNR을 위해 광량을 올리라고 하고, 이 렌즈는 그게 실험을 망친다고 한다.
-  이 충돌을 드러내는 것이 위원회의 존재 이유
+- **Owns**: light level, illumination duty, total dose, wavelength choice
+- **Gates**: G10
+- **Key questions**
+  - Photobleaching: what fraction disappears over the whole movie
+  - **Does the excitation light drive the sample** — light-driven active
+    particles, photo-crosslinking, LC photo-alignment
+  - Local heating: absorption × irradiance. Tweezers at 1064 nm heat via water
+    absorption
+  - Phototoxicity (living samples)
+  - Triplet shelving / blinking
+- **Specialty**: **only this lens can say "illumination is an experimental
+  variable, not a measurement tool."** The optics lens says raise the light for
+  SNR; this lens says that ruins the experiment. Surfacing that conflict is the
+  committee's reason to exist
+- **Implementation**: `.claude/agents/photo-perturbation.md`
 
-### 렌즈 6 · 측정 타당성
+### Lens 6 · Measurement validity — agent draft, no code
 
-- **소유**: 위 전부의 결과가 원하는 물리량을 편향 없이 주는가
-- **게이트**: G11 + bias 게이트 전체의 최종 심사
-- **핵심 질문**
-  - 이 설정으로 얻은 데이터에서 **의도한 양이 실제로 추출되는가**
-  - 알려진 편향이 전부 열거되고 보정 가능한가
-  - 필요한 교정(픽셀 크기, 암전류, flat-field, 광량)이 확보되었는가
-  - 후처리 필터가 정량성을 깨뜨리지 않는가
-  - 통계력이 목표 오차를 달성하는가
-- **특기**: 유일하게 **분석 코드까지 본다.** `D:\codes`의 어떤 스크립트로
-  처리할 것인지가 설정 요구사항을 바꾼다
+- **Owns**: whether the result of all of the above yields the intended physical
+  quantity without bias
+- **Gates**: G11 + final review of every bias gate
+- **Key questions**
+  - Is **the intended quantity actually extractable** from data taken with this
+    setting
+  - Are all known biases enumerated and correctable
+  - Are the required calibrations (pixel size, dark current, flat-field, light
+    level) in hand
+  - Do post-processing filters break quantitative validity
+  - Does statistical power meet the target error
+- **Specialty**: the only lens that **also reads the analysis code.** Which
+  script in `D:\codes` will process the data changes the setting requirements
+- **Implementation**: `.claude/agents/measurement-validity.md`
 
-### 렌즈 7 · 광집게 (조건부)
+### Lens 7 · Optical tweezers (conditional) — implemented
 
-- **게이트**: G14
-- **입력**: 입자 반경, 입자 굴절률, 배지 굴절률, 파장, NA, 샘플면 출력, 점성, 온도, 덫 개수
-- **계산**
-  - 영역 판정: `a ≪ λ` Rayleigh / `a ≫ λ` 광선광학 / **중간영역은 GLMT 필요**
-  - 덫 강성 κ, 덫 깊이 U/kT, 코너주파수 `f_c = κ/(2πγ)`
-  - 다중 덫이면 출력 분배
-  - 국소 가열
-- **교차 제약**: 파워스펙트럼 교정에 `f_s ≳ 10 f_c` → 검출계 렌즈로 전달
-- **⚠ 중간영역**: `a/λ ~ 1`이면 두 극한 모두 무효. **근사식으로 답하지 않고 BLOCKED**
-- **대기**: MATLAB 코드·논문 수령 후 구현
+- **Gates**: G14
+- **Inputs**: particle radius, particle refractive index, medium refractive
+  index, wavelength, NA, power at sample, viscosity, temperature, number of
+  traps
+- **Computes**
+  - Regime determination: `a ≪ λ` Rayleigh / `a ≫ λ` ray optics / **the
+    intermediate regime needs GLMT**
+  - Trap stiffness κ, trap depth U/kT, corner frequency `f_c = κ/(2πγ)`
+  - Power splitting for multiple traps
+  - Local heating
+- **Cross-lens constraint**: power-spectrum calibration needs `f_s ≳ 10 f_c` →
+  passed to the detection lens
+- **⚠ Intermediate regime**: at `a/λ ~ 1` both limits are invalid. **Do not
+  answer with an approximation — return BLOCKED**
+- **Remaining**: dial-% → mW measured calibration
+- **Implementation**: `trapping/gate.py`
 
-### 렌즈 8 · 기계·환경 (조건부, >30분)
+### Lens 8 · Mechanical & environmental (conditional, >30 min) — not implemented
 
-- 드리프트 (열, 기계), PFS 잠금 상태, 증발, 침강, 진동, 스테이지 반복정밀도
-- `PFS in Range`가 `Out of Range`인 세션이 아카이브에 있다 — PFS가 켜져 있어도
-  잠기지 않을 수 있다
-
----
-
-## 6. 오케스트레이션
-
-```
-제안 생성
-   │
-   ├─ 계산 렌즈 (1·2·3·7) 병렬 실행     ← 코드. 결정론적. 빠름
-   │      하나라도 hard 게이트 m<1 → 즉시 중단, 수정안 반환
-   │
-   ├─ 판단 렌즈 (4·5·6·8) 병렬 실행     ← LLM 서브에이전트
-   │      계산 렌즈 결과를 입력으로 받음
-   │
-   ├─ 종합
-   │      난이도 등급 = 최악 soft/bias 게이트
-   │      개선 제안 = 병목 게이트의 민감도 분석
-   │
-   └─ 판정
-         전원 advances  →  확정
-         아니면          →  수정 지시와 함께 재제안 (최대 3회)
-```
-
-**계산 렌즈를 먼저 돌리는 이유**: LLM 렌즈가 물리적으로 불가능한 안을 놓고
-논의하는 낭비를 막는다. 그리고 LLM 렌즈는 계산 결과를 **입력으로** 받아야 한다 —
-숫자를 스스로 만들면 안 된다.
-
-### 교착 처리
-
-3회 안에 수렴 못 하면 **상충 자체를 사람에게 제시한다.**
-
-```
-양립 불가한 요구가 있습니다.
-
-  렌즈 5 (광섭동): 광량 5% 이하. 그 이상이면 Janus 입자가 광구동됩니다.
-                   근거: [kb/samples/active-janus-colloid.md]
-  렌즈 2 (검출계): 20 Hz에서 SNR 5를 얻으려면 최소 30% 필요.
-                   근거: 광자수지 계산 [세부]
-
-선택지:
-  (a) 프레임레이트 10 Hz로 낮춤   → 광량 15%로 감소. 여전히 5% 초과
-  (b) 더 밝은 표지               → 필요 광량 비례 감소. 시약 변경 필요
-  (c) 광구동 섭동을 감수         → 측정량이 "수동 확산"에서 "광구동 운동"으로 바뀜
-  (d) 다른 파장으로 여기          → Janus 흡수대를 피할 수 있으면 최선
-                                    ⚠ 흡수 스펙트럼 필요
-
-무엇을 양보하시겠습니까?
-```
-
-**이것이 실패가 아니라 정상 동작이다.** 양립 불가한 요구를 억지로 봉합하는 것이 실패다.
+- Drift (thermal, mechanical), PFS lock state, evaporation, sedimentation,
+  vibration, stage repeatability
+- The archive contains sessions where `PFS in Range` reads `Out of Range` — PFS
+  can be on without being locked
 
 ---
 
-## 7. 열린 질문
+## 6. Orchestration
 
-- [ ] 난이도 등급 경계값(3 / 1.5 / 1.0 / 0.5 / 0.2)이 적절한가 — 실사용으로 조정
-- [ ] `data/interventions.yaml` 개입 카탈로그를 어디까지 채울 것인가
-- [ ] LLM 렌즈(4·5·6·8)를 서브에이전트로 둘 것인가 스킬 안의 단계로 둘 것인가
-- [ ] 렌즈 6이 `D:\codes`의 분석 스크립트를 어떻게 읽을 것인가
-- [ ] 사용자가 게이트를 명시적으로 무시(override)할 수 있어야 하는가 —
-      가능해야 하되 **무시한 사실이 kb/decisions에 기록**되어야 함
+```
+generate proposal
+   │
+   ├─ computational lenses (1·2·3·7) in parallel   ← code. deterministic. fast
+   │      any hard gate m<1 → stop immediately, return a revision
+   │
+   ├─ judgment lenses (4·5·6·8) in parallel        ← LLM subagents
+   │      receive the computational lens results as input
+   │
+   ├─ synthesis
+   │      difficulty grade = worst soft/bias gate
+   │      improvement proposals = sensitivity analysis of the bottleneck gate
+   │
+   └─ verdict
+         all advance  →  confirmed
+         otherwise    →  re-propose with fix instructions (at most 3 rounds)
+```
+
+**Why the computational lenses run first**: it prevents the waste of LLM lenses
+deliberating over a physically impossible proposal. And the LLM lenses must
+receive the computed results **as input** — they must not generate the numbers
+themselves.
+
+### Deadlock handling
+
+If it does not converge within 3 rounds, **present the conflict itself to the
+human.**
+
+```
+There are incompatible requirements.
+
+  Lens 5 (photo-perturbation): light level ≤5%. Above that the Janus particles
+                               are light-driven.
+                               Basis: [kb/samples/active-janus-colloid.md]
+  Lens 2 (detection):          reaching SNR 5 at 20 Hz needs at least 30%.
+                               Basis: photon budget calculation [details]
+
+Options:
+  (a) lower frame rate to 10 Hz  → light level drops to 15%. Still above 5%
+  (b) brighter label             → required light drops proportionally. Reagent
+                                   change needed
+  (c) accept the light-driven perturbation
+                                 → the measured quantity changes from "passive
+                                   diffusion" to "light-driven motion"
+  (d) excite at a different wavelength
+                                 → best if it can avoid the Janus absorption
+                                   band. ⚠ needs the absorption spectrum
+
+What would you like to concede?
+```
+
+**This is correct behavior, not failure.** Failure would be forcibly papering
+over incompatible requirements.
+
+---
+
+## 7. Open questions
+
+- [ ] Are the difficulty-grade boundaries (3 / 1.5 / 1.0 / 0.5 / 0.2)
+      appropriate — adjust with real use
+- [ ] How far to populate the `data/interventions.yaml` intervention catalog
+- [ ] How lens 6 should read the analysis scripts in `D:\codes`
+- [ ] Should the user be able to explicitly override a gate — it should be
+      possible, but **the fact of the override must be recorded in
+      kb/decisions**
