@@ -319,11 +319,12 @@ class LensVerdict:
   `.claude/agents/photo-perturbation.md` for the qualitative half
   (phototoxicity judgement, triplet/blinking behaviour, light-driving physics)
 
-### Lens 6 · Measurement validity — agent draft, no code
+### Lens 6 · Measurement validity — implemented
 
 - **Owns**: whether the result of all of the above yields the intended physical
   quantity without bias
-- **Gates**: G11 + final review of every bias gate
+- **Gates**: G11 (statistical power) G23 (bias ledger) G24 (pixel calibration)
+  G25 (photometric calibration) G26 (post-processing) G27 (committee coverage)
 - **Key questions**
   - Is **the intended quantity actually extractable** from data taken with this
     setting
@@ -333,8 +334,33 @@ class LensVerdict:
   - Do post-processing filters break quantitative validity
   - Does statistical power meet the target error
 - **Specialty**: the only lens that **also reads the analysis code.** Which
-  script in `D:\codes` will process the data changes the setting requirements
-- **Implementation**: `.claude/agents/measurement-validity.md`
+  script in `D:\codes` will process the data changes the setting requirements.
+  The gate does not read it — an undeclared `analysis_script` downgrades the
+  verdict to `assumed`, and reading it is the agent half's job
+- **⚠ Must run last.** Its primary input is the other lenses' verdicts, not
+  hardware facts, so running it first leaves it nothing to review. It reads
+  them through a structural protocol (`VerdictLike`) because each lens defines
+  its own copy of `Verdict`/`Finding` and `trapping`'s has no `feasibility`
+  field
+- **G23 is HARD, not BIAS.** The upstream gates are the bias gates; G23 is the
+  meta-check that they were all dealt with, so its failure means the intended
+  quantity does not survive — a veto on this lens's whole purpose. Its margin
+  is the worst *uncorrected* upstream bias margin, so the committee's worst
+  unhandled problem stays visible rather than being averaged away
+- **G27 is currently the only thing that notices the committee never met.**
+  There is no orchestrator: each lens is invoked by its own CLI, so a standing
+  lens that never ran, or one that returned BLOCKED, would otherwise go
+  unremarked. A BLOCKED upstream lens fails G27 — validity cannot sit on top of
+  a lens that had no basis to decide
+- **Which calibrations matter depends on the quantity.** A wrong pixel size
+  ruins a diffusion coefficient and is irrelevant to a stoichiometry;
+  flat-field is the reverse. `validity.setup.QUANTITY_REQUIREMENTS` encodes
+  that, and an unlisted quantity BLOCKs rather than being checked against
+  guessed criteria
+- **Implementation**: `validity/gate.py`, plus
+  `.claude/agents/measurement-validity.md` for the qualitative half (reading
+  the analysis code, judging whether the intended quantity is extractable at
+  all)
 
 ### Lens 7 · Optical tweezers (conditional) — implemented except heating
 

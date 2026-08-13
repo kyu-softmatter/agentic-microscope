@@ -59,6 +59,7 @@ Read [the pitfalls](docs/06-pitfalls.md) before starting any implementation.
 | [`compute/`](compute/) | 3 · compute resources (G12–G13) | Implemented |
 | [`sample/`](sample/) | 4 · sample geometry & optics (G15–G19) | Implemented. Remaining: measured sample-medium refractive index — the default 1.333 is assumed, so verdicts do not advance |
 | [`photo/`](photo/) | 5 · photo-perturbation (G10, G20–G22) | Implemented. **BLOCKED on the real instrument** until `power_at_sample_mw` is measured and dyes get `bleach_photons` — that refusal is the intended behaviour |
+| [`validity/`](validity/) | 6 · measurement validity (G11, G23–G27) | Implemented. Reviews the other lenses' verdicts, so **call it last**. G27 is currently the only thing that notices the committee never convened |
 | [`trapping/`](trapping/) | 7 · optical tweezers (G14) | Physics library + committee gate wired. Remaining: measured dial-% → mW calibration, and local heating at 1064 nm (not implemented — [06 D6](docs/06-pitfalls.md)) |
 | [`.claude/agents/`](.claude/agents/) | 4 · 5 · 6 | LLM subagent drafts, no code |
 

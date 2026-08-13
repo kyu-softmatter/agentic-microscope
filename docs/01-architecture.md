@@ -185,7 +185,7 @@ FAIL is already a fix instruction.
 | 3 | **Compute resources** | Frame rate, buffer, storage, processing | Bandwidth and capacity arithmetic → deterministic | `compute/` ✅ |
 | 4 | **Sample geometry & optics** | Objective choice, immersion, coverslip, focal depth | Refractive index, WD, aberration → semi-deterministic | `sample/` ✅ (G15–G19) + `.claude/agents/sample-optics.md` for the qualitative half |
 | 5 | **Photo-perturbation** | Light level, illumination duty, total dose | Bleaching, heating, light-driving → semi-deterministic | `photo/` ✅ (G10, G20–G22) + `.claude/agents/photo-perturbation.md` for the qualitative half |
-| 6 | **Measurement validity** | Whether all of the above yields the intended physical quantity without bias | Bias computation + qualitative | `.claude/agents/measurement-validity.md` (draft, no code) |
+| 6 | **Measurement validity** | Whether all of the above yields the intended physical quantity without bias | Bias computation + qualitative | `validity/` ✅ (G11, G23–G27) + `.claude/agents/measurement-validity.md` for the qualitative half |
 
 ### Conditional (2)
 
@@ -265,6 +265,11 @@ experimentalist/
 ├── photo\                        ← lens 5 (photo-perturbation, G10 · G20–G22)
 │   ├── dose.py                   irradiance, bleaching, saturation, total dose
 │   ├── checks.py  gate.py  setup.py  cli.py
+│
+├── validity\                     ← lens 6 (measurement validity, G11 · G23–G27)
+│   ├── power.py                  statistical power, the ROI/speed tradeoff
+│   ├── checks.py  gate.py  setup.py  cli.py
+│                                 reviews the other lenses' verdicts — call last
 │
 ├── trapping\                     ← lens 7 (optical tweezers, G14)
 │   ├── laser.py                  laser and beam

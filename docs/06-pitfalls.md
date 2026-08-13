@@ -380,8 +380,8 @@ Items **currently missed** because no gate exists:
 
 | Item | Owner |
 |---|---|
-| A1 missing pixel calibration | Lens 6 |
-| C1 despeckle post-processing | Lens 6 |
+| ~~A1 missing pixel calibration~~ | ~~Lens 6~~ — now caught: `validity.gate` G24 (2026-08-12), but only for quantities that depend on pixel size |
+| ~~C1 despeckle post-processing~~ | ~~Lens 6~~ — now caught: `validity.gate` G26 (2026-08-12). Note it can only refuse *future* acquisitions; archive data taken with despeckle on is not recoverable |
 | ~~D2 light-driven perturbation~~ | ~~Lens 5~~ — now caught: `photo.gate` G21 (2026-08-12), which BLOCKs rather than guessing the threshold |
 | D3 sample perturbation by the label | Lens 5 |
 | ~~D5 refractive-index mismatch~~ | ~~Lens 4~~ — now caught: `sample.gate` G17 (2026-08-12) |

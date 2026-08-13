@@ -415,10 +415,18 @@ All decided in code. If even one fails, the proposal is void.
 | G20 | Saturation · triplet shelving | excited-state fraction `≤ 0.1` | irradiance, ε, lifetime | BLOCKED |
 | G21 | Light-driving | irradiance `<` sample threshold | irradiance, measured threshold | BLOCKED |
 | G22 | Total dose | `≤` stated ceiling | irradiance, exposure plan | reported (INFO) |
+| G23 | Bias ledger | every upstream bias absent or corrected | other lenses' verdicts | BLOCKED |
+| G24 | Pixel calibration | measured, when the quantity needs it | measured pixel size | BLOCKED |
+| G25 | Photometric calibration | background · dark · flat-field measured | those frames | BLOCKED |
+| G26 | Post-processing | no linearity-breaking filter | declared filters | BLOCKED |
+| G27 | Committee coverage | every standing lens returned, none BLOCKED | other lenses' verdicts | BLOCKED |
 
-G15–G19 are lens 4's and G20–G22 are lens 5's; the numbers are new. This table
-previously stopped at G14 because lens 4 had no gate IDs at all and lens 5 had
-only G10.
+G15–G19 are lens 4's, G20–G22 lens 5's, G23–G27 lens 6's; the numbers are new.
+This table previously stopped at G14 because lens 4 had no gate IDs at all,
+lens 5 had only G10 and lens 6 only G11.
+
+G23–G27 read **other lenses' verdicts** rather than hardware facts, which is
+why lens 6 has to run last.
 
 **`BLOCKED` is not `FAIL`.** FAIL means "this setting is physically bad";
 BLOCKED means "there is no basis on which to decide." Neither advances to the
@@ -440,7 +448,8 @@ next step, but the action differs: FAIL means change the setting, BLOCKED means
 | §5 timing · blur (G8, G9) | `detection.gate.evaluate` | ✅ covered by tests (2026-08-11) |
 | §6 bleaching (G10) | `photo.gate.evaluate` | ✅ covered by tests (2026-08-12) — BLOCKED on the real instrument until `power_at_sample_mw` and `bleach_photons` exist |
 | §5 dose · saturation · light-driving (G20–G22) | `photo.gate.evaluate` | ✅ covered by tests (2026-08-12) |
-| §7 statistical power (G11) | | ❌ |
+| §7 statistical power (G11) | `validity.gate.evaluate` | ✅ covered by tests (2026-08-12) |
+| bias ledger · calibrations · post-processing (G23–G27) | `validity.gate.evaluate` | ✅ covered by tests (2026-08-12) |
 | §8 compute resources (G12, G13) | `compute.gate.evaluate` | ✅ covered by tests (2026-08-11) |
 | §9 tweezers (G14) | `trapping.gate.evaluate` (corner frequency → required fps) | ✅ covered by tests |
 | sample geometry (G15–G19) | `sample.gate.evaluate` (RI mismatch, WD, coverslip, overlap) | ✅ covered by tests (2026-08-12) |
