@@ -35,4 +35,18 @@ scope:
       Kinetix_blue: reflect
 
   detector: Kinetix
+
+  # Experiment-level choice, so null here. Name one from the nosepiece below.
   objective: null
+
+  # 6-position nosepiece. ONE physical turret, shared by every light path on
+  # this stand, so the specs live in data/objectives.yaml and are referenced
+  # here rather than copied. Lens 4 (sample/) consumes these:
+  # `python -m sample.cli check --objective 40x-WI`.
+  nosepiece:                     # data/objectives.yaml
+    - {position: 0, ref: 4x}
+    - {position: 1, ref: 10x}
+    - {position: 2, ref: 20x}
+    - {position: 3, ref: 40x-WI}      # index-matched for water-based media
+    - {position: 4, ref: 60x-Oil}
+    - {position: 5, ref: 100x-Oil}

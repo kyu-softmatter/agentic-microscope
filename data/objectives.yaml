@@ -1,0 +1,116 @@
+# Objective registry.
+#
+# The 6-position nosepiece on the Ti2-E stand. This is ONE physical turret
+# shared by every light path (current-laser / current-spectra / current-aura),
+# so it lives here once rather than being copied into each scope profile --
+# config/scopes/*.yaml reference these keys.
+#
+# Source: kb/systems/current.md > objectives. Every entry was cross-checked
+# against the Nikon catalogue by part number on 2026-08-10 and against the
+# physical barrel engravings on 2026-08-11, so `verified_na: true` throughout.
+#
+# `wd_um` and `coverslip_um` are in MICROMETRES; the dossier and the Nikon
+# catalogue quote working distance in mm. Vendor WD is measured to the
+# specimen-facing surface of the design coverslip, so the design thickness is
+# already inside the spec -- see sample/aberration.py free_working_distance_um.
+
+objectives:
+
+  4x:
+    label: "1-Plan Apo LmbdD20 4x"
+    product: "CFI Plan Apo Lambda D 4X"
+    part_number: MRD70040
+    position: 0
+    magnification: 4
+    na: 0.20
+    immersion: air
+    wd_um: 20000        # 20 mm
+    coverslip_um: 170
+    # Catalogue cover glass is "0-0.17 mm": this objective works with or
+    # without a coverslip, so G18's thickness tolerance is not the binding
+    # constraint here. 170 is recorded as the standard-use value.
+    correction_collar: false
+    verified_na: true
+    verified_date: 2026-08-10
+
+  10x:
+    label: "2-Plan Apo LmbdD4 10x"
+    product: "CFI Plan Apo Lambda D 10X"
+    part_number: MRD70170
+    position: 1
+    magnification: 10
+    na: 0.45
+    immersion: air
+    wd_um: 4000         # 4 mm
+    coverslip_um: 170
+    correction_collar: false
+    verified_na: true
+    verified_date: 2026-08-10
+
+  20x:
+    label: "3-Plan Apo LmbdD0.8 20x"
+    product: "CFI Plan Apo Lambda D 20X"
+    part_number: MRD70270
+    position: 2
+    magnification: 20
+    na: 0.80
+    immersion: air
+    wd_um: 800          # 0.8 mm
+    coverslip_um: 170
+    correction_collar: false
+    verified_na: true
+    verified_date: 2026-08-10
+
+  40x-WI:
+    label: "4-Apo LmbdS 40x WI"
+    product: "CFI Apo Lambda S 40XC WI"
+    part_number: MRD77400
+    position: 3
+    magnification: 40
+    na: 1.25
+    immersion: water
+    # ⚠ The catalogue gives 0.2-0.16 mm, collar dependent. 160 um is the
+    # CONSERVATIVE end, deliberately chosen because G16 is a hard gate: the
+    # WD shrinks as the collar is set for thicker cover glass, so budgeting
+    # against 200 um would pass configurations that fail in practice.
+    wd_um: 160
+    coverslip_um: 170
+    # Catalogue cover glass 0.15-0.19 mm -- that range IS the collar's
+    # adjustment span, which is why this is the only objective on the
+    # nosepiece with a correction collar.
+    correction_collar: true
+    verified_na: true
+    verified_date: 2026-08-10
+    # The index-matched choice for aqueous samples: water immersion against a
+    # water-based medium is a 0.000 mismatch, versus 0.185 for the oil
+    # objectives. kb/expertise/sample-medium-refractive-index.md
+    note: "index-matched for water-based media; lower NA than the oil objectives"
+
+  60x-Oil:
+    label: "5-Plan Apo LmbdD0.15 60x Oil"
+    product: "CFI Plan Apo Lambda D 60X Oil"
+    part_number: MRD71670
+    position: 4
+    magnification: 60
+    na: 1.42
+    immersion: oil
+    wd_um: 150          # 0.15 mm
+    coverslip_um: 170
+    correction_collar: false
+    verified_na: true
+    verified_date: 2026-08-10
+    note: "pol: Simple POL, phase ring: EXT PH3"
+
+  100x-Oil:
+    label: "6-Plan Apo LmbdD0.13 100x Oil"
+    product: "CFI Plan Apo Lambda D 100X Oil"
+    part_number: MRD71970
+    position: 5
+    magnification: 100
+    na: 1.45
+    immersion: oil
+    wd_um: 130          # 0.13 mm
+    coverslip_um: 170
+    correction_collar: false
+    verified_na: true
+    verified_date: 2026-08-10

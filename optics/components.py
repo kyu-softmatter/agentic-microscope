@@ -288,6 +288,33 @@ class Objective:
     correction_collar: bool = False
     verified_na: bool = False
 
+    @classmethod
+    def from_spec(cls, label: str, spec: dict[str, Any]) -> Objective:
+        """Build from a registry entry (data/objectives.yaml).
+
+        ``optics.build._objective`` is the equivalent for an objective spelled
+        out inline in a channel/scope file; it is kept separate because that
+        path also has to accept a bare string.
+        """
+        transmission = None
+        if t := spec.get("transmission"):
+            transmission = (
+                build_spectrum(t, f"{label}.T")
+                if isinstance(t, dict)
+                else Spectrum.constant(float(t), f"{label}.T")
+            )
+        return cls(
+            label=spec.get("label", label),
+            magnification=float(spec.get("magnification") or 0.0),
+            na=float(spec.get("na") or 0.0),
+            immersion=spec.get("immersion", "air"),
+            transmission=transmission,
+            wd_um=spec.get("wd_um"),
+            coverslip_um=spec.get("coverslip_um", 170.0),
+            correction_collar=bool(spec.get("correction_collar", False)),
+            verified_na=bool(spec.get("verified_na", False)),
+        )
+
     @property
     def n_medium(self) -> float:
         return IMMERSION_N.get(self.immersion, 1.0)
@@ -481,6 +508,33 @@ def find_detector(name: str) -> Detector | None:
     return detectors().get(name.strip().lower())
 
 
+@lru_cache(maxsize=1)
+def objectives() -> dict[str, Objective]:
+    """Objective registry (the nosepiece), keyed by name and by label."""
+    raw = _load_yaml("objectives.yaml").get("objectives") or {}
+    out: dict[str, Objective] = {}
+    for name, spec in raw.items():
+        obj = Objective.from_spec(name, spec)
+        out[str(name).lower()] = obj
+        if obj.label:
+            out[obj.label.lower()] = obj
+    return out
+
+
+def find_objective(name: str) -> Objective | None:
+    return objectives().get(name.strip().lower())
+
+
+@lru_cache(maxsize=1)
+def objective_keys() -> tuple[str, ...]:
+    """Canonical registry keys, in file order.
+
+    ``objectives()`` is also keyed by label so lookups are forgiving; this is
+    what to show a user who typed an unknown name.
+    """
+    return tuple(str(k) for k in (_load_yaml("objectives.yaml").get("objectives") or {}))
+
+
 def find_line(source: str, line: str) -> LightSourceLine | None:
     src = light_sources().get(source) or {}
     spec = (src.get("lines") or {}).get(line)
@@ -489,5 +543,5 @@ def find_line(source: str, line: str) -> LightSourceLine | None:
 
 def reset_registries() -> None:
     """Drop caches after editing the YAML files."""
-    for fn in (fluorophores, filters, light_sources, detectors):
+    for fn in (fluorophores, filters, light_sources, detectors, objectives, objective_keys):
         fn.cache_clear()

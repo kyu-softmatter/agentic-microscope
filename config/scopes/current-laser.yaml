@@ -69,10 +69,23 @@ scope:
   # Kinetix datasheet QE curve to data/detectors.yaml.
   detector: Kinetix
 
-  # NA unconfirmed (kb/systems/current.md > objectives, all verified: false).
-  # The four checks optics.recommend uses (excitation/stokes/blocking/collection)
-  # do not use NA, so this screening stage is unaffected — but this result does
-  # not stand in for the final verdict of `optics.cli check`. Before running an
-  # experiment, always fill in the objective NA and re-check with
-  # `optics.cli check`.
+  # Which objective is in the light path is an experiment-level choice, not a
+  # property of this profile, so it stays null here. The four checks
+  # optics.recommend uses (excitation/stokes/blocking/collection) do not need
+  # NA, so the screening stage is unaffected — but this result does not stand
+  # in for the final verdict of `optics.cli check`. Name an objective from the
+  # nosepiece below and re-check.
   objective: null
+
+  # 6-position nosepiece. ONE physical turret, shared by every light path on
+  # this stand, so the specs live in data/objectives.yaml and are referenced
+  # here rather than copied. All six NAs were verified 2026-08-10 against the
+  # Nikon catalogue and 2026-08-11 against the barrel engravings.
+  # Lens 4 (sample/) consumes these: `python -m sample.cli check --objective 100x-Oil`.
+  nosepiece:                     # data/objectives.yaml
+    - {position: 0, ref: 4x}
+    - {position: 1, ref: 10x}
+    - {position: 2, ref: 20x}
+    - {position: 3, ref: 40x-WI}      # index-matched for water-based media
+    - {position: 4, ref: 60x-Oil}
+    - {position: 5, ref: 100x-Oil}

@@ -258,6 +258,10 @@ experimentalist/
 │   ├── resources.py              data rate, buffer, capacity
 │   ├── checks.py  gate.py  setup.py  cli.py
 │
+├── sample\                       ← lens 4 (sample geometry & optics, G15–G19)
+│   ├── aberration.py             RI mismatch, focal shift, WD budget, overlap
+│   ├── checks.py  gate.py  setup.py  cli.py
+│
 ├── trapping\                     ← lens 7 (optical tweezers, G14)
 │   ├── laser.py                  laser and beam
 │   ├── dynamics.py               trap stiffness, corner frequency
@@ -280,6 +284,7 @@ experimentalist/
 │   ├── filters.yaml              filters · dichroics · ND · polarizers
 │   ├── light_sources.yaml        source lines + measured power at sample
 │   ├── detectors.yaml            cameras
+│   ├── objectives.yaml           the nosepiece — NA · immersion · WD · coverslip
 │   └── spectra\                  measured curves (vendor txt/csv)
 │
 ├── config\
