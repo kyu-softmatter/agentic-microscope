@@ -193,26 +193,26 @@ class Channel:
 
     # -- absolute photon budget ------------------------------------------------
 
-    def detected_e_per_s(
+    def excitation_rate_per_s(
         self,
         *,
         power_mw_at_sample: float | None = None,
         illuminated_area_um2: float | None = None,
     ) -> float | None:
-        """Detected electrons per second per molecule.
+        """Absorption events per second per molecule (docs/04 §5's chain).
 
-        Returns ``None`` when the illumination has never been power-calibrated,
-        rather than inventing a number. Without ``mW at the sample`` there is no
-        absolute photon budget — only relative comparisons are meaningful.
+        ``P -> I = P/A -> phi = I lambda/(hc) -> sigma phi``. Returns ``None``
+        when the illumination has never been power-calibrated, rather than
+        inventing a number.
 
-        Saturation and triplet shelving are not modelled; at high irradiance
-        this overestimates.
+        This is the quantity the photo-perturbation lens (5) needs: dose is
+        about what the molecule absorbs, not what the camera detects. Lens 1
+        owns this chain, so lens 5 consumes it rather than recomputing it.
         """
         if (
             power_mw_at_sample is None
             or illuminated_area_um2 is None
             or self.dye.ext_coeff is None
-            or self.dye.quantum_yield is None
             or self.source is None
         ):
             return None
@@ -227,8 +227,49 @@ class Channel:
         # Weight by how well the delivered spectrum overlaps the absorption.
         coupling = self.excitation_efficiency() / max(self.source_delivery(), 1e-12)
 
-        excitation_rate = sigma * flux * coupling  # s^-1
-        emitted = excitation_rate * self.dye.quantum_yield
+        return float(sigma * flux * coupling)
+
+    def emitted_photons_per_s(
+        self,
+        *,
+        power_mw_at_sample: float | None = None,
+        illuminated_area_um2: float | None = None,
+    ) -> float | None:
+        """Photons emitted per second per molecule — ``k_em`` in docs/04 §6.
+
+        The input to the photobleaching budget (G10), which counts emitted
+        photons against the dye's ``bleach_photons``, not detected ones.
+        """
+        rate = self.excitation_rate_per_s(
+            power_mw_at_sample=power_mw_at_sample,
+            illuminated_area_um2=illuminated_area_um2,
+        )
+        if rate is None or self.dye.quantum_yield is None:
+            return None
+        return float(rate * self.dye.quantum_yield)
+
+    def detected_e_per_s(
+        self,
+        *,
+        power_mw_at_sample: float | None = None,
+        illuminated_area_um2: float | None = None,
+    ) -> float | None:
+        """Detected electrons per second per molecule.
+
+        Returns ``None`` when the illumination has never been power-calibrated,
+        rather than inventing a number. Without ``mW at the sample`` there is no
+        absolute photon budget — only relative comparisons are meaningful.
+
+        Saturation and triplet shelving are not modelled; at high irradiance
+        this overestimates. Lens 5's G20 is what checks whether that regime has
+        been reached.
+        """
+        emitted = self.emitted_photons_per_s(
+            power_mw_at_sample=power_mw_at_sample,
+            illuminated_area_um2=illuminated_area_um2,
+        )
+        if emitted is None:
+            return None
         return float(emitted * self.total_collection())
 
 

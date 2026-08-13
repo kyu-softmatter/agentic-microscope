@@ -382,7 +382,7 @@ Items **currently missed** because no gate exists:
 |---|---|
 | A1 missing pixel calibration | Lens 6 |
 | C1 despeckle post-processing | Lens 6 |
-| D2 light-driven perturbation | Lens 5 |
+| ~~D2 light-driven perturbation~~ | ~~Lens 5~~ — now caught: `photo.gate` G21 (2026-08-12), which BLOCKs rather than guessing the threshold |
 | D3 sample perturbation by the label | Lens 5 |
 | ~~D5 refractive-index mismatch~~ | ~~Lens 4~~ — now caught: `sample.gate` G17 (2026-08-12) |
 | D6 tweezers heating | Lens 7 — the one gap in an otherwise implemented lens |

@@ -322,6 +322,8 @@ correction must be possible.
 `bleach_photons` is still empty in
 [data/fluorophores.yaml](../data/fluorophores.yaml). Without it this gate is
 `BLOCKED`, and the qualitative `photostability` grade is not a substitute.
+Implemented as `photo.checks.check_photobleaching`, which returns exactly that
+`BLOCKED` today with an action naming the missing value.
 
 > Photobleaching is often **superlinear** in illumination intensity (triplet
 > pathways). The expression above is a lower bound.
@@ -410,9 +412,13 @@ All decided in code. If even one fails, the proposal is void.
 | G17 | Refractive-index mismatch | `depth × \|Δn\| ≤ 1.85 µm` (screening) | immersion n, medium n, depth | BLOCKED |
 | G18 | Coverslip thickness | `\|actual − design\| ≤ 5 µm`, or collar adjusted | coverslip thickness | assumed (design value) |
 | G19 | Count in field · overlap | nearest neighbour `≥ 3 ×` resolution | concentration, field size, λ_em | skipped (INFO) |
+| G20 | Saturation · triplet shelving | excited-state fraction `≤ 0.1` | irradiance, ε, lifetime | BLOCKED |
+| G21 | Light-driving | irradiance `<` sample threshold | irradiance, measured threshold | BLOCKED |
+| G22 | Total dose | `≤` stated ceiling | irradiance, exposure plan | reported (INFO) |
 
-G15–G19 are lens 4's, and the numbers are new — this table previously stopped
-at G14 because lens 4 had no gate IDs at all.
+G15–G19 are lens 4's and G20–G22 are lens 5's; the numbers are new. This table
+previously stopped at G14 because lens 4 had no gate IDs at all and lens 5 had
+only G10.
 
 **`BLOCKED` is not `FAIL`.** FAIL means "this setting is physically bad";
 BLOCKED means "there is no basis on which to decide." Neither advances to the
@@ -432,7 +438,8 @@ next step, but the action differs: FAIL means change the setting, BLOCKED means
 | §2 sampling gate (G5) | task-dependent branch, `detection.gate.evaluate` | ✅ covered by tests (2026-08-11) |
 | §4 SNR · saturation (G6, G7) | `detection.gate.evaluate` | ✅ covered by tests (2026-08-11) |
 | §5 timing · blur (G8, G9) | `detection.gate.evaluate` | ✅ covered by tests (2026-08-11) |
-| §6 bleaching (G10) | | ❌ |
+| §6 bleaching (G10) | `photo.gate.evaluate` | ✅ covered by tests (2026-08-12) — BLOCKED on the real instrument until `power_at_sample_mw` and `bleach_photons` exist |
+| §5 dose · saturation · light-driving (G20–G22) | `photo.gate.evaluate` | ✅ covered by tests (2026-08-12) |
 | §7 statistical power (G11) | | ❌ |
 | §8 compute resources (G12, G13) | `compute.gate.evaluate` | ✅ covered by tests (2026-08-11) |
 | §9 tweezers (G14) | `trapping.gate.evaluate` (corner frequency → required fps) | ✅ covered by tests |

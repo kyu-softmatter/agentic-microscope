@@ -184,7 +184,7 @@ FAIL is already a fix instruction.
 | 2 | **Detection** | Exposure, binning, ROI, readout, gain, frame interval | Photon budget, SNR, sampling → deterministic | `detection/` ✅ |
 | 3 | **Compute resources** | Frame rate, buffer, storage, processing | Bandwidth and capacity arithmetic → deterministic | `compute/` ✅ |
 | 4 | **Sample geometry & optics** | Objective choice, immersion, coverslip, focal depth | Refractive index, WD, aberration → semi-deterministic | `sample/` ✅ (G15–G19) + `.claude/agents/sample-optics.md` for the qualitative half |
-| 5 | **Photo-perturbation** | Light level, illumination duty, total dose | Bleaching, heating, light-driving → semi-deterministic | `.claude/agents/photo-perturbation.md` (draft, no code) |
+| 5 | **Photo-perturbation** | Light level, illumination duty, total dose | Bleaching, heating, light-driving → semi-deterministic | `photo/` ✅ (G10, G20–G22) + `.claude/agents/photo-perturbation.md` for the qualitative half |
 | 6 | **Measurement validity** | Whether all of the above yields the intended physical quantity without bias | Bias computation + qualitative | `.claude/agents/measurement-validity.md` (draft, no code) |
 
 ### Conditional (2)
@@ -260,6 +260,10 @@ experimentalist/
 │
 ├── sample\                       ← lens 4 (sample geometry & optics, G15–G19)
 │   ├── aberration.py             RI mismatch, focal shift, WD budget, overlap
+│   ├── checks.py  gate.py  setup.py  cli.py
+│
+├── photo\                        ← lens 5 (photo-perturbation, G10 · G20–G22)
+│   ├── dose.py                   irradiance, bleaching, saturation, total dose
 │   ├── checks.py  gate.py  setup.py  cli.py
 │
 ├── trapping\                     ← lens 7 (optical tweezers, G14)

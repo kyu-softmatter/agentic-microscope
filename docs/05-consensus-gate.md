@@ -283,10 +283,11 @@ class LensVerdict:
   `.claude/agents/sample-optics.md` for the qualitative half (chamber, sample
   concentration judgement, multiple scattering)
 
-### Lens 5 · Photo-perturbation — agent draft, no code
+### Lens 5 · Photo-perturbation — implemented
 
 - **Owns**: light level, illumination duty, total dose, wavelength choice
-- **Gates**: G10
+- **Gates**: G10 (photobleaching) G20 (saturation · triplet shelving)
+  G21 (light-driving) G22 (total dose)
 - **Key questions**
   - Photobleaching: what fraction disappears over the whole movie
   - **Does the excitation light drive the sample** — light-driven active
@@ -298,8 +299,25 @@ class LensVerdict:
 - **Specialty**: **only this lens can say "illumination is an experimental
   variable, not a measurement tool."** The optics lens says raise the light for
   SNR; this lens says that ruins the experiment. Surfacing that conflict is the
-  committee's reason to exist
-- **Implementation**: `.claude/agents/photo-perturbation.md`
+  committee's reason to exist. **G21 is that check in code** — it refuses to
+  compare irradiance against a guessed threshold, so a photoresponsive sample
+  with no measured threshold returns BLOCKED
+- **⚠ G20 also invalidates other lenses' numbers.** Past saturation, emission
+  stops rising with power, so lens 1's and lens 2's photon budgets (which
+  assume linearity — `optics.path.detected_e_per_s`) overestimate signal while
+  the dose keeps climbing. Nothing else catches this. Note the scale: FITC
+  saturates near 3.5 × 10⁵ W/cm², which a widefield field-of-view never
+  reaches, but a focused confocal or spinning-disk spot does
+- **Not implemented**: illumination-driven local heating (needs the medium's
+  absorption coefficient, which is unrecorded) and phototoxicity (needs a dose
+  limit per sample). Trap heating is lens 7's and unimplemented there, so G22's
+  companion check reports it as unowned rather than assuming it is handled
+- **⚠ BLOCKED on the real instrument today**: `power_at_sample_mw` is empty for
+  every line of every source, and no dye has `bleach_photons`. That is the
+  correct verdict, not a gap in the lens
+- **Implementation**: `photo/gate.py`, plus
+  `.claude/agents/photo-perturbation.md` for the qualitative half
+  (phototoxicity judgement, triplet/blinking behaviour, light-driving physics)
 
 ### Lens 6 · Measurement validity — agent draft, no code
 
