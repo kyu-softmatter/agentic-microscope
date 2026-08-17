@@ -30,12 +30,15 @@ class FindingLike(Protocol):
 class VerdictLike(Protocol):
     """Structural view of any lens's Verdict.
 
-    Deliberately does NOT require ``feasibility``: ``trapping.gate.Verdict``
-    does not have that field while the other five do. Read it with
-    ``getattr(v, "feasibility", "UNKNOWN")``. The duplication is a known gap --
-    six copies of Verdict/Finding/Check/CheckResult, one per lens -- and until
-    there is a shared committee type, structural typing is what lets this lens
-    review all of them.
+    Deliberately does NOT require ``feasibility``, even though all eight lenses
+    now carry it: ``trapping.gate.Verdict`` lacked the field until 2026-08-12,
+    and this lens should not start depending on it merely because the asymmetry
+    was fixed. Read it with ``getattr(v, "feasibility", "UNKNOWN")``.
+
+    The duplication behind all this is a known gap -- eight copies of
+    Verdict/Finding/Check/CheckResult, one per lens -- and until there is a
+    shared committee type, structural typing is what lets this lens review all
+    of them.
     """
 
     status: str

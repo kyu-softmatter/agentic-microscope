@@ -38,6 +38,7 @@ from .checks import (
     CheckResult,
     available_facts,
     grade,
+    meets_grade,
 )
 from .components import filters, find_filter
 from .path import Ablation, Channel, ablate
@@ -94,8 +95,19 @@ class Verdict:
 
     @property
     def advances(self) -> bool:
-        """The committee's criterion: sound **and** grounded in measurement."""
-        return self.passed and self.evidence == "measured"
+        """The committee's criterion, from docs/05's Verdict schema:
+        ``feasibility >= TIGHT and evidence == measured and no hard gate < 1.0``.
+
+        The hard-gate clause is already covered by ``passed``: a hard gate below
+        1.0 makes the status FAIL. The feasibility clause was missing until
+        2026-08-12, which let an INFEASIBLE verdict whose only failures were
+        bias-kind report ``advances=True``.
+        """
+        return (
+            self.passed
+            and self.evidence == "measured"
+            and meets_grade(self.feasibility)
+        )
 
     def fails(self) -> list[Finding]:
         return [f for f in self.findings if f.severity == "fail"]

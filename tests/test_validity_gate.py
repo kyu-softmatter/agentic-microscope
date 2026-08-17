@@ -388,12 +388,32 @@ def test_reviews_a_real_sample_lens_verdict():
     assert "geometry.ri_mismatch" in v.metrics["validity.bias_ledger"]["uncorrected_codes"]
 
 
-def test_reviews_a_real_trapping_verdict_despite_its_missing_feasibility_field():
-    """trapping.gate.Verdict has no `feasibility` field while the other five
-    do. Lens 6 must tolerate that rather than crash."""
+def test_reviews_a_real_trapping_verdict():
+    """trapping.gate.Verdict was the only one without a `feasibility` field
+    until 2026-08-12, when grading was added there so it could honour docs/05's
+    advances rule. It now carries one like the rest."""
     from trapping.gate import Verdict as TrappingVerdict
 
     tv = TrappingVerdict(status="PASS", evidence="measured")
-    assert not hasattr(tv, "feasibility")
+    assert tv.feasibility == "UNKNOWN"
     v = evaluate(_setup(upstream=_all_present(trapping=tv)))
+    assert v.status == "PASS"
+
+
+def test_tolerates_an_upstream_verdict_with_no_feasibility_field():
+    """VerdictLike deliberately does not require `feasibility`, so lens 6 keeps
+    working on a verdict that lacks it. This was a live asymmetry once and the
+    protocol should not start depending on the field just because it is
+    currently universal."""
+
+    class _NoFeasibility:
+        status = "PASS"
+        evidence = "measured"
+        margins: dict = {}
+        findings: list = []
+        metrics: dict = {}
+
+    probe = _NoFeasibility()
+    assert not hasattr(probe, "feasibility")
+    v = evaluate(_setup(upstream=_all_present(trapping=probe)))
     assert v.status == "PASS"

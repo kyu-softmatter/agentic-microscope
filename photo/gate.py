@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 
-from .checks import BIAS, CHECKS, GRADE_NOTES, HARD, INFO, SOFT, CheckResult, available_facts, grade
+from .checks import BIAS, CHECKS, GRADE_NOTES, HARD, INFO, SOFT, CheckResult, available_facts, grade, meets_grade
 from .setup import IlluminationSetup
 
 LENS = "photo"
@@ -51,7 +51,19 @@ class Verdict:
 
     @property
     def advances(self) -> bool:
-        return self.passed and self.evidence == "measured"
+        """The committee's criterion, from docs/05's Verdict schema:
+        ``feasibility >= TIGHT and evidence == measured and no hard gate < 1.0``.
+
+        The hard-gate clause is already covered by ``passed``: a hard gate below
+        1.0 makes the status FAIL. The feasibility clause was missing until
+        2026-08-12, which let an INFEASIBLE verdict whose only failures were
+        bias-kind report ``advances=True``.
+        """
+        return (
+            self.passed
+            and self.evidence == "measured"
+            and meets_grade(self.feasibility)
+        )
 
     def to_dict(self) -> dict:
         return {

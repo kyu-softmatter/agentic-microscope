@@ -197,3 +197,55 @@ CHECKS: list[Check] = [
     Check("trap_depth", HARD, (), check_trap_depth),
     Check("sampling", HARD, ("medium.viscosity",), check_sampling),
 ]
+
+
+# --------------------------------------------------------------------------
+# Feasibility grading
+# --------------------------------------------------------------------------
+#
+# Added 2026-08-12. This lens was the only one without grading, which is why
+# its Verdict had no ``feasibility`` field while the other seven did -- and
+# without that field it could not honour docs/05's rule that a verdict only
+# advances at TIGHT or better.
+
+GRADES: list[tuple[float, str]] = [
+    (3.0, "ROUTINE"),
+    (1.5, "COMFORTABLE"),
+    (1.0, "TIGHT"),
+    (0.5, "HARD"),
+    (0.2, "MARGINAL"),
+    (0.0, "INFEASIBLE"),
+]
+
+GRADE_NOTES = {
+    "ROUTINE": "Comfortable headroom. If it fails, the settings are not to blame.",
+    "COMFORTABLE": "Normal range.",
+    "TIGHT": "No headroom. Sample preparation quality decides the outcome.",
+    "HARD": "Operating at the limit. May proceed, but low success rate and poor reproducibility.",
+    "MARGINAL": "Data comes out, but interpret with great care.",
+    "INFEASIBLE": "Impossible without improvement.",
+}
+
+
+def grade(margin: float) -> str:
+    for threshold, name in GRADES:
+        if margin >= threshold:
+            return name
+    return "INFEASIBLE"
+
+
+#: Grades in ascending order of quality, derived from GRADES so the two cannot
+#: drift apart.
+GRADE_ORDER: tuple[str, ...] = tuple(name for _, name in reversed(GRADES))
+
+
+def meets_grade(feasibility: str, minimum: str = "TIGHT") -> bool:
+    """Is this feasibility at least ``minimum``?
+
+    docs/05-consensus-gate.md's Verdict schema requires ``feasibility >= TIGHT``
+    for a verdict to advance. ``UNKNOWN`` -- and anything unrecognised -- does
+    not: an ungraded verdict has not earned the right to move on.
+    """
+    if feasibility not in GRADE_ORDER or minimum not in GRADE_ORDER:
+        return False
+    return GRADE_ORDER.index(feasibility) >= GRADE_ORDER.index(minimum)

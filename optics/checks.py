@@ -483,3 +483,20 @@ def grade(margin: float) -> str:
         if margin >= threshold:
             return name
     return "INFEASIBLE"
+
+
+#: Grades in ascending order of quality, derived from GRADES so the two cannot
+#: drift apart.
+GRADE_ORDER: tuple[str, ...] = tuple(name for _, name in reversed(GRADES))
+
+
+def meets_grade(feasibility: str, minimum: str = "TIGHT") -> bool:
+    """Is this feasibility at least ``minimum``?
+
+    docs/05-consensus-gate.md's Verdict schema requires ``feasibility >= TIGHT``
+    for a verdict to advance. ``UNKNOWN`` -- and anything unrecognised -- does
+    not: an ungraded verdict has not earned the right to move on.
+    """
+    if feasibility not in GRADE_ORDER or minimum not in GRADE_ORDER:
+        return False
+    return GRADE_ORDER.index(feasibility) >= GRADE_ORDER.index(minimum)

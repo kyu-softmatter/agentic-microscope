@@ -340,8 +340,10 @@ class LensVerdict:
 - **⚠ Must run last.** Its primary input is the other lenses' verdicts, not
   hardware facts, so running it first leaves it nothing to review. It reads
   them through a structural protocol (`VerdictLike`) because each lens defines
-  its own copy of `Verdict`/`Finding` and `trapping`'s has no `feasibility`
-  field
+  its own copy of `Verdict`/`Finding` — eight copies, a known gap. The protocol
+  does not require `feasibility` even though all eight now have it: `trapping`
+  lacked the field until 2026-08-12, and the protocol should not start
+  depending on it just because the asymmetry was fixed
 - **G23 is HARD, not BIAS.** The upstream gates are the bias gates; G23 is the
   meta-check that they were all dealt with, so its failure means the intended
   quantity does not survive — a veto on this lens's whole purpose. Its margin

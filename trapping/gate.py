@@ -8,16 +8,26 @@ schema (docs/08 "The same structure is used for the other lenses"):
     Phase 1   every check runs and returns a margin
     Phase 2   aggregate: hard veto, bottleneck
 
-Narrower than optics.gate in one way: there is no feasibility grade here
-yet (that needs a wider spread of check kinds than this lens currently
-has -- see trapping/README notes in the trapping-lens7-groundwork memory).
+Grading was added 2026-08-12. This lens had been the only one without a
+``feasibility`` field, and without it the ``advances`` rule docs/05 specifies
+(``feasibility >= TIGHT``) could not be honoured here. Every check in this lens
+is HARD, so the grade is simply the worst hard margin.
 """
 
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 
-from .checks import CHECKS, HARD, INFO, CheckResult, available_facts
+from .checks import (
+    CHECKS,
+    GRADE_NOTES,
+    HARD,
+    INFO,
+    CheckResult,
+    available_facts,
+    grade,
+    meets_grade,
+)
 from .dynamics import TrapSetup
 from .goa import ray_optics_regime
 
@@ -42,6 +52,7 @@ class Verdict:
     for the three-axis rationale (status / evidence / advances)."""
 
     status: str  # PASS | FAIL | BLOCKED
+    feasibility: str = "UNKNOWN"  # ROUTINE .. INFEASIBLE
     evidence: str = "assumed"  # measured | assumed
     confidence: str = "low"
     bottleneck: str | None = None  # code of the worst-margin check
@@ -56,13 +67,26 @@ class Verdict:
 
     @property
     def advances(self) -> bool:
-        """The committee's criterion: sound **and** grounded in measurement."""
-        return self.passed and self.evidence == "measured"
+        """The committee's criterion, from docs/05's Verdict schema:
+        ``feasibility >= TIGHT and evidence == measured and no hard gate < 1.0``.
+
+        The hard-gate clause is already covered by ``passed``: a hard gate below
+        1.0 makes the status FAIL. The feasibility clause was missing until
+        2026-08-12, which let an INFEASIBLE verdict whose only failures were
+        bias-kind report ``advances=True``.
+        """
+        return (
+            self.passed
+            and self.evidence == "measured"
+            and meets_grade(self.feasibility)
+        )
 
     def to_dict(self) -> dict:
         return {
             "lens": LENS,
             "status": self.status,
+            "feasibility": self.feasibility,
+            "feasibility_note": GRADE_NOTES.get(self.feasibility, ""),
             "advances": self.advances,
             "evidence": self.evidence,
             "confidence": self.confidence,
@@ -139,6 +163,7 @@ def evaluate(setup: TrapSetup) -> Verdict:
             )
         return Verdict(
             status="BLOCKED",
+            feasibility="UNKNOWN",
             evidence=evidence,
             confidence="none",
             assumed_inputs=assumed,
@@ -181,9 +206,11 @@ def evaluate(setup: TrapSetup) -> Verdict:
         )
 
     status = "FAIL" if hard_failed else "PASS"
+    feasibility = grade(worst.margin) if worst else "UNKNOWN"
 
     return Verdict(
         status=status,
+        feasibility=feasibility,
         evidence=evidence,
         confidence="high" if evidence == "measured" else "low",
         bottleneck=bottleneck,
