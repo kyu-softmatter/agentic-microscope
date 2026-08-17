@@ -316,6 +316,10 @@ There are sessions with `PFS-FocusMaintenance: On` but `PFS in Range: Out of
 Range`. Record only the on state and you cannot tell whether focus was actually
 held. **Both must be recorded.**
 
+Caught by `stability.gate` G28 (2026-08-12), which needs no new measurement —
+it is a state check on metadata that already exists. An unrecorded range flag
+fails the gate, not just an out-of-range one.
+
 ---
 
 ## E. Methodology

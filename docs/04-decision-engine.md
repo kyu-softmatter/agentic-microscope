@@ -420,10 +420,15 @@ All decided in code. If even one fails, the proposal is void.
 | G25 | Photometric calibration | background · dark · flat-field measured | those frames | BLOCKED |
 | G26 | Post-processing | no linearity-breaking filter | declared filters | BLOCKED |
 | G27 | Committee coverage | every standing lens returned, none BLOCKED | other lenses' verdicts | BLOCKED |
+| G28 | PFS lock | on **and** In Range, both recorded | both metadata flags | BLOCKED |
+| G29 | Axial drift | total drift `≤ 0.5 ×` depth of field | measured drift rate, DOF | BLOCKED |
+| G30 | Lateral drift | total drift `≤` tolerance | measured drift rate, tolerance | skipped (INFO) |
+| G31 | Sedimentation | settling `≤` depth of field | radius, Δρ, viscosity | BLOCKED |
+| G32 | Evaporation | `≤ 5%` of volume lost | sealed, or a measured rate | warns unquantified |
 
-G15–G19 are lens 4's, G20–G22 lens 5's, G23–G27 lens 6's; the numbers are new.
-This table previously stopped at G14 because lens 4 had no gate IDs at all,
-lens 5 had only G10 and lens 6 only G11.
+G15–G19 are lens 4's, G20–G22 lens 5's, G23–G27 lens 6's, G28–G32 lens 8's; the
+numbers are new. This table previously stopped at G14 because lenses 4 and 8 had
+no gate IDs at all, lens 5 had only G10 and lens 6 only G11.
 
 G23–G27 read **other lenses' verdicts** rather than hardware facts, which is
 why lens 6 has to run last.
@@ -450,6 +455,7 @@ next step, but the action differs: FAIL means change the setting, BLOCKED means
 | §5 dose · saturation · light-driving (G20–G22) | `photo.gate.evaluate` | ✅ covered by tests (2026-08-12) |
 | §7 statistical power (G11) | `validity.gate.evaluate` | ✅ covered by tests (2026-08-12) |
 | bias ledger · calibrations · post-processing (G23–G27) | `validity.gate.evaluate` | ✅ covered by tests (2026-08-12) |
+| drift · settling · evaporation (G28–G32) | `stability.gate.evaluate` | ✅ covered by tests (2026-08-12) — G29 BLOCKED until a drift rate is measured |
 | §8 compute resources (G12, G13) | `compute.gate.evaluate` | ✅ covered by tests (2026-08-11) |
 | §9 tweezers (G14) | `trapping.gate.evaluate` (corner frequency → required fps) | ✅ covered by tests |
 | sample geometry (G15–G19) | `sample.gate.evaluate` (RI mismatch, WD, coverslip, overlap) | ✅ covered by tests (2026-08-12) |

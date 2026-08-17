@@ -386,12 +386,35 @@ class LensVerdict:
 - **Remaining**: dial-% → mW measured calibration; local heating
 - **Implementation**: `trapping/gate.py`
 
-### Lens 8 · Mechanical & environmental (conditional, >30 min) — not implemented
+### Lens 8 · Mechanical & environmental (conditional, >30 min) — implemented
 
-- Drift (thermal, mechanical), PFS lock state, evaporation, sedimentation,
-  vibration, stage repeatability
+- **Owns**: drift (thermal, mechanical), PFS lock state, evaporation,
+  sedimentation, vibration, stage repeatability
+- **Gates**: G28 (PFS lock) G29 (axial drift) G30 (lateral drift)
+  G31 (sedimentation) G32 (evaporation)
 - The archive contains sessions where `PFS in Range` reads `Out of Range` — PFS
-  can be on without being locked
+  can be on without being locked. **G28 catches this and needs no new
+  measurement**: it is a state check on metadata that already exists, and an
+  unrecorded range flag is itself a failure, because the on state alone cannot
+  tell a held focus from a wandered one (docs/06 D7)
+- **G31 is the one gate here that works today.** Stokes settling follows from
+  particle radius, density contrast and viscosity — sample properties, not
+  instrument measurements. It bites hard: a 1 µm polystyrene sphere in water
+  settles ~98 µm in an hour against a 0.375 µm depth of field on the 100x oil,
+  so the population in the focal plane at the end is not the one that started
+  there. Density-matching removes the term entirely
+- **⚠ G29 BLOCKS.** No drift rate exists anywhere in the repo, and a guessed one
+  would decide the gate wrongly in whichever direction the guess leaned. The
+  measurement is cheap: park on a fixed feature with PFS off and log focus every
+  few minutes for an hour from a disturbed enclosure
+- **⚠ Vibration and stage repeatability are ungated**, and the lens says so
+  rather than passing quietly — there is no measurement channel for either. A
+  quiet pass on that line is an absence of evidence, not evidence of stability
+- **Conditional threshold is reported, not enforced.** docs/01 §4 convenes this
+  lens past 30 min, but settling and drift scale continuously with time and do
+  not switch on there. Whether to call the lens is the caller's decision; when
+  called, it answers
+- **Implementation**: `stability/gate.py`
 
 ---
 

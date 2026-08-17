@@ -192,7 +192,7 @@ FAIL is already a fix instruction.
 | # | Lens | Convened when | Basis of verdict | Implementation |
 |---|---|---|---|---|
 | 7 | **Optical tweezers** | Tweezers in use | Trap stiffness κ, U/kT, corner frequency f_c → computed | `trapping/` ✅ (no heating check — [06 D6](06-pitfalls.md)) |
-| 8 | **Mechanical & environmental** | Long experiments (>30 min) | Drift, vibration, evaporation, PFS lock | Not implemented |
+| 8 | **Mechanical & environmental** | Long experiments (>30 min) | Drift, vibration, evaporation, PFS lock | `stability/` ✅ (G28–G32). Vibration and stage repeatability remain ungated — no measurement channel exists |
 
 ### Why 4 and 5 are separate
 
@@ -270,6 +270,11 @@ experimentalist/
 │   ├── power.py                  statistical power, the ROI/speed tradeoff
 │   ├── checks.py  gate.py  setup.py  cli.py
 │                                 reviews the other lenses' verdicts — call last
+│
+├── stability\                    ← lens 8 (mechanical & environmental, G28–G32)
+│   ├── drift.py                  drift, Stokes settling, evaporation
+│   ├── checks.py  gate.py  setup.py  cli.py
+│                                 conditional: acquisitions over 30 min
 │
 ├── trapping\                     ← lens 7 (optical tweezers, G14)
 │   ├── laser.py                  laser and beam
