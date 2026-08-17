@@ -1,0 +1,5 @@
+# Spectrometer exports are reference data — byte-exact, never renormalized.
+# This repo lives in a Box sync folder and is edited from both Windows and
+# macOS, so without this rule a round-trip rewrites LF to CRLF and every
+# spectrum shows up as a full-file diff with no content change.
+data/spectra/*.txt -text
