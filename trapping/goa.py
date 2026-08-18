@@ -18,6 +18,12 @@ reproduced here:
   NA := n*sin(theta_max) already carries the medium index, so it cancels
   against the in-medium wavelength and no free ``n`` should remain. This
   module uses the ``n``-free form.
+
+A third departure, added 2026-08-18: the objective's **design** NA is not the
+NA that reaches the sample. Rays steeper than ``NA = n_sample`` are totally
+internally reflected at the coverslip/sample interface, so an oil objective
+focusing into water traps at an effective NA of 1.333 regardless of whether it
+is engraved 1.42 or 1.45. See ``ObjectiveBeam.effective_na``.
 """
 
 from __future__ import annotations
@@ -57,24 +63,71 @@ class ObjectiveBeam:
     na: float
     wavelength_m: float = 1064e-9
 
+    def effective_na(self, medium: Medium) -> float:
+        """The NA that actually reaches the sample: ``min(na, medium.n)``.
+
+        An objective's design NA is set by *its own* immersion medium. Rays
+        steeper than ``NA = n_sample`` are totally internally reflected at the
+        coverslip/sample interface and never enter the sample at all --
+        Snell's ``n_glass*sin(theta_glass) = NA_ray = n_sample*sin(theta_sample)``
+        has no solution once ``NA_ray > n_sample``. These are the same rays,
+        at the same interface, that TIRF illumination is built on.
+
+        So a 1.45 NA oil objective focusing into water (n = 1.333) traps at an
+        effective NA of 1.333, not 1.45 -- and it *does* trap. Clipping is the
+        correct computation here, not an approximation: the discarded rays are
+        genuinely absent from the sample. Before 2026-08-18 this method raised
+        instead, which made lens 7 refuse every oil objective on an aqueous
+        sample; that was a modelling limit reported as physics.
+
+        Two limitations ride along with any clipped result, both surfaced as
+        findings by ``trapping.checks.check_effective_na``:
+
+        * Fresnel transmission falls to **zero at** the critical angle, so the
+          outermost surviving rays carry vanishing power. Stiffness computed at
+          the clipped NA is an **upper bound**, not an estimate.
+        * The index step that causes the clipping also causes depth-dependent
+          **spherical aberration**, which this ray-optics model does not
+          represent at all. The real focus is worse than the one computed here.
+          Lens 4's G17 prices the depth limit (docs/04 §9).
+        """
+        if medium.n <= 0:
+            raise ValueError(f"medium.n must be positive, got {medium.n}")
+        return min(self.na, medium.n)
+
+    def clipped_by_tir(self, medium: Medium) -> bool:
+        """True when the design NA exceeds what the sample medium admits."""
+        return self.na > medium.n
+
     def theta_max(self, medium: Medium) -> float:
-        """Half-angle of the focusing cone (center-focus-edge ray)."""
-        sin_theta = self.na / medium.n
+        """Half-angle of the focusing cone (center-focus-edge ray).
+
+        Taken from :meth:`effective_na`, so an oil objective focusing into an
+        aqueous sample is clipped to the critical angle rather than refused.
+        """
+        na_eff = self.effective_na(medium)
+        sin_theta = na_eff / medium.n
         if not 0 < sin_theta <= 1:
             raise ValueError(
-                f"NA={self.na} is not achievable in a medium of n={medium.n} "
-                f"(NA/n = {sin_theta} must be in (0, 1])"
+                f"effective NA={na_eff} is not achievable in a medium of "
+                f"n={medium.n} (NA/n = {sin_theta} must be in (0, 1])"
             )
         return np.arcsin(sin_theta)
 
-    def beam_waist_m(self) -> float:
+    def beam_waist_m(self, medium: Medium | None = None) -> float:
         """Diffraction-limited waist w0 = lambda0 / (pi * NA).
 
         NA = n*sin(theta_max) already carries the medium index, so it cancels
         against the in-medium wavelength lambda0/n in the paraxial Gaussian
         relation w0 = (lambda0/n) / (pi * theta_max) -- no explicit n term.
+
+        Pass ``medium`` to use the TIR-clipped effective NA (see
+        :meth:`effective_na`); that is what actually sets the focus in the
+        sample. Omitting it uses the design NA and is only right when the
+        objective is index-matched to the sample.
         """
-        return self.wavelength_m / (self.na * np.pi)
+        na = self.effective_na(medium) if medium is not None else self.na
+        return self.wavelength_m / (na * np.pi)
 
 
 def ray_optics_regime(bead: Bead, beam: ObjectiveBeam, medium: Medium) -> tuple[str, float]:
@@ -170,7 +223,7 @@ def trap_force(
     power = power_w
 
     theta_max = beam.theta_max(medium)
-    w0 = beam.beam_waist_m()
+    w0 = beam.beam_waist_m(medium)
 
     a_min, a_max = np.pi / 2 - theta_max, np.pi / 2
     b_min, b_max = 0.0, np.pi  # symmetric in b -> 2*integral covers 2*pi

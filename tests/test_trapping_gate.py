@@ -104,3 +104,58 @@ def test_passes_g14_sampling_when_detector_fps_is_high_enough():
     v = evaluate(_setup(detector_fps=300.0))
     assert v.status == "PASS"
     assert v.margins["sampling"] >= 1.0
+
+
+# ------------------------------------ TIR-clipped NA is reported, not vetoed ---
+#
+# 2026-08-18: an oil objective on an aqueous sample used to BLOCK this lens.
+# It now computes -- but the cost has to be visible, and it must not advance
+# on an upper bound.
+
+OIL_BEAM = ObjectiveBeam(na=1.45, wavelength_m=1064e-9)  # 100x-Oil
+WATER_OBJ_BEAM = ObjectiveBeam(na=1.25, wavelength_m=1064e-9)  # 40x-WI
+
+
+def test_oil_objective_is_no_longer_blocked():
+    v = evaluate(_setup(beam=OIL_BEAM, detector_fps=300.0))
+    assert v.status == "PASS"
+    assert not any(f.code.startswith("missing.") for f in v.findings)
+
+
+def test_clipped_na_is_reported_as_a_finding_with_its_limits():
+    v = evaluate(_setup(beam=OIL_BEAM, detector_fps=300.0))
+    finding = next(f for f in v.findings if f.code == "effective_na.clipped_by_tir")
+    assert finding.severity == "info"
+    assert finding.numbers["design_na"] == 1.45
+    assert finding.numbers["effective_na"] == WATER_20C.n
+    # the three limits the user has to carry away
+    assert "UPPER BOUND" in finding.message
+    assert "spherical aberration" in finding.message
+    assert "Faxen" in finding.message
+
+
+def test_clipped_na_does_not_change_the_feasibility_grade():
+    """The new check is INFO, so it must not veto or re-grade -- an oil
+    objective's trap is as feasible as the water objective's."""
+    oil = evaluate(_setup(beam=OIL_BEAM, detector_fps=300.0))
+    water = evaluate(_setup(beam=WATER_OBJ_BEAM, detector_fps=300.0))
+    assert oil.feasibility == water.feasibility
+    assert oil.status == water.status == "PASS"
+
+
+def test_clipped_na_blocks_advances_on_unmodelled_aberration():
+    """Everything else measured, so the only thing standing between this
+    verdict and `advances` is the aberration nobody has bounded."""
+    oil = evaluate(_setup(beam=OIL_BEAM, detector_fps=300.0))
+    assert oil.advances is False
+    assert oil.evidence == "assumed"
+    assert any("spherical aberration" in a for a in oil.assumed_inputs)
+
+
+def test_index_matched_objective_still_advances():
+    """The differential the change is for: same experiment, matched objective,
+    nothing assumed -- this one is allowed through."""
+    water = evaluate(_setup(beam=WATER_OBJ_BEAM, detector_fps=300.0))
+    assert water.assumed_inputs == []
+    assert water.evidence == "measured"
+    assert water.advances is True

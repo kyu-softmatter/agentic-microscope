@@ -48,10 +48,18 @@ def cmd_force_curve(args: argparse.Namespace) -> int:
         )
 
     power_w = power_per_trap(cal, args.dial, args.n_traps)[0]
+    na_eff = beam.effective_na(medium)
     print(
         f"bead: r={args.radius_um} um  n={args.n_bead}   medium n={args.n_medium}"
         f"   NA={args.na}  lambda0={args.wavelength_nm} nm"
     )
+    if beam.clipped_by_tir(medium):
+        print(
+            f"      NA clipped {args.na} -> {na_eff:.4g} by total internal "
+            f"reflection at the coverslip/sample interface; forces below are an "
+            f"UPPER BOUND (transmission -> 0 at the critical angle, and "
+            f"spherical aberration is not modelled)."
+        )
     print(
         f"laser: dial={args.dial}%  n_traps={args.n_traps}  "
         f"-> {power_w * 1000:.4f} mW at this trap\n"
@@ -103,9 +111,18 @@ def cmd_check(args: argparse.Namespace) -> int:
     v = evaluate(setup)
 
     print(f"\n{'=' * 72}")
+    na_eff = beam.effective_na(medium)
     print(
         f"trap: r={args.radius_um} um bead, n_traps={args.n_traps}, "
         f"dial={args.dial}%   ->  {v.status}"
+    )
+    print(
+        f"NA:       design {args.na}"
+        + (
+            f"  ->  effective {na_eff:.4g} (clipped by TIR in n={args.n_medium})"
+            if beam.clipped_by_tir(medium)
+            else f"  (fully admitted by n={args.n_medium})"
+        )
     )
     print(
         f"evidence: {v.evidence}   confidence: {v.confidence}   "

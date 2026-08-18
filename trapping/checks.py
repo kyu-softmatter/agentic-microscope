@@ -74,6 +74,63 @@ def _ok(code, kind, margin, message, **numbers) -> CheckResult:
     return CheckResult(code, kind, margin, "ok", message, None, numbers)
 
 
+def check_effective_na(setup: "TrapSetup") -> CheckResult:
+    """Is the objective's design NA actually reaching the sample?
+
+    Informational, never a veto: an oil objective focusing into an aqueous
+    sample traps perfectly well at the clipped NA, and for beads well above
+    the focus size the clipped stiffness is within a few percent of a
+    water-immersion objective's. What this check exists for is to make sure
+    the *cost* of getting there is never silent -- see
+    ``trapping.goa.ObjectiveBeam.effective_na``.
+    """
+    beam, medium = setup.beam, setup.medium
+    na_eff = beam.effective_na(medium)
+
+    if not beam.clipped_by_tir(medium):
+        return _ok(
+            "effective_na",
+            INFO,
+            MAX_MARGIN,
+            f"Design NA {beam.na:.3g} is fully admitted by a sample medium of "
+            f"n={medium.n:.4g}; the objective is index-matched to the sample.",
+            design_na=beam.na,
+            effective_na=na_eff,
+            clipped_by_tir=False,
+        )
+
+    return CheckResult(
+        "effective_na.clipped_by_tir",
+        INFO,
+        MAX_MARGIN,
+        "info",
+        f"Design NA {beam.na:.3g} is clipped to an effective {na_eff:.4g} by "
+        f"total internal reflection at the coverslip/sample interface "
+        f"(n={medium.n:.4g}). The trap still works -- but every number in this "
+        "verdict now carries three limits: (1) stiffness is an UPPER BOUND, "
+        "because Fresnel transmission goes to zero at the critical angle, so "
+        "the outermost surviving rays carry vanishing power; (2) spherical "
+        "aberration from the same index step is NOT modelled here, so the real "
+        "focus is worse than the computed one; (3) that index step also pins "
+        "how deep you may work -- lens 4's G17 limits depth to "
+        f"1.85/|dn| um, about {1.85 / abs(1.518 - medium.n):.0f} um for an oil "
+        "objective, and being pinned near the coverslip adds a Faxen wall-drag "
+        "bias that this lens does not correct.",
+        action="Prefer an index-matched objective if the quantity you want is "
+        "an absolute force or drag. If you keep the oil objective, calibrate "
+        "the trap in situ at the actual working height (a power-spectrum "
+        "corner frequency gives kappa and the wall-corrected drag together), "
+        "and re-run lens 4 for the depth limit.",
+        numbers={
+            "design_na": beam.na,
+            "effective_na": na_eff,
+            "clipped_by_tir": True,
+            "medium_n": medium.n,
+            "lost_na": round(beam.na - na_eff, 4),
+        },
+    )
+
+
 def check_confinement(setup: "TrapSetup") -> CheckResult:
     """Does the trap actually restore toward the center at all?
 
@@ -193,6 +250,7 @@ def check_sampling(setup: "TrapSetup") -> CheckResult:
 
 
 CHECKS: list[Check] = [
+    Check("effective_na", INFO, (), check_effective_na),
     Check("confinement", HARD, (), check_confinement),
     Check("trap_depth", HARD, (), check_trap_depth),
     Check("sampling", HARD, ("medium.viscosity",), check_sampling),

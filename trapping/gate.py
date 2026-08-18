@@ -10,8 +10,17 @@ schema (docs/08 "The same structure is used for the other lenses"):
 
 Grading was added 2026-08-12. This lens had been the only one without a
 ``feasibility`` field, and without it the ``advances`` rule docs/05 specifies
-(``feasibility >= TIGHT``) could not be honoured here. Every check in this lens
-is HARD, so the grade is simply the worst hard margin.
+(``feasibility >= TIGHT``) could not be honoured here. Every *gradeable* check
+in this lens is HARD, so the grade is simply the worst hard margin.
+
+2026-08-18: this lens used to refuse any objective whose design NA exceeded the
+sample medium's index -- which is every oil objective on an aqueous sample. That
+was wrong: those objectives do trap, at an NA clipped to the medium's index by
+total internal reflection, and for micron beads the clipped stiffness lands
+within a few percent of an index-matched objective's. The refusal is now a
+computation plus two reported limits (``checks.check_effective_na``, and an
+``assumed_inputs`` entry for the unmodelled spherical aberration, which holds
+``advances`` at False for a clipped configuration).
 """
 
 from __future__ import annotations
@@ -129,6 +138,19 @@ def _assumed_inputs(setup: TrapSetup) -> list[str]:
         out.append("laser dial% -> mW calibration")
     if not setup.temperature_measured:
         out.append(f"medium temperature ({setup.temperature_k:.1f} K default)")
+    if setup.beam.clipped_by_tir(setup.medium):
+        # A TIR-clipped objective still traps, and check_effective_na reports
+        # it rather than vetoing it (2026-08-18). But the same index step that
+        # clips the NA also aberrates the focus, and this ray-optics model has
+        # no term for that -- so the stiffness it returns is an upper bound
+        # resting on an unquantified input. Recording it here is what keeps an
+        # oil-on-water configuration from reporting `advances=True` on the
+        # strength of a number nobody has bounded from below.
+        out.append(
+            f"spherical aberration at the NA {setup.beam.na:.3g} -> "
+            f"{setup.beam.effective_na(setup.medium):.4g} index step "
+            "(not modelled; computed stiffness is an upper bound)"
+        )
     return out
 
 

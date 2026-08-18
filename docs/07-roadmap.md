@@ -78,6 +78,19 @@ Check each with `python -m trapping.cli check --dial 100` /
 `python -m detection.cli check ...` / `python -m compute.cli check ...`.
 → [08 §0](08-optical-path-spec.md)
 
+**Resolved 2026-08-18.** Lens 7 used to raise on any objective whose design NA
+exceeded the sample medium's index — every oil objective on an aqueous sample.
+That was a modelling limit reported as physics: those objectives do trap, at an
+NA clipped to the medium's index by total internal reflection at the
+coverslip/sample interface, and for micron beads the clipped stiffness lands
+within ~3% of an index-matched objective's. `ObjectiveBeam.effective_na()` now
+clips, `checks.check_effective_na` reports the three limits that ride along
+(stiffness is an upper bound; spherical aberration unmodelled; depth pinned by
+G17, which brings an uncorrected Faxén wall-drag bias), and the unmodelled
+aberration is recorded as an assumed input so a clipped configuration cannot
+report `advances`. Grounded in a user observation —
+[`kb/expertise/oil-objective-trapping-in-water.md`](../kb/expertise/oil-objective-trapping-in-water.md).
+
 Remaining gaps in Lens 7 (as of 2026-08-10): no **measured** dial-% → mW
 calibration points (`LaserCalibration.points` is empty, so evidence always comes
 out assumed); medium viscosity only has a temperature-interpolation table for

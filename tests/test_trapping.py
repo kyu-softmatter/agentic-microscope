@@ -163,3 +163,61 @@ def test_more_traps_means_less_force_per_trap_at_the_same_dial_setting():
 
     assert p_three_traps == pytest.approx(p_one_trap / 3)
     assert abs(f_three) == pytest.approx(abs(f_one) / 3, rel=1e-9)
+
+# ------------------------------------------------- TIR-clipped NA (2026-08-18) ---
+#
+# Lens 7 used to raise on any objective whose design NA exceeded the sample
+# medium's index -- i.e. every oil objective on an aqueous sample. Those
+# objectives do trap; the design NA simply never arrives, because the steep
+# rays are totally internally reflected at the coverslip/sample interface.
+
+OIL_BEAM = ObjectiveBeam(na=1.45, wavelength_m=1064e-9)  # 100x-Oil, MRD71970
+PS_BEAD = Bead(radius_m=2.0e-6, n=1.57)  # polystyrene at 1064 nm
+
+
+def test_oil_objective_na_is_clipped_to_the_sample_medium_index():
+    assert OIL_BEAM.effective_na(WATER) == pytest.approx(WATER.n)
+    assert OIL_BEAM.clipped_by_tir(WATER) is True
+
+
+def test_index_matched_objective_is_not_clipped():
+    water_dipping = ObjectiveBeam(na=1.25, wavelength_m=1064e-9)  # 40x-WI
+    assert water_dipping.effective_na(WATER) == pytest.approx(1.25)
+    assert water_dipping.clipped_by_tir(WATER) is False
+
+
+def test_oil_objective_traps_instead_of_raising():
+    """The regression this block exists for: a real force, not a ValueError."""
+    kappa = radial_stiffness_n_per_m(10e-3, PS_BEAD, WATER, OIL_BEAM)
+    assert kappa > 0
+
+
+def test_clipped_oil_and_water_objectives_agree_within_a_few_percent():
+    """For a bead far larger than the focus, stiffness is set by the bead's
+    geometry, not the focus size -- so clipping 1.45 to 1.33 costs almost
+    nothing. This is why the objective choice is an imaging decision.
+    """
+    k_oil = radial_stiffness_n_per_m(10e-3, PS_BEAD, WATER, OIL_BEAM)
+    k_water = radial_stiffness_n_per_m(
+        10e-3, PS_BEAD, WATER, ObjectiveBeam(na=1.25, wavelength_m=1064e-9)
+    )
+    assert k_oil == pytest.approx(k_water, rel=0.05)
+
+
+def test_two_oil_objectives_above_the_critical_angle_are_indistinguishable():
+    """60x-Oil (1.42) and 100x-Oil (1.45) both clip to the same effective NA,
+    so neither has any trapping advantage over the other."""
+    k60 = radial_stiffness_n_per_m(
+        10e-3, PS_BEAD, WATER, ObjectiveBeam(na=1.42, wavelength_m=1064e-9)
+    )
+    k100 = radial_stiffness_n_per_m(10e-3, PS_BEAD, WATER, OIL_BEAM)
+    assert k60 == pytest.approx(k100, rel=1e-9)
+
+
+def test_beam_waist_uses_the_clipped_na_when_a_medium_is_given():
+    assert OIL_BEAM.beam_waist_m() < OIL_BEAM.beam_waist_m(WATER)
+
+
+def test_effective_na_refuses_a_nonphysical_medium():
+    with pytest.raises(ValueError, match="medium.n"):
+        OIL_BEAM.effective_na(Medium(n=0.0))

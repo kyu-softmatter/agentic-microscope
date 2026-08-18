@@ -61,7 +61,7 @@ Read [the pitfalls](docs/06-pitfalls.md) before starting any implementation.
 | [`photo/`](photo/) | 5 · photo-perturbation (G10, G20–G22) | Implemented. **BLOCKED on the real instrument** until `power_at_sample_mw` is measured and dyes get `bleach_photons` — that refusal is the intended behaviour |
 | [`validity/`](validity/) | 6 · measurement validity (G11, G23–G27) | Implemented. Reviews the other lenses' verdicts, so **call it last**. G27 is currently the only thing that notices the committee never convened |
 | [`stability/`](stability/) | 8 · mechanical & environmental (G28–G32) | Implemented, conditional on acquisitions over 30 min. G28 (PFS lock) and G31 (sedimentation) work today; G29 BLOCKED until a drift rate is measured; vibration and stage repeatability ungated |
-| [`trapping/`](trapping/) | 7 · optical tweezers (G14) | Physics library + committee gate wired. Remaining: measured dial-% → mW calibration, and local heating at 1064 nm (not implemented — [06 D6](docs/06-pitfalls.md)) |
+| [`trapping/`](trapping/) | 7 · optical tweezers (G14) | Physics library + committee gate wired. Objectives whose design NA exceeds the sample index are TIR-clipped and computed rather than refused (2026-08-18) — see [`kb/expertise/oil-objective-trapping-in-water.md`](kb/expertise/oil-objective-trapping-in-water.md). Remaining: measured dial-% → mW calibration, and local heating at 1064 nm (not implemented — [06 D6](docs/06-pitfalls.md)) |
 | [`.claude/agents/`](.claude/agents/) | 4 · 5 · 6 | LLM subagent drafts, no code |
 
 The formulas for the unimplemented lenses are collected in
