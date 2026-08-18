@@ -14,13 +14,17 @@ those apply.
 
 ## Current status
 
-**Design complete; the four computational lenses (1 · 2 · 3 · 7) are
-implemented.** Nine design documents, with the optics, detection, and compute
-lenses all functional and the optical-tweezers lens wired through to its
-committee gate. The three judgment lenses (4 · 5 · 6 — sample geometry,
-photo-perturbation, measurement validity) exist as LLM subagent drafts in
-[`.claude/agents/`](.claude/agents/) with no code behind them yet; lens 8
-(mechanical/environmental) has not been started.
+**Design complete; all eight committee lenses are implemented.** Nine design
+documents, 32 hard gates (G1–G32) across ~11,900 lines of Python, 498 tests
+passing. The six standing lenses — optics, detection, compute resources, sample
+geometry, photo-perturbation, measurement validity — and both conditional lenses
+— optical tweezers, mechanical/environmental — each compute their verdict and
+report it through their committee gate. Lenses 4 · 5 · 6 additionally carry the
+qualitative half of their judgment as LLM subagents in
+[`.claude/agents/`](.claude/agents/), layered on top of their code, because part
+of what they weigh has no closed form. Two things are deliberately left ungated
+and named as such: vibration and stage repeatability (no measurement channel
+exists), and local heating at 1064 nm ([06 D6](docs/06-pitfalls.md)).
 
 What is blocking progress is mostly **facts, not code** — the gates run, but
 return `BLOCKED` for want of measured inputs. Illumination power at the sample is
@@ -41,7 +45,7 @@ Read [the pitfalls](docs/06-pitfalls.md) before starting any implementation.
 | [01 Architecture](docs/01-architecture.md) | Overall design, layers, 5 design principles, committee composition, folder structure |
 | [02 Knowledge base](docs/02-knowledge-base.md) | 3-tier normalization, **three-way device wiring cross-check**, off-ledger settings, SQLite schema |
 | [03 Cross-system transfer](docs/03-cross-system-transfer.md) | Current instrument ≠ past instrument. What transfers and what does not |
-| [04 Decision engine](docs/04-decision-engine.md) | Decision order, photon budget / SNR / sampling / timing formulas, the 14 hard gates |
+| [04 Decision engine](docs/04-decision-engine.md) | Decision order, photon budget / SNR / sampling / timing formulas, the 32 hard gates |
 | [05 Committee](docs/05-consensus-gate.md) | hard/bias/soft distinction, **difficulty grades**, **improvement proposals (sensitivity analysis)**, deadlock handling |
 | [06 Pitfalls](docs/06-pitfalls.md) | What actually goes wrong in this data and this science — grounded in measured evidence |
 | [07 Roadmap](docs/07-roadmap.md) | Phase 0 (secure the evidence) → 5 (automate manipulation). Three things that pay off immediately |
@@ -62,7 +66,7 @@ Read [the pitfalls](docs/06-pitfalls.md) before starting any implementation.
 | [`validity/`](validity/) | 6 · measurement validity (G11, G23–G27) | Implemented. Reviews the other lenses' verdicts, so **call it last**. G27 is currently the only thing that notices the committee never convened |
 | [`stability/`](stability/) | 8 · mechanical & environmental (G28–G32) | Implemented, conditional on acquisitions over 30 min. G28 (PFS lock) and G31 (sedimentation) work today; G29 BLOCKED until a drift rate is measured; vibration and stage repeatability ungated |
 | [`trapping/`](trapping/) | 7 · optical tweezers (G14) | Physics library + committee gate wired. Objectives whose design NA exceeds the sample index are TIR-clipped and computed rather than refused (2026-08-18) — see [`kb/expertise/oil-objective-trapping-in-water.md`](kb/expertise/oil-objective-trapping-in-water.md). Remaining: measured dial-% → mW calibration, and local heating at 1064 nm (not implemented — [06 D6](docs/06-pitfalls.md)) |
-| [`.claude/agents/`](.claude/agents/) | 4 · 5 · 6 | LLM subagent drafts, no code |
+| [`.claude/agents/`](.claude/agents/) | 4 · 5 · 6 | Prompt-only, by design: the qualitative half of lenses 4 · 5 · 6, layered over the code above rather than standing in for it |
 
 The formulas for the unimplemented lenses are collected in
 [04](docs/04-decision-engine.md).
