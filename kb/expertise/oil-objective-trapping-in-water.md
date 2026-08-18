@@ -66,11 +66,19 @@ pass silently:
    TIR-clipped configuration reports `advances: False` until someone bounds the
    aberration, while an index-matched objective advances.
 3. **It pins the working depth, and that costs quantitative accuracy.** G17
-   limits depth to `1.85/|Δn| ≈ 10 µm` for oil on water. At that height a 4 µm
-   bead carries a **+12.7% Faxén wall-drag bias** (+29% at 5 µm), and
-   `trapping.dynamics.corner_frequency_hz` applies no wall correction. For an
-   experiment that infers force from a commanded velocity, that bias lands
-   directly on the measured quantity.
+   limits depth to `1.85/|Δn| ≈ 10 µm` for oil on water. The Faxén
+   parallel-to-wall drag correction `gamma/gamma_0 = 1/(1 - 9a/(16h))` at that
+   height is:
+
+   | bead | h = 5 µm | h = 10 µm | h = 20 µm | h = 50 µm |
+   |---|---|---|---|---|
+   | 4 µm (a = 2.0) | +29.0% | +12.7% | +6.0% | +2.3% |
+   | 5 µm (a = 2.5) | +39.1% | +16.4% | +7.6% | +2.9% |
+
+   `trapping.dynamics.corner_frequency_hz` applies no wall correction, so none of
+   this is caught automatically. For an experiment that infers force from a
+   commanded velocity, the bias lands directly on the measured quantity. Note it
+   grows with bead radius, so the bigger the probe the worse the oil penalty.
 
 ## How to use an oil objective quantitatively anyway
 
