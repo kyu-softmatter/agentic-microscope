@@ -149,3 +149,37 @@ def test_duty_cycle_matches_the_archive_28_percent_example():
     """docs/04 §5 / docs/06-pitfalls.md §C4: 10ms exposure, measured 28 Hz."""
     t_frame = 1.0 / 28.0
     assert duty_cycle(10.0, t_frame) == pytest.approx(0.28, abs=0.005)
+
+
+def test_g9_accepts_a_frame_rate_that_exactly_meets_the_target():
+    """t_frame is summed from exposure + overhead in floating point, so a camera
+    configured to hit the target exactly can land a few ulp under it. G9 used to
+    report 'only 240 fps is realizable, below the 240 fps target'."""
+    from detection.checks import check_frame_rate
+    from detection.setup import Acquisition, Camera, DetectionSetup, PhotonBudget
+    from optics.components import Objective, find_detector
+
+    target = 240.0
+    exposure_ms = 1.0
+    cam = Camera(
+        detector=find_detector("Kinetix"),
+        mode="Sensitivity",
+        binning=1,
+        roi_height_px=1040,
+        row_time_us=3.53125,
+        frame_overhead_ms=1000.0 / target - exposure_ms,
+    )
+    setup = DetectionSetup(
+        objective=Objective(label="40x-WI", magnification=40, na=1.25, verified_na=True),
+        wavelength_em_nm=520,
+        mag_objective=40,
+        mag_intermediate=1.5,
+        camera=cam,
+        acquisition=Acquisition(
+            exposure_ms=exposure_ms, task_kind="tracking", target_fps=target
+        ),
+        photons=PhotonBudget(),
+    )
+    result = check_frame_rate(setup)
+    assert result.severity == "ok", result.message
+    assert result.code == "frame_rate"

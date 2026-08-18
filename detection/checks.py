@@ -377,7 +377,12 @@ def check_frame_rate(setup: "DetectionSetup") -> CheckResult:
         )
 
     margin = fps / acq.target_fps
-    ok = margin >= 1.0
+    # Tolerance, not sloppiness: t_frame is assembled by float arithmetic from
+    # exposure + overhead, so a camera set up to hit the target exactly lands a
+    # few ulp below it and used to report "only 240 fps is realizable, below the
+    # 240 fps target" -- a self-contradiction at the printed precision. One part
+    # in 1e-9 is far tighter than any real frame-rate measurement.
+    ok = margin >= 1.0 - 1e-9
     numbers = {
         "max_fps": fps,
         "target_fps": acq.target_fps,
