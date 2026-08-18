@@ -1,0 +1,68 @@
+# Demo channel plan: one optically-trapped 5 um PS probe + freely-diffusing
+# 0.5 um PS tracers, imaged simultaneously in two colours.
+#
+#   python -m optics.cli check config/channels/demo-probe-tracer-2color.yaml
+#
+# Written 2026-08-18 for a walkthrough of the committee. Two populations, two
+# fluorophores, one of them held and driven by the 1064 nm trap.
+#
+# WHY THIS COLOUR ASSIGNMENT (the probe is red, the tracers green):
+#   · ATTO647N puts 100.0% of its emission on the transmit side of DM A561LP and
+#     absorbs 0.00 at 488 nm, so the bright probe cannot contaminate the dim
+#     tracer channel. The green dye leaks ~19% the other way, which is the
+#     harmless direction (dim into bright).
+#   · Kinetix QE is 0.95 at 520 nm vs 0.87 at 668 nm, and a 0.5 um tracer
+#     carries ~1/1000 the dye of a 5 um probe -- the dim population gets the
+#     better-detected channel.
+#   · The probe is the same particle for the whole movie and accumulates the
+#     whole dose; tracers exchange by flow. Photostability goes to the probe.
+#
+# EXPECTED RESULT: BLOCKED, on `missing.detector` for both channels -- the
+# Kinetix datasheet has no full-well figure, so saturation and SNR are
+# uncomputable and the gate refuses rather than borrowing another camera's spec.
+# That refusal is the intended behaviour, not a bug. Everything else in this
+# file is a real, checked fact.
+#
+# ⚠ emission: uses EM-Open (position 9), the only EM1/EM2 slot whose contents
+# are registered. The real filters in positions 0-4 are labelled
+# multi/405/488/555/647 but have no passband data on record
+# (kb/systems/current.md > optical_path_nis > EM1), so they cannot be named here
+# without guessing. Reading those passbands out of NIS-Elements is what would
+# let the crosstalk verdict close.
+
+channels:
+  - name: "Tracer-ATTO488"          # 0.5 um PS, freely diffusing, reports the flow field
+    dye: ATTO488                    # measured aqueous curves -- data/spectra/atto488_*.txt
+    objective:
+      label: "4-Apo LmbdS 40x WI"
+      magnification: 40
+      na: 1.25
+      immersion: water
+      verified_na: true
+    detector: Kinetix               # Kinetix_blue, reflect side of the splitter
+    source: [LUN-F-XL, "488"]
+    excitation: []                  # laser line is already ~1-2 nm wide
+    dichroic: "Di01-T405/488/568/647-13x15x0.5"
+    emission:
+      - {ref: "DM A561LP", side: reflect}
+      - "OT-EM-750SP"               # blocks scattered 1064 nm trap light
+      - "EM-Open"
+    port_fraction: 1.0
+
+  - name: "Probe-ATTO647N"          # 5 um PS, held and driven by the 1064 nm trap
+    dye: ATTO647N
+    objective:
+      label: "4-Apo LmbdS 40x WI"
+      magnification: 40
+      na: 1.25
+      immersion: water
+      verified_na: true
+    detector: Kinetix               # Kinetix_red, transmit side of the splitter
+    source: [LUN-F-XL, "640"]
+    excitation: []
+    dichroic: "Di01-T405/488/568/647-13x15x0.5"
+    emission:
+      - {ref: "DM A561LP", side: transmit}
+      - "OT-EM-750SP"
+      - "EM-Open"
+    port_fraction: 1.0
