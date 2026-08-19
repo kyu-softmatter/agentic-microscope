@@ -337,6 +337,16 @@ light_paths:
       - {stage: source, device: DiaLamp, note: "white light"}
       - {stage: polarizer, device: null, registry: "Polarizer-Linear",
          note: "angle adjustable, removable. May be a device not registered in MM/NIS — the angle itself is an off-ledger setting."}
+      - stage: color_filter
+        device: null
+        registry: "ColorFilter-DiaLamp"
+        note: >
+          User dictation 2026-08-19: a color filter can be inserted into the
+          transmitted-light path (source unspecified so far — placement
+          relative to the polarizer/condenser not yet confirmed). Off-ledger,
+          not registered in MM/NIS.
+      - {stage: polarizer, device: null, registry: "Polarizer-Linear",
+         note: "angle adjustable, removable. May be a device not registered in MM/NIS — the angle itself is an off-ledger setting."}
       - stage: condenser
         device: CondenserTurret
         positions: {0: "1-ND", 1: "2-Shutter", 2: "3-", 3: "4-", 4: "5-", 5: "6-", 6: "7-"}
@@ -353,6 +363,12 @@ light_paths:
           wrong. Only positions 0/1 have labels (ND/Shutter) — labels 2-6 have
           no name in the MM .cfg (bare "3-"~"7-"), so what they actually are
           (darkfield ring, etc.) is still unconfirmed.
+          **2026-08-19 user dictation**: confirmed there are exactly two
+          condenser lens types available for this turret — bright-field and
+          dark-field — consistent with the "darkfield/brightfield switching
+          condenser" discovery above. Which of positions 2-6 correspond to
+          each type is still unconfirmed (only that both types physically
+          exist and are swappable on this turret).
       - {stage: sample, device: [Nosepiece, objective, sample]}
       - {stage: filter_cube, device: FilterTurret1, note: "removable — a fluorescence cube may be left sitting in the transmitted-light path"}
       - {stage: analyzer, device: null, registry: "Analyzer-Linear",
@@ -367,6 +383,24 @@ light_paths:
       experiments do not use this path at all, so a polarizer/analyzer left in
       the path is pure loss — already flagged as an ablation candidate in
       docs/01 §6.
+
+  - name: mutual_exclusions
+    note: >
+      **2026-08-19 user dictation**: the confocal laser (LUN-F-XL, feeds
+      CSUW1-Hub, see confocal-laser above) and the widefield epi-fluorescence
+      lamps (LightEngine/SpectraIII, Aura/AuraIII, see widefield-spectra3 /
+      widefield-aura above) cannot be used simultaneously.
+      **Reason (confirmed by user)**: FilterTurret1's dichroic and emission
+      filter (MXR00724-DM/MXR00724-EM) are in the way. The widefield paths
+      route excitation/emission through FilterTurret1 (MXR00724 cube), while
+      the confocal path is filtered instead by CSUW1-Dichroic + EM1/EM2
+      downstream of the CSU-W1 — the two filtering schemes are built for
+      different excitation bands (LED lines vs the 405/488/561/640 laser
+      lines) and cannot both correctly pass/block light for the same
+      exposure. So it is FilterTurret1's cube (dichroic + emission filter),
+      not a shutter/hardware interlock, that forces the exclusivity. Any
+      channel plan that assumes concurrent confocal-laser + epi-lamp
+      illumination is invalid and must be flagged by Lens 1.
 
   - name: optical-tweezers
     source: Trap
@@ -581,7 +615,36 @@ pixel_size_calibration:
     "100x": {"1x": 0.065,   "1.5x": 0.04333}
 
 devices_not_in_mm_config:   # docs/02 §4 "three-way cross-check table" — separately controlled devices absent from the MM .cfg
-  - {name: "piezo stage (Prior/Queensgate NPC-D, Nanobench 6000)", control: "separate Python (hardware/piezo_stage.py)", mm_registered: false, python_control: confirmed, confirmed_date: 2026-08-10}
+  - name: "piezo stage (Prior/Queensgate NPC-D, Nanobench 6000)"
+    control: "separate Python (hardware/piezo_stage.py), USB/COM + vendor DLL"
+    mm_registered: false
+    python_control: confirmed
+    confirmed_date: 2026-08-19
+    note: >
+      **ONE physical stage, TWO control interfaces** (resolved 2026-08-19).
+      A discrepancy surfaced while tracing the LUN-F DAQ wiring: the NIS
+      device DB (`C:\ProgramData\Laboratory Imaging\Platform\
+      DeviceDatabase_6_00.dat` > dev_PhysicalDevice[NIDAQ].sConfiguration)
+      carries a `PZ_Piezo Z` abstraction bound to `resource_AOPort = Dev1/ao2`
+      (0-400 um <-> 0-10 V, resolution 0.0122 um, home 200 um, observed
+      2026-08-19 at 197.6 um / 4.94 V), which looked like a second piezo.
+      **User correction 2026-08-19: there is only one stage.** NIS drives it
+      through the controller's *analog input* on `Dev1/ao2`; this repo drives
+      the same controller through its *USB/COM + vendor DLL* interface. The
+      USB route is the one to use, and the NIS/analog route is deliberately
+      ignored -- per the user, the analog path does not expose the stage's
+      full capability (the DLL command set in hardware/piezo_stage.py does).
+      Consistent with [[project-pymmcore-only-no-nis]].
+    hazard: >
+      "Not used by us" is NOT the same as "safe to write". The analog cable
+      from `Dev1/ao2` to the controller is still physically connected, so
+      **never add `NIDAQAO-Dev1/ao2` to a Micro-Manager configuration** --
+      MM initializes an AO device by writing 0 V, which would command the
+      stage to 0 um. Whether the NPC-D actually acts on its analog input
+      depends on the controller's input-mode setting, which has NOT been
+      checked yet (query it over the DLL before relying on either answer).
+      config/micromanager/DMD_dualcam_LUNF.cfg contains no AO device for
+      exactly this reason.
   - {name: "optical tweezers (Aresis Tweez 305/310, Tweez 300)", control: "separate Python (hardware/optical_tweezers.py, TCP 2070)", mm_registered: false, python_control: confirmed, confirmed_date: 2026-08-10}
   - name: "LUN-F-XL laser combiner (405/488/561/640)"
     control: "none — not yet connected to any programming interface"
