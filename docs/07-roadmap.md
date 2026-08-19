@@ -21,7 +21,7 @@ return `BLOCKED` only because there is no input to compute from.
 | Parts per filter wheel position | `data/filters.yaml` | — | in hand |
 | Fluorescent dye data | `data/fluorophores.yaml` | — | in hand |
 | Objective barrel engravings | NA · WD · coverslip | 10 min | ✅ done (2026-08-11) — catalog cross-check (2026-08-10) + barrel cross-check (2026-08-11), user-confirmed |
-| **Illumination power measured** | `power_at_sample_mw` | 30 min | **Largest effect, the only remaining top blocker** — power-meter measurement, still to be done |
+| **Illumination power measured** | `power_at_sample_mw` | 30 min | **Largest effect, still the top blocker — but deliberately deferred (user, 2026-08-19): all laser power measurement happens later.** Not forgotten and not dropped; simply not the next task. Until it lands, every dose/SNR number stays relative, and gates that need `power_at_sample_mw` keep returning `BLOCKED` by design |
 | Measured pixel size calibration | `ConfigPixelSize` (registered in MM2) | 30 min | ✅ in hand (Kinetix, 2025-04) |
 | Disk sustained-write bandwidth | `kb/calibrations/disk-bandwidth.yaml` | 10 min | ✅ in hand (2026-08-12) — D: drive 206.8 MB/s (4GB measured). Whether it is exactly the folder MM saves into is unconfirmed — if not, re-measure |
 | Camera row time | `ReadoutTimeNs / ROI height` | 5 min | ✅ in hand (2026-08-12) — `kb/calibrations/camera-readout.yaml`. The real PVCAM adapter property `Timing-ReadoutTimeNs` = 8,475,000 (ns strongly implied by the name; not yet cross-checked against a document) → row time ≈ 3531.2 ns/row (at ROI height 2400 rows). Loaded from `dual_cam_test.cfg` (PVCAM only, no NikonTi2/Mightex) rather than `DMD_dualcam.cfg` — reason in the note below |
@@ -30,6 +30,17 @@ return `BLOCKED` only because there is no input to compute from.
 absolute photon budget, makes it possible to compute exposure time from scratch,
 and makes all future data transferable to another system.
 → [03 §5](03-cross-system-transfer.md)
+
+**Deferred by decision (2026-08-19).** The user has put *all* laser power
+measurement off until later, so this unlock is not the next move — do not keep
+re-proposing it as the immediate step. Two consequences to hold onto: committee
+verdicts that depend on absolute dose remain relative-only (Lens 5 in
+particular), and the LUN-F per-line power path is blocked on its own separate
+problem anyway (the FT4222H SPI word format — see
+[`hardware/lunf_power.py`](../hardware/lunf_power.py) and
+`kb/systems/current.md > devices_not_in_mm_config`), so measuring before that
+path exists would only characterise the laser at whatever power NIS last left
+it at.
 
 **The code to run once the hardware is connected is ready in
 [`calibration/`](../calibration/)** (disk bandwidth, camera row time, EM1/EM2

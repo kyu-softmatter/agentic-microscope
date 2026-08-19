@@ -50,6 +50,20 @@ dragging one line's power slider in NIS through known values (0 / 50 / 100 %),
 and correlate -- four channels and a monotonic slider make the word format fall
 out quickly. Or ask Nikon for the LUN-F SDK.
 
+NEXT THING TO TRY FIRST (user plan, 2026-08-19)
+-----------------------------------------------
+Getting the LUN-F talking to the PC directly is proving awkward, and the plan is
+to **cable it straight over USB-B** rather than keep going through the FT4222
+bridge that NIS uses. Do that before the capture above: if the chassis' own USB
+port speaks a documented command set (ASCII serial / CDC / vendor VCP), the SPI
+word format stops mattering and this whole module reduces to a thin wrapper over
+that link. Only fall back to USBPcap if USB-B turns up nothing.
+
+Also note power *measurement* (a power meter at the sample) is deliberately
+deferred -- user decision 2026-08-19, see docs/07-roadmap.md Phase 0. So a
+working set_power() will initially be in percent-of-maximum with no mW behind
+it; do not let the two blockers be confused for one.
+
 MEASURED ON THIS MACHINE (2026-08-19)
 -------------------------------------
     FT_OpenEx("00294-BOA")  ->  rc=0

@@ -335,8 +335,6 @@ light_paths:
     source: DiaLamp
     order:
       - {stage: source, device: DiaLamp, note: "white light"}
-      - {stage: polarizer, device: null, registry: "Polarizer-Linear",
-         note: "angle adjustable, removable. May be a device not registered in MM/NIS — the angle itself is an off-ledger setting."}
       - stage: color_filter
         device: null
         registry: "ColorFilter-DiaLamp"
@@ -647,22 +645,44 @@ devices_not_in_mm_config:   # docs/02 §4 "three-way cross-check table" — sepa
       exactly this reason.
   - {name: "optical tweezers (Aresis Tweez 305/310, Tweez 300)", control: "separate Python (hardware/optical_tweezers.py, TCP 2070)", mm_registered: false, python_control: confirmed, confirmed_date: 2026-08-10}
   - name: "LUN-F-XL laser combiner (405/488/561/640)"
-    control: "none — not yet connected to any programming interface"
-    mm_registered: false
-    python_control: not_connected
-    confirmed_date: 2026-08-12
+    control: "split: blanking (on/off) via MM NIDAQ — working; per-line power via FT4222H SPI — transport only, blocked on the SPI word format"
+    mm_registered: partial   # blanking lines yes (as NIDAQ devices); the laser itself is not one MM device
+    python_control: partial
+    confirmed_date: 2026-08-19
     note: >
-      User dictation on 2026-08-10 said "Python control confirmed", but there
-      was no record of which interface. On 2026-08-12, grep and an actual
-      pymmcore-plus load settled that it is not registered in MM, but at that
-      point it was wrongly assumed that "there must be a hidden path
-      somewhere". **2026-08-12 user correction**: the connection has simply
-      not been made yet — i.e. there is no existing path to find; the
-      connection work itself (installing the Nikon SDK, wiring serial/USB,
-      etc.) still has to be done. Since this project decided not to use the
-      NIS-Elements path ([[project-pymmcore-only-no-nis]]), once that
-      connection is made the first thing to re-check is whether pymmcore-plus
-      can reach it — not started.
+      History: user dictation on 2026-08-10 said "Python control confirmed",
+      with no record of which interface. On 2026-08-12 grep + an actual
+      pymmcore-plus load settled that it is not registered in MM as its own
+      device, and the **2026-08-12 user correction** was that the connection
+      had simply not been made yet — no hidden path to find.
+
+      **2026-08-19 — the control path is now traced and it is a two-way
+      split** (read out of the NIS device DB `dev_PhysicalDevice[LUN-F].
+      sConfiguration`, cross-checked against the NIS "LUN-F Configuration"
+      dialog; see [[hardware/lunf_power.py]] for the full record):
+        - **on/off (blanking)** → NI PCIe-6323 digital lines
+          `Dev1/port0/line2/4/6/8` for 405/488/561/640, driven by MM's stock
+          NIDAQ adapter. **This half works** — wired up in
+          config/micromanager/DMD_dualcam_LUNF.cfg, 5.4 us measured.
+        - **per-line power** → SPI DAC behind an FTDI FT4222H
+          (`FT4222_00294-BOA/AO_A_0..3`). Transport is reachable (FT_OpenEx
+          rc=0, chip rev D, 60 MHz) but **Nikon does not document the DAC word
+          format**, so `lunf_power.PROTOCOL` is None and `set_power()`
+          deliberately refuses rather than write guessed bytes at a laser
+          AOTF driver.
+      So power is the only half still missing, and it is blocked on a
+      protocol unknown — not on wiring.
+
+      **2026-08-19 user status**: connecting the LUN-F directly to the PC is
+      proving difficult. **Plan: connect it straight over USB-B** and work the
+      method out from there — i.e. try for a native/vendor link to the laser
+      itself rather than continuing through the FT4222 bridge that NIS uses.
+      If that USB-B route exposes a documented command set it supersedes the
+      SPI-capture plan in lunf_power.py's docstring (USBPcap + Wireshark on
+      the FT4222 endpoint) and removes the word-format unknown entirely — so
+      **try USB-B first, capture second**. Not yet attempted.
+      Consistent with [[project-pymmcore-only-no-nis]]: whatever path lands,
+      the NIS control route is not used.
   - name: "CSUW1-Dichroic / EM1(CSUW1-Filter_Red) / EM2(CSUW1-Filter_Blue) filter elements (confocal path)"
     control: pymmcore-plus
     mm_registered: true
