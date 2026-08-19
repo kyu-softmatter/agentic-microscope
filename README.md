@@ -68,7 +68,7 @@ Read [the pitfalls](docs/06-pitfalls.md) before starting any implementation.
 | [`trapping/`](trapping/) | 7 · optical tweezers (G14) | Physics library + committee gate wired. Objectives whose design NA exceeds the sample index are TIR-clipped and computed rather than refused (2026-08-18) — see [`kb/expertise/oil-objective-trapping-in-water.md`](kb/expertise/oil-objective-trapping-in-water.md). Remaining: measured dial-% → mW calibration, and local heating at 1064 nm (not implemented — [06 D6](docs/06-pitfalls.md)) |
 | [`.claude/agents/`](.claude/agents/) | 4 · 5 · 6 | Prompt-only, by design: the qualitative half of lenses 4 · 5 · 6, layered over the code above rather than standing in for it |
 
-The formulas for the unimplemented lenses are collected in
+The formulas behind every gate are collected in
 [04](docs/04-decision-engine.md).
 
 ```bash

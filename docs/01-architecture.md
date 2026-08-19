@@ -227,14 +227,14 @@ experimentalist/
 │   ├── 01-architecture.md        (this file)
 │   ├── 02-knowledge-base.md      KB schema · three-way wiring cross-check · off-ledger settings
 │   ├── 03-cross-system-transfer.md   transferring settings between systems
-│   ├── 04-decision-engine.md     decision order · formulas · the 14 hard gates
+│   ├── 04-decision-engine.md     decision order · formulas · the 32 hard gates
 │   ├── 05-consensus-gate.md      committee · difficulty grades · improvement proposals
 │   ├── 06-pitfalls.md            pitfall list grounded in measured evidence
 │   ├── 07-roadmap.md             Phase 0–5
 │   ├── 08-optical-path-spec.md   lens computation structure · hardware YAML format
 │   └── 09-knowledge-capture.md   expertise capture — the real purpose of this project
 │
-├── .claude\agents\               ← judgment lenses as LLM subagents (draft, no code)
+├── .claude\agents\               ← qualitative half of lenses 4 · 5 · 6 (prompt-only)
 │   ├── sample-optics.md          lens 4
 │   ├── photo-perturbation.md     lens 5
 │   └── measurement-validity.md   lens 6
@@ -323,8 +323,7 @@ experimentalist/
 
 ## 6. What actually works today
 
-The four computational lenses (1 · 2 · 3 · 7) are implemented, and they
-**refuse** as intended.
+All eight committee lenses are implemented, and they **refuse** as intended.
 
 ```bash
 python -m optics.cli check config/channels/legacy-observed.yaml
@@ -373,11 +372,15 @@ proposes removal; otherwise it explains in numbers why the element is needed.
 
 ## 7. What comes next
 
-1. **Judgment lenses 4 · 5 · 6** — agent definitions are drafted in
-   `.claude/agents/`; they still need to be wired into committee orchestration
-2. **Lens 8 (mechanical & environmental)** — not started
-3. **L1 indexer** — the 2,343 archived acquisitions → SQLite
-4. **Agent layer** — `CLAUDE.md` + skills + committee orchestration
+1. **Committee orchestration** — every lens computes and reports its own
+   verdict, but a human still runs each CLI by hand and carries Lens 2's
+   `max_fps` into `trapping.cli check --detector-fps`. Automatic wiring is
+   Phase 3
+2. **L1 indexer** — the 2,343 archived acquisitions → SQLite
+3. **Agent layer** — `CLAUDE.md` + skills, on top of the orchestration above
+4. **The deliberately ungated** — vibration and stage repeatability (no
+   measurement channel exists) and local heating at 1064 nm
+   ([06 D6](06-pitfalls.md)). Named, not silently omitted
 
 What is blocking progress is mostly **facts, not code**: the gates run but
 return `BLOCKED` for want of measured inputs, illumination power above all.
