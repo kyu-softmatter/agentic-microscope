@@ -1,0 +1,99 @@
+# Active microrheology: one optically-driven 5 um PS probe + freely-diffusing
+# 0.5 um PS tracers, imaged simultaneously in two colours.
+#
+#   python -m optics.cli check config/channels/active-microrheology-probe-tracer.yaml
+#
+# Written 2026-08-18. The probe is held by the 1064 nm Aresis trap and steered
+# on a bounded random walk (speed and direction resampled, 0-30 um/s); force is
+# read as F = kappa * (x_bead - x_trap), NOT from the trap itself -- the Tweez
+# 300 TCP interface (hardware/optical_tweezers.py) has no force or position
+# readout command.
+#
+# WIDEFIELD EPI, NOT THE SPINNING DISK. Set CSUW1-Bright = 1 ("Bright Field")
+# so the disk is out of the imaging path; the CSU-W1 dichroic stays in it
+# regardless (kb/systems/current.md > light_paths > widefield-spectra3). Three
+# reasons this path wins over the confocal one here:
+#   1. Photon efficiency. At 1.5 ms on a 0.5 um tracer we are photon-starved,
+#      and the CSU disk's pinhole array throws away most of the emission.
+#   2. Free choice of exposure. A spinning disk quantizes exposure to the disk
+#      scan period; G8 needs exposure set to 22-30% duty, not to a disk
+#      multiple. (Disk speed / arm count are not in the KB, so that multiple
+#      cannot even be computed today.)
+#   3. The cube in this path is characterized. MXR00724-EX/DM/EM are all
+#      verified: true with NIS-read bands. On the confocal path the only
+#      registered emission filter is EM-Open -- no filtering at all.
+#
+# WHY THE PROBE IS RED AND THE TRACERS GREEN:
+#   · Kinetix QE is 0.95 at 520 nm vs 0.90 at 650 nm, and a 0.5 um tracer
+#     carries ~1/1000 the dye of a 5 um probe -- the dim population gets the
+#     better-detected arm.
+#   · The probe is the same particle for the whole movie and takes the whole
+#     dose; tracers exchange by diffusion. Photostability goes to the probe.
+#   · 520 nm reflects off DM A561LP (Kinetix_blue), 690 nm transmits
+#     (Kinetix_red) -- a clean split with the 589-623 cube gap between them.
+#
+# ⚠ DYE ON THE TRACERS. MXR00724-EX's green band is 462-486 nm, so ATTO488
+# (abs peak 500) sits OUTSIDE it and couples at roughly half of peak. The
+# repo's own panel search (optics.cli recommend --panel --lines 488,640) picks
+# Bangs Dragon Green (480/520) over ATTO488 on this path for exactly that
+# reason -- and Dragon Green is what Bangs actually ships 0.5 um PS tracers
+# with. It is entered below, but Bangs publishes neither ext_coeff nor quantum
+# yield for it (data/fluorophores.yaml), so the photon budget is uncomputable
+# for this dye. Swap to ATTO488 if a computable budget matters more than
+# excitation efficiency.
+#
+# EXPECTED RESULT: BLOCKED on `missing.detector` for both channels -- the
+# Kinetix datasheet has no full-well figure, so saturation and SNR are
+# uncomputable and the gate refuses rather than borrowing another camera's
+# spec. That refusal is the intended behaviour, not a bug.
+#
+# ⚠ Also unresolved, and it bounds any verdict from this file: with no measured
+# dye or filter curves the blocking requirement rises from 5 to 7 OD
+# (optics/checks.py LIMITS), which a parametric band model cannot demonstrate.
+# The 488/640 pair is spectrally clean; the model just cannot prove it.
+#
+# ⚠ MXR00724-DM is registered with the NIS 'Mirror' bands as its PASSBAND, and
+# data/filters.yaml flags reflection-vs-passband as unconfirmed for it. That is
+# the same error already found and fixed for Di01-T405/488/568/647. Confirm
+# against the vendor curve before trusting a collection number from this file.
+
+channels:
+  - name: "Tracer-DragonGreen"      # 0.5 um PS, freely diffusing, reports the medium's response
+    dye: DragonGreen
+    objective:
+      label: "4-Apo LmbdS 40x WI"   # position 3, MRD77400 -- index-matched to water
+      magnification: 40
+      na: 1.25
+      immersion: water
+      verified_na: true
+    detector: Kinetix               # Kinetix_blue, reflect side of the splitter
+    source: [LightEngine, "488"]    # SpectraIII, MM-registered and software-controllable
+    excitation: ["MXR00724-EX"]
+    dichroic: "MXR00724-DM"
+    emission:
+      - "MXR00724-EM"                                     # 510-531 band
+      - {ref: "Di01-T405/488/568/647-13x15x0.5", side: transmit}  # CSU-W1 dichroic, always in path
+      - {ref: "DM A561LP", side: reflect}                 # <561 -> Kinetix_blue
+      - "OT-EM-750SP"                                     # blocks scattered 1064 nm trap light
+      - "EM-Open"                                         # EM2 position 9
+    port_fraction: 1.0
+
+  - name: "Probe-ATTO647N"          # 5 um PS, held and steered by the 1064 nm trap
+    dye: ATTO647N
+    objective:
+      label: "4-Apo LmbdS 40x WI"
+      magnification: 40
+      na: 1.25
+      immersion: water
+      verified_na: true
+    detector: Kinetix               # Kinetix_red, transmit side of the splitter
+    source: [LightEngine, "640"]
+    excitation: ["MXR00724-EX"]
+    dichroic: "MXR00724-DM"
+    emission:
+      - "MXR00724-EM"                                     # 677-711 band
+      - {ref: "Di01-T405/488/568/647-13x15x0.5", side: transmit}
+      - {ref: "DM A561LP", side: transmit}                # >561 -> Kinetix_red
+      - "OT-EM-750SP"
+      - "EM-Open"                                         # EM1 position 9
+    port_fraction: 1.0
