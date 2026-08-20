@@ -252,8 +252,15 @@ requires the user to confirm before anything is saved. Instead mark
 - You have to ask for free disk / duration / buffer count again because nothing
   records them. That is a KB gap, not just a missing answer (`09 §3(b)`).
 
-## Remaining gaps (as of 2026-08-19)
+## Remaining gaps (as of 2026-08-20)
 
+- **One finding is still owed to Lens 7.** The 2026-08-20 sweep found that
+  `Actin rheology\20240816 actin_network\calibration\OT{0.01..0.1}_exp10_...`
+  — the trap-stiffness calibration runs — drop 3 to 53 of 3000 frames at
+  100 fps. A power spectrum fitted on an assumed-uniform interval gets `f_c`
+  wrong, so κ is wrong, and G14 gates on that same `f_c`. Naming them is not
+  fixing them: the spectra have to be recomputed on the actual timestamps.
+  Raise this whenever a κ from that session is cited.
 - **The 32 GB RAM ceiling is a policy, not a measurement.** Closing it means
   measuring real concurrent RAM usage during an acquisition.
 - **The 8-bit container is unconfirmed** on the real PVCAM/Kinetix adapter
