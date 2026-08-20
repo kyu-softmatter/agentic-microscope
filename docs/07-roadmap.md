@@ -261,8 +261,10 @@ correctly. Two things make this a clean split rather than a compromise:
    laser on, so nothing is being worked around.
 2. Everything in those paths is already reachable: Ti2-E stand and its children
    (Nosepiece, FilterTurret1, CondenserTurret, LightPath,
-   IntermediateMagnification, PFS), both Kinetix cameras, SpectraIII/AuraIII,
-   and the DMD are all MM-registered and load under pymmcore-plus.
+   IntermediateMagnification, LappMainBranch1, PFS), both Kinetix cameras,
+   SpectraIII/AuraIII, and the DMD are all MM-registered and load under
+   pymmcore-plus. The Splitter is the one element in these paths that is not —
+   it stays a manual step.
 
 **"Excluding confocal" means without laser excitation — not without the
 CSU-W1.** The CSU-W1 optics cannot be excluded even if we wanted to:
@@ -282,7 +284,8 @@ Scope, then:
 | DMD pattern illumination | `widefield-spectra3` | MM |
 | Piezo stage | — | own DLL path (`hardware/piezo_stage.py`) |
 | Optical tweezers | `optical-tweezers` | own TCP path |
-| Splitter, LappMainBranch1 | shared | **manual only** — not MM-registered |
+| LappMainBranch1 (couples Aura in / DMD share) | shared | MM — `Device,LappMainBranch1,NikonTi2` in `DMD_dualcam_LUNF.cfg` |
+| Splitter | shared | **manual only** — no `Device,` line in any config here |
 
 What this deliberately cannot settle, so it does not get claimed later: any
 confocal channel plan end to end, per-line laser power, and whether the
