@@ -40,11 +40,24 @@ class IlluminationSetup:
     #: chain here; lens 1 owns it (optics.path.Channel).
     excitation_rate_per_s: float | None = None
     emitted_photons_per_s: float | None = None
+    #: Transmission-weighted mean of the dye's absorption over the delivered
+    #: spectrum -- lens 1's ``excitation_efficiency() / source_delivery()``.
+    #: Used only by the local fallback chain below, which has no spectra of its
+    #: own. 1.0 would mean the delivered line sits exactly on the absorption
+    #: peak across its whole band, which is never true, so an absent value is
+    #: reported as assumed rather than quietly taken as 1.
+    excitation_coupling: float | None = None
 
     # -- sample photoresponse ---------------------------------------------
-    #: True when the light itself can drive the sample: light-driven active
-    #: particles, photo-crosslinking, LC photo-alignment (docs/06 D2).
-    photoresponsive: bool = False
+    #: Can the light itself drive the sample -- light-driven active particles,
+    #: photo-crosslinking, LC photo-alignment (docs/06 D2)?
+    #:
+    #: Tri-state on purpose. ``None`` means **nobody has asked yet**, which is
+    #: a different state from a confirmed ``False``: docs/06 D2's accident is
+    #: the unasked question, not a wrong number, so the default must not be a
+    #: silent "no". ``None`` warns and stops the verdict advancing without
+    #: blocking the rest of the lens.
+    photoresponsive: bool | None = None
     #: Irradiance above which the sample responds, W/cm^2. Sample-specific and
     #: not derivable, so a photoresponsive sample without it BLOCKs rather
     #: than being waved through.
@@ -66,6 +79,10 @@ class IlluminationSetup:
         **kwargs,
     ) -> IlluminationSetup:
         """Build from a lens 1 channel, consuming its excitation chain.
+
+        This is the path that gets k_ex right: the channel's rate already
+        carries the spectral-overlap weighting the fallback chain cannot
+        compute, so ``excitation_coupling`` is not needed here.
 
         Anything not derivable from the channel (exposure, frame count, sample
         photoresponse) still has to be supplied.
@@ -97,6 +114,13 @@ class IlluminationSetup:
         Uses lens 1's value when supplied, otherwise computes the chain from
         power/area/wavelength/epsilon -- the same arithmetic, for the case
         where there is no Channel to hand (a what-if, or a test).
+
+        Not quite the same arithmetic, in fact: lens 1 weights ``sigma phi`` by
+        how well the delivered spectrum overlaps the absorption band
+        (``optics.path.Channel.excitation_rate_per_s``), and this fallback has
+        no spectra to do that with. ``excitation_coupling`` carries that factor
+        in when it is known; without it the value is an upper bound. See
+        ``excitation_coupling_assumed``.
         """
         if self.excitation_rate_per_s is not None:
             return self.excitation_rate_per_s
@@ -113,7 +137,32 @@ class IlluminationSetup:
             irradiance_w_cm2(self.power_mw_at_sample, self.illuminated_area_um2),
             self.wavelength_nm,
         )
-        return 3.82e-21 * self.ext_coeff_m1cm1 * flux
+        coupling = 1.0 if self.excitation_coupling is None else self.excitation_coupling
+        return 3.82e-21 * self.ext_coeff_m1cm1 * flux * coupling
+
+    @property
+    def excitation_coupling_assumed(self) -> bool:
+        """Did k_ex come from the local chain with no overlap factor at all?
+
+        Then it is ``sigma phi`` with the spectral overlap silently set to 1 --
+        the delivered line treated as if it sat on the absorption peak. Real
+        couplings are well under 1: ATTO488 (abs peak 500 nm) on this lab's
+        462-486 nm green band runs near a half
+        (config/channels/active-microrheology-probe-tracer.yaml).
+
+        The bias direction is worth stating, because it is not the dangerous
+        one. Too large a k_ex inflates both the excited-state fraction (G20)
+        and the emitted-photon count (G10), so both gates come out *stricter*
+        than the instrument warrants -- false alarms, not false clears. The
+        cost is a wrong instruction ("cut the light") rather than a missed
+        perturbation. Either way the number is not this instrument's, so the
+        verdict reports it as assumed and does not advance.
+        """
+        return (
+            self.excitation_rate_per_s is None
+            and self.excitation_coupling is None
+            and self.resolved_excitation_rate is not None
+        )
 
     @property
     def resolved_emitted_per_s(self) -> float | None:

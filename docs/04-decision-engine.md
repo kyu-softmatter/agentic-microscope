@@ -167,8 +167,13 @@ covered by tests.
 $$I_{\text{sat}} = \frac{hc}{\lambda\,\sigma_{\text{abs}}\,\tau_{\text{fl}}}$$
 
 As `k_ex → 1/τ_fl` the linear model above overestimates. Triplet shelving
-arrives earlier, at lower intensity. **The current implementation does not model
-saturation**, so it must warn when `I ≳ 0.1·I_sat`.
+arrives earlier, at lower intensity. **The photon budget above does not model
+saturation** — `optics.path.detected_e_per_s` is linear in power throughout — so
+the warning is lens 5's job: `photo.checks.check_saturation` (G20) gates the
+steady-state excited-state fraction `k_ex τ/(1 + k_ex τ)` at 0.1, the same
+threshold expressed as an occupancy rather than as `I ≳ 0.1·I_sat`. Past it,
+this section's numbers and lens 2's SNR are both overestimates while dose keeps
+climbing.
 
 ### ⚠ Without a measured light level this whole section is void
 
@@ -349,16 +354,31 @@ quarters the particle count, so **the net gain can vanish.**
 
 ### Data rate
 
-$$R = W \times H \times \frac{\text{bits}}{8} \times f \quad [\text{B/s}]$$
+$$R = \sum_{\text{streams}} W \times H \times \text{bytes/px} \times f \quad [\text{B/s}]$$
+
+The sum is over **streams, one per camera actually running**. This lab runs two
+Kinetix simultaneously, so a dual-camera acquisition is two terms — not one
+wider frame. A z-stack or channel loop multiplies a single camera's frames
+instead; `Stream.from_dimensions` folds `z × c × positions` into that stream's
+`f`, but only as an **average** rate. If the z-sweep is a burst that finishes
+well inside one timepoint interval, the instantaneous rate into the buffer is
+higher and the buffer gate below comes out optimistic.
 
 | Configuration | Data rate | Verdict |
 |---|---|---|
 | 1608² · 16bit · 60 fps | **310 MB/s** | NVMe required. A SATA SSD (~500 MB/s) is risky on sustained writes too |
 | 1608² · 12bit (stored as 16bit) · 30 fps | 155 MB/s | SATA SSD is fine |
 | 176² · 16bit · 550 fps | 34 MB/s | comfortable |
+| 2400² · 16bit · 200 fps · **×2 cameras** | **4608 MB/s** | 32× over the measured D: budget — this is the case that produced the RAM-capture detour |
 
-> MM stores 12-bit in a 16-bit container too. The disk calculation has to use
-> 16-bit.
+> **bytes/px is not bits/8.** MM stores 9–16 bit in a 16-bit container, so a
+> 12-bit mode still costs 2 bytes/pixel. At **8 bit** MMCore reports 1 byte, and
+> the Kinetix's 8-bit `Speed` mode is the fast one (500 fps full frame) — so the
+> container width moves the data rate by 2× exactly where this gate binds, and
+> in the direction that would call a feasible acquisition infeasible. Whether
+> this lab's PVCAM adapter really hands MMCore 8-bit pixels rather than
+> upconverting **has never been checked**: G12c reports both numbers and refuses
+> to call either measured until it is.
 
 ### Circular buffer (RAM)
 
@@ -376,14 +396,87 @@ data rate there are **frame drops**, and they happen silently — the only sign 
 `ElapsedTime-ms` intervals turning irregular.
 
 **Gate**:
-- `R < 0.7 × sustained disk write bandwidth`
-- `buffer ≥ 5 seconds' worth of data` (to absorb transient disk stalls)
-- `total volume = R × acquisition time < free space`
-- with real-time processing attached, CPU time per frame `< 1/f`
 
-**Post-hoc verification**: after acquisition, look at the variance of
-`ElapsedTime-ms` differences to detect drops. This can be done on the existing
-archive right now, and should be.
+| # | Criterion | Kind |
+|---|---|---|
+| G12a | `R < 0.7 ×` sustained disk write bandwidth | hard |
+| G12b | the `f` in `R` is an **achieved** rate, not a requested one | bias |
+| G12c | the `bytes/px` in `R` is the container MM actually writes | bias |
+| G13a | buffer `≥ 5 seconds'` worth of frames (to absorb transient stalls) | hard |
+| G13b | `total volume = R × acquisition time < free space` | hard |
+| G13c | with real-time processing attached, CPU time per frame `< 1/f_total` | hard |
+| G13d | on the RAM-capture path, whole burst `≤` the authorized RAM budget | hard |
+
+MMCore counts its circular buffer in **images**, and shares it across cameras.
+So G13a's headroom is `N_buffered / N_arriving_per_second` and the frame
+geometry cancels — which is what keeps it correct when two cameras run at
+different ROIs. G13c's budget is likewise set by the **total** arrival rate:
+two cameras at 200 fps each leave 2.5 ms per frame, not 5 ms.
+
+### G12b — a requested frame rate is not evidence
+
+Every quantity above scales linearly with `f`, and [§C4](06-pitfalls.md) is the
+measured case where that mattered: a ~85 Hz camera ceiling delivered 28 Hz, with
+MM overhead or the disk — *not* the camera — as the bottleneck. So clearing lens
+2's realizability ceiling (G9) is necessary and not sufficient; only an observed
+rate closes G12b, and the way to get one is the post-hoc analysis below.
+
+G12b is graded **bias**, not hard: frame-rate realizability belongs to lens 2.
+When a requested rate exceeds lens 2's ceiling, lens 3 reports that its own
+arithmetic rests on a rate the camera cannot deliver, lets the feasibility grade
+collapse, and hands the setting back — it does not seize a verdict it does not
+own.
+
+### G13d — the RAM-capture path
+
+Holding the whole burst in memory and flushing afterwards
+([`kb/decisions/2026-08-12-ram-buffer-detour-for-disk-bandwidth.md`](../kb/decisions/2026-08-12-ram-buffer-detour-for-disk-bandwidth.md),
+implemented in `calibration/ram_capture.py`) removes the real-time disk
+constraint entirely — nothing is written while the camera runs — and replaces
+G12a with a hard capacity ceiling. G13a still applies: the pop loop draining the
+circular buffer into the capture array can stall too, just on CPU rather than
+disk. G13b still applies: the burst lands on disk eventually.
+
+The budget is **32 GB** (user, 2026-08-19). The machine has 255.65 GB, but what
+the OS, MM, and the DMD/piezo/tweezers control processes hold *during* an
+acquisition has never been measured — so 32 GB is an authorized ceiling, not a
+measurement of what is free. Anything above it is recorded as an assumption.
+
+Flush time (`total / measured bandwidth`) is reported but not gated: nothing is
+lost if it is slow, but "the microscope is tied up for 16 minutes afterwards" is
+a fact the user needs before agreeing.
+
+**Post-hoc verification**: ✅ implemented — `compute/drops.py`,
+`python -m compute.cli drops <metadata.txt>` for one acquisition and
+`scan <dir>` for a sweep. Per `(channel, slice)` series, the **median** interval
+is the cadence — a drop can only lengthen an interval, never shorten one, so the
+mean is dragged by exactly the thing being detected while the median is not. An
+interval clearing both `1.5 ×` cadence and cadence + 2 timestamp ticks is a gap
+hiding `round(Δt / cadence) − 1` frames. The second condition only bites on fast
+acquisitions, where one tick of MM's 1 ms resolution is already a 1.5× interval
+and every tick would otherwise read as a drop.
+
+Read the result as `cadence_fps` vs `throughput_fps`: the gap between them *is*
+the drop rate. It cannot distinguish a dropped frame from a genuine stall (stage
+move, autofocus, filter change) — it names the frame index and leaves the cause
+to whoever knows what the acquisition was doing.
+
+The same pass reports **truncation**: MM's Summary `Frames` is what was
+*planned*, and an acquisition stopped early keeps advertising it. That is
+tracked separately from contamination, because a short run's lag times can be
+perfectly uniform — two calibration runs in this archive are 58 and 44 frames of
+a planned 1000, and both are otherwise clean.
+
+Two cautions the real archive taught, both now handled in code (verified
+2026-08-20 against `D:\data`, 2,353 files):
+
+- Below a 20 ms cadence the jitter figure is quantization-limited and is
+  reported as such. MAD moves in whole 1 ms ticks, so the 10% warn threshold
+  would be decided by rounding rather than by the data.
+- When the true interval falls between two ticks, the median snaps to one of
+  them and `throughput_fps` can come out **above** `cadence_fps`. A real 2.0.3
+  acquisition reads median 16.00 ms, mean 15.63 ms, intervals alternating 15/16.
+  Both are reported; the mean is the honest one there.
 
 ---
 
@@ -404,18 +497,20 @@ All decided in code. If even one fails, the proposal is void.
 | G9 | Frame-rate realizability | `f ≤ 1/max(t_exp, t_readout)` | row time, ROI | computable |
 | G10 | Photobleaching | `< 20%` over the whole movie | `bleach_photons`, photon budget | BLOCKED |
 | G11 | Statistical power | target error met | particle concentration, target precision | ask |
-| G12 | Data rate | `< 0.7 ×` disk bandwidth | measured disk bandwidth | measurement required |
-| G13 | Buffer | `≥ 5 seconds' worth` | RAM, frame size | computable |
+| G12 | Data rate | a `< 0.7 ×` disk bandwidth · b `f` is achieved not requested · c container width is the one MM writes | measured disk bandwidth, achieved fps, confirmed bytes/px | measurement required |
+| G13 | Buffer · capacity · CPU · RAM | a `≥ 5 seconds' worth` · b fits free disk · c CPU/frame `< 1/f_total` · d RAM burst `≤` budget | RAM, frame size, duration, free disk | computable |
 | G14 | Tweezers sampling | `f_s ≥ 10 f_c` | κ, viscosity, particle radius | BLOCKED |
 | G15 | NA feasibility | `NA ≤ n_immersion` | NA, immersion medium | BLOCKED |
 | G16 | Working distance | free WD `≥` imaging depth | WD, imaging depth, coverslip | BLOCKED |
-| G17 | Refractive-index mismatch | `depth × \|Δn\| ≤ 1.85 µm` (screening) | immersion n, medium n, depth | BLOCKED |
+| G16b | Depth within chamber | chamber height `≥` imaging depth | chamber height, imaging depth | skipped (INFO) |
+| G16c | Near-wall drag bound | `9a/(16h) ≤ 10%`, **upper bound** (absorbed if trapped) | particle radius, imaging depth, trap state | skipped (INFO) |
+| G17 | Refractive-index mismatch | `depth × \|Δn\| ≤ 1.85 µm` (screening) | immersion n, medium n, depth | BLOCKED (depth); medium n defaults to the settled 1.333, but ATPS/birefringent media BLOCK |
 | G18 | Coverslip thickness | `\|actual − design\| ≤ 5 µm`, or collar adjusted | coverslip thickness | assumed (design value) |
 | G19 | Count in field · overlap | nearest neighbour `≥ 3 ×` resolution | concentration, field size, λ_em | skipped (INFO) |
 | G20 | Saturation · triplet shelving | excited-state fraction `≤ 0.1` | irradiance, ε, lifetime | BLOCKED |
-| G21 | Light-driving | irradiance `<` sample threshold | irradiance, measured threshold | BLOCKED |
+| G21 | Light-driving | irradiance `<` sample threshold | irradiance, measured threshold | BLOCKED if photoresponsive; **warns if never asked** |
 | G22 | Total dose | `≤` stated ceiling | irradiance, exposure plan | reported (INFO) |
-| G23 | Bias ledger | every upstream bias absent or corrected | other lenses' verdicts | BLOCKED |
+| G23 | Bias ledger | every bias that damages this quantity is absent, or cleared by a correction that exists | other lenses' verdicts, declared corrections | BLOCKED |
 | G24 | Pixel calibration | measured, when the quantity needs it | measured pixel size | BLOCKED |
 | G25 | Photometric calibration | background · dark · flat-field measured | those frames | BLOCKED |
 | G26 | Post-processing | no linearity-breaking filter | declared filters | BLOCKED |
@@ -432,6 +527,29 @@ no gate IDs at all, lens 5 had only G10 and lens 6 only G11.
 
 G23–G27 read **other lenses' verdicts** rather than hardware facts, which is
 why lens 6 has to run last.
+
+**G23 is not a count.** Two tables in `validity/setup.py` do the work the count
+cannot:
+
+- `BIAS_SCOPE` says which calibrations a bias damages, so the FAIL lands on the
+  affected physical quantity instead of the session. Motion blur ruins an MSD
+  and leaves an integrated intensity alone; bleaching is the reverse. A bias the
+  table does not scope damages **every** quantity — the conservative default,
+  and the honest one where nothing in these docs scopes it (light-driving and
+  saturation move the sample itself, crosstalk puts another channel's particles
+  in the frame). Out-of-scope biases are named in the verdict, not dropped: they
+  still stand against the quantities they do damage.
+- `CORRECTIONS` and `UNCORRECTABLE` say whether a declared correction exists at
+  all. Declaring `geometry.ri_mismatch` used to clear it, because the
+  declaration was matched against nothing; now the gate answers that no such
+  correction is implemented and keeps the bias. A code in neither table is
+  accepted — a gate the tables have not caught up with should not block work —
+  but it costs the verdict its `measured` grade, so an unaudited clearance
+  cannot advance.
+
+Together those let one session report a biased MSD and a sound intensity
+profile: pass `intended_quantities` and each is judged separately, with the
+aggregate carrying every per-quantity verdict.
 
 **`BLOCKED` is not `FAIL`.** FAIL means "this setting is physically bad";
 BLOCKED means "there is no basis on which to decide." Neither advances to the
@@ -454,7 +572,7 @@ next step, but the action differs: FAIL means change the setting, BLOCKED means
 | §6 bleaching (G10) | `photo.gate.evaluate` | ✅ covered by tests (2026-08-12) — BLOCKED on the real instrument until `power_at_sample_mw` and `bleach_photons` exist |
 | §5 dose · saturation · light-driving (G20–G22) | `photo.gate.evaluate` | ✅ covered by tests (2026-08-12) |
 | §7 statistical power (G11) | `validity.gate.evaluate` | ✅ covered by tests (2026-08-12) |
-| bias ledger · calibrations · post-processing (G23–G27) | `validity.gate.evaluate` | ✅ covered by tests (2026-08-12) |
+| bias ledger · calibrations · post-processing (G23–G27) | `validity.gate.evaluate` | ✅ covered by tests (2026-08-12); bias scoping + correction registry + per-quantity verdicts added 2026-08-20 |
 | drift · settling · evaporation (G28–G32) | `stability.gate.evaluate` | ✅ covered by tests (2026-08-12) — G29 BLOCKED until a drift rate is measured |
 | §8 compute resources (G12, G13) | `compute.gate.evaluate` | ✅ covered by tests (2026-08-11) |
 | §9 tweezers (G14) | `trapping.gate.evaluate` (corner frequency → required fps) | ✅ covered by tests |

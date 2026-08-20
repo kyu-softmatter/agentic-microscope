@@ -52,3 +52,22 @@ TBD.
 ## Related
 [[current-laser-green-band-single-slot]] · config/scopes/current-laser.yaml ·
 config/channels/particle647-yoyo1-2color.yaml
+
+## Update 2026-08-19 — the camera blocker recorded above is gone
+
+The `BLOCKED` verdict recorded under "Final `optics.cli check` run result" was
+correct on 2026-08-10 and is left as written. What has since changed:
+
+- The body is a **Kinetix22** (user confirmation), not the standard Kinetix whose
+  entry the channel referenced. On **PCIe**, so the `pcie` column of the
+  frame-rate tables binds.
+- Its datasheet (Rev 2024-10-21, now in `manual/Camera/`) does carry
+  `read_noise_e`, `full_well_e`, conversion gain, dark current and line time —
+  per mode. All four modes are in `data/detectors.yaml > Kinetix22`, and
+  `config/channels/particle647-yoyo1-2color.yaml` now points at that entry.
+- So the reason this channel could not compute SNR/saturation was never "the
+  datasheet has no values"; it was that the registry described a different
+  camera. Worth remembering as a failure mode: **the missing fact and the wrong
+  fact produce the same `BLOCKED`, and only one of them is fixed by measuring.**
+- Still open, and now the whole question: which of the four modes the acquisition
+  runs in. Full well spans 200 → 15,000 e-, so the mode decides G6 outright.

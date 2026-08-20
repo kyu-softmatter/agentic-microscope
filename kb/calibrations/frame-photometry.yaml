@@ -1,0 +1,90 @@
+# Per-sample frame photometry: one test frame -> signal and background in e-/s.
+#
+# This is the measurement that unblocks G6 (saturation) and G7 (SNR). docs/04 §4
+# calls background "**must be measured.** Not computable", and the signal rate
+# needs a light level Phase 0 does not have. One frame supplies both.
+#
+# Read with:
+#   python -m detection.cli from-frame --detector Kinetix22 --mode Sensitivity \
+#       --exposure-ms 50 --peak-adu 1500 --background-adu 300 --offset-adu 100 \
+#       --n-pix-spot 9 --target-snr 5 --target-fps 100 --task-kind tracking \
+#       --roi-height-px 256
+#
+# One entry per sample system, not per acquisition. The rates are a property of
+# the sample and the light path; they stay valid until either changes.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# HOW TO TAKE THE FRAME
+#
+# Get this wrong and the trip to the microscope is wasted, so it is written out.
+#
+#   1. DESPECKLE OFF. PVCAM post-processing, all four PP entries. It was ENABLED
+#      in every archive generation (docs/06-pitfalls.md C1). Despeckle replaces
+#      threshold-crossing pixels with a neighbour value, so ADU is no longer
+#      proportional to electrons and the conversion below is meaningless. The
+#      frame cannot be repaired afterwards. Record that you checked.
+#
+#   2. BINNING 1x1, no flat-field, no online processing. Raw frame.
+#
+#   3. Note the MODE. Not optional: ADU -> electrons needs that mode's
+#      conversion gain. Any mode will do as the *measurement* mode, because the
+#      resulting e-/s is mode-independent -- the mode changes digitisation, not
+#      how many photoelectrons the pixel collects. Sensitivity is the natural
+#      choice (lowest read noise of the fast modes, so the dim end is visible).
+#
+#   4. Pick an exposure where the peak lands MID-RANGE. If the brightest pixel
+#      is at or above 95% of the digital ceiling it may be clipped, and a
+#      clipped peak is a lower bound rather than a measurement -- `from-frame`
+#      refuses it. Too dim is also bad: read noise then dominates the peak.
+#
+#   5. Take a DARK FRAME at the same exposure, same mode, shutter closed or
+#      light off. Its median is `offset_adu`. Do not use a datasheet offset:
+#      it is the zero of every number here, and the archive's Prime95B value
+#      (100 ADU) belongs to a different camera.
+#
+#   6. `peak_adu` = brightest pixel ON THE OBJECT you actually care about. For
+#      the dim population (0.5 um tracers), measure a *tracer*, not the probe --
+#      the gates have to be satisfied by the worst case, not the average.
+#
+#   7. `background_adu` = median of a region with NO particle but WITH
+#      illumination on. That is what makes it background rather than dark:
+#      autofluorescence, scatter and out-of-focus fluorescence all belong in
+#      it, and all of them scale with the light level.
+#
+#   8. `n_pix_spot` = how many pixels the spot covers. Count them, or estimate
+#      `2*pi*sigma_psf^2 / p^2`. It multiplies the read-noise term in SNR, so
+#      guessing 1 for a spot that covers 9 pixels flatters the result.
+#
+#   9. Same light level, objective and filters as the real experiment. Changing
+#      any of them invalidates the entry -- the rates are not portable across
+#      light paths.
+#
+#  10. While you are there: note whether the sample visibly bleaches over a few
+#      frames. That is lens 5's input and it cannot be computed from one frame.
+#
+# ⚠ The frame itself is a dose. Take it at the exposure and light level you
+#   intend to use, not brighter "to see better" -- for a photosensitive sample
+#   the test frame can perturb what it is measuring (lens 5, docs/06 D2).
+# ─────────────────────────────────────────────────────────────────────────────
+
+frames: []
+# - sample: <name, matching kb/samples/ when that exists>
+#   date: <YYYY-MM-DD>
+#   measured_by: <who>
+#   detector: Kinetix22
+#   light_path: <which path, and the light level -- these bound the entry>
+#   objective: <label>
+#   frame_mode: Sensitivity      # the mode the FRAME was taken in
+#   exposure_ms: <t0>
+#   peak_adu: <raw>
+#   background_adu: <raw>
+#   offset_adu: <from the dark frame>
+#   n_pix_spot: <counted or estimated>
+#   despeckle_off: true          # false or absent invalidates everything below
+#   subject: <what the peak was measured on -- probe? tracer? which?>
+#   # derived by detection.cli from-frame:
+#   signal_e_per_s: <->
+#   background_e_per_s: <->
+#   recommended_mode: <->
+#   recommended_exposure_ms: <->
+#   verified: false

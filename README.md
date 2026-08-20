@@ -15,16 +15,18 @@ those apply.
 ## Current status
 
 **Design complete; all eight committee lenses are implemented.** Nine design
-documents, 32 hard gates (G1–G32) across ~11,900 lines of Python, 498 tests
+documents, 32 hard gates (G1–G32) across ~15,600 lines of Python (modules, excluding tests), 618 tests
 passing. The six standing lenses — optics, detection, compute resources, sample
 geometry, photo-perturbation, measurement validity — and both conditional lenses
 — optical tweezers, mechanical/environmental — each compute their verdict and
 report it through their committee gate. Lenses 4 · 5 · 6 additionally carry the
 qualitative half of their judgment as LLM subagents in
 [`.claude/agents/`](.claude/agents/), layered on top of their code, because part
-of what they weigh has no closed form. Two things are deliberately left ungated
-and named as such: vibration and stage repeatability (no measurement channel
-exists), and local heating at 1064 nm ([06 D6](docs/06-pitfalls.md)).
+of what they weigh has no closed form. Three things are deliberately left
+ungated and named as such: vibration and stage repeatability (no measurement
+channel exists), local heating at 1064 nm ([06 D6](docs/06-pitfalls.md)), and
+near-wall Faxén drag ([06 D8](docs/06-pitfalls.md)), which is absorbed by
+in-situ trap calibration rather than corrected by formula.
 
 What is blocking progress is mostly **facts, not code** — the gates run, but
 return `BLOCKED` for want of measured inputs. Illumination power at the sample is
@@ -53,6 +55,7 @@ Read [the pitfalls](docs/06-pitfalls.md) before starting any implementation.
 | [09 Expertise capture](docs/09-knowledge-capture.md) | **From conversation into the KB.** The real purpose of this project |
 | [Observed systems](reference/observed-systems.md) | ⚠ **Old setup** inventory. Full scan of 2,343 metadata records |
 | [Nikon quote (2024-09-29)](reference/quotes/2024-09-29_nikon-quote-REDACTED_ti2e-csuw1_takatori.md) | Original Ti2E+CSU-W1 quote. Many part numbers cross-checked against the current system |
+| [Teledyne Kinetix 22 correspondence (2026-08-20)](reference/quotes/2026-08-20_teledyne-kinetix22-inquiry_price-and-demo-loan.md) | Indicative unit price, lead time, demo-loan terms, vendor contact. **Commercial facts only** — its flat spec table conflates three mutually exclusive readout modes, so specs still come from `data/detectors.yaml > Kinetix22` |
 
 **Code**
 
@@ -60,13 +63,13 @@ Read [the pitfalls](docs/06-pitfalls.md) before starting any implementation.
 |---|---|---|
 | [`optics/`](optics/) | 1 · optics | Implemented |
 | [`detection/`](detection/) | 2 · detection (G5–G9) | Implemented |
-| [`compute/`](compute/) | 3 · compute resources (G12–G13) | Implemented |
-| [`sample/`](sample/) | 4 · sample geometry & optics (G15–G19) | Implemented. Remaining: measured sample-medium refractive index — the default 1.333 is assumed, so verdicts do not advance |
+| [`compute/`](compute/) | 3 · compute resources (G12a–c, G13a–d) | Implemented, hardened 2026-08-19 ([`kb/decisions/2026-08-19-lens-3-hardening.md`](kb/decisions/2026-08-19-lens-3-hardening.md)): data rate now sums **one stream per camera** and reads the container width off the readout mode; G12b refuses a requested frame rate as evidence ([06 C4](docs/06-pitfalls.md)); G13d gates the RAM-capture path at a 32 GB authorized ceiling. [`compute/drops.py`](compute/drops.py) adds the post-hoc half — `python -m compute.cli scan <archive> --contaminated-only` needs no hardware and runs on the existing archive today. Verified 2026-08-20 against the real `D:\data` archive: both MM schema generations parse, and it also flags **truncated** runs, where MM stopped early while its Summary kept advertising the planned frame count |
+| [`sample/`](sample/) | 4 · sample geometry & optics (G15–G19) | Implemented. Scope fixed 2026-08-19 ([`kb/decisions/2026-08-19-lens-4-scope.md`](kb/decisions/2026-08-19-lens-4-scope.md)): sample-medium index settled at 1.333, coverslip settled at 170 µm — matching every objective's design ([`kb/expertise/coverslip-thickness-in-use.md`](kb/expertise/coverslip-thickness-in-use.md)) — and wave-optics aberration + wavelength/temperature RI **ungated by decision**. So **a micrometer reading of the coverslip is the only routine assumption left, and it is sufficient**: `100x-Oil` at 9 µm depth then reaches `PASS · TIGHT · advances YES`, and `40x-WI` with its collar recorded reaches `PASS · ROUTINE · advances YES`. Past ~10 µm depth an oil objective is held by G17's RI mismatch instead. ATPS BLOCKs by design and is asked at experiment time, not pre-populated |
 | [`photo/`](photo/) | 5 · photo-perturbation (G10, G20–G22) | Implemented. **BLOCKED on the real instrument** until `power_at_sample_mw` is measured and dyes get `bleach_photons` — that refusal is the intended behaviour |
-| [`validity/`](validity/) | 6 · measurement validity (G11, G23–G27) | Implemented. Reviews the other lenses' verdicts, so **call it last**. G27 is currently the only thing that notices the committee never convened |
+| [`validity/`](validity/) | 6 · measurement validity (G11, G23–G27) | Implemented. Reviews the other lenses' verdicts, so **call it last**. Judges each `intended_quantities` entry separately — a biased MSD and a sound intensity profile can come out of one session — and checks a declared correction against a registry rather than believing it. G27 is currently the only thing that notices the committee never convened |
 | [`stability/`](stability/) | 8 · mechanical & environmental (G28–G32) | Implemented, conditional on acquisitions over 30 min. G28 (PFS lock) and G31 (sedimentation) work today; G29 BLOCKED until a drift rate is measured; vibration and stage repeatability ungated |
-| [`trapping/`](trapping/) | 7 · optical tweezers (G14) | Physics library + committee gate wired. Objectives whose design NA exceeds the sample index are TIR-clipped and computed rather than refused (2026-08-18) — see [`kb/expertise/oil-objective-trapping-in-water.md`](kb/expertise/oil-objective-trapping-in-water.md). Remaining: measured dial-% → mW calibration, and local heating at 1064 nm (not implemented — [06 D6](docs/06-pitfalls.md)) |
-| [`.claude/agents/`](.claude/agents/) | 4 · 5 · 6 | Prompt-only, by design: the qualitative half of lenses 4 · 5 · 6, layered over the code above rather than standing in for it |
+| [`trapping/`](trapping/) | 7 · optical tweezers (G14) | Physics library + committee gate wired. Objectives whose design NA exceeds the sample index are TIR-clipped and computed rather than refused (2026-08-18) — see [`kb/expertise/oil-objective-trapping-in-water.md`](kb/expertise/oil-objective-trapping-in-water.md). Scope fixed 2026-08-19: the dial-% → mW calibration is **deferred** (so verdicts stay `evidence: assumed`), water-only media, and local heating + near-wall Faxén drag are **ungated by decision**, not gaps ([06 D6 · D8](docs/06-pitfalls.md), [`kb/decisions/2026-08-19-lens-7-scope.md`](kb/decisions/2026-08-19-lens-7-scope.md)) |
+| [`.claude/agents/`](.claude/agents/) | 3 · 4 · 5 · 6 · 8 | Prompt-only, by design: layered over the code above rather than standing in for it. For lenses 4 · 5 · 6 · 8 that is the qualitative half — the part with no closed form. Lens 3 is different: it is fully deterministic, so [`compute-resources.md`](.claude/agents/compute-resources.md) only gathers inputs, runs the code, and carries the 2↔3 and 3↔6 cross-lens wires |
 
 The formulas behind every gate are collected in
 [04](docs/04-decision-engine.md).

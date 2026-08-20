@@ -1,10 +1,15 @@
 """Individual sample-geometry checks -- G15 (NA feasibility), G16 (working
-distance), G17 (refractive-index mismatch), G18 (coverslip thickness),
-G19 (count in field). docs/05-consensus-gate.md "Lens 4";
+distance), G16b (depth within chamber), G16c (near-wall drag bound),
+G17 (refractive-index mismatch),
+G18 (coverslip thickness), G19 (count in field).
+docs/05-consensus-gate.md "Lens 4";
 docs/06-pitfalls.md D5.
 
 G15-G19 are new numbers: docs assigned lens 4 no gate IDs, and G1-G14 were
-taken by lenses 1/2/3/5/6/7.
+taken by lenses 1/2/3/5/6/7. G16b follows lens 3's convention of suffixing an
+extra criterion onto its nearest gate (G12a-c, G13a-d) rather than extending
+the top of the range: it pairs with G16, which asks whether the objective can
+*reach* the depth, by asking whether the sample *extends* that far.
 
 Mirrors optics.checks / detection.checks / compute.checks / trapping.checks:
 independent margins (achieved / required), never booleans.
@@ -26,6 +31,7 @@ from .aberration import (
     paraxial_focal_shift_ratio,
     particles_in_field,
     ri_mismatch,
+    wall_drag_suppression,
 )
 
 if TYPE_CHECKING:
@@ -58,6 +64,14 @@ LIMITS = {
     #: G19: mean nearest-neighbour distance must exceed this multiple of the
     #: Rayleigh resolution for particles to be separable.
     "overlap_resolution_multiple": 3.0,
+    #: G16c: fractional suppression of D by the nearby wall that an untrapped
+    #: measurement may carry unabsorbed. An **order-of-magnitude screen**, not a
+    #: precision threshold (docs/01 §3 Principle 1b): 10% sits with this repo's
+    #: other bias limits (G10 bleaching at 20%, G8 blur at 0.3 tau) and just
+    #: above docs/06 D8's tabulated 12.7% for a 4 um bead at h = 10 um, the case
+    #: D8 considered worth writing down. Past it, say so; do not pretend the
+    #: boundary is sharp.
+    "wall_drag_suppression": 0.10,
 }
 
 
@@ -214,6 +228,221 @@ def check_working_distance(setup: "SampleSetup") -> CheckResult:
     )
 
 
+def check_depth_in_chamber(setup: "SampleSetup") -> CheckResult:
+    """G16b: is there any sample at the depth being focused to?
+
+    G16 asks whether the objective can *reach* the depth. This asks whether the
+    sample *extends* that far. Focus past the chamber's far wall and you image
+    the wall, and nothing else in the committee notices: lens 8 holds
+    ``chamber_height_um`` but spends it only on the sedimentation flag
+    (``stability/checks.py`` G31), and lens 4 owned the imaging depth without
+    ever seeing the height.
+
+    HARD in character -- past the far wall the data is not biased, it is of
+    something else -- but registered with **no** ``requires``, so an absent
+    chamber height skips the check instead of BLOCKing the whole gate. Same
+    reasoning as G19: a fact the user often does not have to hand must not take
+    the rest of the lens down with it.
+
+    Note what this check does not need: the spacer or gasket setting the height
+    is not in the optical path (either orientation of stand), so it never enters
+    the working-distance budget. Only the coverslip does, via G16.
+    """
+    depth = setup.imaging_depth_um
+    height = setup.chamber_height_um
+
+    if depth is None:
+        return _ok(
+            "geometry.depth_in_chamber",
+            INFO,
+            MAX_MARGIN,
+            "Depth within chamber not evaluated (no imaging depth).",
+            evaluated=False,
+        )
+
+    if height is None and setup.unspaced_mount:
+        # Not the same as "nobody asked". With no spacer there is no designed
+        # thickness to ask for, so say that rather than skipping quietly.
+        # severity "info" keeps it out of the grade but puts it in findings.
+        return CheckResult(
+            "geometry.depth_in_chamber",
+            INFO,
+            MAX_MARGIN,
+            "info",
+            "No spacer, so the sample thickness is set by drop volume, wetting "
+            "and the coverslip's weight rather than by a part with a spec. "
+            f"There is no designed height to check the {depth:.1f} um focal "
+            "depth against, and a squashed drop is a wedge -- the thickness "
+            "differs across the field and between preparations.",
+            action="Estimate or measure the sample thickness for this "
+            "preparation and pass chamber_height_um, if the focal depth is "
+            "more than a few um. Otherwise state that the depth is small "
+            "against any plausible thickness and move on.",
+            numbers={
+                "imaging_depth_um": depth,
+                "unspaced_mount": True,
+                "evaluated": False,
+            },
+        )
+
+    if height is None:
+        return _ok(
+            "geometry.depth_in_chamber",
+            INFO,
+            MAX_MARGIN,
+            "Depth within chamber not evaluated (no chamber_height_um on "
+            "record).",
+            evaluated=False,
+        )
+
+    margin = height / depth if depth > 0 else MAX_MARGIN
+    numbers = {
+        "chamber_height_um": height,
+        "imaging_depth_um": depth,
+        "headroom_um": round(height - depth, 2),
+        "unspaced_mount": setup.unspaced_mount,
+        "evaluated": True,
+    }
+    # An unspaced height is one preparation's drop thickness, not a part spec,
+    # so the margin is only as reproducible as the mounting.
+    caveat = (
+        " Unspaced mount, so this height is this preparation's drop thickness"
+        " rather than a part spec -- expect it to vary across the field and"
+        " between preparations."
+        if setup.unspaced_mount
+        else ""
+    )
+
+    if margin >= 1.0:
+        return _ok(
+            "geometry.depth_in_chamber",
+            HARD,
+            margin,
+            f"The {height:.1f} um chamber holds sample at the requested "
+            f"{depth:.1f} um focal depth ({height - depth:.1f} um to spare)."
+            + caveat,
+            **numbers,
+        )
+
+    return CheckResult(
+        "geometry.depth_in_chamber",
+        HARD,
+        margin,
+        "fail",
+        f"The focal plane is {depth:.1f} um past the coverslip but the chamber "
+        f"is only {height:.1f} um deep, so there is no sample there -- what "
+        "comes into focus is the far wall." + caveat,
+        action="Reduce the imaging depth below the chamber height, or build a "
+        "taller chamber. Check this before blaming signal on the light level: "
+        "an empty focal plane looks exactly like a dim one.",
+        numbers=numbers,
+    )
+
+
+def check_wall_drag(setup: "SampleSetup") -> CheckResult:
+    """G16c: bound the near-wall drag bias on D, rather than merely naming it.
+
+    The imaging depth *is* the wall distance -- ``h`` is measured from the
+    coverslip's inner surface, which is the wall. So lens 4 already holds one of
+    the two inputs; the bead radius is consumed from lens 7/8.
+
+    This is the worked example of docs/01 §3 Principle 1b. There is no exact
+    near-wall model here and none is wanted; the truncated Faxen term
+    ``9a/(16h)`` over-states the drag, so reporting "D is low by at most this"
+    is a computation and not a guess. docs/06 D8's decision not to *correct* by
+    formula stands -- bounding and correcting are different acts.
+
+    Trapped is the ordinary case in this lab, and it has an absorption route:
+    D8's in-situ power-spectrum calibration at the working height returns kappa
+    and the wall-corrected gamma together. So a trapped setup reports the bound
+    as INFO. Untrapped, nothing absorbs it and the bound is the answer, so it
+    goes BIAS and warns past the screening limit.
+    """
+    a = setup.particle_radius_um
+    h = setup.imaging_depth_um
+
+    if a is None or h is None:
+        return _ok(
+            "geometry.wall_drag",
+            INFO,
+            MAX_MARGIN,
+            "Near-wall drag not bounded (no particle_radius_um).",
+            evaluated=False,
+        )
+
+    suppression = wall_drag_suppression(a, h)
+    if suppression is None:
+        return CheckResult(
+            "geometry.wall_drag",
+            BIAS,
+            0.0,
+            "warn",
+            f"A {a:.2f} um-radius particle {h:.1f} um from the wall is outside "
+            "the Faxen expansion's domain (h <= a), so no bound is available -- "
+            "not a small correction, an unquantified one.",
+            action="Image further from the coverslip, or accept that the drag "
+            "near contact is uncharacterised here. Do not substitute the bulk "
+            "Stokes drag.",
+            numbers={"particle_radius_um": a, "wall_distance_um": h, "evaluated": True},
+        )
+
+    limit = LIMITS["wall_drag_suppression"]
+    margin = limit / suppression if suppression > 0 else MAX_MARGIN
+    numbers = {
+        "particle_radius_um": a,
+        "wall_distance_um": h,
+        "d_suppression_upper_bound": round(suppression, 4),
+        "drag_penalty_upper_bound": round(1.0 / (1.0 - suppression) - 1.0, 4),
+        "limit": limit,
+        "trapped": setup.trapped,
+        "evaluated": True,
+    }
+    pct = suppression * 100
+
+    if setup.trapped:
+        return _ok(
+            "geometry.wall_drag",
+            INFO,
+            MAX_MARGIN,
+            f"D is suppressed by at most {pct:.1f}% at {h:.1f} um from the "
+            f"wall (a = {a:.2f} um). The trap absorbs this: an in-situ "
+            "power-spectrum calibration at the working height returns kappa "
+            "and the wall-corrected drag together (docs/06 D8). Redo that "
+            "calibration if the working height changes.",
+            **numbers,
+        )
+
+    if margin >= 1.0:
+        return _ok(
+            "geometry.wall_drag",
+            BIAS,
+            margin,
+            f"Untrapped, but D is suppressed by at most {pct:.1f}% at "
+            f"{h:.1f} um from the wall (a = {a:.2f} um) -- inside the "
+            f"{limit * 100:.0f}% screening limit. Upper bound, so the real "
+            "figure is smaller.",
+            **numbers,
+        )
+
+    return CheckResult(
+        "geometry.wall_drag",
+        BIAS,
+        margin,
+        "warn",
+        f"Untrapped measurement {h:.1f} um from the wall with a {a:.2f} um "
+        f"radius particle: D is low by up to {pct:.1f}% and any viscosity or "
+        f"modulus inferred from it correspondingly stiff. Past the "
+        f"{limit * 100:.0f}% screening limit, and there is no trap, so D8's "
+        "in-situ calibration cannot absorb it.",
+        action="Image further from the coverslip (the bound falls as 1/h), use "
+        "a smaller particle, or report the result with this bound stated. Do "
+        "not apply a Faxen correction -- that is a closed decision "
+        "(kb/decisions/2026-08-19-lens-7-scope.md). Lens 6 rules on whether "
+        "the bound is acceptable.",
+        numbers=numbers,
+    )
+
+
 def check_ri_mismatch(setup: "SampleSetup") -> CheckResult:
     """G17: refractive-index mismatch x depth -- docs/06-pitfalls.md D5.
 
@@ -306,6 +535,7 @@ def check_coverslip(setup: "SampleSetup") -> CheckResult:
         "collar_adjusted": setup.collar_adjusted,
     }
 
+
     if setup.objective.correction_collar and not setup.collar_adjusted:
         return CheckResult(
             "geometry.coverslip",
@@ -354,6 +584,16 @@ def check_count_in_field(setup: "SampleSetup") -> CheckResult:
     Whether the count is *enough* is statistical power -- G11, lens 6 -- not
     this lens's call. What this lens owns is whether particles are so dense
     that they stop being separable.
+
+    The count is taken over ``setup.resolved_slab()``, not over the imaging
+    depth. The two are the same only for a widefield column; for a sectioning
+    modality the depth is far larger, and this count is what
+    ``validity/setup.py::resolved_n_particles`` hands to G11, so an
+    over-generous extent lands as an overestimate of statistical power.
+    ``axial_extent_source`` in the numbers says which extent was used.
+
+    The separability half (``mean_NN``) is computed from bulk concentration and
+    is unaffected by any of this.
     """
     c = setup.concentration_per_ml
     w, h = setup.field_width_um, setup.field_height_um
@@ -378,25 +618,39 @@ def check_count_in_field(setup: "SampleSetup") -> CheckResult:
             evaluated=False,
         )
 
-    count = particles_in_field(c, w, h, depth)
+    slab, slab_source = setup.resolved_slab()
+    count = particles_in_field(c, w, h, slab)
     nn = mean_nearest_neighbour_um(c)
     numbers = {
         "expected_count": round(count, 1),
         "concentration_per_ml": c,
         "field_um": [w, h],
         "depth_um": depth,
+        "axial_extent_um": round(slab, 3),
+        "axial_extent_source": slab_source,
         "mean_nn_distance_um": round(nn, 3) if nn else None,
         "evaluated": True,
     }
 
+    extent = (
+        f"counted over a {slab:.2f} um axial extent ({slab_source.replace('_', ' ')})"
+    )
+    if slab_source == "imaging_depth":
+        extent += " -- no emission wavelength to size the depth of field, so "
+        extent += "this is the whole column and an upper bound"
+
     if setup.emission_nm is None or nn is None:
+        head = (
+            f"About {count:.0f} particles expected in the observed volume, "
+            f"{extent}"
+        )
+        if nn:
+            head += f"; mean nearest-neighbour distance {nn:.2f} um"
         return _ok(
             "geometry.count_in_field",
             INFO,
             MAX_MARGIN,
-            f"About {count:.0f} particles expected in the observed volume; "
-            f"mean nearest-neighbour distance "
-            f"{nn:.2f} um." if nn else f"About {count:.0f} particles expected.",
+            head + ".",
             **numbers,
         )
 
@@ -411,9 +665,9 @@ def check_count_in_field(setup: "SampleSetup") -> CheckResult:
             "geometry.count_in_field",
             INFO,
             margin,
-            f"About {count:.0f} particles in the observed volume, mean "
-            f"nearest-neighbour {nn:.2f} um against a {resolution_um:.2f} um "
-            "resolution -- separable.",
+            f"About {count:.0f} particles in the observed volume ({extent}), "
+            f"mean nearest-neighbour {nn:.2f} um against a "
+            f"{resolution_um:.2f} um resolution -- separable.",
             **numbers,
         )
 
@@ -435,6 +689,12 @@ def check_count_in_field(setup: "SampleSetup") -> CheckResult:
 CHECKS: list[Check] = [
     Check("na_feasibility", HARD, ("na",), check_na_feasibility),
     Check("working_distance", HARD, ("imaging_depth", "working_distance"), check_working_distance),
+    # G16b: HARD, but `requires` is empty on purpose. A missing chamber height
+    # must skip the check, not BLOCK the gate -- see check_depth_in_chamber.
+    Check("depth_in_chamber", HARD, (), check_depth_in_chamber),
+    # G16c: BIAS, no `requires` -- an absent particle radius skips the bound
+    # rather than BLOCKing, same as G16b and G19.
+    Check("wall_drag", BIAS, (), check_wall_drag),
     Check("ri_mismatch", BIAS, ("imaging_depth",), check_ri_mismatch),
     Check("coverslip", BIAS, (), check_coverslip),
     Check("count_in_field", INFO, (), check_count_in_field),

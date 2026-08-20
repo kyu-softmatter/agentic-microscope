@@ -28,13 +28,23 @@
 # DNA-stretching tweezer setup water immersion may fit better), change this
 # block and check again.
 #
-# ⚠ detector: Kinetix is registered in data/detectors.yaml (QE curve, pixel_um
-# included). But read_noise_e is null because the camera mode (Speed/Sensitivity/
-# DynamicRange, between 1.2~2.0 e-) is unsettled, and full_well_e/
-# dark_e_per_s are null because the datasheet itself has no values.
-# `optics.cli check` needs these three values to compute SNR/saturation, so
-# until the mode actually used is settled this channel comes out BLOCKED
-# (see docs/02 §10).
+# ⚠ 2026-08-19 -- REWRITTEN. This block used to say the camera specs were
+# unavailable. They are now available: the body was confirmed to be a Kinetix22
+# (PCIe), and Rev 2024-10-21 of its datasheet gives, per mode, bit depth, read
+# noise (0.7-2.0 e-), full well (200 / 1000 / 1000 / 15000 e-), conversion gain,
+# dark current and line time. See data/detectors.yaml > Kinetix22.
+#
+# What remains open is not the datasheet but the CHOICE: which of the four modes
+# this acquisition runs in. That choice is not a detail -- full well swings 75x
+# across the modes, so G6 (saturation) can pass in DynamicRange and clip in
+# Speed on the identical light level. detection.setup.Camera.mode must name it,
+# and detection.gate BLOCKs on `missing.detector_mode` if it does not.
+# The one measured data point so far (kb/calibrations/camera-readout.yaml) was
+# taken in Sensitivity (12-bit), inferred from its row time.
+# QE: the Kinetix22 has no curve of its own, so the Kinetix curve is borrowed by
+# one-time authorization (2026-08-19). Better than a flat 0.95 in the red -- the
+# direction that decides a 647 channel -- but it reports measured=false, so this
+# channel cannot advance on it until the Kinetix22 graph is digitized.
 #
 # The splitter (DM A561LP) is stacked onto the emission list as the stage after
 # `dichroic:` (the main Di01-T), because the Channel model has only one dichroic
@@ -50,7 +60,7 @@ channels:
       na: 1.45
       immersion: oil
       verified_na: true
-    detector: Kinetix
+    detector: Kinetix22
     source: [LUN-F-XL, "488"]
     excitation: []   # laser line is already narrow; no separate excitation filter (scope note)
     dichroic: "Di01-T405/488/568/647-13x15x0.5"
@@ -67,7 +77,7 @@ channels:
       na: 1.45
       immersion: oil
       verified_na: true
-    detector: Kinetix
+    detector: Kinetix22
     source: [LUN-F-XL, "640"]
     excitation: []
     dichroic: "Di01-T405/488/568/647-13x15x0.5"

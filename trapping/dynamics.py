@@ -68,6 +68,14 @@ def corner_frequency_hz(stiffness_n_per_m: float, viscosity_pa_s: float, radius_
     Lorentzian with this corner frequency. G14 (docs/04-decision-engine.md
     Section 9) requires the camera's sampling rate f_s >= 10*f_c to resolve
     it without aliasing bias.
+
+    The unbounded-medium drag is a *decision*, not an omission (2026-08-19):
+    a bead held near the coverslip feels the Faxen parallel-to-wall factor
+    ``gamma/gamma_0 = 1/(1 - 9a/(16h))`` -- +12.7% for a 4 um bead at
+    h = 10 um -- and this lens will not correct it by formula. Calibrate the
+    trap in situ at the working height instead; a measured corner frequency
+    returns kappa and the wall-corrected gamma together, absorbing the bias by
+    measurement. See kb/decisions/2026-08-19-lens-7-scope.md and docs/06 D8.
     """
     if stiffness_n_per_m <= 0:
         raise ValueError(f"stiffness must be positive, got {stiffness_n_per_m}")

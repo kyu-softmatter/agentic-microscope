@@ -8,24 +8,51 @@
   config_used: "C:\\Users\\Takatori lab\\Desktop\\Maintanance\\micromanager\\dual_cam_test.cfg"
   property: Timing-ReadoutTimeNs
   raw_value: 8475000.0000
-  unit_assumed: ns
-  roi_height_rows: 2400
+  unit_confirmed: ns          # 2026-08-19: confirmed by datasheet agreement, see note
+  roi_height_rows: 2400       # = the Kinetix22 FULL sensor height, not a partial ROI
   row_time_ns: 3531.2
+  camera_model: Kinetix22     # 2026-08-19 user confirmation
+  mode_identified: Sensitivity  # 12-bit CMS -- inferred from the row time, see note
+  datasheet_row_time_us: 3.5312 # Kinetix22 datasheet Rev 2024-10-21, Sensitivity mode
   date: 2026-08-12
   measured_by: agent (Claude Code, on microscope PC per user confirmation)
   verified: true
   note: >
-    Property name (`Timing-ReadoutTimeNs`) literally spells out the unit --
-    treated as strong evidence, not confirmed against a written Photometrics/
-    PVCAM SDK doc. If that written confirmation later contradicts "ns",
-    correct this file and docs/07-roadmap.md.
+    ⚠ 2026-08-19 -- THREE THINGS THIS MEASUREMENT NOW SETTLES, once the camera
+    was confirmed to be a Kinetix22 (user confirmation) and the Kinetix22
+    datasheet Rev 2024-10-21 was read into data/detectors.yaml:
+
+      1. The `ns` unit is confirmed. 8,475,000 ns / 2400 rows = 3531.2 ns/row
+         matches the datasheet's Sensitivity line time of 3.5312 us to five
+         significant figures. Under any other unit the number is off by 1e3 or
+         more. The earlier `unit_assumed` caveat is retired.
+      2. The ROI was the FULL sensor, not a stale partial ROI. A Kinetix22 is
+         2400 x 2400, so 2400 rows is full frame -- and 8.475 ms of readout is
+         exactly the 118 fps the datasheet states for full-frame Sensitivity
+         mode. The earlier "re-check before using in a time budget" caveat is
+         retired for this row-time value (it still applies to any ROI-specific
+         budget, which has to name its own row count).
+      3. The camera was in **Sensitivity (12-bit CMS)** mode. The four modes
+         have line times 3.749 / 0.625 / 3.5312 / 60.1 us, which are far enough
+         apart that a measured row time identifies the mode uniquely. Worth
+         knowing because that mode's full well is only 1,000 e- -- G6 clips
+         early there (see the Kinetix22 note in data/detectors.yaml).
+
+    It also independently corroborates that the body is a Kinetix22 rather than
+    a Kinetix: on a 3200-row Kinetix, full-frame Sensitivity readout would have
+    been 11.30 ms, not 8.475 ms.
+
+    Original caveat, kept for provenance: the property name
+    (`Timing-ReadoutTimeNs`) literally spells out the unit, which was treated as
+    strong evidence but was not at the time confirmed against a written
+    Photometrics/PVCAM SDK document. Item 1 above is that confirmation, arriving
+    from the datasheet rather than the SDK doc.
 
     Loaded via `dual_cam_test.cfg` (PVCAM-only, no NikonTi2/Mightex devices)
     rather than the canonical `DMD_dualcam.cfg`, because pymmcore-plus's own
     auto-installed Micro-Manager build (interface v75) can load PVCAM/CSUW1/
     NikonTi2 fine but has no `MightexPolygon1000` adapter (the DMD's vendor
     support package is a separate, older install pinned to interface v71 --
-    see devices_not_in_mm_config note in kb/systems/current.md). ROI height
-    (2400 rows) is whatever was saved in that .cfg's last-used ROI, not
-    necessarily the sensor's full/current height -- re-check before using in
-    a real acquisition-time budget.
+    see devices_not_in_mm_config note in kb/systems/current.md). The ROI height
+    that .cfg happened to have saved (2400 rows) turned out to be the full
+    sensor -- see item 2 above -- so nothing was lost by it.

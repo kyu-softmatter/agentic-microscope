@@ -24,9 +24,14 @@
 #      registered emission filter is EM-Open -- no filtering at all.
 #
 # WHY THE PROBE IS RED AND THE TRACERS GREEN:
-#   · Kinetix QE is 0.95 at 520 nm vs 0.90 at 650 nm, and a 0.5 um tracer
+#   · QE favours green (0.95 at 520 nm vs 0.90 at 650 nm), and a 0.5 um tracer
 #     carries ~1/1000 the dye of a 5 um probe -- the dim population gets the
 #     better-detected arm.
+#     ⚠ 2026-08-19: the confirmed body is a Kinetix22, and those QE numbers are
+#     off the *Kinetix* graph, read by eye. Borrowing that curve for the
+#     Kinetix22 was authorized as a one-time exception, so the numbers above
+#     still stand -- but the curve now reports measured=false and lands in
+#     assumed_inputs, so this channel cannot advance on it.
 #   · The probe is the same particle for the whole movie and takes the whole
 #     dose; tracers exchange by diffusion. Photostability goes to the probe.
 #   · 520 nm reflects off DM A561LP (Kinetix_blue), 690 nm transmits
@@ -42,10 +47,21 @@
 # for this dye. Swap to ATTO488 if a computable budget matters more than
 # excitation efficiency.
 #
-# EXPECTED RESULT: BLOCKED on `missing.detector` for both channels -- the
-# Kinetix datasheet has no full-well figure, so saturation and SNR are
-# uncomputable and the gate refuses rather than borrowing another camera's
-# spec. That refusal is the intended behaviour, not a bug.
+# EXPECTED RESULT: 2026-08-19 -- the `missing.detector` blocker described here is
+# RETIRED. The body was confirmed to be a Kinetix22 (PCIe), and its datasheet
+# Rev 2024-10-21 carries full well, read noise, conversion gain, dark current and
+# line time per mode; all of it is now in data/detectors.yaml > Kinetix22.
+# Re-run `optics.cli check` to see the current verdict -- the spectral gaps below
+# still cap evidence at `assumed`, so `advances: NO` should now be for those
+# reasons, not for a missing camera spec.
+#
+# ⚠ AND THE MODE NOW MATTERS MORE THAN THE EXPOSURE. This channel runs 1.5 ms on
+# a 0.5 um tracer, i.e. photon-starved, which argues for Sensitivity (12-bit,
+# 1.2 e- read noise). But Sensitivity's full well is only 1,000 e- -- 700 e-
+# usable under G6's 0.7 rule -- and the 5 um probe in the other arm is ~1000x
+# brighter than a tracer. Dynamic Range (16-bit) gives 15,000 e-, 15x the
+# headroom, for 111 vs 118 fps: essentially free here. The two arms may need
+# different modes, which the single-camera DetectionSetup cannot yet express.
 #
 # ⚠ Also unresolved, and it bounds any verdict from this file: with no measured
 # dye or filter curves the blocking requirement rises from 5 to 7 OD
@@ -66,7 +82,7 @@ channels:
       na: 1.25
       immersion: water
       verified_na: true
-    detector: Kinetix               # Kinetix_blue, reflect side of the splitter
+    detector: Kinetix22               # Kinetix_blue, reflect side of the splitter
     source: [LightEngine, "488"]    # SpectraIII, MM-registered and software-controllable
     excitation: ["MXR00724-EX"]
     dichroic: "MXR00724-DM"
@@ -86,7 +102,7 @@ channels:
       na: 1.25
       immersion: water
       verified_na: true
-    detector: Kinetix               # Kinetix_red, transmit side of the splitter
+    detector: Kinetix22               # Kinetix_red, transmit side of the splitter
     source: [LightEngine, "640"]
     excitation: ["MXR00724-EX"]
     dichroic: "MXR00724-DM"

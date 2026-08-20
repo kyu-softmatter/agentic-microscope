@@ -27,6 +27,11 @@ def _setup(**overrides) -> IlluminationSetup:
         exposure_ms=20.0,
         n_frames=100,
         frame_interval_ms=100.0,
+        #: Both stated on purpose. Left out they are the two "nobody asked"
+        #: states, which is what the tri-state and coupling tests below cover;
+        #: every other test wants a fully answered setup.
+        photoresponsive=False,
+        excitation_coupling=1.0,
         **FITC,
     )
     defaults.update(overrides)
@@ -162,6 +167,41 @@ def test_non_photoresponsive_sample_never_warns_about_light_driving():
     v = evaluate(_setup(power_mw_at_sample=50.0))
     assert v.margins["perturbation.light_driving"] == 10.0
     assert v.metrics["perturbation.light_driving"]["photoresponsive"] is False
+    assert v.metrics["perturbation.light_driving"]["evaluated"] is True
+
+
+def test_unasked_photoresponsiveness_warns_instead_of_clearing():
+    """docs/06 D2's accident is the unasked question. A default of "no" would
+    make this gate silent in exactly the case it exists for."""
+    v = evaluate(_setup(photoresponsive=None))
+    f = next(f for f in v.findings if f.code == "perturbation.light_driving")
+    assert f.severity == "warn"
+    assert v.metrics["perturbation.light_driving"]["evaluated"] is False
+
+
+def test_unasked_photoresponsiveness_costs_the_verdict_advances():
+    v = evaluate(_setup(photoresponsive=None))
+    assert v.evidence == "assumed"
+    assert v.advances is False
+    assert any("photoresponsiveness" in a for a in v.assumed_inputs)
+
+
+def test_unasked_photoresponsiveness_does_not_block_the_whole_lens():
+    """It is a missing answer, not a missing number: bleaching and saturation
+    can still be judged, so the lens reports rather than refusing."""
+    v = evaluate(_setup(photoresponsive=None))
+    assert v.status == "PASS_WITH_CHANGES"
+    assert "perturbation.photobleaching" in v.margins
+    assert "perturbation.saturation" in v.margins
+
+
+def test_unasked_photoresponsiveness_does_not_fake_a_margin():
+    """MAX_MARGIN here means "not evaluated", not "lots of headroom" -- so it
+    must not drag the feasibility grade around either."""
+    unasked = evaluate(_setup(photoresponsive=None))
+    answered = evaluate(_setup(photoresponsive=False))
+    assert unasked.feasibility == answered.feasibility
+    assert unasked.bottleneck == answered.bottleneck
 
 
 def test_photoresponsive_sample_below_threshold_passes():
@@ -227,19 +267,64 @@ def test_trap_heating_is_silent_when_the_trap_is_off():
 
 
 def test_trap_on_raises_the_unowned_heating_finding():
-    """docs/06 D6 assigns trap heating to lens 7, which has no heating check.
-    An unclaimed handoff is the failure mode a committee should prevent, so
-    lens 5 reports it instead of assuming someone else did."""
+    """docs/06 D6 assigns trap heating to lens 7, which has no heating check and
+    is not getting one (ungated by decision, 2026-08-19). A named risk still
+    has to reach the reader, so lens 5 says it rather than assuming someone
+    else did."""
     v = evaluate(_setup(trap_on=True))
     f = next(f for f in v.findings if f.code == "perturbation.trap_heating_unowned")
     assert f.severity == "info"
-    assert "unowned" in f.message
+    assert "ungated by decision" in f.message
 
 
 def test_trap_heating_notice_does_not_change_the_grade():
     with_trap = evaluate(_setup(trap_on=True))
     without = evaluate(_setup())
     assert with_trap.feasibility == without.feasibility
+
+
+# ------------------------------------------- spectral overlap coupling ----
+
+
+def test_local_chain_without_a_coupling_is_reported_as_assumed():
+    """The bare-field chain has no spectra, so it sets the overlap to 1 -- the
+    line treated as if it sat on the absorption peak. Honest about it."""
+    v = evaluate(_setup(excitation_coupling=None))
+    assert v.evidence == "assumed"
+    assert v.advances is False
+    assert any("overlap" in a for a in v.assumed_inputs)
+
+
+def test_supplying_the_coupling_restores_advances():
+    v = evaluate(_setup(excitation_coupling=0.5))
+    assert v.evidence == "measured"
+    assert v.advances is True
+
+
+def test_coupling_scales_k_ex_and_so_relaxes_the_bleaching_margin():
+    """Assuming perfect overlap overstates k_ex, which overstates bleaching:
+    the gate comes out stricter than the instrument warrants, not laxer."""
+    assumed_perfect = evaluate(_setup(excitation_coupling=1.0))
+    real = evaluate(_setup(excitation_coupling=0.5))
+    assert (
+        real.margins["perturbation.photobleaching"]
+        > assumed_perfect.margins["perturbation.photobleaching"]
+    )
+
+
+def test_rates_from_lens_one_need_no_coupling():
+    """optics.path.Channel.excitation_rate_per_s already carries the overlap
+    weighting, so consuming it is not an assumption."""
+    v = evaluate(
+        _setup(
+            excitation_coupling=None,
+            excitation_rate_per_s=350.0,
+            emitted_photons_per_s=320.0,
+        )
+    )
+    assert not any("overlap" in a for a in v.assumed_inputs)
+    assert v.evidence == "measured"
+    assert v.advances is True
 
 
 # ---------------------------------------------------------- evidence ------

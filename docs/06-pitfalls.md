@@ -200,7 +200,13 @@ The camera is not the bottleneck. It is MM overhead, disk, or the circular
 buffer.
 
 **The KB must record `measured_fps`.** Keep only the requested value and
-precedent lies. → Gates G12 G13
+precedent lies. → Gate G12b (frame-rate provenance)
+
+**Now caught (2026-08-19)**: `compute.checks.check_fps_provenance` (G12b) will
+not treat a requested rate as evidence — it warns, pins the verdict to
+`assumed`, and if lens 2's realizability ceiling says the rate is unreachable it
+lets the feasibility grade collapse. `compute.drops` supplies the achieved rate
+that closes it.
 
 ### C5. Frame drops happen silently 🔴
 
@@ -212,6 +218,27 @@ wholly wrong.
 
 **Action**: always check the variance of `ElapsedTime` differences after
 acquisition. This can be applied to the archive right now, and should be.
+
+**Now caught (2026-08-19)**: `compute.drops` —
+`python -m compute.cli drops <metadata.txt>` for one acquisition,
+`scan <dir>` for a sweep. Per-series median cadence, gap detection, and the
+requested-vs-achieved ratio. It cannot tell a dropped frame from a genuine stall
+(stage move, autofocus, filter change), so it names the frame index and leaves
+the cause to the reader.
+
+Verified 2026-08-20 against the real `D:\data` archive — both schema
+generations (1.4.23 and 2.0.3) parse, frame counts match a direct `grep` of the
+files. Two things only the real data showed:
+
+- **Timestamp quantization is coarser than it looks.** A 2.0.3 acquisition at
+  62.5 fps has intervals alternating 15 and 16 ms around a true cadence of
+  15.63; the median lands on 16, MAD reads a flattering 0.00 ms, and delivered
+  throughput comes out *above* the cadence. The quantization guard now covers
+  any cadence under 20 ms and the report prints median and mean side by side.
+- **MM's Summary keeps advertising frames nobody got.** Two calibration runs
+  stopped at 58 and 44 of a planned 1000 and were otherwise perfectly clean.
+  Reported as `TRUNCATED`, tracked separately from contamination — the lag
+  times are fine, the statistics are not what was planned.
 
 ### C6. "Finer pixels are always better" is false 🔴
 
@@ -297,14 +324,20 @@ Within one field of view the aberration differs per phase. Crossing the
 interface produces a focal shift. Not negligible for depth-direction
 measurements or for tracking near the interface.
 
-The medium refractive index has never been recorded. → Lens 4
+The single-phase medium refractive index is settled (1.333, 2026-08-19), but the
+**per-phase** values still are not, and `sample.gate` BLOCKs on ATPS rather than
+substituting the aqueous default. A refractometer reading of each separated
+phase is the unblock. → Lens 4
 
 ### D6. Tweezers at 1064 nm heat and leak 🟡
 
 - **Local heating** from water absorption at 1064 nm → viscosity changes, so D
   changes. In microrheology it contaminates the measured quantity itself.
-  **Not implemented**: `trapping/` computes only `confinement`, `trap_depth`,
-  and `sampling` — Lens 7 is otherwise complete, but has no heating check
+  **Ungated by decision (user, 2026-08-19)**: `trapping/` computes only
+  `confinement`, `trap_depth`, and `sampling`, and no heating check is planned.
+  Lens 7 is otherwise complete; Lens 5 does not cover it either (visible
+  excitation light only). Named here rather than silently omitted —
+  [01 §7](01-architecture.md)
 - **Leakage** into the detection path — the reason the optics gate holds its
   grid out to 1100 nm
 - The tweezers are outside MM, so the power leaves no trace in the metadata
@@ -319,6 +352,52 @@ held. **Both must be recorded.**
 Caught by `stability.gate` G28 (2026-08-12), which needs no new measurement —
 it is a state check on metadata that already exists. An unrecorded range flag
 fails the gate, not just an out-of-range one.
+
+### D8. Near a wall, the drag is not the bulk drag 🟡
+
+A trapped bead held close to the coverslip feels more drag than Stokes'
+unbounded-medium `γ₀ = 6πηa`. The Faxén parallel-to-wall correction is
+`γ/γ₀ = 1/(1 − 9a/(16h))`, and it bites hardest exactly where an oil objective
+pins you (G17 caps oil-on-water at ~10 µm):
+
+| bead | h = 5 µm | h = 10 µm | h = 20 µm | h = 50 µm |
+|---|---|---|---|---|
+| 4 µm (a = 2.0) | +29.0% | +12.7% | +6.0% | +2.3% |
+| 5 µm (a = 2.5) | +39.1% | +16.4% | +7.6% | +2.9% |
+
+**Not corrected, by decision (user, 2026-08-19).**
+`trapping.dynamics.corner_frequency_hz` uses γ₀, so nothing catches this
+automatically and the bias lands directly on any force inferred from a
+commanded velocity. The sanctioned route is to **calibrate in situ at the
+working height** — a power-spectrum corner frequency returns κ and the
+wall-corrected γ together, absorbing the bias by measurement instead of
+correcting it by formula. G14 requires that calibration anyway, so it is not
+extra work; it must be redone whenever the working height changes.
+→ [`kb/expertise/oil-objective-trapping-in-water.md`](../kb/expertise/oil-objective-trapping-in-water.md)
+
+**Bounded by lens 4's G16c, and the escape route is trap-only.** Since
+2026-08-20 `sample` G16c reports the size of this: `D` is low by at most
+`9a/(16h)`, which is an upper bound because truncating the Faxén series
+over-states the drag ([01 §3 Principle 1b](01-architecture.md)). It reproduces
+the table above exactly, and the imaging depth *is* `h`, so lens 4 already holds
+one input.
+
+Two cases, and the trap decides which:
+
+- **Trapped** — the ordinary case here. The in-situ calibration above absorbs
+  the bias, so G16c reports the bound as `INFO`. The standing obligation is only
+  to redo that calibration when the working height changes.
+- **Untrapped** — free diffusion, MSD-based microrheology. No calibration step
+  exists, so nothing absorbs the wall term: measured `D` comes out low and any
+  viscosity or modulus inferred from it comes out **stiff**. G16c goes `bias`
+  past a 10% screening limit, and **Lens 6 rules** on whether the bound is
+  acceptable.
+
+The mount makes the geometry likely rather than hypothetical: this lab's samples
+are usually mounted with **no spacer**, coverslip directly against the sample
+([`kb/expertise/sample-mount-geometry.md`](../kb/expertise/sample-mount-geometry.md)).
+Still uncorrected by formula, per the same 2026-08-19 decision — bounding and
+correcting are different acts.
 
 ---
 
@@ -380,13 +459,17 @@ effects along with the gain.
 
 ## Nothing catches these yet
 
-Items **currently missed** because no gate exists:
+Items **currently missed** because no gate exists. Some are missed by decision —
+those rows say so, and being named here is what keeps them from being forgotten:
 
 | Item | Owner |
 |---|---|
 | ~~A1 missing pixel calibration~~ | ~~Lens 6~~ — now caught: `validity.gate` G24 (2026-08-12), but only for quantities that depend on pixel size |
 | ~~C1 despeckle post-processing~~ | ~~Lens 6~~ — now caught: `validity.gate` G26 (2026-08-12). Note it can only refuse *future* acquisitions; archive data taken with despeckle on is not recoverable |
-| ~~D2 light-driven perturbation~~ | ~~Lens 5~~ — now caught: `photo.gate` G21 (2026-08-12), which BLOCKs rather than guessing the threshold |
-| D3 sample perturbation by the label | Lens 5 |
+| ~~D2 light-driven perturbation~~ | ~~Lens 5~~ — now caught: `photo.gate` G21 (2026-08-12), which BLOCKs rather than guessing the threshold. And since 2026-08-19 the *unasked* case warns instead of passing: `photoresponsive` is tri-state, because the accident here is the question never being put |
+| D3 sample perturbation by the label | Lens 5 — checked by the subagent and tagged `scope_tension`, but no gate. docs 05 and 06 disagree on why it belongs here ([kb/decisions/2026-08-19-lens-5-hardening](../kb/decisions/2026-08-19-lens-5-hardening.md)) |
+| Phototoxicity (living samples) | Lens 5 — no gate, absent from the 32-gate table. Needs a per-sample dose ceiling; a literature citation every time |
+| Illumination-driven local heating | Lens 5 — needs the medium's absorption coefficient, unrecorded. Distinct from D6, which is the 1064 nm trap |
 | ~~D5 refractive-index mismatch~~ | ~~Lens 4~~ — now caught: `sample.gate` G17 (2026-08-12) |
-| D6 tweezers heating | Lens 7 — the one gap in an otherwise implemented lens |
+| D6 tweezers heating | Lens 7 — **ungated by decision** (2026-08-19), not a gap. No heating check is planned |
+| D8 near-wall (Faxén) drag | Lens 7 — **uncorrected by decision** (2026-08-19). Absorbed by in-situ trap calibration at the working height, not by formula |

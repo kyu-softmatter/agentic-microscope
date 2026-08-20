@@ -22,19 +22,38 @@ stand:
   verified: false
 
 cameras:
+  # 2026-08-19 user confirmation: both bodies are **Kinetix22** (2400x2400, 6.5 µm,
+  # 15.6x15.6 mm, 22 mm diagonal), connected over **PCI-Express**. The MM device
+  # labels read "Kinetix", which is what previously left the model unresolved; the
+  # Nikon quote (2024-09-29 #REDACTED, part 77018310 "Kinetix 22") was right all
+  # along, so the camera discrepancy flagged in reference/quotes/ is closed —
+  # only the Prime95B→second-Kinetix22 substitution remains as a change from quote.
+  # Independent corroboration: kb/calibrations/camera-readout.yaml's 8.475 ms over
+  # 2400 rows is the Kinetix22 full-frame Sensitivity readout exactly (118 fps);
+  # a 3200-row Kinetix would have read out in 11.30 ms.
+  # Full specs (4 modes, full well 200/1000/1000/15000 e-, per-mode line times,
+  # ROI×interface speed table, trigger modes): data/detectors.yaml > Kinetix22.
   - device: Kinetix_red
     role: Core.Camera (default active camera)
     vendor: Photometrics
-    model: Kinetix
+    model: Kinetix22
+    registry: Kinetix22      # data/detectors.yaml key
+    interface: PCIe          # PCI-Express Gen 3. 2026-08-19 user confirmation
     adapter: PVCAM
     mm_label: Camera-2
     serial: null             # no serial in the .cfg — needs further confirmation from PVCAM device properties or the physical label
+    verified: true
+    verified_date: 2026-08-19
   - device: Kinetix_blue
     vendor: Photometrics
-    model: Kinetix
+    model: Kinetix22
+    registry: Kinetix22
+    interface: PCIe
     adapter: PVCAM
     mm_label: Camera-1
     serial: null
+    verified: true
+    verified_date: 2026-08-19
 
 objectives:            # Nosepiece (6-position). 2026-08-10: the trailing number in the label is confirmed to be WD(mm) (cross-checked against Nikon catalog part numbers). 2026-08-11: physical barrel engraving cross-check also completed and confirmed by the user.
   - {turret: Nosepiece, position: 0, label: "1-Plan Apo LmbdD20 4x",         mag: 4,   product: "CFI Plan Apo Lambda D 4X",         part_number: MRD70040, na: 0.20, wd_mm: 20,        immersion: air,   cover_glass_mm: "0-0.17",  verified: true, verified_date: 2026-08-10, source: nikon_catalog}

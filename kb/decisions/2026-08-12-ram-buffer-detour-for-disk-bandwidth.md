@@ -23,6 +23,20 @@ python -m compute.cli check --width 4800 --height 2400 --fps 200 \
 `compute.checks` works on a single stream, so summing two cameras has to be
 reflected manually.)
 
+> **Superseded 2026-08-19.** The trick is no longer needed: `compute.setup`
+> takes one `Stream` per camera and sums them. The same check is now
+> ```
+> python -m compute.cli check --stream red:2400x2400@200 --stream blue:2400x2400@200 \
+>     --disk-bandwidth-mb-s 206.8 --ram-budget-mb 16000 \
+>     --acquisition-duration-s 60 --free-disk-gb 2559
+> ```
+> which reports the same 4608 MB/s and the same `buffer.too_small` margin of
+> 0.69 — with a RAM-derived frame count the two formulations happen to agree.
+> They stop agreeing the moment a **literal** `CircularBufferFrameCount` is
+> used: MMCore counts its buffer in *images* shared across both cameras, so 552
+> frames is 1.38 s of a 400 frames/s dual-cam stream, where the widened single
+> frame would have reported 2.76 s. Twice the headroom that exists.
+
 Result: **FAIL / INFEASIBLE**
 - `data_rate.exceeds_disk`: margin 0.03 — requires 4608 MB/s (2400×2400×2bytes×200fps×2 cameras)
   vs a disk budget of 145 MB/s (D: drive measured 206.8 MB/s × 0.7, [kb/calibrations/disk-bandwidth.yaml](../calibrations/disk-bandwidth.yaml))
@@ -99,5 +113,14 @@ unconfirmed; no guessing).
 - [ ] Measure how much RAM other processes (DMD/piezo/optical tweezers control, the
       OS) actually use during acquisition — the "55GB headroom" in the table above
       is an idle-based estimate
-- [ ] Decide whether to encode this approach in `compute.checks` as a new check
+- [x] Decide whether to encode this approach in `compute.checks` as a new check
       (e.g. G13d "RAM capacity")
+      → done 2026-08-19, `compute.checks.check_ram_capacity`. Setting
+      `ram_capture=True` turns G12a informational (nothing is written while the
+      camera runs) and makes G13d the binding hard gate; G13a and G13b still
+      apply. **Budget capped at 32 GB** (user, 2026-08-19) rather than the
+      machine's 255.65 GB, precisely because the checkbox above it — measuring
+      what other processes actually hold — is still open. Anything above 32 GB
+      is recorded in `assumed_inputs` and withholds `advances`. Flush time is
+      reported, not gated.
+      → [`kb/decisions/2026-08-19-lens-3-hardening.md`](2026-08-19-lens-3-hardening.md)

@@ -109,6 +109,37 @@ assumed:  ATTO647N spectra, FF01-692/40, Plan Apo 100x Oil transmission,
           Spectra.Red power at sample
 ```
 
+#### Principle 1b — a conservative bound is a computation, not a guess
+
+Refinement, user 2026-08-20. Principle 1 kills *"roughly this much should be
+fine."* It does **not** demand an exact model for every second-order term.
+
+> "This agent's purpose is to check feasibility, but a rigorous experiment will
+> always be proven by experiment. For detailed factors like near-wall drag, it
+> is enough to calculate generously, or to bound it — 'it will be no worse than
+> this'. **Order of magnitude is what matters.**"
+
+So the committee's job is to catch **order-of-magnitude** problems and to
+*bound* the rest, not to refuse for want of a precise formula. Concretely:
+
+| Move | Verdict |
+|---|---|
+| "about 10%, probably fine" | ❌ Principle 1 — an unbounded guess |
+| "at most 11%, because the term is monotonic in a/h and h ≥ 10 µm" | ✅ a computation |
+| "there is no exact model, so BLOCKED" | ❌ over-refusal, when a bound exists |
+| "no exact model, and no bound either — say so" | ✅ honest (G17's position) |
+
+A bound must be **directional and stated as such**: name which way it errs and
+why it is the worst case. `evidence` still tracks whether its *inputs* were
+measured — a bound computed from nominal values is still `assumed`.
+
+Two consequences already in the code. `sample` G16c bounds near-wall drag with
+the truncated Faxén factor, which overestimates the drag and therefore gives a
+genuine upper limit on the error. G17 stays the counter-example: mismatch has no
+bound available in this repository, so it reports the screening product and
+refuses to quantify — the difference between "bounded generously" and
+"unbounded" is the whole point.
+
 ### Principle 2 — 3-tier normalization; only physical quantities transfer
 
 ```
@@ -182,7 +213,7 @@ FAIL is already a fix instruction.
 |---|---|---|---|---|
 | 1 | **Optics** | Filters, dichroics, mirrors, ND, objective, light path | Spectral integration → fully deterministic | `optics/` ✅ |
 | 2 | **Detection** | Exposure, binning, ROI, readout, gain, frame interval | Photon budget, SNR, sampling → deterministic | `detection/` ✅ |
-| 3 | **Compute resources** | Frame rate, buffer, storage, processing | Bandwidth and capacity arithmetic → deterministic | `compute/` ✅ |
+| 3 | **Compute resources** | Frame rate, buffer, storage, processing | Bandwidth and capacity arithmetic → deterministic | `compute/` ✅ (G12a–c, G13a–d) + `compute/drops.py` for the post-hoc half + `.claude/agents/compute-resources.md` for the interpretive half |
 | 4 | **Sample geometry & optics** | Objective choice, immersion, coverslip, focal depth | Refractive index, WD, aberration → semi-deterministic | `sample/` ✅ (G15–G19) + `.claude/agents/sample-optics.md` for the qualitative half |
 | 5 | **Photo-perturbation** | Light level, illumination duty, total dose | Bleaching, heating, light-driving → semi-deterministic | `photo/` ✅ (G10, G20–G22) + `.claude/agents/photo-perturbation.md` for the qualitative half |
 | 6 | **Measurement validity** | Whether all of the above yields the intended physical quantity without bias | Bias computation + qualitative | `validity/` ✅ (G11, G23–G27) + `.claude/agents/measurement-validity.md` for the qualitative half |
@@ -192,7 +223,7 @@ FAIL is already a fix instruction.
 | # | Lens | Convened when | Basis of verdict | Implementation |
 |---|---|---|---|---|
 | 7 | **Optical tweezers** | Tweezers in use | Trap stiffness κ, U/kT, corner frequency f_c → computed | `trapping/` ✅ (no heating check — [06 D6](06-pitfalls.md)) |
-| 8 | **Mechanical & environmental** | Long experiments (>30 min) | Drift, vibration, evaporation, PFS lock | `stability/` ✅ (G28–G32). Vibration and stage repeatability remain ungated — no measurement channel exists |
+| 8 | **Mechanical & environmental** | Long experiments (>30 min) | Drift, vibration, evaporation, PFS lock | `stability/` ✅ (G28–G32) + `.claude/agents/mechanical-env.md` for the qualitative half. Vibration and stage repeatability remain ungated — no measurement channel exists |
 
 ### Why 4 and 5 are separate
 
@@ -210,8 +241,11 @@ This is the real reason for having a committee.
 | Trap stiffness vs sampling | 7 ↔ 2 | Power-spectrum calibration needs `f_s ≳ 10·f_c`. Raising laser power raises f_c, which raises the frame-rate requirement |
 | Light level vs light-driving | 1 ↔ 5 | The extra light needed for SNR drives active particles |
 | ROI vs statistics | 3 ↔ 6 | Shrinking the ROI for speed reduces the particle count in the field, weakening statistical power |
+| Requested vs achieved frame rate | 2 ↔ 3 | Every lens-3 number scales linearly with `f`, but lens 2 owns `f`. A requested rate is not an achieved one — [06 C4](06-pitfalls.md) measured a 3× gap with the camera *not* the bottleneck. Lens 3's G12b refuses to treat a requested rate as evidence |
 | Pixel size | 2 ↔ 6 | Morphology wants Nyquist; tracking is optimal at σ_PSF ≈ pixel. **Opposite directions** |
 | Immersion vs depth | 4 ↔ 1 | Refractive-index mismatch grows spherical aberration in proportion to depth. In ATPS the two phases have different RI |
+| Chamber | 4 ↔ 8 | **`chamber_height_um` is asked once and used by both**, for different things: lens 8 for evaporation and whether settling particles reach the wall (G31), lens 4 for whether the requested focal plane still has sample in it (G16b). **Note what the chamber does *not* affect**: the spacer or gasket setting the height forms the walls and is not in the optical path, either orientation of stand, so it never enters the working-distance budget. The only glass in the path is the coverslip facing the objective, which G16 already carries |
+| Particle count | 4 → 6, 8 → 4 | G19's `expected_count` is what `validity.setup.resolved_n_particles` feeds to G11 when no count is given explicitly, so lens 4's choice of axial extent lands on lens 6's statistical power. Lens 8 can invert its sign: with the focal plane near the chamber floor, sedimentation (G31) brings particles *into* the observed volume instead of depleting it |
 
 ---
 
@@ -234,10 +268,12 @@ experimentalist/
 │   ├── 08-optical-path-spec.md   lens computation structure · hardware YAML format
 │   └── 09-knowledge-capture.md   expertise capture — the real purpose of this project
 │
-├── .claude\agents\               ← qualitative half of lenses 4 · 5 · 6 (prompt-only)
+├── .claude\agents\               ← qualitative half of lenses 3 · 4 · 5 · 6 · 8 (prompt-only)
+│   ├── compute-resources.md      lens 3 — interpretive only; the lens itself is code
 │   ├── sample-optics.md          lens 4
 │   ├── photo-perturbation.md     lens 5
-│   └── measurement-validity.md   lens 6
+│   ├── measurement-validity.md   lens 6
+│   └── mechanical-env.md         lens 8
 │
 ├── optics\                       ← lens 1 (optics)
 │   ├── spectra.py                Spectrum type, curve loading, band approximation
@@ -254,8 +290,10 @@ experimentalist/
 │   ├── timing.py                 frame timing, rolling shutter
 │   ├── checks.py  gate.py  setup.py  cli.py
 │
-├── compute\                      ← lens 3 (compute resources, G12–G13)
-│   ├── resources.py              data rate, buffer, capacity
+├── compute\                      ← lens 3 (compute resources, G12a–c · G13a–d)
+│   ├── resources.py              data rate, buffer, capacity, container width, flush
+│   ├── mm_metadata.py            streaming ElapsedTime-ms reader (MM 1.4 + 2.0)
+│   ├── drops.py                  post-hoc frame-drop detection — the archive half
 │   ├── checks.py  gate.py  setup.py  cli.py
 │
 ├── sample\                       ← lens 4 (sample geometry & optics, G15–G19)
@@ -379,8 +417,10 @@ proposes removal; otherwise it explains in numbers why the element is needed.
 2. **L1 indexer** — the 2,343 archived acquisitions → SQLite
 3. **Agent layer** — `CLAUDE.md` + skills, on top of the orchestration above
 4. **The deliberately ungated** — vibration and stage repeatability (no
-   measurement channel exists) and local heating at 1064 nm
-   ([06 D6](06-pitfalls.md)). Named, not silently omitted
+   measurement channel exists), local heating at 1064 nm
+   ([06 D6](06-pitfalls.md)), and near-wall Faxén drag
+   ([06 D8](06-pitfalls.md), absorbed by in-situ trap calibration instead).
+   Named, not silently omitted
 
 What is blocking progress is mostly **facts, not code**: the gates run but
 return `BLOCKED` for want of measured inputs, illumination power above all.

@@ -35,7 +35,11 @@ it is hard to notice after the fact. The motion blur case in
 [04 §5](04-decision-engine.md) is the canonical example — MSD comes out as a
 straight line with the wrong slope.
 
-### Classification of the 14 gates
+### Classification of gates G1–G14
+
+G12 and G13 each cover several independent criteria, listed separately here
+because they differ in **kind** — the two bias rows under G12 are evidence
+conditions on the same arithmetic the hard rows gate.
 
 | Gate | Kind | If it falls short |
 |---|---|---|
@@ -50,8 +54,13 @@ straight line with the wrong slope.
 | G9 Frame-rate realizability | hard | Does not run as requested |
 | G10 Photobleaching | bias | Intensity decay → correction needed |
 | G11 Statistical power | soft | Error bars merely widen |
-| G12 Data rate | hard | **Silent frame drops** |
-| G13 Buffer | hard | ″ |
+| G12a Data rate | hard | **Silent frame drops** |
+| G12b Frame-rate provenance | bias | Every lens-3 number scales with a rate nobody observed |
+| G12c Pixel container | bias | Data rate off by 2× in the 8-bit mode, where it binds |
+| G13a Buffer | hard | **Silent frame drops** |
+| G13b Capacity | hard | Acquisition stops partway |
+| G13c Real-time CPU | hard | Falls behind, then drops |
+| G13d RAM capture | hard | Burst does not fit; MemoryError or a truncated run |
 | G14 Tweezers sampling | bias | κ calibration value is wrong |
 
 ---
@@ -233,27 +242,57 @@ class LensVerdict:
 
 - **Owns**: data rate, circular buffer, storage capacity, real-time processing,
   CPU/RAM
-- **Gates**: G12 G13
+- **Gates**: G12a (disk budget) G12b (frame-rate provenance) G12c (pixel
+  container) · G13a (buffer) G13b (capacity) G13c (real-time CPU) G13d
+  (RAM-capture capacity)
 - **Key questions**
-  - Is `R = W·H·2·f` below 70% of sustained disk write bandwidth
+  - Is `R = Σ_streams W·H·bytes·f` below 70% of sustained disk write bandwidth —
+    summed over **every camera actually running**, not one widened frame
+  - Is that `f` an achieved rate or one somebody typed into MM
+  - Is `bytes` the container MM really writes, or an inference from the ADC's
+    bit depth
   - Does the buffer hold at least 5 seconds
   - Does the total volume fit in the free space
   - With online processing (tracking, compression) attached, is CPU time per
-    frame < 1/f
-  - Can RAM carry the buffer + OS + analysis
+    frame < 1/f **summed across streams**
+  - On the RAM-capture path, does the whole burst fit the authorized RAM budget
 - **Specialty**: **the only lens that catches silent failure.** Frame drops
   raise no error and surface only as `ElapsedTime-ms` intervals larger than
   expected
-- **Post-hoc verification**: after acquisition, the variance of `ElapsedTime`
-  differences → drop detection. Applicable to the existing archive today
-- **Implementation**: `compute/gate.py`
+- **Checklist**
+  - [ ] One stream per camera — is this a dual-cam acquisition
+  - [ ] Where did the frame rate come from (lens 2's ceiling is not an achieved
+        rate either)
+  - [ ] Which readout mode, and is its container width confirmed
+  - [ ] Was the disk bandwidth measured against the folder MM actually saves to
+  - [ ] Streaming to disk, or the RAM-capture path
+- **Post-hoc verification**: ✅ implemented — `compute/drops.py`,
+  `python -m compute.cli drops <metadata.txt>` / `scan <dir>`. Per-series median
+  cadence, gap detection, requested-vs-achieved ratio. Runs on the existing
+  archive today with no hardware
+- **Implementation**: `compute/gate.py` (prospective), `compute/drops.py`
+  (post-hoc), `.claude/agents/compute-resources.md` (interpretive half)
 
 ### Lens 4 · Sample geometry & optics — implemented
 
 - **Owns**: objective choice, immersion, coverslip thickness, imaging depth,
   chamber
-- **Gates**: G15 (NA feasibility) G16 (working distance) G17 (refractive-index
-  mismatch) G18 (coverslip thickness) G19 (count in field · overlap)
+- **Gates**: G15 (NA feasibility) G16 (working distance) **G16b (depth within
+  chamber)** **G16c (near-wall drag bound)** G17 (refractive-index mismatch)
+  G18 (coverslip thickness) G19 (count in field · overlap)
+- **G16c is the worked example of [01 §3 Principle 1b](01-architecture.md)** —
+  bound the second-order term instead of demanding an exact model for it. The
+  truncated Faxén factor `9a/(16h)` over-states the drag, so "D is low by at
+  most this" is a computation, not a guess, and it reproduces `06 D8`'s
+  tabulated penalties exactly. With the trap on, D8's in-situ power-spectrum
+  calibration absorbs the bias and the bound is reported as INFO; untrapped,
+  nothing absorbs it and it goes `bias`
+- **G16 and G16b are the two halves of "can this focal plane be reached"**:
+  G16 asks whether the objective can reach the depth, G16b whether the sample
+  extends that far. Focus past the chamber's far wall and the image is of the
+  wall — an empty focal plane looks exactly like a dim one, which is why this
+  is worth a gate. Lens 8 holds `chamber_height_um` but spends it only on the
+  sedimentation flag (G31), so nothing compared it to the imaging depth before
 - **Key questions**
   - Refractive-index matching: immersion / coverslip / medium / sample
   - Imaging depth × RI mismatch → spherical aberration, focal shift
@@ -276,9 +315,16 @@ class LensVerdict:
   trigger at the oil-into-water mismatch of 0.185) and reports the paraxial
   focal-shift ratio. It decides whether a real aberration calculation is owed;
   it is not that calculation, and the ratio is not a correction factor
-- **Remaining**: measured sample-medium refractive index (the default 1.333 is
-  assumed, so verdicts do not advance); per-phase RI for ATPS, which currently
-  BLOCKs by design
+- **Remaining**: a measured coverslip thickness — with the sample-medium index
+  settled at 1.333 (2026-08-19) that micrometer reading is the last thing
+  holding ordinary verdicts at `evidence: assumed`, **and it is sufficient** —
+  the lab mounts 170 µm, which matches every objective's design, so G18 passes
+  at margin 10.0 and only the reading itself is missing
+  ([`kb/expertise/coverslip-thickness-in-use.md`](../kb/expertise/coverslip-thickness-in-use.md)).
+  What holds an oil objective past ~10 µm depth is G17's mismatch, and what
+  holds the 40x WI is the unrecorded collar. Per-phase RI for ATPS still
+  BLOCKs by design, and is asked at experiment time rather than pre-populated
+  ([`kb/decisions/2026-08-19-lens-4-scope.md`](../kb/decisions/2026-08-19-lens-4-scope.md))
 - **Implementation**: `sample/gate.py`, plus
   `.claude/agents/sample-optics.md` for the qualitative half (chamber, sample
   concentration judgement, multiple scattering)
@@ -302,6 +348,24 @@ class LensVerdict:
   committee's reason to exist. **G21 is that check in code** — it refuses to
   compare irradiance against a guessed threshold, so a photoresponsive sample
   with no measured threshold returns BLOCKED
+- **⚠ `photoresponsive` is tri-state, and the third state is the important
+  one.** `None` means nobody has asked, which is not a confirmed "no": it warns,
+  lands in `assumed_inputs`, and withholds `advances` while still letting
+  bleaching and saturation be judged. A default of `False` would have made G21
+  silent in exactly the case docs/06 D2 is about — the accident there is the
+  unasked question, not a wrong number
+- **⚠ No `hard` gate lives in this lens**, so `status: FAIL` is unreachable from
+  inside it; the outcomes are BLOCKED, PASS_WITH_CHANGES, PASS. Every check here
+  is `bias` or `info`, and a bias finding is a claim about what the data will
+  mean — which Lens 6 arbitrates
+- **Consume lens 1's excitation chain, do not re-derive it.**
+  `IlluminationSetup.from_channel` / `photo.cli --channel` take `k_ex` and
+  `k_em` from `optics.path.Channel`, where `σφ` is weighted by how well the
+  delivered spectrum overlaps the absorption band. The bare-field path has no
+  spectra, so without an explicit `excitation_coupling` it sets that overlap to
+  1 and reports `k_ex` as assumed. The bias is toward stricter G10/G20 verdicts
+  — false alarms rather than false clears, but a false alarm here is still a
+  wrong instruction to cut the light
 - **⚠ G20 also invalidates other lenses' numbers.** Past saturation, emission
   stops rising with power, so lens 1's and lens 2's photon budgets (which
   assume linearity — `optics.path.detected_e_per_s`) overestimate signal while
@@ -314,7 +378,11 @@ class LensVerdict:
   companion check reports it as unowned rather than assuming it is handled
 - **⚠ BLOCKED on the real instrument today**: `power_at_sample_mw` is empty for
   every line of every source, and no dye has `bleach_photons`. That is the
-  correct verdict, not a gap in the lens
+  correct verdict, not a gap in the lens. With laser power measurement deferred
+  by decision (2026-08-19, [07 Phase 0](07-roadmap.md)), it is also the expected
+  steady state — the lens should say so once and not keep re-proposing the
+  measurement. `bleach_photons` is the half that a literature value could
+  unblock today without touching the instrument
 - **Implementation**: `photo/gate.py`, plus
   `.claude/agents/photo-perturbation.md` for the qualitative half
   (phototoxicity judgement, triplet/blinking behaviour, light-driving physics)
@@ -349,6 +417,28 @@ class LensVerdict:
   quantity does not survive — a veto on this lens's whole purpose. Its margin
   is the worst *uncorrected* upstream bias margin, so the committee's worst
   unhandled problem stays visible rather than being averaged away
+- **G23 checks the declaration, it does not believe it.**
+  `validity.setup.CORRECTIONS` names the biases a correction exists for
+  (crosstalk → unmixing, motion blur → Savin–Doyle, photobleaching → decay
+  correction, lateral drift → registration) and `UNCORRECTABLE` the ones it does
+  not (RI mismatch, coverslip, saturation, light-driving, evaporation).
+  Declaring `geometry.ri_mismatch` in `corrections_applied` used to clear it,
+  because the declaration was matched against nothing at all; now the gate
+  answers that no such correction is implemented and keeps the bias. A code in
+  neither table is accepted — a gate the tables have not caught up with should
+  not block work — but it costs the verdict its `measured` grade, so an
+  unaudited clearance cannot advance
+- **The verdict's unit can be the physical quantity, not the channel.** A
+  session's MSD can be biased while its intensity profile is fine, and one
+  status cannot say that. `validity.setup.BIAS_SCOPE` records which calibrations
+  each bias damages, so the FAIL lands only on the quantities that rest on
+  them; a bias the table does not scope damages every quantity, which is the
+  conservative default and the only honest one where nothing scopes it. Pass
+  `intended_quantities` and `gate.evaluate` judges each separately and returns
+  the aggregate, with every per-quantity verdict in
+  `metrics["validity.per_quantity"]` and each finding tagged with the quantity
+  it belongs to. Out-of-scope biases are named rather than dropped — they still
+  stand against the quantities they do damage
 - **G27 is currently the only thing that notices the committee never met.**
   There is no orchestrator: each lens is invoked by its own CLI, so a standing
   lens that never ran, or one that returned BLOCKED, would otherwise go
@@ -364,7 +454,7 @@ class LensVerdict:
   the analysis code, judging whether the intended quantity is extractable at
   all)
 
-### Lens 7 · Optical tweezers (conditional) — implemented except heating
+### Lens 7 · Optical tweezers (conditional) — implemented; heating ungated by decision
 
 - **Gates**: G14
 - **Inputs**: particle radius, particle refractive index, medium refractive
@@ -379,13 +469,27 @@ class LensVerdict:
   passed to the detection lens
 - **⚠ Intermediate regime**: at `a/λ ~ 1` both limits are invalid. **Do not
   answer with an approximation — return BLOCKED**
-- **⚠ Local heating is NOT implemented.** `trapping/` has only `confinement`,
-  `trap_depth`, and `sampling` — there is no heating computation. Water
-  absorption at 1064 nm changes viscosity and therefore D, which contaminates
-  the measured quantity in microrheology ([06 D6](06-pitfalls.md)). Nothing
-  catches this today, and Lens 5 deliberately does not cover it (it handles
-  visible excitation light only)
-- **Remaining**: dial-% → mW measured calibration; local heating
+- **⚠ Local heating is NOT implemented, by decision.** `trapping/` has only
+  `confinement`, `trap_depth`, and `sampling` — there is no heating computation
+  and none is planned (user, 2026-08-19). Water absorption at 1064 nm changes
+  viscosity and therefore D, which contaminates the measured quantity in
+  microrheology ([06 D6](06-pitfalls.md)). Nothing catches this, and Lens 5
+  deliberately does not cover it either (it handles visible excitation light
+  only). It is one of the project's **named** ungated risks, not an oversight —
+  [01 §7](01-architecture.md)
+- **⚠ No Faxén wall-drag correction, by decision.** `corner_frequency_hz` uses
+  the unbounded-medium Stokes drag, so a bead held near the coverslip carries an
+  uncorrected bias (+12.7% for a 4 µm bead at h = 10 µm). The sanctioned route
+  is in-situ power-spectrum calibration at the actual working height, which
+  returns κ and the wall-corrected γ together — and G14 requires that
+  calibration regardless
+- **Scope**: water-based media only for now (user, 2026-08-19). A non-water
+  medium needs its own measured viscosity passed explicitly
+  (`--viscosity-pa-s`); the CLI refuses to default one rather than guessing
+- **Deferred**: dial-% → mW measured calibration, under the 2026-08-19 decision
+  that defers all laser power measurement. Until it lands, `LaserCalibration.points`
+  is empty and every trapping verdict is `evidence: assumed`, so none can advance
+  → [`kb/decisions/2026-08-19-lens-7-scope.md`](../kb/decisions/2026-08-19-lens-7-scope.md)
 - **Implementation**: `trapping/gate.py`
 
 ### Lens 8 · Mechanical & environmental (conditional, >30 min) — implemented
@@ -416,7 +520,10 @@ class LensVerdict:
   lens past 30 min, but settling and drift scale continuously with time and do
   not switch on there. Whether to call the lens is the caller's decision; when
   called, it answers
-- **Implementation**: `stability/gate.py`
+- **Implementation**: `stability/gate.py`, plus
+  `.claude/agents/mechanical-env.md` for the qualitative half (vibration, stage
+  repeatability, thermal environment, whether the settling figure applies, what
+  each remedy costs another lens)
 
 ---
 

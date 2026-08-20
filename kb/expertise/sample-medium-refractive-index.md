@@ -5,8 +5,9 @@ question: "What refractive index should be assumed for the sample medium when th
 source: user_statement
 expert: KH
 date: 2026-08-12
-confidence: medium
-evidence: assumed
+updated: 2026-08-19
+confidence: high
+evidence: confirmed_default
 scope: "Default for all systems. Applies to the sample medium only, not to the
   immersion medium — see [[immersion-media-in-use]]"
 applies_to_systems: [current, current-laser, current-spectra, current-aura]
@@ -15,15 +16,29 @@ supersedes: null
 ---
 
 ## Verdict
-**Default `n_medium = 1.333`** (pure water, 20 °C, 589 nm) when the experiment does
-not specify otherwise. KH confirmed 2026-08-12 that samples are generally
-water-based, and will state the medium explicitly in unusual cases.
+**`n_medium = 1.333`** (pure water, 20 °C, 589 nm) when the experiment does not
+specify otherwise. KH confirmed 2026-08-12 that samples are generally
+water-based, and **settled the value on 2026-08-19**: 1.333 is what lens 4 uses,
+and falling back to it is no longer treated as an assumption.
 
-This is a **default assumption, not a measurement.** Any gate that consumes it must
-report `evidence: assumed`, exactly as `compute` does for a derived buffer frame
-count. It must never be presented as measured. A real dilute aqueous buffer (PBS
-and similar) runs slightly higher, roughly 1.334-1.337 depending on salt load, so
-treat 1.333 as a lower bound on an aqueous medium rather than an exact value.
+**What changed on 2026-08-19, and what did not.** Before, any gate consuming this
+value had to report `evidence: assumed`, which meant lens 4 could not advance on
+an ordinary aqueous sample. `sample/gate.py::_assumed_inputs` no longer lists it.
+This is a **confirmed default, not a refractometer reading** — the distinction
+still matters, and what makes it defensible is that 1.333 is a literature
+constant for water rather than a lab-specific parameter. Contrast
+`power_at_sample_mw`, which is instrument-specific and therefore still BLOCKs
+lens 5: "we know what water is" and "we never measured our own laser" are not
+the same kind of gap.
+
+A real dilute aqueous buffer (PBS and similar) runs slightly higher, roughly
+1.334-1.337 depending on salt load, so 1.333 remains a lower bound on an aqueous
+medium rather than an exact value. That spread sits **inside** `sample`'s
+`LIMITS["matched_ri_tolerance"] = 0.005`, whose code comment says it exists to
+cover "ordinary buffer-vs-water differences" — so confirming the water value does
+not quietly weaken G17's `index-matched` verdict for the 40x WI, the one case
+where a 0.003 error would be the entire signal. That is what makes this safe; if
+the tolerance is ever tightened below ~0.005, this entry has to be revisited.
 
 ## The consequence this unblocks: oil objectives are badly mismatched
 

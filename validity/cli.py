@@ -1,6 +1,7 @@
 """Quick command-line verification of the measurement-validity gate (lens 6).
 
     python -m validity.cli quantities
+    python -m validity.cli corrections
 
     python -m validity.cli power --n-particles 200 --n-frames 2000 \\
         --target-error 0.05
@@ -9,7 +10,15 @@
         --n-particles 200 --n-frames 2000 --pixel-size-measured \\
         --upstream-passed optics,detection,compute,sample,photo
 
-``power`` runs G11 alone, which needs no upstream verdicts.
+    python -m validity.cli check --quantity diffusion,intensity ...
+
+``power`` runs G11 alone, which needs no upstream verdicts. ``corrections``
+prints which biases have a correction, which do not, and which quantity each
+one damages -- the tables G23 checks a declaration against.
+
+``--quantity`` takes several names comma-separated, and then the verdict's unit
+is the physical quantity rather than the channel: a session can come out with a
+biased MSD and a sound intensity profile, and the per-quantity table says so.
 
 ``check`` runs the whole gate. Because there is no orchestrator yet, the other
 lenses' verdicts cannot be fetched automatically -- ``--upstream-passed`` is you
@@ -26,7 +35,14 @@ from dataclasses import dataclass, field
 
 from .gate import evaluate
 from .power import relative_error, required_frames, required_particles
-from .setup import QUANTITY_REQUIREMENTS, STANDING_LENSES, ValiditySetup
+from .setup import (
+    BIAS_SCOPE,
+    CORRECTIONS,
+    QUANTITY_REQUIREMENTS,
+    STANDING_LENSES,
+    UNCORRECTABLE,
+    ValiditySetup,
+)
 
 
 @dataclass
@@ -53,6 +69,32 @@ def cmd_quantities(args: argparse.Namespace) -> int:
     print(
         "\n'linearity' means pixel values must stay proportional to photons, "
         "which\ndespeckle and similar filters break (docs/06 C1).\n"
+    )
+    return 0
+
+
+def cmd_corrections(args: argparse.Namespace) -> int:
+    print("\nbias findings a correction EXISTS for")
+    print("  (declaring one of these in --corrections clears it)")
+    print("-" * 78)
+    for code in sorted(CORRECTIONS):
+        print(f"  {code:34s} {CORRECTIONS[code]}")
+
+    print("\nbias findings with NO correction")
+    print("  (declaring one is a false claim -- the gate says so and keeps the bias)")
+    print("-" * 78)
+    for code in sorted(UNCORRECTABLE):
+        print(f"  {code:34s} {UNCORRECTABLE[code]}")
+
+    print("\nwhich calibrations a bias damages (scoping the FAIL to a quantity)")
+    print("-" * 78)
+    for code in sorted(BIAS_SCOPE):
+        print(f"  {code:34s} {', '.join(sorted(BIAS_SCOPE[code]))}")
+    print(
+        "\n  A bias absent from that last table damages EVERY quantity -- the\n"
+        "  conservative default where no document scopes it (light-driving and\n"
+        "  saturation move the sample itself, crosstalk puts another channel's\n"
+        "  particles in the frame).\n"
     )
     return 0
 
@@ -94,8 +136,13 @@ def cmd_check(args: argparse.Namespace) -> int:
         )
         return 2
 
+    quantities = tuple(
+        q.strip() for q in (args.quantity or "").split(",") if q.strip()
+    )
+
     setup = ValiditySetup(
-        intended_quantity=args.quantity,
+        intended_quantity=quantities[0] if len(quantities) == 1 else None,
+        intended_quantities=quantities if len(quantities) > 1 else (),
         target_relative_error=args.target_error,
         upstream={name: _DeclaredVerdict() for name in declared},
         n_particles=args.n_particles,
@@ -113,11 +160,22 @@ def cmd_check(args: argparse.Namespace) -> int:
     v = evaluate(setup)
 
     print(f"\n{'=' * 72}")
-    print(f"{args.quantity or '(no quantity stated)'}   ->  {v.status}")
+    print(f"{', '.join(quantities) or '(no quantity stated)'}   ->  {v.status}")
     print(
         f"feasibility: {v.feasibility}   evidence: {v.evidence}   "
         f"confidence: {v.confidence}   advances: {'YES' if v.advances else 'NO'}"
     )
+
+    per = v.metrics.get("validity.per_quantity") or {}
+    if per:
+        print("\n  per physical quantity (the verdict's unit is the quantity,")
+        print("  not the channel -- a biased MSD and a sound intensity profile")
+        print("  can come out of one session)")
+        for q, r in per.items():
+            print(
+                f"    {q:22s} {r['status']:18s} {r['feasibility']:12s} "
+                f"advances: {'YES' if r['advances'] else 'NO'}"
+            )
     if declared:
         print(
             f"\n  ! upstream verdicts for {', '.join(declared)} were DECLARED on "
@@ -160,6 +218,11 @@ def main(argv: list[str] | None = None) -> int:
         "quantities", help="show which calibrations each intended quantity needs"
     ).set_defaults(func=cmd_quantities)
 
+    sub.add_parser(
+        "corrections",
+        help="show which biases have a correction, which do not, and what each damages",
+    ).set_defaults(func=cmd_corrections)
+
     pw = sub.add_parser("power", help="statistical power alone (G11)")
     pw.add_argument("--n-particles", type=float, required=True)
     pw.add_argument("--n-frames", type=float, required=True)
@@ -167,7 +230,12 @@ def main(argv: list[str] | None = None) -> int:
     pw.set_defaults(func=cmd_power)
 
     c = sub.add_parser("check", help="run the committee-lens gate (G11, G23-G27)")
-    c.add_argument("--quantity", default=None, help="see `quantities` for the list")
+    c.add_argument(
+        "--quantity",
+        default=None,
+        help="one quantity, or several comma-separated for a per-quantity "
+        "verdict; see `quantities` for the list",
+    )
     c.add_argument("--target-error", type=float, default=None, help="e.g. 0.05 for 5%%")
     c.add_argument("--n-particles", type=float, default=None)
     c.add_argument("--n-frames", type=int, default=None)

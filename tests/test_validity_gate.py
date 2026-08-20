@@ -143,9 +143,11 @@ def test_uncorrected_upstream_bias_fails():
 
 
 def test_declaring_the_correction_clears_the_bias():
-    up = _all_present(sample=_V(findings=[_F("geometry.ri_mismatch", "sample")]))
+    """Only for a bias a correction actually exists for -- motion blur has
+    Savin-Doyle, so declaring it is a claim that can be true."""
+    up = _all_present(detection=_V(findings=[_F("motion_blur.biased", "detection")]))
     v = evaluate(
-        _setup(upstream=up, corrections_applied=frozenset({"geometry.ri_mismatch"}))
+        _setup(upstream=up, corrections_applied=frozenset({"motion_blur.biased"}))
     )
     assert v.metrics["validity.bias_ledger"]["uncorrected"] == 0
     assert v.status != "FAIL"

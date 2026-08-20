@@ -11,7 +11,8 @@
 
 ``check`` runs the committee-lens gate (sample.gate.evaluate): NA
 feasibility (G15), working distance (G16), refractive-index mismatch (G17),
-coverslip thickness (G18), count in field (G19).
+coverslip thickness (G18), count in field (G19), plus G16b (is there
+sample at the requested depth) when --chamber-height-um is given.
 
 ``--objective`` reads NA, immersion, working distance, design coverslip and
 correction collar from the data/objectives.yaml registry, which
@@ -101,6 +102,11 @@ def cmd_check(args: argparse.Namespace) -> int:
         field_width_um=args.field_width_um,
         field_height_um=args.field_height_um,
         emission_nm=args.emission_nm,
+        observed_slab_um=args.observed_slab_um,
+        chamber_height_um=args.chamber_height_um,
+        unspaced_mount=args.unspaced_mount,
+        particle_radius_um=args.particle_radius_um,
+        trapped=args.trapped,
         collar_adjusted=args.collar_adjusted,
     )
     v = evaluate(setup)
@@ -149,7 +155,7 @@ def main(argv: list[str] | None = None) -> int:
         func=cmd_list
     )
 
-    c = sub.add_parser("check", help="run the committee-lens gate (G15-G19)")
+    c = sub.add_parser("check", help="run the committee-lens gate (G15-G19, G16b)")
     c.add_argument(
         "--objective", default=None,
         help="key from data/objectives.yaml, e.g. 100x-Oil or 40x-WI (see `list`). "
@@ -171,23 +177,60 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--wd-um", type=float, default=None, help="working distance, um")
     c.add_argument("--imaging-depth-um", type=float, default=None, help="depth past the coverslip, um")
     c.add_argument(
+        "--chamber-height-um",
+        type=float,
+        default=None,
+        help="how far the sample extends past the coverslip (G16b). Omitted, "
+        "the depth-within-chamber check is skipped",
+    )
+    c.add_argument(
         "--n-sample", type=float, default=None,
-        help="sample-medium refractive index; omitted, the water default 1.333 is assumed",
+        help="sample-medium refractive index; omitted, the confirmed water value 1.333 is used",
     )
     c.add_argument("--coverslip-design-um", type=float, default=170.0)
     c.add_argument(
         "--coverslip-actual-um", type=float, default=None,
-        help="measured coverslip thickness; omitted, the design value is assumed",
+        help="measured coverslip thickness; omitted, the lab's nominal 170 um "
+        "is assumed, which earns evidence: assumed rather than measured",
     )
     c.add_argument("--correction-collar", action="store_true", help="objective has a correction collar")
     c.add_argument("--collar-adjusted", action="store_true", help="the collar was adjusted for this coverslip")
     c.add_argument("--verified-na", action="store_true", help="NA confirmed against the barrel/catalogue")
+    c.add_argument(
+        "--unspaced-mount",
+        action="store_true",
+        help="no spacer or gasket -- the coverslip sits directly against the "
+        "sample, so the thickness is uncontrolled (G16b says so rather than "
+        "skipping quietly)",
+    )
+    c.add_argument(
+        "--particle-radius-um",
+        type=float,
+        default=None,
+        help="bead radius, for G16c's near-wall drag bound. Owned by lenses 7/8; "
+        "consumed here only for that bound",
+    )
+    c.add_argument(
+        "--trapped",
+        action="store_true",
+        help="the optical trap is holding the particle, so D8's in-situ "
+        "power-spectrum calibration absorbs the wall drag (G16c reports it as "
+        "INFO rather than a bias)",
+    )
     c.add_argument("--multiphase", action="store_true", help="ATPS or other multi-phase sample")
     c.add_argument("--birefringent", action="store_true", help="liquid crystal or other birefringent sample")
     c.add_argument("--concentration-per-ml", type=float, default=None)
     c.add_argument("--field-width-um", type=float, default=None)
     c.add_argument("--field-height-um", type=float, default=None)
     c.add_argument("--emission-nm", type=float, default=None, help="for the overlap/resolution comparison")
+    c.add_argument(
+        "--observed-slab-um",
+        type=float,
+        default=None,
+        help="axial extent actually observed (confocal section thickness). "
+        "Omitted, the objective depth of field is used when --emission-nm is "
+        "given, else the imaging depth as an upper bound",
+    )
     c.set_defaults(func=cmd_check)
 
     args = p.parse_args(argv)

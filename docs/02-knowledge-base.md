@@ -117,7 +117,7 @@ separately.
 | Light source | ✅ | ✅ | ? | ✅ | MM |
 | PFS | ✅ | ✅ | ✅ | ✅ | MM |
 | 1.5x intermediate magnifier | ✅ | ✅ | ? | ✅ | MM |
-| **Optical tweezers** | ✅ | ❌ | ❌ | ❌ **folder name only** · power measurement pending | separate |
+| **Optical tweezers** | ✅ | ❌ | ❌ | ❌ **folder name only** · power measurement deferred by decision (2026-08-19) | separate |
 | **Piezo stage** | ✅ | ❌ | ❌ | ❌ | **separate Python** (`hardware/piezo_stage.py`) |
 | DMD | ✅ confirmed 2026-08-11 | ✅ | ? | ❌ | MM (pymmcore-plus) |
 
@@ -281,7 +281,7 @@ and the precedent lies.
 | Label typos | `Prime95B` vs `Pirme95B` (20 acquisitions). An alias table is needed |
 | Deciding the active illumination | Two light sources are registered at once. Decide on `Core-Shutter` |
 | Folder-name parsing | `Las10` = level, `Las488` = wavelength, `Las555_5` = 555 nm at 5%. An integer in 350–800 is a wavelength |
-| tail | Measured fps and drop detection from the last `ElapsedTime-ms` and the frame index |
+| tail | Measured fps and a **cheap** drop screen from the last `ElapsedTime-ms` and the frame index: `(last − first) / (n − 1)` is the mean delivered interval, so it exceeds the requested interval exactly when frames went missing. It cannot say **where** or **how many** — that needs every timestamp, which is `compute/drops.py` (44 MB is worth reading in full only for the acquisitions this screen flags) |
 
 ---
 
@@ -373,20 +373,31 @@ Once these accumulate, gate thresholds can be tuned empirically.
 - [ ] Current system `.cfg` — full-capability wiring state. Every device,
       preset, and `Label,`
 - [ ] Per-position filter wheel parts
-- [ ] Optical tweezers power measurement (`OT` dial value → mW @ sample)
+- [~] Optical tweezers power measurement (`OT` dial value → mW @ sample) —
+      **deliberately deferred (user, 2026-08-19)**, along with all other laser
+      power measurement. Not dropped, just not the next task. Until it lands
+      `LaserCalibration.points` stays empty and every Lens 7 verdict is
+      `evidence: assumed`
+      → [`kb/decisions/2026-08-19-lens-7-scope.md`](../kb/decisions/2026-08-19-lens-7-scope.md)
 
 **Not yet in hand**
 - [ ] Filter cube identity (whether the archive's `DA/FI/TR10Empty` is still
       the same today)
 - [ ] Measured illumination power (line × objective × level)
 - [ ] The actual fluorophore and DOL behind `SA647`/`DEX647`/`Phal647`
-- [ ] Which Kinetix camera mode is actually in use
-      (Speed/Sensitivity/DynamicRange) — without it `read_noise_e` stays null
-      and `optics.cli check` returns BLOCKED for every channel that uses this
-      camera (full_well_e/dark_e_per_s are absent from the datasheet itself, so
-      they need their own measurement regardless of the mode, confirmed
-      2026-08-10 while designing
-      config/channels/particle647-yoyo1-2color.yaml)
+- [ ] Which Kinetix22 camera mode is actually in use — now **four** of them
+      (DynamicRange 16-bit / Speed 8-bit / Sensitivity 12-bit /
+      Sub-Electron 16-bit). Updated 2026-08-19: the camera was confirmed to be a
+      **Kinetix22 on PCIe**, and its datasheet Rev 2024-10-21 does supply
+      read noise, full well, conversion gain, dark current and line time — all
+      four modes are now in `data/detectors.yaml > Kinetix22`, so the old note
+      here ("absent from the datasheet itself, needs its own measurement") is
+      retired. What is still missing is only the **choice**, and it is not a
+      detail: full well runs 200 / 1000 / 1000 / 15000 e- across the modes, so
+      G6 can pass in one mode and clip in another at the identical light level.
+      The one measured data point, `kb/calibrations/camera-readout.yaml`, was
+      taken in Sensitivity — identified from its row time, not from a setting
+      anyone recorded.
 - [ ] Piezo log format — control itself is in hand (`hardware/piezo_stage.py`)
 - [ ] Whether to index ND2/LIF (other systems)
 

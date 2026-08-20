@@ -80,6 +80,11 @@ pass silently:
    commanded velocity, the bias lands directly on the measured quantity. Note it
    grows with bead radius, so the bigger the probe the worse the oil penalty.
 
+   **This stays uncorrected by decision (2026-08-19).** No Faxén term will be
+   added to the lens; the in-situ calibration described below is the sanctioned
+   route instead, because it absorbs the bias by measurement rather than
+   modelling it. See [[2026-08-19-lens-7-scope]] and `docs/06` D8.
+
 ## How to use an oil objective quantitatively anyway
 
 Calibrate the trap **in situ at the actual working height.** A power-spectrum

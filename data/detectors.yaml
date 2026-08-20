@@ -28,22 +28,27 @@ detectors:
     verified_date: 2026-08-10
     source: "Photometrics Kinetix sCMOS Camera Datasheet, Rev A0-09152020 (Teledyne Photometrics, teledynevisionsolutions.com)"
     note: >
-      ⚠ The two cameras in kb/systems/current.md (Kinetix_red/Kinetix_blue) are
-      labeled "Kinetix", not "Kinetix22". The Nikon quote (2024-09-29, #REDACTED)
-      was a Kinetix22+Prime95B configuration, but the actual installation appears
-      to have changed to Kinetix x2 (for the cross-check see
-      reference/quotes/2024-09-29_..._takatori.md) — whether this was an order
-      change or a later replacement is unconfirmed. This entry is the standard
-      Kinetix (3200x3200, 20.8x20.8mm, 6.5um) and its specs differ from
-      Kinetix22 (5.7MP, 15.6x15.6mm), so do not mix the two up.
+      ⚠ NOT THE INSTALLED CAMERA. 2026-08-19 user confirmation: the lab runs
+      **Kinetix22** x2, which matches the Nikon quote (2024-09-29, #REDACTED)
+      after all. Use the `Kinetix22` entry below; this entry is the standard
+      Kinetix (3200x3200, 20.8x20.8mm) and is kept only because the device
+      labels in kb/systems/current.md read "Kinetix", and because its datasheet
+      is the source of the per-mode line times that the Kinetix22 shares.
+      The two differ in array size (3200 vs 2400 rows) and therefore in every
+      frame rate — do not mix them up.
+
+      The measured readout time in kb/calibrations/camera-readout.yaml
+      independently corroborates Kinetix22: 8,475,000 ns over 2400 rows is
+      exactly the Kinetix22 full-frame Sensitivity-mode readout (datasheet
+      118 fps). On a 3200-row Kinetix, full frame would have been 11.30 ms.
 
       Prime95B is not used in the current system (2026-08-10 user confirmation) —
       the Prime95B in config/channels/proposed-2color.yaml·legacy-observed.yaml is
       kept only as a historical/example reference and is unrelated to this entry.
 
-      Frame rate differs by more than 5x depending on the interface (PCI-Express
-      vs USB3.2) (modes below) — which interface the actual lab PC is connected
-      through is unconfirmed. Check the PVCAM device properties or the cable/card.
+      Interface resolved 2026-08-19 (user confirmation): **PCI-Express**, so the
+      `pcie` column of the frame-rate tables is the binding one. USB3.2 would
+      have capped frame rate up to ~5x lower.
 
     # Straight from the datasheet "Camera Modes" table. bit_depth, read_noise and
     # frame_rate change together across the three modes (as with Prime95B), so they
@@ -108,6 +113,263 @@ detectors:
     qe_verified: false   # ⚠ read off the graph by eye. If precise calculation becomes
                           # necessary, request the curve CSV/data from Photometrics
                           # and replace this.
+
+  Kinetix22:
+    model: "Photometrics Kinetix22"
+    vendor: Photometrics
+    chip: "GPixel GSense GSENSE6510 CMOS"   # named in Rev 2024-10-21. Rev A3-05112021
+                                            # called it "Teledyne Photometrics Kinetix Sensor".
+    sensor_px: [2400, 2400]                 # 5.76 MP. 15.6 x 15.6 mm, 22 mm diagonal
+    pixel_um: 6.5
+    type: "back-illuminated sCMOS"
+    shutter: rolling          # also "Effective Global Shutter", and "Programmable Scan
+                              # Mode" (PCIe only — available here, see interface below)
+    binning_max: "4x4, symmetrical and asymmetrical"
+    linearity: ">99%"
+    qe_peak: 0.95
+    # ── Flat fields = the DynamicRange mode, and only lens 1 ever reads them ──
+    # Full well spans 200 -> 15000 e- across the four modes (75x), so a flat value
+    # is a trap. It is set anyway, to the DynamicRange values, because the two
+    # lenses want opposite things from these fields:
+    #   · lens 2 (detection) never falls back to them. `Camera.effective_*` prefers
+    #     the named mode, and with no mode named `effective_bit_depth()` is None,
+    #     so detection.gate BLOCKs on `missing.detector_mode` regardless. Every
+    #     mode below carries its own full well and read noise, so the fallback
+    #     branch is unreachable.
+    #   · lens 1 (optics) requires all three of pixel_um/read_noise_e/full_well_e
+    #     to be non-null or it BLOCKs on `missing.detector` (optics/gate.py:166).
+    #     It only tests presence — optics/checks.py uses them as the
+    #     `detector.specs` fact and never computes with the magnitudes — so which
+    #     mode these come from cannot change an optics number.
+    # If a third consumer ever reads these flatly and *does* compute, it must be
+    # made mode-aware instead of trusting this line.
+    full_well_e: 15000   # DynamicRange (16-bit). See the mode block.
+    read_noise_e: 1.6    # DynamicRange (16-bit). See the mode block.
+    dark_e_per_s: 3.0   # ⚠ across-mode MAXIMUM (Speed mode), used as a conservative
+                        # bound because optics.components.DetectorMode has no
+                        # dark-current field yet. Per-mode values are in the mode
+                        # block. At every practical exposure here dark charge is
+                        # <0.25 e-, i.e. negligible against read noise either way.
+    interface:
+      available: ["PCI-Express Gen 3", "USB 3.2 gen2 10 Gbps"]
+      installed: PCIe   # 2026-08-19 user confirmation
+      usb_sustained_mb_s: 815    # ≈, derived from the speed table below, not a datasheet
+                                 # figure: 2400x2400 at 142 fps x 1 B/px (Speed) and at
+                                 # 71 fps x 2 B/px (Dynamic Range) both land on ~818 MB/s
+    verified: true
+    verified_date: 2026-08-19
+    source: >
+      Photometrics Kinetix22 CMOS Camera Datasheet, Revision Date 2024-10-21
+      (Teledyne Photometrics). Cross-checked against Kinetix22 sCMOS Camera
+      Datasheet Rev A3-05112021 — see the line-time warning in `note`.
+    note: >
+      This is the installed camera: 2026-08-19 user confirmation, Kinetix22 x2
+      on PCIe. It matches the Nikon quote (2024-09-29 #REDACTED, part 77018310),
+      so the "quote says Kinetix22, current.md says Kinetix" discrepancy recorded
+      in reference/quotes/ is resolved in favour of the quote — the device
+      *labels* in MM just read "Kinetix".
+
+      ⚠ DO NOT USE Rev A3-05112021's Line Time row (5 / 0.836 / 4.71 / 80.12
+      us/line). Those values are the *Kinetix* (3200-row) full-frame readout
+      divided by 2400 rows, i.e. too large by exactly 3200/2400 = 4/3, and they
+      contradict the frame-rate row in the same document. Rev 2024-10-21 corrects
+      them to 3.749 / 0.625 / 3.5312 / 60.1 us/line, which agree with the
+      Kinetix's per-row values — the line time is a per-row constant shared by
+      both bodies. Believing the old row underestimates every frame rate by 25%.
+
+      ⚠ Quantization noise is negligible in ALL FOUR modes here
+      (conversion gain / sqrt(12) = 0.066 / 0.245 / 0.072 / 0.004 e-), so
+      docs/06-pitfalls.md C2 — "12-bit mode swamps read noise" — is a
+      **Prime95B-specific** finding and must NOT be carried over to this camera.
+      The Prime95B's 12-bit mode had 15.14 e-/ADU because its full well is
+      62,000 e-; the Kinetix22's 12-bit Sensitivity mode has 0.25 e-/count
+      because its full well is 1,000 e-. The mode choice on this camera is a
+      **full-well/saturation** decision, not a quantization one:
+      Sensitivity saturates at 1,000 e- (0.7 x -> 700 e- usable), while
+      Dynamic Range gives 15x the headroom for 111 vs 118 fps. Speed mode's
+      ~200 e- well saturates almost immediately.
+
+      Internal consistency check (all four modes): 2**bit_depth x conversion gain
+      = 15073 / 218 / 1024 / 983 e- vs the stated 15000 / 200 / 1000 / 1000.
+      So detection.photometry.quantization_noise_e, which derives e-/ADU as
+      full_well / 2**bits, reproduces the vendor's conversion gain — the two
+      numbers are not independent inputs.
+
+      QE CURVE IS BORROWED — one-time exception, authorized by the user
+      2026-08-19. The Kinetix22 datasheet carries a QE graph only (200-1100 nm,
+      no data points) and this PC cannot render the PDF to digitize it, so the
+      `qe_curve` below is the **Kinetix** entry's curve, itself read off that
+      body's graph by eye. Normally this file refuses to borrow another body's
+      spec; the exception was granted because the alternative — a flat 0.95 at
+      every wavelength — is worse in the one direction that matters here, the
+      red, where a BSI sCMOS falls 20-30% below peak.
+
+      Two things keep the borrow honest:
+        · `qe_verified: false`, which as of 2026-08-19 the loader actually
+          honours (optics/components.py Detector.from_spec). The curve therefore
+          reports `measured: false`, lands in the gate's `assumed_inputs` as
+          "Kinetix22 QE curve", and cannot earn `advances`. Before that fix an
+          inline curve was unconditionally `measured=True` — an eyeballed curve
+          was buying evidence it had not earned.
+        · The two bodies are not arbitrary neighbours: both are 6.5 um
+          back-illuminated Kinetix-family sensors with the same stated peak QE,
+          so the *shape* is a defensible estimate even though the part numbers
+          differ (GSENSE6510 here). That is an argument for a good estimate, not
+          for calling it measured.
+
+      To retire the borrow: digitize the Rev 2024-10-21 graph
+      (manual/Camera/), or ask Photometrics for the curve as CSV, then set
+      `qe_verified: true`.
+
+    # BORROWED from the Kinetix entry above, verbatim — see `note`. Read off the
+    # *Kinetix* datasheet graph by eye, against the grid lines only
+    # (200/300/.../1100 nm, 0/10/.../100%); fine structure between them, such as
+    # the double peak near 380-430 nm, is not represented.
+    #
+    # Not rescaled, deliberately. This curve peaks at 0.97 while the Kinetix22
+    # datasheet states 95%; the 2% gap sits well inside the error of reading a
+    # graph by eye, so normalizing the peak would imply a precision neither
+    # source has and would break traceability back to "the Kinetix graph".
+    # `qe_peak: 0.95` above stays as the Kinetix22's own documented figure and is
+    # what gets used if this curve is ever removed.
+    qe_curve:
+      "200": 0.22
+      "300": 0.30
+      "400": 0.40
+      "450": 0.85
+      "500": 0.95
+      "550": 0.97
+      "600": 0.96
+      "650": 0.90
+      "700": 0.80
+      "750": 0.68
+      "800": 0.55
+      "850": 0.42
+      "900": 0.30
+      "950": 0.20
+      "1000": 0.13
+      "1100": 0.05
+    qe_verified: false   # ⚠ load-bearing as of 2026-08-19: Detector.from_spec now
+                         # reads this, so the curve reports measured=false, shows up
+                         # in the gate's assumed_inputs, and cannot earn `advances`.
+                         # Set true ONLY for a real digitization of the Kinetix22
+                         # graph or a vendor CSV.
+
+    # Rev 2024-10-21 "CAMERA MODES" table, transcribed verbatim. bit_depth,
+    # read noise, full well, conversion gain, dark current and line time all move
+    # together, so they are one block per mode.
+    modes:
+      DynamicRange:
+        bit_depth: 16
+        read_noise_e: 1.6
+        full_well_e: 15000
+        conversion_gain_e_per_count: 0.23
+        dark_e_per_s: 1.27
+        cooling_c: 0
+        line_time_us: 3.749
+        frame_rate_fps_full_frame: {pcie: 111, usb: 71}
+        note: "Widest dynamic range: 15000/1.6 ~ 9400:1. The default choice whenever a bright object shares the frame with a dim one."
+      Speed:
+        bit_depth: 8
+        read_noise_e: 2.0
+        full_well_e: 200
+        conversion_gain_e_per_count: 0.85
+        dark_e_per_s: 3.0
+        cooling_c: 0
+        line_time_us: 0.625
+        frame_rate_fps_full_frame: {pcie: 664, usb: 142}
+        note: "Fastest (664 fps full frame on PCIe) but the ~200 e- full well leaves ~140 e- usable under the 0.7 rule — G6 will clip on anything bright."
+      Sensitivity:
+        bit_depth: 12
+        read_noise_e: 1.2
+        full_well_e: 1000
+        conversion_gain_e_per_count: 0.25
+        dark_e_per_s: 1.03
+        cooling_c: 0
+        line_time_us: 3.5312   # ← MEASURED independently: kb/calibrations/camera-readout.yaml
+        frame_rate_fps_full_frame: {pcie: 118, usb: 94}
+        note: >
+          CMS (correlated multi-sampling). This is the mode the 2026-08-12
+          readout measurement was taken in: 8,475,000 ns / 2400 rows =
+          3531.2 ns/row matches this line time to 5 significant figures, and
+          8.475 ms full-frame readout is exactly the 118 fps stated here.
+      SubElectron:
+        bit_depth: 16
+        read_noise_e: 0.7
+        full_well_e: 1000
+        conversion_gain_e_per_count: 0.015
+        dark_e_per_s: 0.477
+        cooling_c: 0
+        line_time_us: 60.1
+        frame_rate_fps_full_frame: {pcie: 6.9, usb: 6.9}
+        note: >
+          8x CMS. EMCCD-like 0.7 e- read noise, but 60.1 us/line makes full
+          frame 6.9 fps — 17x slower than Dynamic Range for 2.3x less read
+          noise. Only worth it when photon-starved AND slow.
+
+    # Rev 2024-10-21 "KINETIX22 SPEED TABLE". Rows are ROI height (columns are
+    # fixed at 2400 except the last row) — docs/06-pitfalls.md C3 is confirmed by
+    # the vendor's own numbers: 2400x512 and 512x512 give identical frame rates in
+    # every mode, so narrowing the width buys nothing.
+    frame_rate_by_roi_fps:
+      note: >
+        Key = 'WxH'. Every mode is prefixed on purpose — unlike the Kinetix entry
+        above there is no bare `pcie`/`usb` pair here, because privileging one
+        mode's number in a camera whose modes span 664 -> 6.9 fps is how the wrong
+        frame rate gets quoted. A consumer that wants "the" frame rate has to say
+        which mode.
+      "2400x2400": {dr_pcie: 111, dr_usb: 71,  speed_pcie: 663,  speed_usb: 142,  sens_pcie: 118, sens_usb: 94,  subelectron_pcie: 6.9,  subelectron_usb: 6.9}
+      "2400x2304": {dr_pcie: 116, dr_usb: 74,  speed_pcie: 691,  speed_usb: 146,  sens_pcie: 123, sens_usb: 99,  subelectron_pcie: 7.2,  subelectron_usb: 7.2}
+      "2400x2048": {dr_pcie: 130, dr_usb: 83,  speed_pcie: 777,  speed_usb: 166,  sens_pcie: 138, sens_usb: 111, subelectron_pcie: 8.1,  subelectron_usb: 8.1}
+      "2400x1200": {dr_pcie: 222, dr_usb: 142, speed_pcie: 1320, speed_usb: 282,  sens_pcie: 236, sens_usb: 188, subelectron_pcie: 13.9, subelectron_usb: 13.9}
+      "2400x512":  {dr_pcie: 520, dr_usb: 330, speed_pcie: 3053, speed_usb: 650,  sens_pcie: 551, sens_usb: 437, subelectron_pcie: 32.3, subelectron_usb: 32.3}
+      "512x512":   {dr_pcie: 520, dr_usb: 520, speed_pcie: 3053, speed_usb: 2766, sens_pcie: 551, sens_usb: 551, subelectron_pcie: 32.3, subelectron_usb: 32.3}
+
+    # Where detection.timing.readout_time_s stops being trustworthy. Comparing
+    # `line_time_us x rows` against the PCIe column above and the line-scan table
+    # below (Rev 2024-10-21, PCIe, firmware 30.32.1):
+    #   >= 1200 rows   model within 1% (all 4 modes)   -> use it
+    #      512 rows    within 2.4% (worst: Speed)      -> use it
+    #       64 rows    2-30% optimistic (worst: Sub-E) -> use with a note
+    #     <= 16 rows   6-650% optimistic (worst: Speed at 2 rows, 800k vs 107k)
+    #                                                 -> DO NOT use; the camera
+    #                                                    caps near 107 kfps
+    # G9 has no such envelope today and will happily report 800 kfps for a
+    # 2-row ROI. Microrheology ROIs (~100-400 rows) sit safely inside the good
+    # region.
+    readout_model_validity:
+      good_above_rows: 512
+      caution_below_rows: 64
+      hard_cap_fps_speed_mode: 107200
+    line_scan_frame_rate_pcie_hz:
+      note: >
+        Realigned from a text extraction of the PDF (the label and value columns
+        interleave), then checked against `line_time_us x rows` for monotonicity
+        and sign — every entry is at or below the model, as physics requires.
+        Worth a visual re-read of the PDF before quoting these to anyone.
+      "2400x64": {dynamic_range: 4100,  speed: 21100,  sensitivity: 4300,  sub_electron: 200}
+      "2400x32": {dynamic_range: 8100,  speed: 36400,  sensitivity: 8300,  sub_electron: 500}
+      "2400x16": {dynamic_range: 15700, speed: 57100,  sensitivity: 15700, sub_electron: 800}
+      "2400x8":  {dynamic_range: 29600, speed: 80000,  sensitivity: 28300, sub_electron: 1400}
+      "2400x4":  {dynamic_range: 53300, speed: 99400,  sensitivity: 47200, sub_electron: 2100}
+      "2400x2":  {dynamic_range: 88900, speed: 107200, sensitivity: 77200, sub_electron: 2700}
+
+    # Lens 2 owns `trigger` (docs/05 §5) but has no check for it. These are the
+    # options that check would have to reason about. Straight from Rev 2024-10-21.
+    triggering:
+      input_modes:
+        trigger_first: "Sequence triggered on first rising edge"
+        level_trigger: "Exposure time is controlled by length of high trigger signal"
+        edge_trigger: "Each frame in sequence triggered by rising edge"
+        smart_streaming: "Fast iteration through multiple exposure times; works with the four trigger-out cables to drive multiple light sources at multiple exposure times"
+      output_modes:
+        any_row: "Expose signal high while any row is acquiring data"
+        first_row: "Expose signal high while first row is acquiring data"
+        line_output: "Rising edge for each row advanced by the rolling-shutter readout"
+      effective_global_shutter_modes:
+        all_rows: "Expose out high for exposure time — keeps exposure time, drops frame rate"
+        rolling_shutter: "Expose out high for (exposure time - readout time) — keeps frame rate, drops exposure time"
+      output_signals: "Expose Out (up to four), Read Out, Trigger Ready"
 
   Prime95B:
     model: "Photometrics Prime 95B 25mm"

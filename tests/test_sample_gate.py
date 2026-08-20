@@ -169,12 +169,179 @@ def test_water_objective_beats_oil_on_mismatch_at_the_same_depth():
     )
 
 
+# --------------------------------------------- G16b depth in chamber -------
+
+
+def test_depth_in_chamber_is_skipped_without_a_chamber_height():
+    """HARD in character, but a missing chamber height must not BLOCK the gate
+    -- the Check is registered with no `requires` precisely so that an absent
+    answer skips instead of taking the whole lens down."""
+    v = evaluate(_setup())
+    assert v.status != "BLOCKED"
+    assert v.metrics["geometry.depth_in_chamber"]["evaluated"] is False
+    assert v.margins["geometry.depth_in_chamber"] == 10.0
+
+
+def test_focusing_past_the_chamber_wall_fails_hard():
+    """20 um of sample, 40 um focal depth: what comes into focus is the far
+    wall. No other lens notices -- stability holds chamber_height_um but spends
+    it only on the sedimentation flag.
+
+    Note the status is FAIL even though `bottleneck` names ri_mismatch (0.25 at
+    40 um beats G16b's 0.50). That is the hard-gate rule: any HARD check under
+    1.0 forces FAIL regardless of which margin is numerically worst.
+    """
+    v = evaluate(_setup(imaging_depth_um=40.0, chamber_height_um=20.0))
+    assert v.status == "FAIL"
+    assert v.margins["geometry.depth_in_chamber"] == pytest.approx(0.5)
+    assert any(
+        f.code == "geometry.depth_in_chamber" and f.severity == "fail"
+        for f in v.findings
+    )
+
+
+def test_the_chamber_can_be_the_bottleneck_on_an_index_matched_objective():
+    """With G17 out of the way, G16b is what decides the grade."""
+    v = evaluate(
+        _setup(objective_kw=WATER_40X, imaging_depth_um=40.0, chamber_height_um=20.0)
+    )
+    assert v.status == "FAIL"
+    assert v.bottleneck == "geometry.depth_in_chamber"
+    assert v.feasibility == "HARD"  # margin 0.5
+
+
+def test_a_chamber_taller_than_the_focal_depth_passes():
+    v = evaluate(_setup(imaging_depth_um=5.0, chamber_height_um=100.0))
+    m = v.metrics["geometry.depth_in_chamber"]
+    assert m["evaluated"] is True
+    assert m["headroom_um"] == pytest.approx(95.0)
+    assert v.margins["geometry.depth_in_chamber"] == 10.0  # 100/5, clamped
+
+
+def test_an_unspaced_mount_says_so_instead_of_skipping_quietly():
+    """KH 2026-08-20: this lab's samples usually have no spacer, so there is no
+    designed thickness to ask for. That is a different statement from "nobody
+    looked it up", and it belongs in findings."""
+    v = evaluate(_setup(unspaced_mount=True))
+    m = v.metrics["geometry.depth_in_chamber"]
+    assert m["evaluated"] is False
+    assert m["unspaced_mount"] is True
+    f = next(x for x in v.findings if x.code == "geometry.depth_in_chamber")
+    assert f.severity == "info"  # visible, but does not touch the grade
+    assert "wedge" in f.message
+    assert v.status == "PASS"  # info findings do not downgrade status
+
+
+def test_an_unspaced_height_is_flagged_as_one_preparations_thickness():
+    v = evaluate(_setup(imaging_depth_um=5.0, chamber_height_um=20.0, unspaced_mount=True))
+    f_ok = v.metrics["geometry.depth_in_chamber"]
+    assert f_ok["evaluated"] is True
+    assert f_ok["unspaced_mount"] is True
+    assert v.margins["geometry.depth_in_chamber"] == pytest.approx(4.0)
+
+
+def test_focusing_exactly_at_the_far_wall_is_allowed():
+    """Imaging the top interface is a real experiment; margin 1.0 says no
+    headroom, not impossible."""
+    v = evaluate(_setup(imaging_depth_um=20.0, chamber_height_um=20.0))
+    assert v.margins["geometry.depth_in_chamber"] == pytest.approx(1.0)
+    assert not any(f.code == "geometry.depth_in_chamber" for f in v.findings)
+
+
+# ------------------------------------------------ G16c near-wall drag -------
+
+
+def test_wall_drag_bound_reproduces_the_pitfall_table():
+    """docs/06 D8 tabulates the Faxen drag penalty for a 4 um bead (a = 2 um).
+    G16c must land on the same numbers, or one of the two is wrong."""
+    expected = {5.0: 0.290, 10.0: 0.127, 20.0: 0.060, 50.0: 0.023}
+    for h, penalty in expected.items():
+        v = evaluate(_setup(imaging_depth_um=h, particle_radius_um=2.0))
+        m = v.metrics["geometry.wall_drag"]
+        assert m["drag_penalty_upper_bound"] == pytest.approx(penalty, abs=5e-4)
+
+
+def test_a_trap_absorbs_the_wall_drag_so_it_reports_as_info():
+    """KH 2026-08-20: measurements are mainly trapped. D8's in-situ
+    power-spectrum calibration at the working height returns kappa and the
+    wall-corrected drag together, so the bound is reported, not charged."""
+    v = evaluate(_setup(imaging_depth_um=5.0, particle_radius_um=2.0, trapped=True))
+    assert v.margins["geometry.wall_drag"] == 10.0
+    assert v.metrics["geometry.wall_drag"]["trapped"] is True
+    assert not any(f.code == "geometry.wall_drag" for f in v.findings)
+
+
+def test_untrapped_past_the_screening_limit_warns_with_the_bound():
+    v = evaluate(_setup(imaging_depth_um=5.0, particle_radius_um=2.0, trapped=False))
+    m = v.metrics["geometry.wall_drag"]
+    assert m["d_suppression_upper_bound"] == pytest.approx(0.225)
+    f = next(x for x in v.findings if x.code == "geometry.wall_drag")
+    assert f.severity == "warn"
+    assert f.kind == "bias"
+    assert "at most" in f.message or "up to" in f.message
+
+
+def test_untrapped_far_from_the_wall_passes_on_the_bound():
+    """The bound falls as 1/h, so depth is the lever. 30 um -> 3.8%."""
+    v = evaluate(_setup(imaging_depth_um=30.0, particle_radius_um=2.0, trapped=False))
+    assert v.margins["geometry.wall_drag"] == pytest.approx(2.667, abs=1e-3)
+    assert not any(f.code == "geometry.wall_drag" for f in v.findings)
+
+
+def test_inside_the_expansion_domain_no_bound_is_offered():
+    """h <= a is outside the Faxen expansion. Returning a big number there
+    would be fiction; the check says 'unquantified' instead."""
+    v = evaluate(_setup(imaging_depth_um=1.0, particle_radius_um=2.0, trapped=False))
+    f = next(x for x in v.findings if x.code == "geometry.wall_drag")
+    assert "no bound is available" in f.message
+    assert "d_suppression_upper_bound" not in v.metrics["geometry.wall_drag"]
+
+
+def test_wall_drag_is_skipped_without_a_particle_radius():
+    v = evaluate(_setup())
+    assert v.metrics["geometry.wall_drag"]["evaluated"] is False
+    assert v.status != "BLOCKED"
+
+
 # ----------------------------------------------------- G18 coverslip -------
 
 
 def test_coverslip_within_tolerance_passes():
     v = evaluate(_setup(coverslip_actual_um=172.0))
     assert v.margins["geometry.coverslip"] >= 1.0
+
+
+def test_unmeasured_coverslip_falls_back_to_the_lab_glass_not_the_design():
+    """KH 2026-08-20: this lab mounts 170 um, which matches every objective's
+    design thickness, so G18 passes on the fallback.
+
+    The fallback still goes through LAB_DEFAULT_COVERSLIP_UM rather than the
+    objective's design value. The two coincide today, so this asserts the
+    provenance rather than a different number: an objective added later with a
+    different design thickness must report a real deviation, not zero.
+    """
+    v = evaluate(_setup(coverslip_actual_um=None))
+    m = v.metrics["geometry.coverslip"]
+    assert m["coverslip_actual_um"] == 170.0
+    assert m["coverslip_design_um"] == 170.0
+    assert m["measured"] is False
+    assert v.margins["geometry.coverslip"] == 10.0  # deviation 0
+
+
+def test_the_nominal_coverslip_still_withholds_advance_on_evidence_alone():
+    """G18 passes, but a nominal product thickness is not a micrometer reading,
+    so evidence stays assumed and that alone blocks advancing. This is the
+    whole remaining cost of an unmeasured coverslip -- the gate itself is
+    content."""
+    v = evaluate(_setup(coverslip_actual_um=None))
+    # PASS, not PASS_WITH_CHANGES: evidence.assumed is an *info* finding, and
+    # only fail/warn downgrade the status. This is the two-axis rule doing its
+    # job -- status says the physics is sound, evidence says nobody measured it,
+    # and advancing needs both.
+    assert v.status == "PASS"
+    assert v.evidence == "assumed"
+    assert v.advances is False
+    assert not any(f.code == "geometry.coverslip" for f in v.findings)
 
 
 def test_coverslip_beyond_tolerance_warns():
@@ -212,6 +379,38 @@ def test_count_in_field_reports_a_count_when_supplied():
     m = v.metrics["geometry.count_in_field"]
     assert m["evaluated"] is True
     assert m["expected_count"] == 50.0  # 1e9/mL x 100x100x5 um
+    # No emission wavelength to size a DOF, so the whole column is used and
+    # the count is flagged as an upper bound.
+    assert m["axial_extent_source"] == "imaging_depth"
+
+
+def test_count_uses_the_depth_of_field_when_an_emission_line_is_known():
+    """The count feeds lens 6's G11, so the axial extent must not be the
+    imaging depth by default -- validity/setup.py::resolved_n_particles would
+    inherit an overestimate of statistical power."""
+    common = dict(concentration_per_ml=1e9, field_width_um=100.0, field_height_um=100.0)
+    column = evaluate(_setup(**common)).metrics["geometry.count_in_field"]
+    dof = evaluate(_setup(emission_nm=668.0, **common)).metrics["geometry.count_in_field"]
+
+    assert dof["axial_extent_source"] == "depth_of_field"
+    # 100x NA 1.45 oil at 668 nm is a ~0.48 um DOF against a 5 um imaging depth
+    assert dof["axial_extent_um"] == pytest.approx(0.482, abs=0.01)
+    assert dof["expected_count"] < column["expected_count"] / 10
+
+
+def test_an_explicit_observed_slab_wins_over_both_fallbacks():
+    v = evaluate(
+        _setup(
+            emission_nm=668.0,
+            observed_slab_um=1.0,
+            concentration_per_ml=1e9,
+            field_width_um=100.0,
+            field_height_um=100.0,
+        )
+    )
+    m = v.metrics["geometry.count_in_field"]
+    assert m["axial_extent_source"] == "explicit"
+    assert m["expected_count"] == pytest.approx(10.0)  # 1e9/mL x 100x100x1 um
 
 
 def test_dense_suspension_warns_about_overlap():
@@ -235,11 +434,18 @@ def test_count_in_field_never_blocks_the_gate():
 # ---------------------------------------------------------- evidence ------
 
 
-def test_defaulted_sample_index_downgrades_evidence():
+def test_defaulted_sample_index_no_longer_downgrades_evidence():
+    """1.333 was confirmed 2026-08-19, so the fallback is not an assumption.
+
+    Inverts the original test: leaving n_sample unset used to force
+    evidence: assumed. The media the default does not cover still BLOCK in
+    Phase 0 (see the multiphase/birefringent tests), which is what keeps this
+    from being a silent substitution.
+    """
     v = evaluate(_setup(n_sample=None))
-    assert v.evidence == "assumed"
-    assert v.advances is False
-    assert any("refractive index" in a for a in v.assumed_inputs)
+    assert v.evidence == "measured"
+    assert v.advances is True
+    assert not any("refractive index" in a for a in v.assumed_inputs)
 
 
 def test_unmeasured_coverslip_downgrades_evidence():

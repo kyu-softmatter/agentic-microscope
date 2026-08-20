@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from .power import relative_error, required_particles, required_sample_product
+from .setup import UNCORRECTABLE
 
 if TYPE_CHECKING:
     from .setup import ValiditySetup
@@ -163,17 +164,46 @@ def check_bias_ledger(setup: "ValiditySetup") -> CheckResult:
     gates; this is the meta-check that they were all dealt with, and its failure
     means the intended physical quantity does not survive the setting. That is a
     veto on this lens's entire purpose, not one more correctable bias.
+
+    Two things it does beyond counting:
+
+    - **It scopes.** Only the biases that damage this quantity are judged
+      (`BIAS_SCOPE`), so a session can report a biased MSD and a sound intensity
+      profile instead of one collapsed status. Out-of-scope biases are named in
+      the message rather than dropped -- they still stand against the
+      quantities they do damage.
+    - **It checks the declaration.** A code in `UNCORRECTABLE` is not cleared by
+      declaring it; there is no such correction to have applied. A code in
+      neither registry is accepted but costs the verdict its `measured` grade,
+      because nobody has audited it.
     """
     all_bias = setup.bias_findings()
+    applicable = setup.applicable_bias_findings()
+    out_of_scope = setup.out_of_scope_bias_findings()
     uncorrected = setup.uncorrected_bias_findings()
+    false_claims = setup.falsely_corrected_bias_findings()
+    unverified = setup.unverified_corrections()
 
     numbers = {
         "bias_findings": len(all_bias),
-        "corrected": len(all_bias) - len(uncorrected),
+        "applicable": len(applicable),
+        "out_of_scope_codes": [f.code for f in out_of_scope],
+        "corrected": len(applicable) - len(uncorrected),
         "uncorrected": len(uncorrected),
         "uncorrected_codes": [f.code for f in uncorrected],
+        "false_correction_codes": [f.code for f in false_claims],
+        "unverified_correction_codes": unverified,
         "corrections_declared": sorted(setup.corrections_applied),
     }
+
+    scoped_note = ""
+    if out_of_scope:
+        scoped_note = (
+            f" {len(out_of_scope)} further bias "
+            + ("finding does" if len(out_of_scope) == 1 else "findings do")
+            + f" not touch '{setup.intended_quantity}' "
+            f"({', '.join(f.code for f in out_of_scope)})."
+        )
 
     if not all_bias:
         return _ok(
@@ -185,15 +215,31 @@ def check_bias_ledger(setup: "ValiditySetup") -> CheckResult:
             **numbers,
         )
 
-    if not uncorrected:
+    if not applicable:
         return _ok(
             "validity.bias_ledger",
             HARD,
             MAX_MARGIN,
-            f"All {len(all_bias)} upstream bias findings have a declared, "
-            "applied correction.",
+            f"None of the {len(all_bias)} upstream bias findings damage "
+            f"'{setup.intended_quantity}': "
+            f"{', '.join(f.code for f in out_of_scope)}. They still stand "
+            "against the quantities they do damage -- judge those separately.",
             **numbers,
         )
+
+    if not uncorrected:
+        msg = (
+            f"All {len(applicable)} bias findings that bear on "
+            f"'{setup.intended_quantity}' have a correction that exists and was "
+            "declared applied." + scoped_note
+        )
+        if unverified:
+            msg += (
+                f" No correction is registered for {', '.join(unverified)}, "
+                "though, so that clearance is unaudited and the verdict cannot "
+                "be `measured`."
+            )
+        return _ok("validity.bias_ledger", HARD, MAX_MARGIN, msg, **numbers)
 
     margins = [
         f.margin for f in uncorrected if getattr(f, "margin", None) is not None
@@ -202,18 +248,38 @@ def check_bias_ledger(setup: "ValiditySetup") -> CheckResult:
     worst = ", ".join(f"{f.lens}:{f.code}" for f in uncorrected[:4])
     more = f" (+{len(uncorrected) - 4} more)" if len(uncorrected) > 4 else ""
 
+    message = (
+        f"{len(uncorrected)} of the {len(applicable)} bias findings that bear on "
+        f"'{setup.intended_quantity}' are uncorrected: {worst}{more}. The "
+        "quantity carries those biases into the result." + scoped_note
+    )
+    action = (
+        "For each one either apply a correction and declare its code in "
+        "corrections_applied, or change the setting so the bias does not arise."
+    )
+
+    if false_claims:
+        named = ", ".join(
+            f"{f.code} ({UNCORRECTABLE[f.code]})" for f in false_claims
+        )
+        message = (
+            f"A correction was declared for {len(false_claims)} bias "
+            f"{'finding' if len(false_claims) == 1 else 'findings'} that has no "
+            f"correction: {named}. " + message
+        )
+        action = (
+            "Withdraw the false declaration -- there is no such correction to "
+            "have applied, and naming it would otherwise have made this ledger "
+            "read clean. " + action
+        )
+
     return CheckResult(
         "validity.bias_ledger",
         HARD,
         margin,
         "fail",
-        f"{len(uncorrected)} of {len(all_bias)} upstream bias findings have no "
-        f"declared correction: {worst}{more}. The intended quantity carries "
-        "those biases into the result.",
-        action="For each one either apply a correction and declare its code in "
-        "corrections_applied, or change the setting so the bias does not arise. "
-        "Declaring a correction that is not actually applied is the failure "
-        "this gate exists to catch.",
+        message,
+        action=action,
         numbers=numbers,
     )
 

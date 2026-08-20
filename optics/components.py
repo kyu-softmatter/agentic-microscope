@@ -388,19 +388,33 @@ class Detector:
 
     @classmethod
     def from_spec(cls, label: str, spec: dict[str, Any]) -> "Detector":
+        # `qe_verified` was written into data/detectors.yaml from the start but was
+        # never read here, so an inline curve typed in by hand -- every one of ours
+        # was read off a datasheet *graph* by eye -- arrived as measured=True and
+        # therefore never appeared in the gate's `assumed_inputs`
+        # (optics/gate.py:208). An eyeballed curve was silently earning
+        # `advances`, which is exactly what docs/01 Principle 1 and
+        # docs/06-pitfalls.md E3 exist to prevent. An inline dict now has to say
+        # `qe_verified: true` to claim measured; the default is False, because
+        # silence about an unknown is how a recommender becomes dangerous.
+        verified = spec.get("qe_verified")
         if curve := spec.get("qe_curve"):
             if isinstance(curve, dict):
                 qe = Spectrum.from_curve(
                     [float(k) for k in curve],
                     list(curve.values()),
                     f"{label}.QE",
-                    measured=True,
+                    measured=bool(verified),
                 )
             else:
                 p = Path(curve)
                 qe = Spectrum.from_file(
                     p if p.is_absolute() else SPECTRA_DIR / curve, f"{label}.QE"
                 )
+                # A file can be an eyeball digitization too; an explicit
+                # `qe_verified: false` overrides from_file's optimism.
+                if verified is False:
+                    qe.measured = False
         else:
             qe = Spectrum.constant(float(spec.get("qe_peak", 0.8)), f"{label}.QE")
             qe.measured = False

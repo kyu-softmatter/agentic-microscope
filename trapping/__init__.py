@@ -20,9 +20,18 @@ dial and power-splitting across simultaneous traps.
 
 Committee-gate schema (``Check`` / ``CheckResult`` / ``Verdict``) now mirrors
 ``optics.gate`` (docs/08 "The same structure is used for the other lenses").
-Still not covered:
-Janus/coated beads, ellipsoids, birefringent LC droplets (only ``GOA_ab.m``
-is ported), and a measured dial%->mW calibration curve.
+
+Not covered because nobody has ported it yet: Janus/coated beads, ellipsoids,
+birefringent LC droplets (only ``GOA_ab.m`` is ported).
+
+Not covered **by decision** (2026-08-19,
+kb/decisions/2026-08-19-lens-7-scope.md) -- do not add these back as "fixes":
+
+* local heating at 1064 nm (deliberately ungated, docs/06 D6)
+* Faxen near-wall drag (absorbed by in-situ calibration, docs/06 D8)
+* non-water media (water viscosity table only; pass a measured value)
+* a measured dial%->mW calibration curve (deferred with all laser power
+  measurement, so every verdict here stays ``evidence: assumed``)
 """
 
 from .checks import CHECKS, Check, CheckResult

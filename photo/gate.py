@@ -9,6 +9,12 @@ in data/light_sources.yaml. So this lens BLOCKS on the real instrument today,
 and that is the correct answer rather than a shortcoming: a percent setting in
 the metadata is not a physical quantity, and docs/04 §9 marks G10 BLOCKED for
 exactly this reason.
+
+Two axes, and the difference matters. A missing *number* blocks (Phase 0). A
+missing *answer* -- has anyone checked whether this sample responds to the
+light, does k_ex carry the real spectral overlap -- lands in
+``assumed_inputs``, which costs the verdict ``advances`` while still letting it
+say everything else it can. Neither one is ever substituted with a guess.
 """
 
 from __future__ import annotations
@@ -100,10 +106,14 @@ def _missing_inputs(setup: IlluminationSetup) -> list[Finding]:
                 "this lens is undefined. The metadata's percent setting is not "
                 "a physical quantity and does not transfer between "
                 "instruments.",
-                action="Measure sample-plane power with a power meter at each "
-                "level setting and record it in "
-                "data/light_sources.yaml > power_at_sample_mw. This is the "
-                "project's top blocker -- it cannot be computed, only measured.",
+                action="Supply a measured mW for this evaluation, or accept "
+                "that every dose number stays relative. The registry fix is "
+                "sample-plane power per level in "
+                "data/light_sources.yaml > power_at_sample_mw, which can only "
+                "be measured, never computed -- but all laser power "
+                "measurement is deferred by decision (user, 2026-08-19, "
+                "docs/07 Phase 0), so this is not being proposed as the next "
+                "task. Until it lands, BLOCKED here is the honest answer.",
             )
         )
 
@@ -147,7 +157,7 @@ def _missing_inputs(setup: IlluminationSetup) -> list[Finding]:
             )
         )
 
-    if setup.photoresponsive and setup.light_driving_threshold_w_cm2 is None:
+    if setup.photoresponsive is True and setup.light_driving_threshold_w_cm2 is None:
         out.append(
             Finding(
                 "fail",
@@ -166,11 +176,29 @@ def _missing_inputs(setup: IlluminationSetup) -> list[Finding]:
 
 
 def _assumed_inputs(setup: IlluminationSetup) -> list[str]:
+    """What this verdict had to stand in for -- each entry costs it `advances`.
+
+    Unconfirmed photoresponsiveness belongs here rather than in Phase 0. It is
+    not a missing number, it is a missing answer, and the lens can still say
+    everything else it has to say; what it must not do is let the silence read
+    as a clearance (docs/06 D2).
+    """
     out: list[str] = []
     if setup.quantum_yield is None:
         out.append("quantum yield (absent, so emitted photons cannot be scaled)")
     if setup.frame_interval_ms is None:
         out.append("frame interval (duty cycle not computed)")
+    if setup.photoresponsive is None:
+        out.append(
+            "sample photoresponsiveness (never asked, so light-driving is "
+            "unconfirmed rather than cleared)"
+        )
+    if setup.excitation_coupling_assumed:
+        out.append(
+            "spectral overlap coupling (no channel supplied, so k_ex assumes "
+            "the line sits on the absorption peak -- an upper bound, which "
+            "makes G10 and G20 stricter than the instrument warrants)"
+        )
     return sorted(set(out))
 
 
@@ -244,8 +272,8 @@ def evaluate(setup: IlluminationSetup) -> Verdict:
                 "info",
                 "evidence.assumed",
                 "This verdict used assumed values for: " + ", ".join(assumed) + ".",
-                action="Fill in the dye's quantum yield and the frame interval "
-                "and re-run.",
+                action="Supply the items listed above and re-run. Each one on "
+                "its own is enough to keep this lens from advancing.",
                 kind=INFO,
             )
         )

@@ -10,9 +10,9 @@ gives it "G11 + final review of every bias gate".
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 
-from .checks import BIAS, CHECKS, GRADE_NOTES, HARD, INFO, SOFT, CheckResult, available_facts, grade, meets_grade
+from .checks import BIAS, CHECKS, GRADE_NOTES, GRADE_ORDER, HARD, INFO, SOFT, CheckResult, available_facts, grade, meets_grade
 from .setup import ValiditySetup
 
 LENS = "validity"
@@ -28,6 +28,10 @@ class Finding:
     lens: str = LENS
     kind: str | None = None  # hard | bias | soft | info
     margin: float | None = None
+    #: Which intended physical quantity this finding belongs to, when several
+    #: were judged. ``None`` means it applies to all of them (committee
+    #: coverage, statistical power) or that only one quantity was judged.
+    physical_quantity: str | None = None
 
 
 @dataclass
@@ -113,7 +117,8 @@ def _missing_inputs(setup: ValiditySetup) -> list[Finding]:
                 "and flat-field is the reverse.",
                 action="State intended_quantity (position, diffusion, msd, "
                 "rheology, morphology, intensity, concentration, "
-                "stoichiometry, frap, colocalization, ...).",
+                "stoichiometry, frap, colocalization, ...), or "
+                "intended_quantities if the session is after more than one.",
             )
         )
     elif not setup.required_calibrations:
@@ -172,6 +177,11 @@ def _assumed_inputs(setup: ValiditySetup) -> list[str]:
             "particle count (taken from lens 4's G19 estimate, which rests on "
             "a stated concentration rather than a count of what is in frame)"
         )
+    for code in setup.unverified_corrections():
+        out.append(
+            f"correction for '{code}' (declared applied, but no correction is "
+            "registered for that bias, so the clearance is unaudited)"
+        )
     return sorted(set(out))
 
 
@@ -179,8 +189,128 @@ def _assumed_inputs(setup: ValiditySetup) -> list[str]:
 # evaluate
 # --------------------------------------------------------------------------
 
+#: Aggregate status when several quantities were judged. FAIL outranks BLOCKED
+#: because it is the actionable one -- "change the setting" against BLOCKED's
+#: "go measure". Neither advances, and the per-quantity table keeps both
+#: visible, so the ordering only decides the headline.
+_STATUS_RANK = {"PASS": 0, "PASS_WITH_CHANGES": 1, "BLOCKED": 2, "FAIL": 3}
+_CONFIDENCE_RANK = {"high": 0, "low": 1, "none": 2}
+
+
+def evaluate_per_quantity(setup: ValiditySetup) -> dict[str, Verdict]:
+    """One verdict per intended quantity, in stated order.
+
+    docs/05 Lens 6: the unit of verdict may be an individual physical quantity
+    rather than the channel. Motion blur ruins the MSD of a session whose
+    intensity profile is untouched, and one status cannot say that.
+    """
+    return {q: _evaluate_one(setup.for_quantity(q)) for q in setup.quantities}
+
 
 def evaluate(setup: ValiditySetup) -> Verdict:
+    """The committee-facing verdict.
+
+    With no quantity or exactly one, this is the single-quantity gate. With
+    several, it judges each separately and returns the aggregate -- every
+    per-quantity verdict stays in ``metrics["validity.per_quantity"]`` and each
+    finding is tagged with the quantity it belongs to, so nothing collapses.
+    """
+    quantities = setup.quantities
+    if not quantities:
+        return _evaluate_one(setup)
+    if len(quantities) == 1:
+        # Normalise, so a one-entry `intended_quantities` behaves exactly like
+        # the singular field rather than reading an unset `intended_quantity`.
+        return _evaluate_one(setup.for_quantity(quantities[0]))
+    return _combine(evaluate_per_quantity(setup))
+
+
+def _combine(per: dict[str, Verdict]) -> Verdict:
+    """Aggregate per-quantity verdicts without losing the split.
+
+    ``advances`` needs no special handling: an aggregate can only advance if
+    every quantity passed, every one was `measured`, and the worst grade is at
+    least TIGHT -- which is exactly "all of them advance".
+    """
+    status = max(
+        (v.status for v in per.values()), key=lambda s: _STATUS_RANK.get(s, 3)
+    )
+    evidence = (
+        "measured"
+        if all(v.evidence == "measured" for v in per.values())
+        else "assumed"
+    )
+    confidence = max(
+        (v.confidence for v in per.values()),
+        key=lambda c: _CONFIDENCE_RANK.get(c, 2),
+    )
+
+    grades = [v.feasibility for v in per.values()]
+    feasibility = (
+        "UNKNOWN"
+        if any(g not in GRADE_ORDER for g in grades)
+        else min(grades, key=GRADE_ORDER.index)
+    )
+
+    margins = {
+        f"{q}:{code}": m for q, v in per.items() for code, m in v.margins.items()
+    }
+    blocked = [q for q, v in per.items() if v.status == "BLOCKED"]
+    if blocked:
+        bottleneck = f"{blocked[0]}:blocked"
+    elif margins:
+        bottleneck = min(margins, key=lambda k: margins[k])
+    else:
+        bottleneck = None
+
+    # A finding identical across every quantity is quantity-independent
+    # (committee coverage, statistical power) -- emit it once, untagged, rather
+    # than repeating it per quantity.
+    counts: dict[tuple, int] = {}
+    for v in per.values():
+        for f in v.findings:
+            key = (f.code, f.message, f.severity)
+            counts[key] = counts.get(key, 0) + 1
+
+    findings: list[Finding] = []
+    emitted: set[tuple] = set()
+    for q, v in per.items():
+        for f in v.findings:
+            key = (f.code, f.message, f.severity)
+            if counts[key] == len(per):
+                if key in emitted:
+                    continue
+                emitted.add(key)
+                findings.append(replace(f, physical_quantity=None))
+            else:
+                findings.append(replace(f, physical_quantity=q))
+
+    metrics: dict = {q: v.metrics for q, v in per.items()}
+    metrics["validity.per_quantity"] = {
+        q: {
+            "status": v.status,
+            "feasibility": v.feasibility,
+            "evidence": v.evidence,
+            "advances": v.advances,
+            "bottleneck": v.bottleneck,
+        }
+        for q, v in per.items()
+    }
+
+    return Verdict(
+        status=status,
+        feasibility=feasibility,
+        evidence=evidence,
+        confidence=confidence,
+        bottleneck=bottleneck,
+        margins=margins,
+        assumed_inputs=sorted({a for v in per.values() for a in v.assumed_inputs}),
+        findings=findings,
+        metrics=metrics,
+    )
+
+
+def _evaluate_one(setup: ValiditySetup) -> Verdict:
     assumed = _assumed_inputs(setup)
     evidence = "measured" if not assumed else "assumed"
 

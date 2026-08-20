@@ -15,7 +15,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 
 from .checks import BIAS, CHECKS, GRADE_NOTES, HARD, INFO, SOFT, CheckResult, available_facts, grade, meets_grade
-from .setup import DEFAULT_N_SAMPLE, SampleSetup
+from .setup import SampleSetup
 
 LENS = "sample"
 
@@ -161,18 +161,22 @@ def _missing_inputs(setup: SampleSetup) -> list[Finding]:
 
 
 def _assumed_inputs(setup: SampleSetup) -> list[str]:
+    """What this verdict leaned on that was not measured for this experiment.
+
+    The sample-medium refractive index used to be listed here. It is not any
+    more: KH confirmed DEFAULT_N_SAMPLE = 1.333 on 2026-08-19 as the settled
+    value for aqueous samples, so falling back to it is no longer an
+    assumption. The media that default does *not* cover (ATPS, glycerol,
+    birefringent) BLOCK in _missing_inputs instead of arriving here.
+    """
     out: list[str] = []
-    if setup.n_sample is None:
-        out.append(
-            f"sample-medium refractive index (defaulted to "
-            f"{DEFAULT_N_SAMPLE}, water-based; "
-            f"kb/expertise/sample-medium-refractive-index.md)"
-        )
     if setup.coverslip_actual_um is None:
         out.append(
-            f"coverslip thickness (assumed the objective's design value, "
-            f"{setup.design_coverslip_um:.0f} um; the real #1.5 spread is "
-            f"wider than the nominal tolerance)"
+            f"coverslip thickness (assumed the lab's "
+            f"{setup.resolved_coverslip_um:.0f} um glass against the "
+            f"objective's {setup.design_coverslip_um:.0f} um design; a nominal "
+            f"product thickness, not a reading of the coverslip on the stage, "
+            f"and the real spread is wider than the stated tolerance)"
         )
     if not setup.objective.verified_na:
         out.append(f"NA of '{setup.objective.label}' (not marked verified)")
@@ -249,9 +253,10 @@ def evaluate(setup: SampleSetup) -> Verdict:
                 "info",
                 "evidence.assumed",
                 "This verdict used assumed values for: " + ", ".join(assumed) + ".",
-                action="Measure the sample medium's refractive index with a "
-                "refractometer and the coverslip with a micrometer, then "
-                "re-run.",
+                action="Measure the coverslip with a micrometer and pass "
+                "--coverslip-actual-um, then re-run. Since the sample-medium "
+                "index was settled at 1.333, an unmeasured coverslip is "
+                "normally the last assumption left in this lens.",
                 kind=INFO,
             )
         )

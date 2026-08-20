@@ -3,13 +3,31 @@
 Mirrors optics.gate's Phase 0 / Phase 1 / Phase 2 structure and full
 ``Verdict`` schema -- see detection/gate.py's module docstring for the same
 rationale (docs/07-roadmap.md: lens 2/3 get lens 1's complete schema).
+
+This gate judges a **proposed** acquisition. The lens's other half is
+post-hoc: compute.drops reads an acquisition that already happened and says
+whether it dropped frames. Nothing links them automatically -- the link is
+that ``drops`` is where an achieved frame rate comes from, and an achieved
+frame rate is what G12b demands.
 """
 
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 
-from .checks import BIAS, CHECKS, GRADE_NOTES, HARD, INFO, SOFT, CheckResult, available_facts, grade, meets_grade
+from .checks import (
+    BIAS,
+    CHECKS,
+    GRADE_NOTES,
+    HARD,
+    INFO,
+    LIMITS,
+    SOFT,
+    CheckResult,
+    available_facts,
+    grade,
+    meets_grade,
+)
 from .setup import AcquisitionResourceSetup
 
 LENS = "compute"
@@ -84,6 +102,17 @@ class Verdict:
 def _missing_inputs(setup: AcquisitionResourceSetup) -> list[Finding]:
     out: list[Finding] = []
 
+    if not setup.streams:
+        out.append(
+            Finding(
+                "fail",
+                "missing.streams",
+                "No frame stream on record. There is nothing whose data rate "
+                "could be computed.",
+                action="Supply at least one Stream (label, width, height, fps, "
+                "bit depth) -- one per camera actually running.",
+            )
+        )
     if setup.disk_bandwidth_mb_s is None:
         out.append(
             Finding(
@@ -102,7 +131,7 @@ def _missing_inputs(setup: AcquisitionResourceSetup) -> list[Finding]:
                 "fail",
                 "missing.buffer_frames",
                 "No circular buffer frame count on record. Buffer headroom "
-                "(G13) is undefined without it.",
+                "(G13a) is undefined without it.",
                 action="Read CircularBufferFrameCount from Micro-Manager, or "
                 "supply ram_budget_mb to derive it.",
             )
@@ -113,7 +142,7 @@ def _missing_inputs(setup: AcquisitionResourceSetup) -> list[Finding]:
                 "fail",
                 "missing.capacity_inputs",
                 "No planned acquisition duration and/or free disk space on "
-                "record. Total-capacity headroom (G13) is undefined.",
+                "record. Total-capacity headroom (G13b) is undefined.",
                 action="Supply acquisition_duration_s and free_disk_gb.",
             )
         )
@@ -122,12 +151,47 @@ def _missing_inputs(setup: AcquisitionResourceSetup) -> list[Finding]:
 
 
 def _assumed_inputs(setup: AcquisitionResourceSetup) -> list[str]:
+    """Everything this verdict rests on that was not measured on this system.
+
+    Any entry here pins ``evidence`` to ``assumed``, which pins ``advances``
+    to False no matter how comfortable the margins look -- docs/06 §E3, "a
+    PASS computed from catalog values is not a PASS".
+    """
     out: list[str] = []
+
     if setup.circular_buffer_frames is None and setup.ram_budget_mb is not None:
         out.append(
             "circular buffer frame count (derived from a RAM budget, not read "
             "from MM's CircularBufferFrameCount)"
         )
+    if setup.disk_bandwidth_mb_s is not None and not setup.disk_bandwidth_path_confirmed:
+        out.append(
+            "disk bandwidth measured somewhere other than the confirmed "
+            "Micro-Manager save directory (kb/calibrations/disk-bandwidth.yaml "
+            "flags this itself)"
+        )
+    for s in setup.unverified_fps_streams():
+        out.append(
+            f"frame rate for stream '{s.label}' ({s.fps:g} fps) is a requested "
+            "rate, not an achieved one (docs/06 §C4)"
+        )
+    for s in setup.assumed_container_streams():
+        out.append(
+            f"bytes/pixel for stream '{s.label}' at {s.bit_depth} bit -- MM's "
+            "container width in this mode is unconfirmed on this adapter"
+        )
+    if (
+        setup.ram_capture
+        and setup.ram_capture_budget_mb is not None
+        and setup.ram_capture_budget_mb > LIMITS["ram_capture_budget_mb"]
+    ):
+        out.append(
+            f"RAM capture budget of {setup.ram_capture_budget_mb / 1e3:.0f} GB, "
+            f"above the {LIMITS['ram_capture_budget_mb'] / 1e3:.0f} GB "
+            "authorized ceiling -- what the OS and the DMD/piezo/tweezers "
+            "processes hold during an acquisition has never been measured"
+        )
+
     return sorted(set(out))
 
 
@@ -200,8 +264,9 @@ def evaluate(setup: AcquisitionResourceSetup) -> Verdict:
             Finding(
                 "info",
                 "evidence.assumed",
-                "This verdict used assumed values for: " + ", ".join(assumed) + ".",
-                action="Read the literal MM CircularBufferFrameCount and re-run.",
+                "This verdict used assumed values for: " + "; ".join(assumed) + ".",
+                action="Close these out and re-run -- until then the numbers "
+                "are a rehearsal, not a verdict (docs/06 §E3).",
                 kind=INFO,
             )
         )

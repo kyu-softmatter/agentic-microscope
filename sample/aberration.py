@@ -7,7 +7,7 @@ docs/06-pitfalls.md D5.
 The refractive indices this module compares are recorded in
 kb/expertise/immersion-media-in-use.md (immersion: oil 1.518 Nikon Type F,
 water 1.333) and kb/expertise/sample-medium-refractive-index.md (sample
-medium: 1.333 default, **assumed**, water-based).
+medium: 1.333, water-based, **confirmed 2026-08-19**).
 """
 
 from __future__ import annotations
@@ -89,6 +89,29 @@ def free_working_distance_um(
     """
     excess = max(0.0, coverslip_actual_um - coverslip_design_um)
     return wd_um - excess
+
+
+def wall_drag_suppression(radius_um: float, height_um: float) -> float | None:
+    """Upper bound on the fractional loss in D from the nearby wall.
+
+    Parallel-to-wall Faxen: ``gamma/gamma_0 = 1/(1 - 9a/(16h))``, so
+    ``D_wall/D_bulk = 1 - 9a/(16h)`` and the fractional suppression is the
+    ``9a/(16h)`` term this returns. 0.1125 for a 2 um-radius bead at h = 10 um,
+    matching docs/06 D8's +12.7% drag on the same case.
+
+    **This is a bound, and it errs the safe way.** The full Faxen series is
+    ``1 - 9a/(16h) + a^3/(8h^3) - ...``; truncating after the first term makes
+    the denominator smaller, so the drag comes out larger and the suppression
+    over-stated. Reporting it as "no worse than this" is therefore honest --
+    docs/01 §3 Principle 1b.
+
+    Returns None when the geometry leaves the expansion's domain (``h <= a``,
+    the centre no closer to the wall than the radius, or a non-positive input).
+    A number there would be fiction, not a large number.
+    """
+    if radius_um <= 0 or height_um <= 0 or height_um <= radius_um:
+        return None
+    return 9.0 * radius_um / (16.0 * height_um)
 
 
 def particles_in_field(

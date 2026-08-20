@@ -10,9 +10,16 @@ docs/06-pitfalls.md D2.
         power_mw_at_sample=2.0, illuminated_area_um2=10000.0,
         wavelength_nm=488.0, exposure_ms=50.0, n_frames=1000,
         ext_coeff_m1cm1=75000, quantum_yield=0.92, lifetime_ns=4.1,
-        bleach_photons=3.0e4,
+        bleach_photons=3.0e4, photoresponsive=False,
     ))
     print(v.status, v.bottleneck)
+
+``photoresponsive`` is tri-state and defaults to ``None`` -- nobody asked. Omit
+it and G21 warns and withholds ``advances`` instead of quietly clearing the
+illumination, because the accident docs/06 D2 describes is the unasked
+question. ``IlluminationSetup.from_channel`` is the preferred constructor: the
+bare fields make k_ex from epsilon and flux alone, with the spectral overlap
+lens 1 computes silently set to 1.
 
 Gates: G10 photobleaching (specified in docs/04 §6, previously unimplemented),
 G20 saturation / triplet shelving, G21 light-driving, G22 total dose.

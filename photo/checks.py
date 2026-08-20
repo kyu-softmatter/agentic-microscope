@@ -220,18 +220,52 @@ def check_light_driving(setup: "IlluminationSetup") -> CheckResult:
     docs/06 D2. This is lens 5's reason to exist -- lens 1 says raise the light
     for SNR, and this is the only lens that can answer "that ruins the
     experiment".
+
+    Three answers, not two. ``photoresponsive`` is ``None`` until somebody
+    says, and that state warns rather than passing: a default of "no" would
+    make the gate silent in exactly the case docs/06 D2 is about. A confirmed
+    "yes" with no measured threshold BLOCKs in Phase 0 rather than being
+    compared against a guess.
     """
     irradiance = setup.resolved_irradiance
+
+    if setup.photoresponsive is None:
+        return CheckResult(
+            "perturbation.light_driving",
+            BIAS,
+            MAX_MARGIN,
+            "warn",
+            "Nobody has said whether this sample responds to light, so "
+            f"{irradiance:.1f} W/cm^2 is unevaluated, not cleared. docs/06 D2's "
+            "accident is the unasked question rather than a wrong number: "
+            "light-driven colloids, photo-crosslinking and LC photo-alignment "
+            "all look like ordinary imaging until someone checks. Recorded as "
+            "unconfirmed, which keeps this verdict from advancing. The margin "
+            "below is not a judgement -- there is nothing yet to judge.",
+            action="Answer the question: is this particle/molecule "
+            "photoresponsive at this wavelength? A confirmed no clears the "
+            "check (photoresponsive=False). A yes needs "
+            "light_driving_threshold_w_cm2 from a control experiment -- vary "
+            "the light level with everything else fixed and find where the "
+            "behaviour changes. I do not know is a valid answer too, and "
+            "leaves this warning standing.",
+            numbers={
+                "irradiance_w_cm2": round(irradiance, 2),
+                "photoresponsive": None,
+                "evaluated": False,
+            },
+        )
 
     if not setup.photoresponsive:
         return _ok(
             "perturbation.light_driving",
             BIAS,
             MAX_MARGIN,
-            f"Sample not marked photoresponsive; {irradiance:.1f} W/cm^2 is "
+            f"Sample confirmed not photoresponsive; {irradiance:.1f} W/cm^2 is "
             "treated as measurement light only.",
             irradiance_w_cm2=round(irradiance, 2),
             photoresponsive=False,
+            evaluated=True,
         )
 
     threshold = setup.light_driving_threshold_w_cm2
@@ -240,6 +274,7 @@ def check_light_driving(setup: "IlluminationSetup") -> CheckResult:
         "irradiance_w_cm2": round(irradiance, 2),
         "threshold_w_cm2": threshold,
         "photoresponsive": True,
+        "evaluated": True,
     }
 
     if margin >= 1.0:
@@ -343,11 +378,14 @@ def check_total_dose(setup: "IlluminationSetup") -> CheckResult:
 def check_trap_heating_ownership(setup: "IlluminationSetup") -> CheckResult:
     """Refuse to let the 5 -> 7 handoff for trap heating vanish silently.
 
-    docs/06 D6 assigns 1064 nm trap heating to lens 7, and lens 7 does not
-    implement it (`trapping/` has confinement, trap_depth, sampling only). Lens
-    5 does not own it either -- it covers visible excitation light. An
-    unclaimed handoff is the exact failure mode a committee is supposed to
-    prevent, so it is reported rather than assumed handled.
+    docs/06 D6 assigns 1064 nm trap heating to lens 7, which does not implement
+    it (`trapping/` has confinement, trap_depth, sampling only) and **will not**
+    -- ungated by decision, user 2026-08-19, kb/decisions/2026-08-19-lens-7-scope.md.
+    Lens 5 does not own it either; it covers visible excitation light.
+
+    So this is a named ungated risk rather than an oversight, and the point of
+    reporting it here is that a named risk still has to reach whoever reads the
+    verdict. Silence would let the reader assume some lens had it.
     """
     if not setup.trap_on:
         return _ok(
@@ -363,13 +401,16 @@ def check_trap_heating_ownership(setup: "IlluminationSetup") -> CheckResult:
         INFO,
         MAX_MARGIN,
         "info",
-        "The 1064 nm trap is on and its local heating is unowned in practice: "
-        "docs/06 D6 assigns it to lens 7, which has no heating check, and lens "
-        "5 covers visible excitation light only. Water absorption at 1064 nm "
-        "changes viscosity and therefore D, so any microrheology result from "
-        "this configuration may be contaminated.",
-        action="Quantify trap heating separately before trusting a diffusion "
-        "or viscosity number from this setup. This gate does not compute it.",
+        "The 1064 nm trap is on and its local heating is ungated by decision "
+        "(2026-08-19): docs/06 D6 assigns it to lens 7, which has no heating "
+        "check and is not getting one, and lens 5 covers visible excitation "
+        "light only. Water absorption at 1064 nm changes viscosity and "
+        "therefore D, so any microrheology result from this configuration may "
+        "be contaminated. Named, not caught.",
+        action="Treat the medium temperature near the trap as the experiment's "
+        "assumption, not the gate's. Before trusting a diffusion or viscosity "
+        "number from this setup, quantify the heating separately or show it is "
+        "small at this power. No lens computes it.",
         numbers={"trap_on": True},
     )
 

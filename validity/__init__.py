@@ -24,6 +24,18 @@ lenses' verdicts rather than hardware facts, so it has nothing to review if it
 runs first. G11 is the only quantity it computes; everything else reviews what
 the committee already found.
 
+Two things it does that no counting of verdicts would:
+
+- **The verdict's unit can be a physical quantity, not the channel.** Pass
+  ``intended_quantities`` and each is judged separately, because motion blur
+  ruins the MSD of a session whose intensity profile is untouched
+  (``evaluate_per_quantity``, and ``BIAS_SCOPE`` for which bias damages what).
+- **A declared correction is checked, not believed.** ``CORRECTIONS`` lists the
+  biases a correction exists for and ``UNCORRECTABLE`` the ones it does not, so
+  naming ``geometry.ri_mismatch`` in ``corrections_applied`` no longer clears
+  it. A code in neither registry is accepted but costs the verdict its
+  ``measured`` grade.
+
 Two consequences worth knowing:
 
 - It reads every lens's verdict through a structural protocol
@@ -40,7 +52,7 @@ Two consequences worth knowing:
 from __future__ import annotations
 
 from .checks import CHECKS, GRADE_NOTES, LIMITS, CheckResult, grade
-from .gate import Finding, Verdict, evaluate
+from .gate import Finding, Verdict, evaluate, evaluate_per_quantity
 from .power import (
     relative_error,
     required_frames,
@@ -49,26 +61,35 @@ from .power import (
     roi_speed_tradeoff,
 )
 from .setup import (
+    BIAS_SCOPE,
+    CORRECTIONS,
     QUANTITY_REQUIREMENTS,
     STANDING_LENSES,
+    UNCORRECTABLE,
     FindingLike,
     ValiditySetup,
     VerdictLike,
+    calibrations_for,
 )
 
 __all__ = [
+    "BIAS_SCOPE",
     "CHECKS",
+    "CORRECTIONS",
     "GRADE_NOTES",
     "LIMITS",
     "QUANTITY_REQUIREMENTS",
     "STANDING_LENSES",
+    "UNCORRECTABLE",
     "CheckResult",
     "Finding",
     "FindingLike",
     "ValiditySetup",
     "Verdict",
     "VerdictLike",
+    "calibrations_for",
     "evaluate",
+    "evaluate_per_quantity",
     "grade",
     "relative_error",
     "required_frames",

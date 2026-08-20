@@ -8,7 +8,7 @@ other lenses have returned.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Protocol, runtime_checkable
 
 
@@ -75,8 +75,80 @@ QUANTITY_REQUIREMENTS: dict[str, tuple[str, ...]] = {
     "tracking_intensity": ("pixel_size", "background", "dark_current", "linearity"),
 }
 
+
+def calibrations_for(quantity: str | None) -> tuple[str, ...]:
+    """The calibrations one intended quantity rests on, or ``()`` if unknown.
+
+    An unknown quantity returns empty rather than a guess -- the gate turns that
+    into BLOCKED, because certifying validity against invented criteria is worse
+    than refusing.
+    """
+    if quantity is None:
+        return ()
+    return QUANTITY_REQUIREMENTS.get(quantity.strip().lower(), ())
+
+#: Upstream bias findings that have a correction which can actually be applied
+#: after the fact, keyed by the code the origin lens emits **when the check
+#: fails** (not the passing code -- `detection` emits `motion_blur` on the way
+#: through and `motion_blur.biased` on failure). The value names the correction,
+#: so a declaration in ``corrections_applied`` can be checked instead of taken
+#: on faith.
+CORRECTIONS: dict[str, str] = {
+    "crosstalk": "linear unmixing from a measured mixing matrix",
+    "motion_blur.biased": "Savin-Doyle blur correction (docs/04 §5)",
+    "perturbation.photobleaching": "intensity-decay correction (docs/04 §6)",
+    "stability.lateral_drift": "drift correction from a fiducial or image registration",
+}
+
+#: Bias findings with **no** post-hoc correction: the setting or the sample has
+#: to change instead. Declaring one of these in ``corrections_applied`` is a
+#: false claim, and G23 says so rather than clearing the bias -- which is what
+#: it used to do, since the declaration was matched against nothing at all.
+UNCORRECTABLE: dict[str, str] = {
+    "geometry.ri_mismatch": "no aberration model is implemented (docs/06 D5) -- "
+    "change the immersion, the medium or the depth",
+    "geometry.coverslip": "the correction collar is hardware, not post-processing",
+    "perturbation.saturation": "past saturation emission stops tracking power, so "
+    "lenses 1 and 2 overestimate signal while dose keeps climbing -- lower the "
+    "irradiance",
+    "perturbation.light_driving": "the light is moving the sample; nothing "
+    "downstream recovers the unperturbed dynamics (docs/06 D2)",
+    "stability.evaporation": "the composition changed during the movie -- seal the "
+    "chamber or shorten the acquisition",
+}
+
+#: Which of a quantity's required calibrations a bias actually damages. This is
+#: what scopes a FAIL to the affected physical quantity rather than the whole
+#: session (docs/05 Lens 6: "a FAIL is scoped to the affected physical
+#: quantity, not to the whole session").
+#:
+#: **A bias absent from this table damages every quantity.** That is the
+#: conservative default and the only honest one where no document scopes it:
+#: light-driving and saturation move the sample itself, and crosstalk puts
+#: another channel's particles in the frame, so all three are deliberately
+#: absent rather than guessed at.
+BIAS_SCOPE: dict[str, frozenset[str]] = {
+    # docs/04 §5: the Savin-Doyle terms bias the MSD. A trajectory is ruined; an
+    # integrated intensity is spread, not lost.
+    "motion_blur.biased": frozenset({"pixel_size"}),
+    # docs/06 D5: spherical aberration grows with depth, distorting the axial
+    # PSF and near-interface geometry.
+    "geometry.ri_mismatch": frozenset({"pixel_size"}),
+    # Absolute position goes wrong and long-lag MSD points follow it.
+    "stability.lateral_drift": frozenset({"pixel_size"}),
+    # docs/04 §6 frames bleaching as an intensity decay. It costs a tracking
+    # experiment statistics rather than accuracy -- particles vanish, which
+    # lands in G11's particle count, not in a positional bias.
+    "perturbation.photobleaching": frozenset(
+        {"background", "dark_current", "flat_field", "linearity"}
+    ),
+}
+
 #: Standing lenses that should have returned a verdict before this one runs.
-#: Lens 8 is absent from the codebase entirely, so it is not listed.
+#: Lens 8 is conditional (acquisitions past ~30 min), so it is not required
+#: here -- but `stability/` does implement G28-G32 and two of its gates are
+#: `kind: bias`, so pass its verdict in `upstream` when it convened and the
+#: ledger will pick those up like any other lens's.
 STANDING_LENSES: tuple[str, ...] = ("optics", "detection", "compute", "sample", "photo")
 
 
@@ -85,6 +157,14 @@ class ValiditySetup:
     #: What physical quantity the experiment is actually after. Drives which
     #: calibrations are mandatory -- see QUANTITY_REQUIREMENTS.
     intended_quantity: str | None = None
+    #: Several intended quantities, when one session is after more than one.
+    #: docs/05 Lens 6 lets the **unit of verdict be a physical quantity rather
+    #: than the channel**: a session's MSD can be biased while its intensity
+    #: profile is fine, and collapsing those into one status destroys
+    #: information. Set this and `gate.evaluate` judges each one separately and
+    #: reports the aggregate; `intended_quantity` remains the single-quantity
+    #: form. If both are set this one wins.
+    intended_quantities: tuple[str, ...] = ()
     #: Target relative error on that quantity, e.g. 0.05 for 5%.
     target_relative_error: float | None = None
 
@@ -134,9 +214,20 @@ class ValiditySetup:
 
     @property
     def required_calibrations(self) -> tuple[str, ...]:
-        if self.intended_quantity is None:
-            return ()
-        return QUANTITY_REQUIREMENTS.get(self.intended_quantity.strip().lower(), ())
+        return calibrations_for(self.intended_quantity)
+
+    @property
+    def quantities(self) -> tuple[str, ...]:
+        """Every intended quantity to judge, in stated order, deduplicated."""
+        if self.intended_quantities:
+            return tuple(dict.fromkeys(self.intended_quantities))
+        if self.intended_quantity is not None:
+            return (self.intended_quantity,)
+        return ()
+
+    def for_quantity(self, quantity: str) -> "ValiditySetup":
+        """This setup narrowed to one quantity, for the per-quantity pass."""
+        return replace(self, intended_quantity=quantity, intended_quantities=())
 
     @property
     def resolved_n_particles(self) -> float | None:
@@ -163,8 +254,60 @@ class ValiditySetup:
                     out.append(f)
         return out
 
+    def applicable_bias_findings(self) -> list[Any]:
+        """The upstream biases that damage **this** setup's intended quantity.
+
+        A bias in BIAS_SCOPE only counts if its scope overlaps the calibrations
+        the quantity rests on; an unscoped bias counts always. That is what lets
+        a session report a biased MSD and a sound intensity profile at once.
+        """
+        required = set(self.required_calibrations)
+        out: list[Any] = []
+        for f in self.bias_findings():
+            scope = BIAS_SCOPE.get(f.code)
+            if scope is None or (scope & required):
+                out.append(f)
+        return out
+
+    def out_of_scope_bias_findings(self) -> list[Any]:
+        applicable = {id(f) for f in self.applicable_bias_findings()}
+        return [f for f in self.bias_findings() if id(f) not in applicable]
+
+    def _cleared(self, code: str) -> bool:
+        """Is this bias genuinely cleared by a declared correction?
+
+        Declaring a code that appears in UNCORRECTABLE does not clear it: there
+        is no such correction to have applied.
+        """
+        return code in self.corrections_applied and code not in UNCORRECTABLE
+
     def uncorrected_bias_findings(self) -> list[Any]:
-        return [f for f in self.bias_findings() if f.code not in self.corrections_applied]
+        return [f for f in self.applicable_bias_findings() if not self._cleared(f.code)]
+
+    def falsely_corrected_bias_findings(self) -> list[Any]:
+        """Biases declared corrected for which no correction exists.
+
+        Louder than a plain uncorrected bias: the ledger would have read clean.
+        """
+        return [
+            f
+            for f in self.applicable_bias_findings()
+            if f.code in self.corrections_applied and f.code in UNCORRECTABLE
+        ]
+
+    def unverified_corrections(self) -> list[str]:
+        """Declared codes that cleared a bias but are in neither registry.
+
+        Accepted -- refusing an unknown gate's correction would block work on
+        gates this table has not caught up with -- but they cost the verdict its
+        `measured` grade, so an unaudited declaration cannot advance.
+        """
+        applicable = {f.code for f in self.applicable_bias_findings()}
+        return sorted(
+            c
+            for c in self.corrections_applied
+            if c in applicable and c not in CORRECTIONS and c not in UNCORRECTABLE
+        )
 
     def missing_standing_lenses(self) -> list[str]:
         return [name for name in STANDING_LENSES if name not in self.upstream]

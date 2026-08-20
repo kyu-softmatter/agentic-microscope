@@ -11,17 +11,24 @@
 #     absorbs 0.00 at 488 nm, so the bright probe cannot contaminate the dim
 #     tracer channel. The green dye leaks ~19% the other way, which is the
 #     harmless direction (dim into bright).
-#   · Kinetix QE is 0.95 at 520 nm vs 0.87 at 668 nm, and a 0.5 um tracer
+#   · QE favours green (0.95 at 520 nm vs 0.87 at 668 nm), and a 0.5 um tracer
 #     carries ~1/1000 the dye of a 5 um probe -- the dim population gets the
 #     better-detected channel.
+#     ⚠ 2026-08-19: the confirmed body is a Kinetix22, and those two numbers
+#     come from the *Kinetix* graph, read by eye. Borrowing that curve was
+#     authorized as a one-time exception, so they still stand -- but the curve
+#     reports measured=false and lands in assumed_inputs, so this channel
+#     cannot advance on it.
 #   · The probe is the same particle for the whole movie and accumulates the
 #     whole dose; tracers exchange by flow. Photostability goes to the probe.
 #
-# EXPECTED RESULT: BLOCKED, on `missing.detector` for both channels -- the
-# Kinetix datasheet has no full-well figure, so saturation and SNR are
-# uncomputable and the gate refuses rather than borrowing another camera's spec.
-# That refusal is the intended behaviour, not a bug. Everything else in this
-# file is a real, checked fact.
+# EXPECTED RESULT: 2026-08-19 -- the `missing.detector` blocker described here is
+# RETIRED. The camera was confirmed to be a Kinetix22 and its datasheet (Rev
+# 2024-10-21) does carry full well, read noise, conversion gain and dark current
+# per mode, so data/detectors.yaml > Kinetix22 now supplies what the gate wanted.
+# Re-run `optics.cli check` on this file to see what remains -- the spectral
+# approximations noted above still hold evidence at `assumed`, so expect
+# `advances: NO` for that reason rather than for a missing camera spec.
 #
 # ⚠ emission: uses EM-Open (position 9), the only EM1/EM2 slot whose contents
 # are registered. The real filters in positions 0-4 are labelled
@@ -39,7 +46,7 @@ channels:
       na: 1.25
       immersion: water
       verified_na: true
-    detector: Kinetix               # Kinetix_blue, reflect side of the splitter
+    detector: Kinetix22               # Kinetix_blue, reflect side of the splitter
     source: [LUN-F-XL, "488"]
     excitation: []                  # laser line is already ~1-2 nm wide
     dichroic: "Di01-T405/488/568/647-13x15x0.5"
@@ -57,7 +64,7 @@ channels:
       na: 1.25
       immersion: water
       verified_na: true
-    detector: Kinetix               # Kinetix_red, transmit side of the splitter
+    detector: Kinetix22               # Kinetix_red, transmit side of the splitter
     source: [LUN-F-XL, "640"]
     excitation: []
     dichroic: "Di01-T405/488/568/647-13x15x0.5"
