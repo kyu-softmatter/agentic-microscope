@@ -67,8 +67,16 @@ Plus `check_config_file()`, which refuses any `.cfg` declaring
 `current.md > devices_not_in_mm_config > piezo stage > hazard`. It has to be a
 text check: MM writes 0 V during `initializeDevice`, so by the time the core has
 loaded the device there is nothing left to prevent. A test asserts the lab's own
-`DMD_dualcam_LUNF.cfg` is clean, so an edit that adds one fails in CI rather than
-on the bench.
+`DMD_dualcam_LUNF.cfg` is clean, so an edit that adds one fails in the test
+suite rather than on the bench.
+
+⚠ Corrected 2026-08-26: that sentence originally said "fails in CI". **This repo
+has no CI** -- no `.github/workflows` on either branch, `gh pr checks` reports
+none, and the only thing GitHub Actions lists is its own auto-generated
+Dependency Graph, which reads `requirements.txt` for security alerts and runs no
+tests. So the guard is real but manual: it fires when somebody runs `pytest`,
+not on push. Worth adding a workflow -- 791 tests in ~50 s with no hardware is
+about the easiest CI case there is.
 
 ## Bugs found
 
