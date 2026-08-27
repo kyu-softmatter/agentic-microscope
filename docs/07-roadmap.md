@@ -293,21 +293,82 @@ mutual-exclusion constraint holds in practice. Those wait on the LUN-F.
 
 In stages:
 
-| Stage | Scope | Safeguard |
-|---|---|---|
-| 5a | **Read** state (pymmcore-plus) | hardware untouched |
-| 5b | Show a **comparison** of recommendation vs current state | ″ |
-| 5c | **Generate** an MM ConfigGroup preset (not applied) | human applies it |
-| 5d | **Apply** after human confirmation | confirmation required · revertible |
-| 5e | Run the acquisition + live gate monitoring | abort on anomaly |
+| Stage | Scope | Safeguard | Status |
+|---|---|---|---|
+| 5a | **Read** state (pymmcore-plus) | hardware untouched | built 2026-08-26 |
+| 5b | Show a **comparison** of recommendation vs current state | ″ | built 2026-08-26 |
+| 5c | **Generate** an MM ConfigGroup preset (not applied) | human applies it | built 2026-08-26 |
+| 5d | **Apply** after human confirmation | confirmation required · revertible | built 2026-08-26 |
+| 5e | Run the acquisition + live gate monitoring | abort on anomaly | not started |
+
+**5a–5d built 2026-08-26** — [`hardware/microscope.py`](../hardware/microscope.py),
+driven by [`config/micromanager/verify_config_control.py`](../config/micromanager/verify_config_control.py)
+(`--read` = 5a+5b, `--propose` = 5c, `--roundtrip` = 5d). Writes are gated by three
+independent switches, all default off: `allow_write`, `allow_motion`
+(Nosepiece/ZDrive/PFSOffset — glass into glass), `allow_laser` (LUNF-Blanking).
+`check_config_file()` refuses any `.cfg` declaring `NIDAQAO-Dev1/ao2` before it
+loads, which is the piezo hazard below.
+
+Verified against the bundled demo config on macOS/arm64 only — `mmcore install` has
+no Apple-Silicon nightly, so **the real NikonTi2/PVCAM/CSUW1 adapters are still
+unexercised**. Same surrogate and same limit as `calibration/mm_live.py`: MMCore
+semantics confirmed, per-adapter behaviour not. Running `--read` on the microscope
+PC closes it — remember the `Ti2_Mic_Driver.dll` copy.
+→ [`kb/decisions/2026-08-26-microscope-config-control.md`](../kb/decisions/2026-08-26-microscope-config-control.md)
 
 MM2 is settled, so the `.cfg` ↔ preset round trip is possible as planned.
 → [08 §7](08-optical-path-spec.md)
 
 **The piezo** is outside MM, so it needs its own path. To include it in the
 automation, either (a) register it as an MM device, (b) integrate with a separate
-program, or (c) leave it a manual step and record it in the sidecar. (c) is the
-default.
+program, or (c) leave it a manual step and record it in the sidecar. (c) was the
+default — **and (b) got much more attractive on 2026-08-26**: the NPC-D
+controller turns out to have a **hardware waveform generator** (`function.*` —
+upload samples, set count and iterations, start/stop/pause/unpause, read state),
+which the vendor's own examples describe as building "simple raster profiles",
+plus `snapshot.*` triggered capture. So the piezo can hold a trajectory in
+hardware like the AOD trap loop does, and unlike the tweezers **its state is
+readable**, so a commanded trajectory can be verified. Established offline by
+extracting the command names from the vendor DLL —
+[`reference/npcd-command-set.md`](../reference/npcd-command-set.md), 178 commands
+with a superset caveat; sample generation in
+[`hardware/piezo_waveform.py`](../hardware/piezo_waveform.py); confirm on the
+controller with
+[`config/piezo/verify_piezo_commands.py`](../config/piezo/verify_piezo_commands.py).
+Uploading still refuses by design until the argument layout of
+`function.waveform.data.set` is read off the DLL.
+→ [`kb/decisions/2026-08-26-piezo-waveform-generator.md`](../kb/decisions/2026-08-26-piezo-waveform-generator.md)
+
+**Running all three at once** is scoped 2026-08-26 too. The drivers stay
+one-per-file; [`hardware/orchestrator.py`](../hardware/orchestrator.py) adds only
+the shared pieces — one monotonic clock, a latency log, a camera arbiter, and the
+setup phases — and opens no device. Threads rather than processes: all three
+drivers block inside C or I/O and release the GIL, and threads give the shared
+variables for free. **The host clock is not the experiment clock**: preload
+hardware-timed behaviour per subsystem (AOD trap loop · NIDAQ sequencing ·
+camera), trigger from one edge, and use the host only to orchestrate and log.
+Measured this session: `getProperty` median 1 µs (n=2000, demo adapter); the
+tweezers TCP and piezo DLL round trips are still unmeasured —
+[`config/session/measure_latency.py`](../config/session/measure_latency.py) takes
+them read-only.
+→ [`kb/decisions/2026-08-26-parallel-control-architecture.md`](../kb/decisions/2026-08-26-parallel-control-architecture.md)
+
+**The tweezers** are outside MM too, and scoped 2026-08-26: direct TCP for setup
+and quasi-static placement, generated `.tpf` patterns for anything whose *timing*
+enters the result — the trap loop clocks a pattern in hardware at up to 100 kHz,
+while TCP is host-timed with unmeasured jitter and no readback of any kind to
+check it against. Built the same day: `.tpf` writer and trap-loop timing model in
+[`hardware/tweezers_patterns.py`](../hardware/tweezers_patterns.py), drive
+planning in [`hardware/tweezers_drive.py`](../hardware/tweezers_drive.py), and
+[`config/tweezers/run_pattern.py`](../config/tweezers/run_pattern.py)
+(`--plan` offline · `--write` emits the `.tpf` · `--run` sends TCP). The manual's
+worked examples are reproduced in the tests; nothing has been run against the GUI
+yet. The one structural gap: per-trap **wait states**, the vendor's mechanism for
+slow driven motion, are GUI-only — so the shape is a GUI-built project template
+loaded over `LOAD_PROJECT`, with patterns and everything else generated per
+experiment from Python. `plan()` returns `BLOCKED` while the calibrated trapping
+range is unrecorded, because an oversized pattern is clipped silently.
+→ [`kb/decisions/2026-08-26-tweezers-pattern-vs-direct.md`](../kb/decisions/2026-08-26-tweezers-pattern-vs-direct.md)
 
 ---
 

@@ -326,9 +326,15 @@ experimentalist/
 │   ├── ram_capture.py            RAM buffer capture
 │   └── cli.py
 │
-├── hardware\                     ← off-ledger device control
-│   ├── optical_tweezers.py
-│   ├── piezo_stage.py
+├── hardware\                     ← device control (off-ledger + MM)
+│   ├── microscope.py             MM configuration: read · compare · preset · apply
+│   ├── optical_tweezers.py       Aresis Tweez 300, TCP 2070 (write-only protocol)
+│   ├── tweezers_patterns.py      .tpf writer + trap-loop timing model
+│   ├── tweezers_drive.py         drive spec → plan → TCP command sequence
+│   ├── lunf_power.py             LUN-F XL per-line power (blocked: SPI word format)
+│   ├── piezo_stage.py            Prior/Queensgate NPC-D, vendor DLL
+│   ├── piezo_waveform.py         waveform samples for the NPC-D function generator
+│   ├── orchestrator.py           one clock · latency log · camera arbiter · phases
 │   └── piezo\vendor\             vendor DLL + adapter
 │
 ├── data\                         ← registries (filled in by hand)
@@ -341,7 +347,11 @@ experimentalist/
 │
 ├── config\
 │   ├── channels\                 channel configuration examples
-│   └── scopes\                   system profiles
+│   ├── scopes\                   system profiles
+│   ├── micromanager\             the lab .cfg + verify scripts (DAQ, config control)
+│   ├── tweezers\                 drive specs + run_pattern.py
+│   ├── piezo\                    verify_piezo_commands.py — command-set discovery
+│   └── session\                  measure_latency.py — all three, in parallel
 │
 ├── kb\                           ← knowledge base
 │   ├── systems\current.md        current system dossier

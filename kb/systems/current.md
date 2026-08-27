@@ -662,7 +662,154 @@ devices_not_in_mm_config:   # docs/02 §4 "three-way cross-check table" — sepa
       checked yet (query it over the DLL before relying on either answer).
       config/micromanager/DMD_dualcam_LUNF.cfg contains no AO device for
       exactly this reason.
-  - {name: "optical tweezers (Aresis Tweez 305/310, Tweez 300)", control: "separate Python (hardware/optical_tweezers.py, TCP 2070)", mm_registered: false, python_control: confirmed, confirmed_date: 2026-08-10}
+
+      **2026-08-26 — the outstanding query now has a name.** The controller
+      command set was recovered offline by pulling the dotted ASCII literals out
+      of the vendor DLL (178 commands, reference/npcd-command-set.md), and it
+      contains `stage.mode.get` — the input-mode query this hazard has been
+      asking for since 2026-08-19 — with **no** `stage.mode.set`, so the mode is
+      readable from here but not changeable. It also contains
+      `stage.command.analogue.scaling.gain/offset` alongside
+      `stage.command.digital.scaling.gain/offset`: independent scaling per
+      command path, which is direct evidence the controller really does accept
+      both the analogue input NIS drives and the digital one this repo uses.
+      Read them with `config/piezo/verify_piezo_commands.py --hazard` (read-only).
+      **The hazard is unchanged whatever the mode says** — keep
+      `NIDAQAO-Dev1/ao2` out of every MM configuration, because MM writes 0 V on
+      initialize and on the analogue path that is 0 um.
+
+      **And the controller has a hardware waveform generator** (`function.*`:
+      upload samples, set count and iterations, start/stop/pause/unpause, read
+      state), documented by the vendor's own examples as building "simple raster
+      profiles". Plus `snapshot.*`, triggered data capture. So this stage is a
+      hardware-timed subsystem, and — unlike the tweezers — its state is
+      readable, so a commanded trajectory here can be verified rather than
+      assumed. See kb/decisions/2026-08-26-piezo-waveform-generator.md.
+  - name: "optical tweezers (Aresis Tweez 305/310, Tweez 300)"
+    control: "separate Python (hardware/optical_tweezers.py, TCP 2070) — write-only; several essentials are GUI-only"
+    mm_registered: false
+    python_control: partial   # was `confirmed` (2026-08-10); qualified 2026-08-26 after reading the manual end to end
+    confirmed_date: 2026-08-26
+    note: >
+      **2026-08-26 — the 2026-08-10 "python_control: confirmed" was too
+      generous, and is now split by operation.** Full reasoning in
+      kb/decisions/2026-08-26-tweezers-pattern-vs-direct.md and
+      kb/decisions/2026-08-26-parallel-control-architecture.md.
+
+      **Over TCP (port 2070, incrementing per GUI instance):** trap create/
+      delete/on/off, TRAP_POSITION absolute and relative, TRAP_STRENGTH,
+      pattern load/assign/rotate/scale/breakpoint-release, trap groups,
+      LASER_ON/OFF, BEAM_SET_FOCUS, BEAM_SET_PARAMS, CLEAR_PROJECT and
+      LOAD_PROJECT. hardware/optical_tweezers.py covers the whole documented
+      command set — nothing was missing.
+
+      **The interface is write-only.** No query command of any kind exists: no
+      trap position, no force, no trap list, no laser power. A 0 means the GUI
+      accepted the command, not that anything moved. Hence the
+      active-microrheology channel reading force as F = kappa*(x_bead - x_trap)
+      from the images rather than from the instrument, and hence the read-back
+      verification hardware/microscope.py leans on having no analogue here.
+      Liveness can only be probed indirectly — TRAP_DELETE against a sentinel
+      name answers -25 from a working GUI (OpticalTweezers.wait_until_ready).
+
+      **GUI-only, i.e. not reachable from Python at all:** per-trap wait states
+      (the vendor mechanism for slow driven motion; only BEAM_SET_PARAMS is
+      exposed and it is global); repeat enable/count; breakpoint Enable/Release
+      bits; both calibrations (see the next entry); global laser power (System
+      Manager > Laser Beam Control, relative 0-1 with 1 ~ 5 W on a Tweez 305,
+      p.24 — per-trap relative strength IS over TCP, so the workable split is
+      global power set once from the GUI or a project template and per-trap
+      modulation from Python); and camera selection/release (GUI Tree View,
+      p.48).
+
+      **LOAD_PROJECT is the way round most of that.** A project is XML and
+      carries the Tweez Elements tree, GUI settings *including camera settings
+      and calibration*, ROIs, Views, and the laser + beam state (p.65) — so
+      per-objective templates give per-objective calibration, selectable over
+      TCP. Two cautions: it can restore a saved laser-ON state, and it returns
+      0 even when the load report (visible only via Show Project Manager) says
+      elements were dropped; the manual s own figure shows ROIs lost to a
+      camera change.
+
+      **Timing.** Pattern traversal is hardware-clocked by the AOD trap loop,
+      one point per pass at up to 100 kHz, so .tpf patterns rather than TCP
+      position streaming are the route for anything whose timing enters the
+      result. Host round-trip latency over TCP is **still unmeasured**;
+      config/session/measure_latency.py measures it read-only.
+
+      **Two contradictions in the manual, unresolvable from the document:**
+      LOAD_PATTERN argument order (Command List p.68 gives name-then-file, the
+      p.69 example shows file-then-name) and the pattern-file extension (.tpf
+      is claimed for both the ASCII pattern file, pp.55-56, and the XML project
+      file, p.65; the single .tsf in the manual is that same example). Settle
+      the second with: dir "%ProgramFiles%\Aresis\Tweez\Samples\Patterns".
+  - name: "optical-tweezers calibrations (GUI + trapping field)"
+    control: "GUI only — interactive, cannot be automated"
+    mm_registered: false
+    python_control: false
+    confirmed_date: 2026-08-26
+    note: >
+      Two independent calibrations, both objective-dependent.
+
+        - **GUI calibration** (pp.35-38, Tweez 300 GUI). *Magnification*
+          (ICS<->WCS, px -> um) is set by dragging a scale line across a
+          graticule and typing the distance. *Beam Position* (LCS<->ICS:
+          rotation + translation + scale) needs an actually trapped ~2.5 um
+          silica bead, the laser ON at 0.1-0.2, and at least 3 mouse-picked
+          points (>=6 advised across the whole range). **The green trapezoid
+          marking the trapping range is the output of this procedure** — which
+          is why the range has to be read off the GUI and cannot be computed
+          here. Per-camera: "each camera has its own calibration data
+          attached" (p.37). Carried in a GUI project. Cannot be started while
+          a project is active.
+        - **Trapping field calibration** (pp.28-32, System Manager). AOD
+          response; automatic, but needs a photodiode placed over the
+          objective with the laser off and the objective retracted. **Not**
+          carried by a project — saved and loaded from the System Manager s own
+          File menu. The manual calls redoing it after an objective change
+          "particularly important when performing e.g. force measurements,
+          micro rheology", i.e. exactly this lab s experiment.
+
+      Both are invalidated by an objective change, so moving the Nosepiece from
+      hardware/microscope.py silently breaks the tweezers in um and in force,
+      with nothing on either side reporting it. microscope.COLLISION_DEVICES
+      records this as the second, independent reason that gate exists.
+
+      A free cross-check available today: pixel_size_calibration above already
+      carries a measured 0.1625 um/px for 40x at 1x intermediate magnification,
+      so the GUI Magnification value should agree with it if the Tweez GUI is
+      reading a Kinetix through the same tube optics.
+  - name: "Kinetix cameras — shared with the optical-tweezers GUI"
+    control: "pymmcore-plus, but not exclusively owned"
+    mm_registered: true
+    python_control: confirmed
+    confirmed_date: 2026-08-26
+    hazard: >
+      **The Tweez 300 GUI loads a Kinetix, uses it, then releases it** (user,
+      2026-08-26) — the same body Micro-Manager drives — and PVCAM hands a
+      camera to exactly one process at a time. Whoever opens it first locks the
+      other out, in both directions: with MM holding it the Tweez GUI gets no
+      live image, which blocks its GUI calibration (Beam Position has to *see*
+      trapped beads) and all visual trap placement; with the Tweez GUI holding
+      it, initializing the camera under pymmcore-plus fails on an error that
+      names nothing useful.
+
+      **Required order: Tweez GUI takes the camera -> GUI calibration and trap
+      setup -> release -> Micro-Manager loads its configuration -> acquire.**
+      Enforced in code by hardware/orchestrator.py (Session.tweezers_setup,
+      microscope_setup, CameraArbiter) rather than left to be remembered, and
+      microscope.SHARED_DEVICES turns a contended load failure into a message
+      that names the tweezers GUI. The drive survives the release — TCP trap
+      and pattern commands need no image and the GUI runs cameraless (p.34) —
+      so only the interactive parts are lost.
+
+      This also reconciles the manual listing only DirectShow and IDS uEye
+      camera categories: TweezGUICamPluginPM (archived — see manual/README.md)
+      is the Photometrics plugin that adds the Kinetix. **Which body the GUI is
+      bound to (Kinetix_red or _blue) is not yet recorded**, and it matters
+      because the calibration is per-camera. Note too that multiple GUIs can
+      attach to one System Manager with the TCP port incrementing per instance,
+      so the port selects which camera and which calibration you are driving.
   - name: "LUN-F-XL laser combiner (405/488/561/640)"
     control: "split: blanking (on/off) via MM NIDAQ — working; per-line power via FT4222H SPI — transport only, blocked on the SPI word format"
     mm_registered: partial   # blanking lines yes (as NIDAQ devices); the laser itself is not one MM device
