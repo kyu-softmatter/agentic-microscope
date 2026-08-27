@@ -30,12 +30,16 @@ UM = PM_PER_UM
 # ---- travel ------------------------------------------------------------
 
 
-def test_observed_travel_matches_the_kb_record():
-    """kb/systems/current.md: 0-400 um, resolution 0.0122 um."""
+def test_calibrated_travel_matches_what_the_controller_reports():
+    """Read off COM4 on 2026-08-27: 0-600 um per axis, 32 pm command step.
+
+    Was 0-400 um / 0.0122 um, which came from NIS's analogue abstraction of the
+    same controller and was wrong for this path on both numbers.
+    """
     assert OBSERVED.min_pm == 0.0
-    assert OBSERVED.max_pm == pytest.approx(400 * UM)
-    assert OBSERVED.resolution_pm == pytest.approx(0.0122 * UM)
-    assert OBSERVED.centre_pm == pytest.approx(200 * UM)
+    assert OBSERVED.max_pm == pytest.approx(600 * UM)
+    assert OBSERVED.resolution_pm == pytest.approx(32.0)
+    assert OBSERVED.centre_pm == pytest.approx(300 * UM)
 
 
 def test_inverted_travel_is_refused():
@@ -71,7 +75,7 @@ def test_channels_are_one_based():
 def test_out_of_travel_is_refused_not_clipped():
     """Silent clipping is the tweezers' trapping-range failure mode: data that
     looks fine and is wrong. Here it raises."""
-    wf = ramp(0.0, 500 * UM, 10)
+    wf = ramp(0.0, 700 * UM, 10)          # travel is 0..600 um
     assert not wf.fits_within(OBSERVED)
     with pytest.raises(WaveformError, match="outside travel"):
         wf.check(OBSERVED)
@@ -84,11 +88,15 @@ def test_a_waveform_inside_travel_passes_the_check():
 
 
 def test_quantisation_error_is_reported_not_hidden():
-    """On a 12.2 nm step a 20 nm amplitude is three levels, not a ramp."""
-    wf = triangle(amplitude_pm=0.02 * UM, n_samples=20, travel=OBSERVED)
+    """On the measured 32 pm command step, a 50 pm amplitude is a few levels.
+
+    The amplitude has to be this small to show it: the step is 32 pm, not the
+    12.2 nm this test used to assume from NIS's analogue scaling.
+    """
+    wf = triangle(amplitude_pm=50.0, n_samples=20, travel=OBSERVED)
     assert wf.quantisation_error_pm(OBSERVED) > 0
     coarse = wf.quantised(OBSERVED)
-    assert len(set(coarse.samples)) <= 4
+    assert len(set(coarse.samples)) <= 8
 
 
 # ---- timing needs a period supplied -----------------------------------
@@ -264,8 +272,13 @@ def test_reference_parses_to_a_plausible_command_count():
     from hardware.piezo_stage import reference_commands
 
     commands = reference_commands()
-    assert len(commands) == 178
+    # what the controller answered at User level on 2026-08-27, over COM4
+    assert len(commands) == 414
     assert not any(c.endswith(".") for c in commands)
+    # the hyphenated half the strings-extraction could not see
+    assert "stage.mode.digital-command.get" in commands
+    assert "function.waveform.sample-period.set" in commands
+    assert any(c.startswith("resonance-detect.") for c in commands)
 
 
 def test_every_command_the_module_sends_is_in_the_reference():
@@ -278,15 +291,48 @@ def test_every_command_the_module_sends_is_in_the_reference():
     from hardware.piezo_stage import reference_commands
 
     source = Path(__file__).resolve().parent.parent / "hardware" / "piezo_stage.py"
-    used = set(re.findall(r'"((?:[a-z]+\.)+[a-z0-9]+)(?: \{[^"]*\})?"', source.read_text()))
-    sent = {c for c in used if c.count(".") >= 1 and not c.endswith(".py")}
+    # hyphens included: half the real command names carry one
+    used = set(re.findall(
+        r'"((?:[a-z][a-z0-9-]*\.)+[a-z0-9-]+)(?: \{[^"]*\})?"',
+        source.read_text(encoding="utf-8"),
+    ))
+    # the same widening also catches file names quoted in the module
+    not_commands = (".py", ".md", ".dll", ".ini", ".cfg", ".json", ".txt")
+    sent = {c for c in used if c.count(".") >= 1 and not c.endswith(not_commands)}
     missing = sorted(sent - reference_commands())
     assert not missing, f"command names not in the extracted reference: {missing}"
 
 
-def test_upload_waveform_refuses_while_the_protocol_is_unknown():
-    """Same stance as lunf_power.set_power: no guessed arguments at hardware
-    that can drive glass into a coverslip."""
+def test_waveform_protocol_records_what_the_controller_reported():
+    """The arities upload_waveform() encodes, read off the controller on
+    2026-08-27 with GetCommandParameters/GetCommandParameterName rather than
+    guessed. A wrong entry here is a wrong command at a stage that can drive
+    glass into a coverslip, which is why it is pinned by a test.
+    """
     from hardware import piezo_stage
 
-    assert piezo_stage.WAVEFORM_PROTOCOL is None
+    protocol = piezo_stage.WAVEFORM_PROTOCOL
+    assert protocol["function.waveform.data.set"] == ("channel", "index", "value")
+    assert protocol["function.waveform.count.set"] == ("channel", "value")
+    assert protocol["function.waveform.sample-period.set"] == ("channel", "value")
+    assert protocol["stage.position.command.set"] == ("channel", "value")
+    # start/stop carry a snapshot flag, pause/unpause do not
+    assert len(protocol["function.command.start"]) == 5
+    assert len(protocol["function.command.stop"]) == 5
+    assert len(protocol["function.command.pause"]) == 4
+    assert len(protocol["function.command.unpause"]) == 4
+
+
+def test_function_command_flags_are_positional_not_omitted():
+    """function.command.* takes one flag per target. Sending it bare -- which
+    this module used to do -- answers "Invalid command name" while locked and
+    is wrong unlocked."""
+    from hardware.piezo_stage import PiezoStage, PiezoStageError
+
+    # _function_flags is pure string work, so it needs no DLL and no controller
+    stage = PiezoStage.__new__(PiezoStage)
+    assert stage._function_flags((1,), snapshot=False) == "0 0 1 0 0"
+    assert stage._function_flags((2, 3), snapshot=True) == "1 0 0 1 1"
+    assert stage._function_flags((1, 3), internal=True) == "1 1 0 1"
+    with pytest.raises(PiezoStageError, match="1..3"):
+        stage._function_flags((4,))

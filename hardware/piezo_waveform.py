@@ -15,13 +15,15 @@ reference/npcd-command-set.md.
 
 WHAT THIS MODULE DOES AND DOES NOT DO
 -------------------------------------
-It builds and validates sample arrays. It does **not** upload them --
-`piezo_stage.upload_waveform()` refuses until the parameter signature of
-`function.waveform.data.set` is confirmed, because the arity is not documented
-anywhere in this repo (the command-set manual is not here) and writing guessed
-arguments at a stage that can drive glass into a coverslip is not worth the
-risk. Same stance as `lunf_power.PROTOCOL is None`. Confirm the signature with
-``config/piezo/verify_piezo_commands.py``, which reads it out of the DLL.
+It builds and validates sample arrays. ``piezo_stage.upload_waveform()`` loads
+them, and as of 2026-08-27 that path is open: the signature was read off the
+controller (``function.waveform.data.set channel index value``, see
+``piezo_stage.WAVEFORM_PROTOCOL``) rather than guessed. Two things to know before
+using it. The upload is one command per sample over a ~0.7 ms round trip, so the
+sample count, not the sample period, is what costs time. And every
+``function.*.set`` is invisible until the controller's security level is raised,
+so an upload without ``piezo_stage.unlock()`` fails with "Invalid command name",
+which does not sound like the permission problem it is.
 
 UNITS
 -----
@@ -31,16 +33,22 @@ says a distance may be reported in picometres for linear stages or picoradians
 for angular ones, and that applications "should always check the units used for
 a parameter or return value". The verify script prints them.
 
-THE TIMEBASE IS NOT KNOWN YET
------------------------------
-The rate at which the generator advances one sample -- and whether it is fixed,
-divided down, or externally triggered -- is in the command-set manual that is
-not in this repo. So a `Waveform` here has a shape and a length but **no
-duration**: ``duration_s()`` needs a sample period handed to it, and
-``Waveform`` will not invent one. Two candidates to look at on the real
-controller: `controller.monitor.input.trigger.get` and
-`controller.synchronisation.master`/`slave.get`, which is also the route to
-starting the piezo and the camera from one edge.
+THE TIMEBASE
+------------
+Settable, per channel: ``function.waveform.sample-period.set channel value`` in
+seconds. It reads back 2.0e-5 out of the box, the same 20 us as
+``controller.sampling-time.get``, so the generator advances on the servo clock
+by default -- 50 kHz, which is roughly 1000x faster than the ~0.7 ms host round
+trip a Python loop is stuck with.
+
+A ``Waveform`` here still has a shape and a length but **no** duration:
+``duration_s()`` takes the period as an argument and will not invent one, since
+the period lives on the controller and can differ per channel.
+
+Still unread on the real controller: the trigger plumbing that would start the
+piezo and the camera off one edge -- ``function.trigger-inputs.*``,
+``function.trigger-output.*``, and ``controller.synchronisation.master/slave``.
+All present in the command set (2026-08-27), none exercised.
 """
 
 from __future__ import annotations
@@ -84,20 +92,39 @@ class StageTravel:
 
     def quantise(self, value_pm: float) -> float:
         """Snap to the controller's step. Reported, not hidden: a caller that
-        asks for a 5 nm amplitude on a 12.2 nm step should see what it gets."""
+        asks for an amplitude near the step should see what it gets."""
         return self.min_pm + round((value_pm - self.min_pm) / self.resolution_pm) * self.resolution_pm
 
 
-#: Travel figures observed 2026-08-19 through NIS's analogue abstraction of this
-#: same controller (kb/systems/current.md > devices_not_in_mm_config > piezo
-#: stage): 0-400 um mapped to 0-10 V, resolution 0.0122 um, home 200 um, seen at
-#: 197.6 um / 4.94 V. **They describe the analogue path, not this one** -- the
-#: DLL has its own `stage.command.digital.scaling.*` gain and offset, separate
-#: from `stage.command.analogue.scaling.*`. Use knowingly, and replace with
-#: values read off the controller.
-OBSERVED = StageTravel(
-    min_pm=0.0, max_pm=400.0 * PM_PER_UM, resolution_pm=0.0122 * PM_PER_UM
+#: Travel and command step **read off the controller** on 2026-08-27 (COM4,
+#: firmware 6.7.8, stage SP-XYZ-600), replacing figures borrowed from NIS.
+#:
+#: Travel: ``stage.position.calibrated-range.minimum/maximum.get`` answer 0 and
+#: 6.0e8 on all three axes -- 0..600 um, identical for x, y and z. That the
+#: number is 6.0e8 for a 600 um stage is also the cross-check that positions on
+#: this interface are picometres, which no units query would confirm (the DLL
+#: answers empty, when it does not access-violate -- piezo_stage.command_results).
+#:
+#: Step: measured, not looked up. Commanding channel 1 in 2 pm increments and
+#: reading ``stage.position.command.get`` back shows the command grid stepping in
+#: **32 pm**. That is the *command* quantisation only -- what the controller will
+#: accept as distinct. It is nowhere near what the stage delivers: during a 1 Hz
+#: 10 um sweep the readback sat 330 nm (median) from the commanded position, and
+#: settling dominates everything at this scale.
+#:
+#: The old figures here -- 400 um travel, 0.0122 um step -- came from NIS's
+#: analogue abstraction of this same controller (0-10 V mapped to 0-400 um,
+#: kb/systems/current.md). Both were wrong for this path: the travel by 200 um,
+#: the step by a factor of ~380. NIS's own scaling also disagrees with the
+#: controller, which reports ``stage.command.analogue.scaling.get`` = 60,
+#: consistent with 600 um over its 10 V input rather than 400.
+CALIBRATED = StageTravel(
+    min_pm=0.0, max_pm=600.0 * PM_PER_UM, resolution_pm=32.0
 )
+
+#: Kept as the name callers already use. It is the same object, so an
+#: ``is CALIBRATED`` identity check holds.
+OBSERVED = CALIBRATED
 
 
 class WaveformError(ValueError):

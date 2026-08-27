@@ -633,10 +633,48 @@ pixel_size_calibration:
 
 devices_not_in_mm_config:   # docs/02 §4 "three-way cross-check table" — separately controlled devices absent from the MM .cfg
   - name: "piezo stage (Prior/Queensgate NPC-D, Nanobench 6000)"
-    control: "separate Python (hardware/piezo_stage.py), USB/COM + vendor DLL"
+    control: "separate Python (hardware/piezo_stage.py), COM4 + vendor DLL — driven, with readback"
     mm_registered: false
-    python_control: confirmed
-    confirmed_date: 2026-08-19
+    python_control: confirmed   # 2026-08-27: driven end to end, x axis, with readback
+    confirmed_date: 2026-08-27
+    driven: >
+      **2026-08-27 — first light, and the stage moved under Python.** Link is the
+      bare string "COM4" (no scheme; `sim:/NPC6330` is the DLL simulator), and
+      `list_devices()` does not enumerate it, so the port has to be named. The
+      port is **exclusive**: the vendor NanoBench 6000 GUI holds it while it has a
+      session open and `connect()` then fails with "could not open comms link".
+
+      Identity: DLL 2.7.9, firmware 6.7.8, 3 channels = x, y, z on 1, 2, 3, stage
+      `SP-XYZ-600` serial 107866, calibration preset 6 "Customer 1".
+      Travel **0..600 um on every axis** (`stage.position.calibrated-range.*`),
+      which also settles the units question no units query could — 6.0e8 for a
+      600 um stage is picometres and nothing else (the DLL's own unit getters
+      answer empty, when they do not access-violate).
+      Command quantisation **32 pm**, measured by stepping 2 pm at a time and
+      watching `stage.position.command.get`.
+      Servo/generator clock 20 us (`controller.sampling-time.get`).
+
+      Host-timed drive, channel 1 (x), 1 Hz sine of 10 um peak-to-peak about
+      300 um, 100 samples/cycle: achieved 1.0000 Hz, schedule slip median
+      0.002 ms and max 0.091 ms, 0/300 overruns, measured span 9.9835 um of the
+      10.0000 um commanded, |measured-commanded| median 329 nm (an upper bound —
+      the readback follows the command, so it carries settling and a round trip).
+      Round trips: set 0.68 ms median, get 0.42 ms median, so the link sustains
+      ~890 samples/s. Static readback at 400 um: 2000 reads spanning 74 nm,
+      stdev 12.6 nm, no outlier beyond 1 um.
+
+      Security gates the command set, and this is the single most misleading
+      thing about this controller. Locked (`security = None`) it reports 188
+      commands of which exactly **one** is a `.set`
+      (`controller.security.user.set`); `stage.position.command.set` is not
+      unavailable but *invisible*, and asking about it answers "Invalid command
+      name" — which reads like "this controller cannot do it". Unlocked to User:
+      **414** commands. Codes are fixed vendor per-level constants in the GUI's
+      own `C:/Program Files (x86)/NanoBench 6000/data/config.ini`
+      `[SecurityLevels]`, and the **`0x` prefix is required** (`DEC0DED` answers
+      "Not enough parameters", `0xDEC0DED` returns `User`). The level is
+      controller-side state that outlives the session — the vendor GUI leaves it
+      raised.
     note: >
       **ONE physical stage, TWO control interfaces** (resolved 2026-08-19).
       A discrepancy surfaced while tracing the LUN-F DAQ wiring: the NIS
@@ -657,34 +695,77 @@ devices_not_in_mm_config:   # docs/02 §4 "three-way cross-check table" — sepa
       from `Dev1/ao2` to the controller is still physically connected, so
       **never add `NIDAQAO-Dev1/ao2` to a Micro-Manager configuration** --
       MM initializes an AO device by writing 0 V, which would command the
-      stage to 0 um. Whether the NPC-D actually acts on its analog input
-      depends on the controller's input-mode setting, which has NOT been
-      checked yet (query it over the DLL before relying on either answer).
-      config/micromanager/DMD_dualcam_LUNF.cfg contains no AO device for
-      exactly this reason.
+      stage to 0 um. config/micromanager/DMD_dualcam_LUNF.cfg contains no AO
+      device for exactly this reason.
 
-      **2026-08-26 — the outstanding query now has a name.** The controller
-      command set was recovered offline by pulling the dotted ASCII literals out
-      of the vendor DLL (178 commands, reference/npcd-command-set.md), and it
-      contains `stage.mode.get` — the input-mode query this hazard has been
-      asking for since 2026-08-19 — with **no** `stage.mode.set`, so the mode is
-      readable from here but not changeable. It also contains
-      `stage.command.analogue.scaling.gain/offset` alongside
-      `stage.command.digital.scaling.gain/offset`: independent scaling per
-      command path, which is direct evidence the controller really does accept
-      both the analogue input NIS drives and the digital one this repo uses.
-      Read them with `config/piezo/verify_piezo_commands.py --hazard` (read-only).
-      **The hazard is unchanged whatever the mode says** — keep
-      `NIDAQAO-Dev1/ao2` out of every MM configuration, because MM writes 0 V on
-      initialize and on the analogue path that is 0 um.
+      **2026-08-27 — the input-mode question, open since 2026-08-19, is
+      answered.** On all three channels `stage.mode.digital-command.get` = 1 and
+      `stage.mode.analogue-command.get` = 0, with `closed-loop` = 1,
+      `is-sensor-only` = 0, `freeze-servo-output` = 0
+      (`piezo_stage.mode_flags()`). The controller acts on the USB/DLL path and
+      **ignores** the analogue input from `Dev1/ao2`. That is the reassuring
+      answer, and the hazard survives it: the mode has no per-bit setter, but
+      `stage.mode-mask.set` / `stage.mode-only.set` do exist at User level and
+      write the raw mode word, so the mode is not immutable — it is merely not
+      something this repo changes. Keep `NIDAQAO-Dev1/ao2` out of every MM
+      configuration.
 
-      **And the controller has a hardware waveform generator** (`function.*`:
-      upload samples, set count and iterations, start/stop/pause/unpause, read
-      state), documented by the vendor's own examples as building "simple raster
-      profiles". Plus `snapshot.*`, triggered data capture. So this stage is a
-      hardware-timed subsystem, and — unlike the tweezers — its state is
-      readable, so a commanded trajectory here can be verified rather than
-      assumed. See kb/decisions/2026-08-26-piezo-waveform-generator.md.
+      **2026-08-26/27 — the command set, and what the offline extraction got
+      wrong.** The 178 names in reference/npcd-command-set.md were recovered by
+      pulling dotted ASCII literals out of the vendor DLL, and that file said
+      plainly that they were a family-wide superset and a hypothesis. Confirmed
+      against the controller on 2026-08-27 it moved both ways, so the extraction
+      was not merely incomplete, and the file has been regenerated from the live
+      controller (414 names at User level):
+
+      - **Hyphens.** Real names carry them — `stage.mode.digital-command.get`,
+        `function.waveform-generator.sample-period.get` — and the extraction's
+        regexp could not match a hyphen, so whole families were invisible to it:
+        `function.waveform-generator.*`, `function.waveform-builder.*`,
+        `resonance-detect.*`, `diagnostics-logging.*`.
+      - **Names that do not exist here.** `stage.command.digital.scaling.*` and
+        `stage.command.analogue.scaling.gain/offset` answer "Invalid command
+        name", as do the whole `fpga.*`, `peek.*` and `system.*` families. So the
+        2026-08-26 claim of *independent scaling per command path* does not hold
+        for this controller: there is one `stage.command.analogue.scaling.get`,
+        reading 60, consistent with 600 um over a 10 V input — and consistent
+        with NIS's own 0-400 um abstraction being **mis-scaled by 1.5x**, which
+        would matter if anyone ever enabled the analogue path.
+
+      **The hardware waveform generator exists but is NOT usable yet, and this
+      is the hazard to carry forward.** `function.*` is 131 commands with two
+      interfaces: `function.waveform.*` (a 500 001-sample buffer, one command per
+      sample, `count`/`iterations`/`repeat-count`/`sample-period` per channel) and
+      `function.waveform-generator.*` (segment-based — start/end position and
+      velocity, duration — which is the one to use for a long smooth path).
+      Two things were learned the hard way on 2026-08-27, both now enforced in
+      hardware/piezo_stage.py:
+
+      1. **The playback window defaults to the whole buffer.** Out of the box
+         `waveform-start` = 0, `waveform-end` = **500000**, `count` = 1. Load 100
+         samples and start, and it plays the other 499 901 — whatever is in the
+         buffer — at 20 us a step. `upload_waveform()` now writes the window and
+         `function_start()` refuses one that reaches past the count.
+      2. **The generator does not read its samples in picometres.** A 100-sample
+         +/-5 um sine about x = 300 um, uploaded in picometres (the unit
+         `stage.position.command.set` takes), verified byte-identical by
+         `function.waveform.data.get`, window 0..99, period 10 ms — played, it
+         swung the axis over a measured **313.9 um**, ~31x the 10 um requested,
+         with centre crossings 1-25 ms apart instead of 1 s. Not a readback
+         artifact: 2000 static reads span 74 nm. Candidates, untested: the value
+         is a DAC code rather than a distance (300 um of picometres wraps a
+         24-bit code, which would scatter samples across the travel exactly like
+         this), or it is an offset rather than an absolute position. The bounded
+         way to tell is a **constant** waveform — every sample equal — which
+         cannot oscillate whatever the unit, on a lateral axis. Until
+         `piezo_stage.WAVEFORM_DATA_UNITS` is filled in, `function_start()`
+         refuses.
+
+      So: the *host-timed* path is confirmed and characterised, the
+      *hardware-timed* path is one experiment away and must not be used before
+      it. Either way this subsystem is readable, so unlike the tweezers a
+      commanded trajectory here can be verified rather than assumed.
+      See kb/decisions/2026-08-26-piezo-waveform-generator.md.
   - name: "optical tweezers (Aresis Tweez 305/310, Tweez 300)"
     control: "separate Python (hardware/optical_tweezers.py, TCP 2070) — write-only; several essentials are GUI-only"
     mm_registered: false

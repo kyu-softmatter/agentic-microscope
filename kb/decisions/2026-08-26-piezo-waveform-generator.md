@@ -3,6 +3,23 @@
 > Fourth and last entry from 2026-08-26, after `microscope-config-control`,
 > `tweezers-pattern-vs-direct` and `parallel-control-architecture`. It closes
 > open item 6 of the third one — the last gap in the timing picture.
+>
+> **Partly superseded 2026-08-27, when the controller was actually asked.** The
+> headline holds — the generator exists, 131 commands at User security level —
+> but two supporting claims below do not, and the generator turned out not to be
+> usable yet. Read `2026-08-27-piezo-first-light-measured-limits.md` §8 before
+> relying on anything here:
+>
+> - `stage.command.analogue.scaling.gain/offset` and
+>   `stage.command.digital.scaling.gain/offset`, cited below as "direct evidence"
+>   of two command paths, **do not exist on this controller**. The two paths are
+>   real, but the evidence is `stage.mode.digital-command.get` = 1 with
+>   `stage.mode.analogue-command.get` = 0 on all three axes.
+> - "no `stage.mode.set` ... readable but not changeable" — readable yes, but
+>   `stage.mode-mask.set` and `stage.mode-only.set` do exist at User level.
+> - The command list this note reasons from was a `strings` extraction that could
+>   not match a hyphen, so it missed whole families and included other models'
+>   names. `reference/npcd-command-set.md` is now read from the controller.
 
 ## Request
 
