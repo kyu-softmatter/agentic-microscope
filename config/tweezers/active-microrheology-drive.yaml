@@ -1,0 +1,97 @@
+# Trap drive spec for the probe in
+# config/channels/active-microrheology-probe-tracer.yaml
+#
+#   python config/tweezers/run_pattern.py --plan config/tweezers/active-microrheology-drive.yaml
+#
+# Written 2026-08-26. Route decided the same day: the drive is a generated .tpf
+# pattern, not TCP position streaming, because the force readout
+# F = kappa * (x_bead - x_trap) needs x_trap(t) known and the Tweez 300 TCP
+# interface has no readback of any kind to check it against.
+# → kb/decisions/2026-08-26-tweezers-pattern-vs-direct.md
+
+name: active-microrheology-drive
+channel: config/channels/active-microrheology-probe-tracer.yaml
+
+# Trap and pattern names as they exist in the Tweez project. The trap itself and
+# its wait states come from the GUI-built project template (see `project`
+# below) -- TCP cannot create wait states, only assign patterns.
+trap: "Probe"
+pattern_name: "Drive"
+
+# Absolute path on the microscope PC. The manual states TCP file paths are
+# absolute. Leave null to skip LOAD_PROJECT and use whatever the GUI has open.
+project: null
+
+pattern:
+  shape: bounded_random_walk    # circle | oscillation | raster | bounded_random_walk
+  n_points: 2000
+  step_um: 0.25
+  half_width_um: 8.0            # walk boundary, NOT the trapping range
+  seed: 11                      # mandatory: this IS the record of the trajectory
+  strength: 1.0                 # relative, multiplied by the trap's own strength
+
+loop:
+  # Every trap in the loop costs one switching interval per pass, so this scales
+  # every time and speed below linearly. Two traps here: the probe plus one
+  # holding trap. MUST match the real project -- read it, do not assume.
+  n_traps: 2
+  switching_rate_hz: 100000     # manual p.6 quotes 100 kHz max for the Tweez 305
+
+drive:
+  target_speed_um_s: 30.0       # top of the channel file's 0-30 um/s range
+  # wait_states | dwell | switching_rate -- see the plan output for what each
+  # costs. wait_states is the vendor's mechanism and is GUI-only, hence the
+  # project template above.
+  slowdown: wait_states
+
+calibration:
+  # The Tweez GUI calibration these um coordinates assume. NEITHER PART IS
+  # READABLE OR SETTABLE OVER TCP (manual pp. 66-69 have no calibration command),
+  # so this block is a recorded assumption, not a measurement -- its only job is
+  # to make a mismatch visible to a human.
+  #
+  # Both Tweez calibrations are objective-dependent and both are invalidated by
+  # an objective change:
+  #   - GUI calibration (manual pp. 35-38): Beam Position (LCS<->ICS) +
+  #     Magnification (ICS<->WCS, px -> um). Re-done by dragging a scale line
+  #     over a graticule. "whenever ... this relation changes i.e., due to
+  #     exchanged objective (different magnification), camera remounting".
+  #   - Trapping field calibration (manual pp. 28-32): AOD response, measured
+  #     with a photodiode over the objective. "switching to different objective
+  #     ... may not be accurate anymore ... particularly important when
+  #     performing e.g., force measurements, micro rheology".
+  #
+  # So if hardware/microscope.py moves the Nosepiece, this spec's um are wrong
+  # and nothing in either interface will say so.
+  objective: "4-Apo LmbdS 40x WI"   # Nosepiece position 3, per the channel file
+  # Calibrations are per-camera (manual p.37). The Tweez GUI takes a Kinetix,
+  # uses it, then releases it (user, 2026-08-26) -- the same body Micro-Manager
+  # drives, and PVCAM gives a camera to one process at a time. So the order is:
+  # Tweez GUI takes the camera -> calibrate + set up traps -> release ->
+  # hardware/microscope.py loads its configuration -> acquire. TCP trap and
+  # pattern commands need no live image, so the drive still runs after release.
+  # Which body is it, Kinetix_red (>561, the 647 probe) or Kinetix_blue?
+  camera: null
+  um_per_px: null         # the Magnification value, read off the GUI
+  taken: null             # date the calibration was last performed
+
+field_calibration:
+  # The AOD trapping-field calibration, which is System Manager state and is
+  # NOT carried by a GUI project (manual pp.28-32 vs p.65). Objective-dependent
+  # like the GUI one, and the manual calls redoing it after an objective change
+  # "particularly important when performing e.g. force measurements, micro
+  # rheology" -- i.e. exactly this experiment. Saved/loaded from the System
+  # Manager's own File menu. The plan blocks while this is unrecorded, and
+  # blocks again if it disagrees with calibration.objective above.
+  objective: null
+  taken: null
+
+trapping_range:
+  # Half-extents of the calibrated AOD field, um. NULL ON PURPOSE: the real
+  # range is a trapezoid set by the GUI calibration and depends on the objective
+  # in use (this channel runs 40x WI, not the 60x the manual's spec table
+  # assumes). Points outside it are silently clipped to the edge and not drawn,
+  # so an unchecked pattern deforms with no error anywhere. While null the plan
+  # reports BLOCKED for the range check rather than passing it.
+  half_width_um: null
+  half_height_um: null

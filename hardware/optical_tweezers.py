@@ -14,6 +14,7 @@ vendor's own sample: %ProgramFiles%\\Aresis\\Tweez300\\Samples\\TCP_IP\\Python\\
 """
 
 import socket
+import time
 
 _RETURN_CODES = {
     0: "success",
@@ -38,12 +39,51 @@ _RETURN_CODES = {
 }
 
 
+#: A name no operator would choose, used only as a readiness probe target.
+_PROBE_TRAP = "__readiness_probe__"
+
+#: Statuses that mean the GUI is up and processing commands. 0 is success and
+#: -25 is "no such element" -- both prove the command reached a working GUI,
+#: which is the only thing a probe can establish on an interface with no query
+#: command of any kind.
+READY_STATUSES = frozenset({0, -25})
+
+#: Statuses that mean "up, but not usable yet". Distinguishing these from a
+#: dead socket is the whole point of probing: they tell you whether to keep
+#: waiting (-16, -17, -19) or go fix something by hand (-15, -18).
+NOT_READY_STATUSES = {
+    -15: "System Manager not connected -- start it and connect the device",
+    -16: "device not ready",
+    -17: "GUI not ready",
+    -18: "GUI locked -- unlock it in the GUI",
+    -19: "calibration active -- finish or cancel it",
+}
+
+
 class TweezersError(RuntimeError):
     """Raised when the Tweez 300 GUI reports a non-zero command status."""
 
 
 def _quote(name):
     return f'"{name}"' if " " in name else name
+
+
+def find_gui_port(host="127.0.0.1", ports=range(2070, 2076), timeout=1.0):
+    """First port whose GUI answers a readiness probe, or None.
+
+    The port increments per active GUI instance (2070, 2071, ...), and each GUI
+    is bound to its own camera with its own calibration -- so the port is also
+    the choice of *which* camera and calibration you are driving. Scan when a
+    launch may have landed on a different instance than expected.
+    """
+    for port in ports:
+        try:
+            with OpticalTweezers(host=host, port=port, timeout=timeout) as tweez:
+                if tweez.is_ready(reply_timeout=timeout):
+                    return port
+        except OSError:
+            continue
+    return None
 
 
 class OpticalTweezers:
@@ -105,6 +145,39 @@ class OpticalTweezers:
             raise TweezersError(f"{command!r} failed: {status} ({reason})")
         return status
 
+    # -- readiness --
+    def probe(self, reply_timeout=2.0):
+        """Send a harmless command and return its raw status.
+
+        ``TRAP_DELETE`` against a sentinel name: if the GUI is working it
+        answers -25 (no such element) and nothing changes; if it is not, it
+        answers -15/-17/etc. or does not answer at all. There is no query
+        command in the protocol, so this is the only available liveness test.
+        """
+        return self.send_command(
+            f"TRAP_DELETE {_quote(_PROBE_TRAP)}", reply_timeout=reply_timeout
+        )
+
+    def is_ready(self, reply_timeout=2.0):
+        """True when the GUI is up and accepting commands."""
+        return self.probe(reply_timeout=reply_timeout) in READY_STATUSES
+
+    def wait_until_ready(self, timeout=60.0, poll=0.5):
+        """Block until the GUI is ready, or raise with the reason it is not.
+
+        For scripting a launch: start the GUI, then wait here rather than
+        sleeping a guessed number of seconds.
+        """
+        deadline = time.monotonic() + timeout
+        status = None
+        while time.monotonic() < deadline:
+            status = self.probe()
+            if status in READY_STATUSES:
+                return status
+            time.sleep(poll)
+        reason = NOT_READY_STATUSES.get(status, f"last status {status!r}")
+        raise TweezersError(f"GUI not ready after {timeout:.0f}s: {reason}")
+
     # -- project / laser --
     def clear_project(self):
         self.do("CLEAR_PROJECT")
@@ -153,8 +226,25 @@ class OpticalTweezers:
         self.do(f"TRAP_OFF {_quote(name)}")
 
     # -- patterns --
-    def load_pattern(self, pattern_name, pattern_file):
-        self.do(f"LOAD_PATTERN {_quote(pattern_name)} {_quote(pattern_file)}")
+    def load_pattern(self, pattern_name, pattern_file, file_first=False):
+        """Load a .tpf pattern file and name it.
+
+        The manual contradicts itself on the argument order, so this is the one
+        command here whose form is unconfirmed. The Command List (p.68) gives
+        ``LOAD_PATTERN <pattern name> <pattern file>``; the worked example
+        (p.69) writes ``LOAD_PATTERN Sample.tsf "Patt 1"`` -- file first, and
+        with the extension misspelt (.tsf; it is .tpf everywhere else) and a
+        relative path where the same page states "File paths are absolute".
+        The example looks like the sloppier of the two, so the Command List
+        order is the default; pass ``file_first=True`` to flip it.
+
+        Resolve it on the microscope PC by watching the GUI's Status Pane >
+        TCP/IP Svr log: a wrong order should come back -10 (invalid command
+        line) or -27 (invalid parameters). Paths should be absolute either way.
+        Pattern files can be generated with hardware/tweezers_patterns.py.
+        """
+        args = (pattern_file, pattern_name) if file_first else (pattern_name, pattern_file)
+        self.do(f"LOAD_PATTERN {_quote(args[0])} {_quote(args[1])}")
 
     def delete_pattern(self, pattern_name):
         self.do(f"DELETE_PATTERN {_quote(pattern_name)}")
