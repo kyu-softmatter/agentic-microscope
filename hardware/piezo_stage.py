@@ -16,6 +16,7 @@ Connection is a comms-link string: a COM port ("COM4"), an IP address
 """
 
 import ctypes
+import re
 import sys
 from pathlib import Path
 
@@ -28,6 +29,43 @@ _DLL_FILENAMES = {
     8: "controller_interface64.dll",
     4: "controller_interface.dll",
 }
+
+#: Extracted command-name list, with its provenance and its superset caveat.
+REFERENCE_COMMANDS = Path(__file__).parent.parent / "reference" / "npcd-command-set.md"
+
+#: Argument layout for ``function.waveform.data.set`` -- how many arguments it
+#: takes and in what order. **Not documented anywhere in this repo**: the
+#: "NPC-D-6xx0 NanoMechanism Controller Interface Command Set And Control
+#: System" manual is not here, only the DLL library manual. While this is None,
+#: upload_waveform() refuses rather than sending guessed arguments to a stage
+#: that can drive an objective into a coverslip -- the same stance as
+#: ``lunf_power.PROTOCOL``.
+#:
+#: Two ways to fill it in, neither needing the missing manual:
+#:   1. ``config/piezo/verify_piezo_commands.py`` prints the real signature,
+#:      read straight out of the DLL via command_parameters().
+#:   2. the vendor's ``function_waveform_demo`` example, whose source is in the
+#:      archived SDK (see manual/README.md).
+WAVEFORM_PROTOCOL = None
+
+_COMMAND_LINE = re.compile(r"^[a-z]+(?:\.[a-z0-9]+)+$", re.MULTILINE)
+
+
+def reference_commands():
+    """Command names from reference/npcd-command-set.md, as a set.
+
+    A superset across the NPC-D family, not this controller's command set --
+    see that file's caveat. Used to cross-check what find_commands() reports.
+    """
+    if not REFERENCE_COMMANDS.exists():
+        return set()
+    # Matched by shape rather than by tracking code fences: a bare dotted
+    # lowercase token on its own line is a command and nothing else in the file
+    # looks like one (prose keeps them in backticks, the quoted shell block is
+    # blockquoted, headings start with #).
+    return set(
+        _COMMAND_LINE.findall(REFERENCE_COMMANDS.read_text(encoding="utf-8"))
+    )
 
 
 class PiezoStageError(RuntimeError):
@@ -52,13 +90,25 @@ def _read_string(fn, *leading_args):
 class PiezoStage:
     """Controls a Prior/Queensgate NPC-D digital piezo stage controller."""
 
-    def __init__(self, dll_path=None):
+    def __init__(self, dll_path=None, allow_motion=False):
+        """``allow_motion=False`` -- the default -- makes every call that can
+        move the stage raise. Reads, discovery and waveform inspection stay
+        available, so the verification script can run against a live controller
+        with a sample in place."""
         if dll_path is None:
             filename = _DLL_FILENAMES[ctypes.sizeof(ctypes.c_voidp)]
             dll_path = str(_VENDOR_DIR / filename)
+        self.allow_motion = allow_motion
         self._dll = dll_adapter.DllAdapter()
         if not self._dll.Init(dll_path):
             raise PiezoStageError(f"failed to load controller DLL: {dll_path}")
+
+    def _require_motion(self, what):
+        if not self.allow_motion:
+            raise PiezoStageError(
+                f"refusing {what}: constructed without allow_motion=True. "
+                "Check clearance and the travel bounds first"
+            )
 
     def __enter__(self):
         return self
@@ -193,3 +243,110 @@ class PiezoStage:
 
     def lock(self):
         self.do_command("controller.security.lock")
+
+    # ---- discovery: what this controller actually supports --------------
+
+    def verify_command_set(self):
+        """Cross-check ``find_commands()`` against the extracted reference.
+
+        Returns ``(supported, reference_only, controller_only)``. The reference
+        is a family-wide superset, so ``reference_only`` is expected to be
+        non-empty and is not an error -- it is how you learn which commands are
+        for other NPC-D models. ``controller_only`` is the interesting one: the
+        DLL knew a name that the extraction missed.
+        """
+        supported = set(c for c in self.find_commands() if c)
+        reference = reference_commands()
+        return (
+            sorted(supported),
+            sorted(reference - supported),
+            sorted(supported - reference),
+        )
+
+    def describe_family(self, prefix):
+        """Full signature of every command starting with ``prefix``.
+
+        ``{name: {"description", "parameters", "results"}}``, with parameters
+        and results as ``(name, units_type, units)`` triples straight from the
+        DLL. This is what replaces the missing command-set manual.
+        """
+        out = {}
+        for name in self.find_commands(prefix):
+            if not name:
+                continue
+            out[name] = {
+                "description": self.describe_command(name),
+                "parameters": self.command_parameters(name),
+                "results": self.command_results(name),
+            }
+        return out
+
+    def position_units(self, command="stage.position.measured.get"):
+        """Units the controller reports for a position command.
+
+        Library manual 5.2: a distance may come back in picometres for a linear
+        stage or picoradians for an angular one, and applications "should always
+        check the units". ``get_position_pm`` assumes picometres; this is how to
+        find out whether that assumption holds here.
+        """
+        return self.command_results(command)
+
+    def stage_mode(self, channel=1):
+        """``stage.mode.get`` -- which command input the controller is acting on.
+
+        This is the query kb/systems/current.md asks for and never got: the
+        analogue cable from ``Dev1/ao2`` is still connected, and whether the
+        controller acts on it depends on this setting. Note there is no
+        ``stage.mode.set`` in the command set, so the mode is readable from here
+        but not changeable.
+        """
+        return self.do_command(f"stage.mode.get {channel}")
+
+    # ---- waveform generator (function.*) --------------------------------
+
+    def function_state(self):
+        """``function.state.get`` -- what the waveform generator is doing.
+
+        Unlike the optical tweezers, this interface can be *read*. Whatever a
+        playback is doing is observable, so a drive here can be verified rather
+        than assumed.
+        """
+        return self.do_command("function.state.get")
+
+    def function_stop(self):
+        """Stop playback. Always allowed -- it reduces motion."""
+        return self.do_command("function.command.stop")
+
+    def function_pause(self):
+        """Pause playback. Always allowed -- it reduces motion."""
+        return self.do_command("function.command.pause")
+
+    def function_unpause(self):
+        self._require_motion("function.command.unpause")
+        return self.do_command("function.command.unpause")
+
+    def function_start(self):
+        """Start playback. **This moves the stage.**"""
+        self._require_motion("function.command.start")
+        return self.do_command("function.command.start")
+
+    def upload_waveform(self, waveform, travel):
+        """Refuses, by design, until WAVEFORM_PROTOCOL is known.
+
+        Validates the waveform against ``travel`` first, so the range check is
+        still useful today, then raises rather than sending guessed arguments to
+        ``function.waveform.data.set``. Build waveforms with
+        hardware/piezo_waveform.py; confirm the signature with
+        config/piezo/verify_piezo_commands.py.
+        """
+        waveform.check(travel)
+        if WAVEFORM_PROTOCOL is None:
+            raise PiezoStageError(
+                "upload_waveform is not implemented: the argument layout of "
+                "function.waveform.data.set is undocumented in this repo "
+                "(WAVEFORM_PROTOCOL is None). Run "
+                "config/piezo/verify_piezo_commands.py --describe function "
+                "against the controller to read the real signature, then fill "
+                "it in. Refusing to guess -- this command moves a stage."
+            )
+        raise PiezoStageError("WAVEFORM_PROTOCOL set but no encoder implemented")
