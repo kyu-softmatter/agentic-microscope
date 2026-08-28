@@ -396,7 +396,8 @@ def plan(spec: dict) -> DrivePlan:
     )
 
 
-def command_sequence(plan_: DrivePlan, tpf_path: str, file_first: bool = False) -> tuple[str, ...]:
+def command_sequence(plan_: DrivePlan, tpf_path: str, file_first: bool = False,
+                     blanking_time_us: float = 0.0) -> tuple[str, ...]:
     """The TCP command lines this plan implies, in order.
 
     Returned as text so they can be read and approved before a socket is
@@ -418,7 +419,13 @@ def command_sequence(plan_: DrivePlan, tpf_path: str, file_first: bool = False) 
     if plan_.project:
         lines.append(f"LOAD_PROJECT {q(plan_.project)}")
     rate = plan_.switching_rate_hz()
-    lines.append(f"BEAM_SET_PARAMS {rate:.0f} 0")
+    # BEAM_SET_PARAMS carries the blanking time as well as the rate, so this one
+    # line overwrites *both* of the GUI's standing values -- there is no way to
+    # set the rate alone. ``blanking_time_us`` therefore defaults to 0 only
+    # because that is what the interface makes us send when nobody has read the
+    # GUI's own number; pass the real one whenever it is known. Observed on the
+    # microscope PC 2026-08-27: rate 50 kHz, blanking 3 us.
+    lines.append(f"BEAM_SET_PARAMS {rate:.0f} {blanking_time_us:g}")
     args = (
         (tpf_path, plan_.pattern_name) if file_first else (plan_.pattern_name, tpf_path)
     )
@@ -432,12 +439,25 @@ def command_sequence(plan_: DrivePlan, tpf_path: str, file_first: bool = False) 
     return tuple(lines)
 
 
-def blanking_time_note(rate_hz: float) -> str:
-    """``BEAM_SET_PARAMS`` takes a blanking time in us alongside the rate, and
-    the sequence above sends 0. Flag when that is obviously wrong: blanking has
-    to be short against the dwell per point."""
+def blanking_time_note(rate_hz: float, blanking_time_us: float = 0.0) -> str:
+    """``BEAM_SET_PARAMS`` takes a blanking time in us alongside the rate, so
+    sending it overwrites whatever the GUI held. Report what will be sent and
+    flag when it is obviously wrong: blanking has to be short against the dwell
+    per point, and a 0 silently discards the GUI's own value."""
     dwell_us = 1e6 / rate_hz
-    return (
-        f"one switching interval is {dwell_us:.2f} us; keep the blanking time "
-        f"well under that (sent as 0 -- confirm the GUI's own value first)"
-    )
+    if not blanking_time_us:
+        verdict = (
+            "sending 0, which OVERWRITES the GUI's blanking time -- read it off "
+            "the GUI and pass --blanking-us to keep it"
+        )
+    elif blanking_time_us >= 0.5 * dwell_us:
+        verdict = (
+            f"sending {blanking_time_us:g} us, which is {100 * blanking_time_us / dwell_us:.0f}% "
+            "of the dwell -- too long, the trap is dark most of each pass"
+        )
+    else:
+        verdict = (
+            f"sending {blanking_time_us:g} us = "
+            f"{100 * blanking_time_us / dwell_us:.2f}% of the dwell"
+        )
+    return f"one switching interval is {dwell_us:.2f} us; {verdict}"

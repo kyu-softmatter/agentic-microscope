@@ -104,8 +104,14 @@ TO SETTLE ON THE MICROSCOPE PC
    it in the KB.
 3. **Breakpoint width depends on the serial number**: 1 bit for SN < 130, 4
    bits at SN >= 130 (with Enable Bits / Release Bits masks, bitwise AND). The
-   SN is in the GUI's Connections box. ``BREAKPOINT_BITS`` here is None until
-   someone reads it.
+   SN is in the GUI's Connections box. SETTLED 2026-08-27:
+   ``BREAKPOINT_BITS = 4`` here, from the GUI's four-character mask -- see that
+   constant. What came with it is the part a file cannot carry: the trap's
+   **Enable Bits was 0000**, and a mask of zero ANDs every ``colBP`` to nothing,
+   so a correct breakpoint in a correct file does not stop the trap and nothing
+   reports an error. Set Enable Bits to cover the ``colBP`` value in the GUI.
+   Same panel, same lesson: ``Repeat Enabled`` was False, so a pattern
+   traverses once and halts at the end rather than cycling.
 4. **Decimal separator.** The manual says floats follow the Windows locale
    ("decimal comma or point"). ``to_tpf(decimal=",")`` exists for that; confirm
    which the lab PC uses before trusting a file it parsed without complaint.
@@ -129,11 +135,15 @@ import random
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-#: Breakpoint field width in bits: 1 for SN < 130, 4 for SN >= 130. None until
-#: the lab's serial number is read off the GUI's Connections box -- see
-#: "TO SETTLE ON THE MICROSCOPE PC" (3). While None, breakpoint values are
-#: written as given and not range-checked.
-BREAKPOINT_BITS: int | None = None
+#: Breakpoint field width in bits: 1 for SN < 130, 4 for SN >= 130.
+#:
+#: 4 on this lab's system, read off the GUI on 2026-08-27 -- the trap's
+#: Breakpoints properties render as a **four**-character mask
+#: (``Enable Bits 0000`` / ``Release Bits 1111``), which is the same field this
+#: constant describes. That is the mask width rather than the serial number
+#: itself, so it places the system at SN >= 130 by inference; reading the SN
+#: out of the GUI's Connections box would confirm it directly.
+BREAKPOINT_BITS: int | None = 4
 
 #: Highest AOD switching rate quoted for the Tweez 305 (manual p. 6). Used only
 #: to flag a timing request that needs more than the hardware has.

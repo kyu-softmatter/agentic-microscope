@@ -6,6 +6,16 @@
 > the open facts at the bottom are still open — the code reports `BLOCKED` on
 > them rather than assuming them.
 > Companion to `2026-08-26-microscope-config-control.md` (same session).
+>
+> **SUPERSEDED IN PART, 2026-08-27.** This ran on the real instrument the next
+> day; see `2026-08-27-tweezers-first-light-measured-limits.md`. Two claims here
+> are wrong as stated: "the TCP interface has no readout of any kind" is true of
+> TCP but not of the GUI's embedded Python, which logs trap position in a
+> probe's `.Data`; and wait states are GUI-only *over TCP* only — the vendor
+> writes `Pattern.Wait States` from the GUI's Python. The decision to drive from
+> `.tpf` patterns stands; the reasons for it changed. The open facts at the
+> bottom are also no longer all open (trapping range, `LOAD_PATTERN` argument
+> order, decimal separator, large-file loading).
 
 ## Request
 

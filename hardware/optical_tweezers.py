@@ -42,11 +42,22 @@ _RETURN_CODES = {
 #: A name no operator would choose, used only as a readiness probe target.
 _PROBE_TRAP = "__readiness_probe__"
 
-#: Statuses that mean the GUI is up and processing commands. 0 is success and
-#: -25 is "no such element" -- both prove the command reached a working GUI,
-#: which is the only thing a probe can establish on an interface with no query
-#: command of any kind.
-READY_STATUSES = frozenset({0, -25})
+#: Statuses that mean the GUI is up and processing commands. 0 is success, and
+#: -25 ("no such element") and -22 ("no resource selected") both prove the
+#: command reached a working GUI, which is the only thing a probe can establish
+#: on an interface with no query command of any kind.
+#:
+#: -22 is here on measurement, not on the manual. Against Tweez300GUI on the
+#: microscope PC (Kinetix A24M723015-PVCAM, licence Permanent, empty project)
+#: on 2026-08-27, ``TRAP_DELETE`` of a name that does not exist answers **-22**,
+#: not the -25 the Command Reference implies. Same session, same socket:
+#: ``SIMPLE_TRAP_CREATE`` and a ``TRAP_DELETE`` of the trap it made both
+#: answered 0, so the GUI was fully live while the probe was calling it dead.
+#: Without -22 here, ``is_ready()`` is False on a healthy GUI, so
+#: ``wait_until_ready()`` always times out and ``find_gui_port()`` always
+#: returns None -- and the caller is then told no GUI answered at all, which is
+#: the misleading diagnosis this probe exists to prevent.
+READY_STATUSES = frozenset({0, -25, -22})
 
 #: Statuses that mean "up, but not usable yet". Distinguishing these from a
 #: dead socket is the whole point of probing: they tell you whether to keep
@@ -58,6 +69,37 @@ NOT_READY_STATUSES = {
     -18: "GUI locked -- unlock it in the GUI",
     -19: "calibration active -- finish or cancel it",
 }
+
+#: "another command active" -- the GUI rejected this command because it was
+#: still busy with the previous one. Rejected, not queued and not executed,
+#: which is what makes re-sending it safe. See send_command().
+BUSY_STATUS = -14
+
+#: Minimum wall time between two sends on one socket.
+#:
+#: Back-to-back sends race the GUI and come back -14. Measured on the
+#: microscope PC on 2026-08-27, 24 readiness probes per gap: 16/24 came back
+#: -14 with no gap at all, and 0/24 at every gap from 2 ms up (2, 5, 10, 20,
+#: 50, 100). 10 ms is that floor with margin, and costs 60 ms across the
+#: six-command drive sequence.
+#:
+#: A gap alone is not enough, though, and that is why BUSY_RETRIES exists: the
+#: probe those numbers came from is one of the cheap commands. The same session
+#: had a paced ``SIMPLE_TRAP_CREATE`` come back -14 at a 10 ms gap, so the
+#: settling time is per-command and this constant cannot be tuned to cover the
+#: slowest one without guessing.
+MIN_COMMAND_GAP_S = 0.010
+
+#: Re-sends allowed on BUSY_STATUS, and the wait before each.
+#:
+#: Safe here specifically because -14 is an *explicit* rejection: the GUI
+#: answered, and its answer was "I did not run this". A missing reply is the
+#: case that must never be retried -- there the command's fate is unknown, and
+#: several commands in this set are incremental (``TRAP_POSITION_REL``,
+#: ``TRAP_PATT_ROTATION_REL``, ``TRAP_PATT_SCALE_REL``), so re-sending one that
+#: did land would move the trap twice. send_command() keeps those apart.
+BUSY_RETRIES = 6
+BUSY_BACKOFF_S = 0.05
 
 
 class TweezersError(RuntimeError):
@@ -93,9 +135,12 @@ class OpticalTweezers:
     additional active GUI instance (2071, 2072, ...) per the manual.
     """
 
-    def __init__(self, host="127.0.0.1", port=2070, timeout=5.0):
+    def __init__(self, host="127.0.0.1", port=2070, timeout=5.0,
+                 min_gap_s=MIN_COMMAND_GAP_S):
         self._sock = socket.create_connection((host, port), timeout=timeout)
         self._buf = b""
+        self._min_gap_s = min_gap_s
+        self._last_send = None
 
     def __enter__(self):
         return self
@@ -121,19 +166,39 @@ class OpticalTweezers:
             return None
         return line.strip(b"\r\n").decode("utf-8")
 
-    def send_command(self, command, read_reply=True, reply_timeout=2.0):
+    def send_command(self, command, read_reply=True, reply_timeout=2.0,
+                     retry_busy=True):
         """Send a raw command line; returns the parsed status code, or None
-        if read_reply is False or no reply arrived within reply_timeout."""
-        self._sock.sendall(command.encode("utf-8") + b"\r\n")
-        if not read_reply:
-            return None
-        reply = self._readline(reply_timeout)
-        if reply is None:
-            return None
-        try:
-            return int(reply)
-        except ValueError:
-            return reply
+        if read_reply is False or no reply arrived within reply_timeout.
+
+        Paces sends by ``min_gap_s`` and, unless ``retry_busy`` is False,
+        re-sends up to BUSY_RETRIES times while the GUI answers BUSY_STATUS.
+        A missing reply is never retried -- read those two constants for the
+        asymmetry, which is the whole reason this is not one code path.
+
+        ``retry_busy=False`` is for measuring the GUI's own busy behaviour;
+        callers driving hardware want the default.
+        """
+        attempts = BUSY_RETRIES + 1 if (read_reply and retry_busy) else 1
+        for attempt in range(attempts):
+            if self._last_send is not None and self._min_gap_s:
+                remaining = self._min_gap_s - (time.monotonic() - self._last_send)
+                if remaining > 0:
+                    time.sleep(remaining)
+            self._sock.sendall(command.encode("utf-8") + b"\r\n")
+            self._last_send = time.monotonic()
+            if not read_reply:
+                return None
+            reply = self._readline(reply_timeout)
+            if reply is None:
+                return None
+            try:
+                status = int(reply)
+            except ValueError:
+                return reply
+            if status != BUSY_STATUS or attempt == attempts - 1:
+                return status
+            time.sleep(BUSY_BACKOFF_S)
 
     def do(self, command, reply_timeout=2.0):
         """Send a command and raise TweezersError unless it replies 0 (success)."""
@@ -268,6 +333,21 @@ class OpticalTweezers:
         self.do(f"TRAP_PATT_SCALE_REL {_quote(trap_name)} {d_scale}")
 
     def release_pattern_breakpoint(self, trap_name):
+        """Release a trap halted at a ``colBP`` breakpoint.
+
+        A 0 here means the command was accepted, NOT that anything was
+        released. Measured on the microscope PC 2026-08-27: four of these in a
+        row all answered 0 -- the first with the trap genuinely waiting at the
+        breakpoint, the rest with the pattern already finished. The only thing
+        the status distinguishes is whether the trap exists at all (a bad name
+        gives -22). So a stepping protocol built on this cannot confirm a step
+        happened; time it from the host, or use the hardware trigger.
+
+        Two GUI-only properties gate whether there is anything to release:
+        the trap's ``Breakpoints > Enable Bits`` is ANDed with ``colBP``, so a
+        0000 mask means no point ever halts, and ``Repeat > Enabled`` decides
+        whether the pattern comes back round to the breakpoint at all.
+        """
         self.do(f"TRAP_PATT_RELEASE_BP {_quote(trap_name)}")
 
     # -- trap groups --
