@@ -26,6 +26,13 @@ controller parses the code as a number, so **the `0x` prefix is required** --
 The level is controller-side state that outlives the session; the vendor GUI leaves
 it raised.
 
+**This file is a User-level snapshot, and there is one more notch on the level.**
+`ACCESS_CODES` carries `super-user = 0xB01DFACE`, straight from the same config
+file, and it has never been sent. So "414 commands" is a floor, not a total. The
+sweep that would settle it, and the correction it would produce, are queued in
+[`kb/systems/piezo-superuser-RUN-FIRST.md`](../kb/systems/piezo-superuser-RUN-FIRST.md);
+the tool is `config/piezo/dump_command_set.py`.
+
 ## What this replaces
 
 An earlier version of this file held 178 names pulled out of the DLL binary with
@@ -42,6 +49,10 @@ count both ways, so the extraction was not merely incomplete:
   `stage.command.analogue.scaling.gain/offset`, `identity.software.fpga.version.get`
   and the whole `fpga.*`, `peek.*` and `system.*` families answer "Invalid command
   name" on this controller. They belong to other models, or to a service interface.
+  **Unconfirmed, and confirmable:** an "Invalid command name" is exactly what a
+  *gated* command answers too -- that is how `stage.position.command.set` read at
+  the base level -- so these may be gated at User rather than absent. Every one of
+  them is re-asked at each level by `config/piezo/dump_command_set.py` §4.
 
 Parameter and result signatures are not in this list -- `find_commands()` returns
 names. Read them per command with `PiezoStage.command_parameters()` /

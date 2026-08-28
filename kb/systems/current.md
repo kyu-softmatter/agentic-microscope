@@ -765,6 +765,17 @@ devices_not_in_mm_config:   # docs/02 §4 "three-way cross-check table" — sepa
       *hardware-timed* path is one experiment away and must not be used before
       it. Either way this subsystem is readable, so unlike the tweezers a
       commanded trajectory here can be verified rather than assumed.
+      **Open, and cheap to close: the security level has one more notch.** The
+      command set is gated per level -- 188 commands at the base level, 414 at
+      User -- and `piezo_stage.ACCESS_CODES` carries `super-user = 0xB01DFACE`
+      from the vendor GUI's config file, never sent. So "414" is a floor. It also
+      puts a claim in reference/npcd-command-set.md at risk: the `fpga.*`,
+      `peek.*`, `system.*` and `stage.command.digital.scaling.*` families are
+      recorded there as belonging to other models on the evidence that they answer
+      "Invalid command name" -- which is also what a gated command answers. The
+      run sheet is kb/systems/piezo-superuser-RUN-FIRST.md and the tool is
+      config/piezo/dump_command_set.py; both are read-only and cannot move the
+      stage.
       See kb/decisions/2026-08-26-piezo-waveform-generator.md.
   - name: "optical tweezers (Aresis Tweez 305/310, Tweez 300)"
     control: "separate Python (hardware/optical_tweezers.py, TCP 2070) — write-only; several essentials are GUI-only"
