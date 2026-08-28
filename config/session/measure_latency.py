@@ -33,6 +33,12 @@ hardware/orchestrator.py: tweezers first, camera released, then MM. Running the
 two in ``--parallel`` is allowed only because both measurements here are
 read-only and the tweezers probe needs no camera at all -- the Tweez GUI runs
 cameraless (Tweez300UserManual p.34).
+
+**Without ``--tweezers`` there is no handoff and none is walked.** Nothing takes
+the Kinetix, so the microscope comes up straight away. This script used to enter
+``tweezers_setup()`` unconditionally, which meant a ``--piezo``-only run claimed
+the tweezers had held and released a camera they never touched -- and, once the
+roster existed, would have been refused outright.
 """
 
 from __future__ import annotations
@@ -48,10 +54,10 @@ if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
 from hardware.orchestrator import (  # noqa: E402
-    MICROMANAGER,
+    MICROSCOPE,
+    PIEZO,
     TWEEZERS,
     OrchestratorError,
-    Phase,
     Session,
 )
 
@@ -83,18 +89,18 @@ def probe_micromanager(session: Session, n: int, cfg: Path, mm_dir: Path | None)
     from hardware.microscope import Microscope, MicroscopeError
 
     try:
-        with session.instrument(MICROMANAGER, "connect (load config)"):
+        with session.instrument(MICROSCOPE, "connect (load config)"):
             scope = Microscope.connect(cfg, mm_dir=mm_dir)
     except MicroscopeError as exc:
         print(f"   micromanager: {exc}", file=sys.stderr)
         return
     try:
-        with session.instrument(MICROMANAGER, "state() full read"):
+        with session.instrument(MICROSCOPE, "state() full read"):
             state = scope.state()
         session.state.set("objective", state.get("Nosepiece") or state.get("Objective"))
         device, prop = _pick_readable(scope)
         for _ in range(n):
-            with session.instrument(MICROMANAGER, f"getProperty {device}.{prop}"):
+            with session.instrument(MICROSCOPE, f"getProperty {device}.{prop}"):
                 scope.core.getProperty(device, prop)
     finally:
         scope.close()
@@ -113,16 +119,16 @@ def probe_piezo(session: Session, n: int, link: str, channel: int) -> None:
     from hardware.piezo_stage import PiezoStage, PiezoStageError
 
     try:
-        with session.instrument("piezo", "load DLL"):
+        with session.instrument(PIEZO, "load DLL"):
             stage = PiezoStage()
     except PiezoStageError as exc:
         print(f"   piezo: {exc}", file=sys.stderr)
         return
     try:
-        with session.instrument("piezo", f"connect {link}"):
+        with session.instrument(PIEZO, f"connect {link}"):
             stage.connect(link)
         for _ in range(n):
-            with session.instrument("piezo", "position.measured.get"):
+            with session.instrument(PIEZO, "position.measured.get"):
                 pos = stage.get_position_um(channel)
             session.state.set("piezo_um", pos)
         stage.disconnect()
@@ -175,25 +181,38 @@ def main() -> int:
     if not (a.dry_run or a.tweezers or a.micromanager or a.piezo):
         ap.error("choose at least one of --dry-run/--tweezers/--micromanager/--piezo")
 
-    session = Session(camera=a.camera)
+    # The roster is what the flags actually asked for. Everything downstream
+    # follows from it -- including whether there is a camera handoff at all.
+    present = []
+    if a.dry_run or a.tweezers:
+        present.append(TWEEZERS)
+    if a.dry_run or a.piezo:
+        present.append(PIEZO)
+
+    session = Session(*present, camera=a.camera)
     print(f"clock anchored at wall {session.clock.anchor[0]:.3f}; "
           f"camera under arbitration: {session.camera.camera}")
+    print(f"roster: {session.roster}")
 
     # Phase 1 -- whatever needs the camera in the tweezers GUI's hands. Nothing
     # measured here needs it, so this is the ordering being honoured, not used.
-    print("\n-- phase 1: tweezers hold the camera ----------------------")
-    tweezer_tasks: list[tuple[str, callable]] = []
-    if a.dry_run:
-        tweezer_tasks.append(
-            (TWEEZERS, lambda: probe_stub(session, a.n, TWEEZERS, 0.0002))
-        )
-    if a.tweezers:
-        tweezer_tasks.append(
-            (TWEEZERS, lambda: probe_tweezers(session, a.n, a.host, a.port))
-        )
-    with session.tweezers_setup():
-        run(tweezer_tasks, a.parallel)
-    print(f"   camera released; phase now {session.phase.name}")
+    if session.has(TWEEZERS):
+        print("\n-- phase 1: tweezers hold the camera ----------------------")
+        tweezer_tasks: list[tuple[str, callable]] = []
+        if a.dry_run:
+            tweezer_tasks.append(
+                (TWEEZERS, lambda: probe_stub(session, a.n, TWEEZERS, 0.0002))
+            )
+        if a.tweezers:
+            tweezer_tasks.append(
+                (TWEEZERS, lambda: probe_tweezers(session, a.n, a.host, a.port))
+            )
+        with session.tweezers_setup():
+            run(tweezer_tasks, a.parallel)
+        print(f"   camera released; phase now {session.phase.name}")
+    else:
+        print("\n-- no tweezers on the roster ------------------------------")
+        print("   nothing takes the Kinetix, so there is no handoff to walk")
 
     # Phase 3 -- Micro-Manager may take the camera, and the piezo is unrelated
     # to it, so both can run here.
@@ -207,16 +226,16 @@ def main() -> int:
     later: list[tuple[str, callable]] = []
     if a.dry_run:
         later += [
-            (MICROMANAGER, lambda: probe_stub(session, a.n, MICROMANAGER, 0.0001)),
-            ("piezo", lambda: probe_stub(session, a.n, "piezo", 0.0003)),
+            (MICROSCOPE, lambda: probe_stub(session, a.n, MICROSCOPE, 0.0001)),
+            (PIEZO, lambda: probe_stub(session, a.n, PIEZO, 0.0003)),
         ]
     if a.micromanager:
         later.append(
-            (MICROMANAGER, lambda: probe_micromanager(session, a.n, a.micromanager, a.mm_dir))
+            (MICROSCOPE, lambda: probe_micromanager(session, a.n, a.micromanager, a.mm_dir))
         )
     if a.piezo:
         later.append(
-            ("piezo", lambda: probe_piezo(session, a.n, a.piezo, a.piezo_channel))
+            (PIEZO, lambda: probe_piezo(session, a.n, a.piezo, a.piezo_channel))
         )
     run(later, a.parallel)
     session.start_running()
@@ -233,6 +252,8 @@ def main() -> int:
               f"age {session.state.age_s(key):.4f}s)")
     print(f"\n   phase {session.phase.name}, "
           f"{len(session.latency.ops)} ops on one timeline")
+    for line in session.roster.missing_from_record():
+        print(f"   not measured -- {line}")
     return 0
 
 

@@ -3,6 +3,23 @@
 > Third entry from this session, after `2026-08-26-microscope-config-control.md`
 > and `2026-08-26-tweezers-pattern-vs-direct.md`. Architecture + a feasibility
 > audit of five specific operations. Execution stays on the microscope PC.
+>
+> **GAP FOUND 2026-08-27**, see `2026-08-27-tweezers-first-light-measured-limits.md`
+> §8: camera ownership is contended in a way this note does not cover. The Tweez
+> GUI's trap-position readback only accumulates while *it* is tracking, which
+> requires *it* to hold the camera — so the plan of having Micro-Manager own the
+> camera costs the trap-position series that active-microrheology force needs.
+> One owner can see bead and trap position; the other can see neither or only
+> one. This is unresolved.
+>
+> **SUPERSEDED IN PART 2026-08-27**, see
+> `2026-08-27-optional-subsystems-one-timeline.md`. This note assumed all three
+> surfaces are present. They are not always, and the phase machine below was
+> wrong for that case: it demanded `CAMERA_RELEASED` before the microscope even
+> when the tweezers were switched off and had never taken the camera, so a
+> piezo-only or microscope-only session was refused. The release is now
+> conditional on the tweezers being enrolled. The clock table, the
+> threads-not-processes argument and the host/hardware split all stand.
 
 ## Request
 
@@ -64,9 +81,10 @@ adds the shared pieces:
 | File | Role |
 |---|---|
 | `hardware/microscope.py` · `optical_tweezers.py` · `piezo_stage.py` | the three drivers, unchanged in structure |
-| `hardware/orchestrator.py` | `Clock` · `LatencyLog` · `CameraArbiter` · `Phase` · `SharedState` · `Session`. Opens no device |
+| `hardware/orchestrator.py` | `Clock` · `LatencyLog` · `CameraArbiter` · `Phase` · `SharedState` · `Session`. Opens no device. **2026-08-27 adds** `Roster` · `Timeline` · `HardwareAnchor` · `Track` |
 | `config/session/measure_latency.py` | runs the three concurrently and prints the latency table. `--dry-run` works with no hardware |
-| `tests/test_orchestrator.py` | 29 tests, real threads, no devices |
+| `config/session/run_parallel.py` | **added 2026-08-27** — the parallel program itself: roster from flags, conditional handoff, one track per present subsystem, anchored schedules |
+| `tests/test_orchestrator.py` | ~~29~~ **71** tests (2026-08-27), real threads, no devices |
 
 **Threads, not processes.** All three drivers block inside C or I/O — socket
 recv, PVCAM, a ctypes call — and each releases the GIL, so they genuinely
@@ -80,12 +98,19 @@ events from all three subsystems are comparable *to each other*, and it records
 a wall/monotonic anchor so those stamps can be mapped onto MM's `ElapsedTime-ms`
 afterwards. That mapping is a correlation, not a synchronisation, and the
 docstring says so where someone might reach for it as if it were.
+**2026-08-27:** what it did *not* give was a way to place one subsystem's own
+hardware clock on the shared base. `Timeline.anchor()` does that — it brackets
+the start command and reports half its round trip as the alignment uncertainty,
+so the budget is a number rather than an assumption.
 
 **The ordering is enforced, not remembered.** `Session.tweezers_setup()` takes
 the camera, releases it on exit (including on exception) and advances the phase;
 `microscope_setup()` refuses unless the camera is free. Calling it too early
 raises `needs phase CAMERA_RELEASED` instead of letting PVCAM fail with an error
-that names nothing. `CameraArbiter` is advisory — it cannot stop the Tweez GUI,
+that names nothing. **2026-08-27: only when the tweezers are on the roster.**
+With them switched off nothing ever holds the Kinetix, so there is no handoff
+and the session goes straight from `IDLE` to `MICROSCOPE_SETUP`; demanding the
+release regardless blocked the microscope on a release nobody would perform. `CameraArbiter` is advisory — it cannot stop the Tweez GUI,
 a separate Windows process, from grabbing a Kinetix — but it stops *this* code
 from making the mistake.
 
