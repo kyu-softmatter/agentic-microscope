@@ -1,0 +1,597 @@
+# PyTool_ApiDump -- enumerate the GUI's embedded-Python API, exhaustively.
+#
+# GOAL: one run at the microscope PC produces the COMPLETE command inventory of
+# the injected modules -- the counterpart of the manual's 28-command TCP list
+# (User Manual pp.66-68), for which no document exists. Designed so that a
+# second trip to the PC is not needed to answer "what else is there".
+#
+# Companion to PyTool_NodeDump. That tool asks "which node PATHS exist" and is
+# blocked on the node tree not being up at init time (0 of 51 readable, incl.
+# System.Version, which cannot be absent). This tool asks "which CALLS exist"
+# and is NOT blocked by that: dir()/inspect operate on the module object, which
+# exists the moment the import succeeds. And the import demonstrably succeeds --
+# PyTool_NodeDump's `from PyToTw300Comm import Tw300Nodes` is a top-level
+# statement, so a failed import would have killed it before it wrote anything,
+# and it wrote a dump.
+#
+# SAFETY. Introspection (dir/inspect/pydoc) touches nothing. Section 2 does
+# CALL methods, but only ones that (a) dir() actually reported, (b) match
+# SAFE_CALL_RE, and (c) do NOT match DANGER_RE -- so nothing named set/write/
+# delete/start/stop/on/off/create/load/save/laser/trap is ever invoked. Run with
+# the LASER OFF and no pattern in flight anyway; the point of this run is the
+# name list, and no state is needed to get it.
+#
+# Targets Python 3.9.5 (TW300PYENGDLL=Python39.dll). stdlib only; deliberately
+# NOT PyTool_General, which pulls in matplotlib/scipy/tkinter -- any one failing
+# would take this down for reasons unrelated to the survey.
+#
+# What changed from the first draft, and why each mattered:
+#   - Injected modules are now found by the __file__ ORACLE, not by name
+#     substrings. A vendor module not named *tw300*/*tweez* was invisible before.
+#   - Recurses into INSTANCES, not just classes. If Tw300Nodes exposes an object
+#     rather than a class, its methods were being printed as a repr and lost.
+#   - Auto-probes for an ENUMERATOR and, if one answers, WALKS the tree. Finding
+#     an enumerator but not using it would have cost a second trip.
+#   - Diffs builtins and the caller's globals, which is where a host can inject
+#     names that live in no module at all.
+#   - pydoc.render_doc per object: includes INHERITED members, which dir() lists
+#     but does not describe.
+
+import os
+import sys
+import time
+import types
+import pydoc
+import inspect
+import builtins
+import traceback
+
+OUT_DIR = r"C:\Tweez"
+OUT_STEM = "tw300_apidump"
+
+#: Named in the 2026-08-27 note. Absence of any of these is itself a finding,
+#: so they are checked explicitly rather than only swept for.
+KNOWN_MODULES = [
+    "PyToTw300Comm",
+    "Tw300ToPyComm",
+    "PyTw300PattGen",
+    "PyTw300DataManager",
+]
+
+#: Secondary hint only. The primary detector is _is_injected() below.
+VENDOR_HINTS = ("tw300", "tweez", "aresis", "artw")
+
+# Matching is on CamelCase/snake_case TOKENS, not raw substrings. Substring
+# matching looked safer and was strictly worse: "Version" contains "on",
+# "GetSettings" and "GetOffset" contain "set", so a substring blocklist refuses
+# to call harmless reads -- and refusing to call the enumerator is exactly the
+# failure that costs a second trip to the PC. Tokens make "SetNode" blocked and
+# "GetSettings" allowed, which is what was meant.
+
+#: Called only if some token is in here...
+SAFE_TOKENS = frozenset((
+    "get", "list", "enum", "enumerate", "count", "keys", "key", "names",
+    "name", "children", "child", "read", "node", "nodes", "info", "version",
+    "dir", "has", "is", "find", "query", "describe", "dump", "format", "type",
+    "size", "len", "all", "root", "parent", "path", "paths", "value", "state",
+    "status", "number", "data", "help", "about", "id",
+))
+
+#: ...and no token is in here. Exact tokens, so "Set" blocks and "Settings"
+#: does not.
+DANGER_TOKENS = frozenset((
+    "set", "write", "put", "add", "insert", "del", "delete", "remove", "clear",
+    "create", "new", "load", "save", "start", "stop", "run", "exec", "on",
+    "off", "open", "close", "release", "assign", "move", "reset", "init",
+    "connect", "disconnect", "quit", "exit", "apply", "commit", "send",
+    "enable", "disable", "arm", "fire", "abort", "kill",
+))
+
+#: Long enough that substring matching carries no false-positive risk, and
+#: severe enough to block anywhere in the name.
+DANGER_SUBSTR = ("laser", "shutter", "power", "beam", "trap", "waveform",
+                 "interlock", "emission")
+
+MAX_REPR = 400
+MAX_DOC = 1200
+MAX_WALK_NODES = 2000
+MAX_WALK_DEPTH = 6
+MAX_RECURSE_DEPTH = 2
+
+#: Populated by section 2 if a working enumerator is found; used by section 3.
+_ENUMERATOR = []
+
+
+# --------------------------------------------------------------------------
+# helpers
+# --------------------------------------------------------------------------
+
+def _short(text, limit=MAX_REPR):
+    text = str(text).replace("\r", " ").replace("\n", " ")
+    if len(text) > limit:
+        text = text[:limit] + " ...(len=%d)" % len(text)
+    return text
+
+
+def _safe(fn, *a, **kw):
+    """Every probe is best-effort: a missing dunder must not end the run."""
+    try:
+        return True, fn(*a, **kw)
+    except Exception as exc:
+        return False, "%s: %s" % (type(exc).__name__, exc)
+
+
+def _stdlib_dirs():
+    """Directories that mark a module as stdlib/site rather than injected."""
+    dirs = []
+    for probe in (os, inspect):
+        path = getattr(probe, "__file__", None)
+        if path:
+            dirs.append(os.path.dirname(os.path.abspath(path)).lower())
+    for entry in sys.path:
+        low = str(entry).lower()
+        if "site-packages" in low or "dist-packages" in low:
+            dirs.append(low)
+    return [d for d in dirs if d]
+
+
+_STDLIB = _stdlib_dirs()
+
+
+def _is_injected(name, mod):
+    """The oracle for 'the host created this module in-process'.
+
+    A module with no __file__ that is not a compiled-in builtin and not a
+    namespace package was not loaded from disk -- which is exactly the
+    signature of the four modules the 2026-08-27 note describes. This catches
+    an injected module whose NAME gives no hint, which a substring filter
+    cannot.
+    """
+    if mod is None:
+        return False, "module object is None"
+    if name in sys.builtin_module_names:
+        return False, "compiled into the interpreter"
+    path = getattr(mod, "__file__", None)
+    if path:
+        low = os.path.abspath(str(path)).lower()
+        for d in _STDLIB:
+            if low.startswith(d):
+                return False, "stdlib/site: %s" % path
+        return True, "ON DISK at %s -- read the source directly" % path
+    spec = getattr(mod, "__spec__", None)
+    origin = getattr(spec, "origin", None) if spec else None
+    if origin in ("namespace",):
+        return False, "namespace package"
+    return True, "no __file__ -> injected in-process (loader=%r)" % (
+        getattr(mod, "__loader__", None),)
+
+
+def _name_matches(name, patterns):
+    low = name.lower()
+    return any(p in low for p in patterns)
+
+
+def _tokens(name):
+    """CamelCase / snake_case -> lowercase tokens.
+
+    'GetNodeChildren' -> ['get','node','children']; 'READNode' -> ['read','node'];
+    'Get_Settings'    -> ['get','settings'].
+    """
+    out, cur = [], ""
+    for ch in name:
+        if ch in "_-.":
+            if cur:
+                out.append(cur.lower())
+            cur = ""
+        elif ch.isupper() and cur and not cur[-1].isupper():
+            out.append(cur.lower())
+            cur = ch
+        elif ch.islower() and len(cur) > 1 and cur[-1].isupper():
+            # ...READNode -> 'read' + 'Node'
+            out.append(cur[:-1].lower())
+            cur = cur[-1] + ch
+        else:
+            cur += ch
+    if cur:
+        out.append(cur.lower())
+    return out
+
+
+def _is_safe_to_call(name):
+    toks = _tokens(name)
+    hit = [t for t in toks if t in DANGER_TOKENS]
+    if hit:
+        return False, "danger token %s in %s" % (hit, toks)
+    if _name_matches(name, DANGER_SUBSTR):
+        return False, "danger substring"
+    if not any(t in SAFE_TOKENS for t in toks):
+        return False, "no allowlisted token in %s" % (toks,)
+    return True, "read-only by tokens %s" % (toks,)
+
+
+# --------------------------------------------------------------------------
+# section 1: describe an object completely
+# --------------------------------------------------------------------------
+
+def describe_callable(lines, indent, name, obj):
+    """Name, arity and doc. Arity has three sources because no single one
+    covers both pure-Python and C-implemented callables -- and for a C method
+    without argument-clinic metadata, signature() RAISING is itself the finding.
+    """
+    pad = " " * indent
+    kind = type(obj).__name__
+
+    ok, sig = _safe(inspect.signature, obj)
+    sig_text = str(sig) if ok else "<no signature: %s>" % sig
+    lines.append("%s%-30s %-20s %s" % (pad, name, kind, sig_text))
+
+    ts = getattr(obj, "__text_signature__", None)
+    if ts:
+        lines.append("%s    __text_signature__ : %s" % (pad, _short(ts)))
+
+    doc = getattr(obj, "__doc__", None)
+    if doc:
+        # For C extensions the first doc line conventionally IS the signature,
+        # so this is often the only place the arity appears at all.
+        lines.append("%s    doc : %s" % (pad, _short(doc, MAX_DOC)))
+
+    ok, src = _safe(inspect.getsource, obj)
+    if ok:
+        lines.append("%s    *** SOURCE AVAILABLE (%d chars) ***" % (pad, len(src)))
+
+
+def describe_object(lines, title, obj, depth=0, seen=None):
+    if seen is None:
+        seen = set()
+    key = id(obj)
+    if key in seen:
+        lines.append("")
+        lines.append("(%s -- already described above, not repeated)" % title)
+        return
+    seen.add(key)
+
+    lines.append("")
+    lines.append("=" * 74)
+    lines.append(title)
+    lines.append("=" * 74)
+
+    lines.append("type   : %s" % type(obj).__name__)
+    lines.append("repr   : %s" % _short(repr(obj)))
+
+    for dunder in ("__module__", "__name__", "__qualname__", "__file__",
+                   "__package__", "__loader__", "__spec__", "__all__"):
+        value = getattr(obj, dunder, None)
+        if value is not None:
+            lines.append("%-22s : %s" % (dunder, _short(repr(value))))
+
+    if getattr(obj, "__file__", None):
+        lines.append(">>> ON DISK. Read the source; no introspection needed.")
+
+    doc = getattr(obj, "__doc__", None)
+    if doc:
+        lines.append("doc    : %s" % _short(doc, MAX_DOC))
+
+    ok, mro = _safe(lambda: [c.__name__ for c in type(obj).__mro__])
+    if ok:
+        lines.append("mro    : %s" % (mro,))
+
+    ok, names = _safe(dir, obj)
+    if not ok:
+        lines.append("dir() FAILED: %s" % names)
+        return
+    lines.append("dir() -> %d names" % len(names))
+
+    public = [n for n in names if not n.startswith("_")]
+    private = [n for n in names if n.startswith("_")]
+
+    lines.append("")
+    lines.append("-- public attributes (%d) %s" % (len(public), "-" * 30))
+    nested = []
+    for name in public:
+        ok, attr = _safe(getattr, obj, name)
+        if not ok:
+            lines.append("  %-30s <getattr failed: %s>" % (name, attr))
+            continue
+        if callable(attr):
+            describe_callable(lines, 2, name, attr)
+            if inspect.isclass(attr):
+                nested.append((name, attr))
+        else:
+            lines.append("  %-30s %-20s = %s"
+                         % (name, type(attr).__name__, _short(repr(attr))))
+            # An INSTANCE of a vendor class holds the real methods; printing its
+            # repr and moving on would lose the whole API. Recurse on anything
+            # whose type is not a plain builtin.
+            if type(attr).__module__ not in ("builtins", None):
+                nested.append((name, attr))
+
+    lines.append("")
+    lines.append("-- dunder/private names (%d) %s" % (len(private), "-" * 27))
+    lines.append("  " + ", ".join(private))
+
+    # pydoc includes INHERITED members, which dir() lists but does not describe.
+    ok, rendered = _safe(pydoc.render_doc, obj, "%s")
+    if ok:
+        lines.append("")
+        lines.append("-- pydoc.render_doc (includes inherited) %s" % ("-" * 14))
+        for row in str(rendered).splitlines():
+            lines.append("  " + row)
+
+    if depth < MAX_RECURSE_DEPTH:
+        for name, attr in nested:
+            describe_object(lines, "%s . %s" % (title, name), attr,
+                            depth + 1, seen)
+
+
+# --------------------------------------------------------------------------
+# section 2: find an enumerator, without calling anything dangerous
+# --------------------------------------------------------------------------
+
+def probe_readonly_calls(lines, obj, label):
+    """Call the read-only-looking methods dir() reported, and record answers.
+
+    The prize is an enumerator: if any call returns a list of child names, then
+    PyTool_NodeDump's 51 GUESSED paths are obsolete and the tree lists itself.
+    Argument patterns are tried in order because a C method's arity is often
+    unavailable from signature().
+    """
+    lines.append("")
+    lines.append("=" * 74)
+    lines.append("2. read-only call probe on %s" % label)
+    lines.append("=" * 74)
+    lines.append("Allowlist is per CamelCase TOKEN: some token in SAFE_TOKENS,")
+    lines.append("none in DANGER_TOKENS, no DANGER_SUBSTR anywhere.")
+    lines.append("Nothing named set/write/create/load/start/laser/trap/... is")
+    lines.append("called. Argument patterns tried: (), (''), ('Traps'), ")
+    lines.append("('Traps.Number'), (0).")
+
+    ok, names = _safe(dir, obj)
+    if not ok:
+        lines.append("dir() FAILED: %s" % names)
+        return
+
+    arg_sets = [(), ("",), ("Traps",), ("Traps.Number",), (0,)]
+    skipped = []
+
+    for name in sorted(n for n in names if not n.startswith("_")):
+        ok, attr = _safe(getattr, obj, name)
+        if not ok or not callable(attr) or inspect.isclass(attr):
+            continue
+        safe, why = _is_safe_to_call(name)
+        if not safe:
+            skipped.append("%s (%s)" % (name, why))
+            continue
+
+        lines.append("")
+        lines.append("  %s:" % name)
+        for args in arg_sets:
+            ok, result = _safe(attr, *args)
+            if ok:
+                lines.append("    %-18s -> %s"
+                             % (repr(args), _short(repr(result))))
+                # A list/tuple/dict of strings from a no-arg or container-arg
+                # call is the enumerator signature.
+                if isinstance(result, (list, tuple, dict, set)) and len(result):
+                    lines.append("    *** CANDIDATE ENUMERATOR: %s%r ***"
+                                 % (name, args))
+                    _ENUMERATOR.append((name, args))
+            else:
+                lines.append("    %-18s x  %s" % (repr(args), _short(result, 160)))
+
+    if skipped:
+        lines.append("")
+        lines.append("NOT CALLED (%d), by name policy:" % len(skipped))
+        for row in skipped:
+            lines.append("  " + row)
+
+
+# --------------------------------------------------------------------------
+# section 3: if an enumerator answered, walk the tree
+# --------------------------------------------------------------------------
+
+def walk_tree(lines, obj):
+    """Breadth-first walk using the first candidate enumerator.
+
+    This is the payoff: a real path list, measured, replacing the 51 guesses.
+    Capped so a cyclic or huge tree cannot hang GUI startup.
+    """
+    lines.append("")
+    lines.append("=" * 74)
+    lines.append("3. node-tree walk via %r" % (_ENUMERATOR[0],))
+    lines.append("=" * 74)
+
+    name, template = _ENUMERATOR[0]
+    ok, method = _safe(getattr, obj, name)
+    if not ok:
+        lines.append("getattr failed: %s" % method)
+        return
+
+    def children(path):
+        for args in ((path,), (path, 0), ()):
+            ok, result = _safe(method, *args)
+            if ok and isinstance(result, (list, tuple, set)):
+                return [str(c) for c in result]
+            if ok and isinstance(result, dict):
+                return [str(c) for c in result.keys()]
+        return []
+
+    frontier = [("", 0)]
+    count = 0
+    while frontier and count < MAX_WALK_NODES:
+        path, depth = frontier.pop(0)
+        kids = children(path)
+        count += 1
+        if kids:
+            lines.append("%s%s -> %d children: %s"
+                         % ("  " * depth, path or "<root>", len(kids),
+                            _short(", ".join(kids))))
+            if depth < MAX_WALK_DEPTH:
+                for kid in kids:
+                    frontier.append((("%s.%s" % (path, kid)).lstrip("."),
+                                     depth + 1))
+    lines.append("")
+    lines.append("-> %d nodes visited (caps: %d nodes, depth %d)"
+                 % (count, MAX_WALK_NODES, MAX_WALK_DEPTH))
+    if count >= MAX_WALK_NODES:
+        lines.append("!! CAP HIT -- the tree is larger than this dump. Raise")
+        lines.append("   MAX_WALK_NODES and re-run; do not read this as complete.")
+
+
+# --------------------------------------------------------------------------
+# main
+# --------------------------------------------------------------------------
+
+def ApiDump(PyTool=None, tag="menu", caller_globals=None):
+    """Survey the injected API and write the dump.
+
+    Signature mirrors PyTool_NodeDump.NodeDump so the same call sites work.
+    Pass caller_globals=globals() from the init script to catch names the host
+    injects into that namespace directly rather than through a module.
+    """
+    lines = []
+    lines.append("Tweez 300 embedded-Python API survey")
+    lines.append("run tag %r" % (tag,))
+    lines.append("written %s" % time.strftime("%Y-%m-%d %H:%M:%S"))
+    lines.append("python %s" % sys.version.replace("\n", " "))
+    lines.append("executable %r" % (sys.executable,))
+    lines.append("TW300PYPATH %r" % os.getenv("TW300PYPATH"))
+    lines.append("PyTool node %r" % (PyTool,))
+    lines.append("")
+    lines.append("READ IN THIS ORDER:")
+    lines.append("  1. Section 2/3 -- did an ENUMERATOR answer? If yes, section 3")
+    lines.append("     is the real node-path list and PyTool_NodeDump's 51")
+    lines.append("     guesses are obsolete.")
+    lines.append("  2. Section 0 -- does any injected module report __file__?")
+    lines.append("     Then just read its source.")
+    lines.append("  3. Any call reaching the CAMERA or LASER POWER? TCP reaches")
+    lines.append("     neither; this API is the only remaining candidate.")
+    lines.append("  4. Section 0 -- an injected module the 2026-08-27 note did")
+    lines.append("     not name. PyTw300PattGen especially: in-process pattern")
+    lines.append("     generation would remove the .tpf + LOAD_PATTERN round trip.")
+
+    try:
+        # ---- section 0: what is loaded, by the __file__ oracle ----
+        lines.append("")
+        lines.append("=" * 74)
+        lines.append("0. sys.modules -- injected vs stdlib")
+        lines.append("=" * 74)
+
+        injected = []
+        for name in sorted(sys.modules):
+            mod = sys.modules.get(name)
+            is_inj, why = _is_injected(name, mod)
+            if is_inj or _name_matches(name, VENDOR_HINTS):
+                injected.append(name)
+                lines.append("  %-34s %s" % (name, why))
+        lines.append("")
+        lines.append("%d modules loaded, %d flagged as injected/vendor."
+                     % (len(sys.modules), len(injected)))
+        missing = [m for m in KNOWN_MODULES if m not in sys.modules]
+        if missing:
+            lines.append("NOT loaded, though the 2026-08-27 note names them: %s"
+                         % (missing,))
+        extra = [m for m in injected if m not in KNOWN_MODULES]
+        if extra:
+            lines.append("NEW -- injected but not in that note: %s" % (extra,))
+
+        lines.append("")
+        lines.append("sys.path:")
+        for entry in sys.path:
+            lines.append("  %r" % (entry,))
+
+        # ---- host injection outside any module ----
+        stock = set(dir(builtins))
+        lines.append("")
+        lines.append("builtins with vendor-looking names: %s"
+                     % ([n for n in sorted(stock)
+                         if _name_matches(n, VENDOR_HINTS)] or "none"))
+        if caller_globals is not None:
+            interesting = sorted(
+                n for n in caller_globals
+                if not n.startswith("_") and n not in stock
+                and n not in sys.modules)
+            lines.append("caller globals(), non-stdlib names (%d): %s"
+                         % (len(interesting), interesting))
+        else:
+            lines.append("caller globals() not passed -- call")
+            lines.append("  ApiDump(None, tag='init', caller_globals=globals())")
+            lines.append("to catch names the host injects into that namespace.")
+
+        # ---- section 1: the object that matters ----
+        # Imported HERE, not at module level, so an import failure is REPORTED
+        # instead of destroying the dump -- the mistake PyTool_NodeDump makes.
+        try:
+            from PyToTw300Comm import Tw300Nodes
+        except Exception:
+            lines.append("")
+            lines.append("!! `from PyToTw300Comm import Tw300Nodes` FAILED.")
+            lines.append("   This contradicts PyTool_NodeDump having produced a")
+            lines.append("   dump at all, so suspect the run context rather than")
+            lines.append("   the module. Traceback:")
+            lines.append(traceback.format_exc())
+            Tw300Nodes = None
+        else:
+            describe_object(lines, "1. Tw300Nodes -- the node API", Tw300Nodes)
+            probe_readonly_calls(lines, Tw300Nodes, "Tw300Nodes")
+            if _ENUMERATOR:
+                walk_tree(lines, Tw300Nodes)
+            else:
+                lines.append("")
+                lines.append("=" * 74)
+                lines.append("3. node-tree walk -- SKIPPED, no enumerator answered")
+                lines.append("=" * 74)
+                lines.append("Fall back to the two routes in PyTool-RUN-FIRST.md:")
+                lines.append("  (a) deferred NodeDump on a daemon thread")
+                lines.append("  (b) strings extraction, anchored on the 5 known names")
+
+        # ---- section 4: every other injected module ----
+        for name in injected:
+            if name == "PyToTw300Comm":
+                continue
+            mod = sys.modules.get(name)
+            if mod is not None:
+                describe_object(lines, "4. module %s" % name, mod)
+
+    except Exception:
+        lines.append("")
+        lines.append("SURVEY ABORTED:")
+        lines.append(traceback.format_exc())
+
+    text = "\n".join(lines) + "\n"
+
+    name = "%s_%s_%s.txt" % (OUT_STEM, time.strftime("%Y%m%d-%H%M%S"), tag)
+    written = None
+    for candidate in (os.path.join(OUT_DIR, name),
+                      os.path.join(os.path.expanduser("~"), name)):
+        try:
+            folder = os.path.dirname(candidate)
+            if folder and not os.path.isdir(folder):
+                os.makedirs(folder)
+            with open(candidate, "w") as handle:
+                handle.write(text)
+            written = candidate
+            break
+        except Exception:
+            continue
+
+    summary = "api dump -> %s (%d lines)" % (
+        written or "FAILED TO WRITE ANYWHERE", len(lines))
+
+    # Best-effort surfacing in the GUI. Both paths come from vendor practice:
+    # .Report.* is used by PyTool_PotentialBrownV1.0 but declared in no .xml,
+    # .Output is declared in the tool's own .xml.
+    if PyTool:
+        try:
+            from PyToTw300Comm import Tw300Nodes as _N
+            for path, value in ((PyTool + ".Report.Add", [summary, "clGreen"]),
+                                (PyTool + ".Report.Show", 0),
+                                (PyTool + ".Output", summary)):
+                try:
+                    _N.WriteNode(path, value)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    print(summary)
+    return 0

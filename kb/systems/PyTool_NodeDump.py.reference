@@ -1,0 +1,236 @@
+# PyTool_NodeDump -- read-only survey of the Tweez node tree.
+#
+# Purpose: settle, by measurement rather than inference, which GUI properties
+# the embedded Python can reach. Three questions, in order of importance:
+#
+#   1. Is there a readable property that says a trap is WAITING at a colBP
+#      breakpoint? The TCP interface has no readback at all, so a host-timed
+#      release protocol is open-loop; one readable flag would close the loop.
+#   2. Is the trap's live pattern position readable? PyTool_ForceTime unpacks a
+#      probe's .Data as (Time, ProbeX, ProbeY, TrapX, TrapY), so trap position
+#      is logged somewhere -- a flat TrapX would mean "held at the breakpoint"
+#      and is strictly more informative than a boolean.
+#   3. Do Traps.<name>.Breakpoints.Enable Bits / Repeat.Enabled / Pattern.Wait
+#      States actually exist under those names? PyTool_RheoOne writes
+#      'Traps.'+Trap+'.Pattern.Wait States', so the convention is established
+#      for one sibling; the rest is inference until this runs.
+#
+# WRITES NOTHING to the instrument. Every call here is ReadNode. It is safe to
+# run with the laser armed and a pattern in flight -- and in fact that is the
+# interesting moment, because a trap parked at a breakpoint is the state whose
+# signature we are looking for.
+#
+# Deliberately imports only Tw300Nodes. PyTool_General pulls in matplotlib,
+# scipy and tkinter, any one of which failing would take this survey down with
+# it for reasons that have nothing to do with the survey.
+#
+# Targets Python 3.9.5 (the GUI's embedded interpreter, per TW300PYENGDLL).
+
+import os
+import sys
+import time
+import traceback
+
+from PyToTw300Comm import Tw300Nodes
+
+OUT_DIR = r"C:\Tweez"
+
+#: Timestamped, because the interesting comparison is between two runs -- one
+#: with the trap held at a breakpoint, one with it moving -- and a fixed name
+#: would have the second run destroy the evidence in the first.
+OUT_STEM = "tw300_nodedump"
+
+TRAP = "Trap 1"
+
+# Paths whose existence is already evidenced by vendor code, so a failure here
+# means the survey itself is wrong rather than the property being absent.
+KNOWN = [
+    "System.Version",
+    "Traps.Number",
+    "Traps." + TRAP + ".Pattern.Wait States",
+]
+
+# Paths mirroring the GUI Properties panel for a trap, one line per row seen
+# there. These are the inference being tested.
+PANEL = [
+    "Traps." + TRAP,
+    "Traps." + TRAP + ".Trap Name",
+    "Traps." + TRAP + ".Active",
+    "Traps." + TRAP + ".Strength",
+    "Traps." + TRAP + ".Position",
+    "Traps." + TRAP + ".Position.X",
+    "Traps." + TRAP + ".Position.Y",
+    "Traps." + TRAP + ".Multitone",
+    "Traps." + TRAP + ".Pattern",
+    "Traps." + TRAP + ".Pattern.Rotation",
+    "Traps." + TRAP + ".Pattern.Scale",
+    "Traps." + TRAP + ".Repeat",
+    "Traps." + TRAP + ".Repeat.Enabled",
+    "Traps." + TRAP + ".Repeat.Count",
+    "Traps." + TRAP + ".Breakpoints",
+    "Traps." + TRAP + ".Breakpoints.Enable Bits",
+    "Traps." + TRAP + ".Breakpoints.Release Bits",
+    "Traps." + TRAP + ".Visibility",
+]
+
+# Question 1 and 2: guesses. Every one of these is expected to fail; the point
+# is that a single success changes the release protocol from open- to
+# closed-loop, and a guessed name costs one ReadNode to rule out.
+PROBE_STATE = [
+    "Traps." + TRAP + ".State",
+    "Traps." + TRAP + ".Status",
+    "Traps." + TRAP + ".Pattern.State",
+    "Traps." + TRAP + ".Pattern.Status",
+    "Traps." + TRAP + ".Pattern.Index",
+    "Traps." + TRAP + ".Pattern.Point",
+    "Traps." + TRAP + ".Pattern.Position",
+    "Traps." + TRAP + ".Pattern.Current Point",
+    "Traps." + TRAP + ".Pattern.Running",
+    "Traps." + TRAP + ".Pattern.Name",
+    "Traps." + TRAP + ".Breakpoints.State",
+    "Traps." + TRAP + ".Breakpoints.Status",
+    "Traps." + TRAP + ".Breakpoints.Waiting",
+    "Traps." + TRAP + ".Breakpoints.Active",
+    "Traps." + TRAP + ".Breakpoints.Pending",
+    "Traps." + TRAP + ".Breakpoints.Current",
+    "Traps." + TRAP + ".Current Position",
+    "Traps." + TRAP + ".Measured Position",
+]
+
+# Containers, in case ReadNode enumerates children. If it does, none of the
+# guessing above is needed and the real names come straight out.
+CONTAINERS = [
+    "",
+    "System",
+    "Traps",
+    "Patterns",
+    "Trap Groups",
+    "Tools",
+    "Probes",
+    "GUI",
+    "ROIs",
+    "Views",
+]
+
+# Question 2's other half: the probe data stream that PyTool_ForceTime reads.
+# 'Data Format' is self-describing, so if a tracking tool exists this settles
+# the column layout without trusting the unpacking in that tool.
+TOOLS = [
+    "Tools.Number",
+    "Tools",
+]
+
+
+def read(path):
+    """ReadNode(path) -> (ok, status, value_repr). Never raises."""
+    try:
+        result = Tw300Nodes.ReadNode(path)
+    except Exception as exc:
+        return False, "EXC", "%s: %s" % (type(exc).__name__, exc)
+    try:
+        status, value = result[0], result[1]
+    except Exception:
+        return True, "?", repr(result)
+    text = repr(value)
+    if len(text) > 400:
+        text = text[:400] + " ...(truncated, len=%d)" % len(text)
+    return (status == 0), status, text
+
+
+def survey(lines, title, paths):
+    lines.append("")
+    lines.append("=" * 72)
+    lines.append(title)
+    lines.append("=" * 72)
+    hits = 0
+    for path in paths:
+        ok, status, text = read(path)
+        if ok:
+            hits += 1
+        # The status code is the whole diagnosis: a node that does not exist and
+        # an engine that is not ready yet both come back unreadable, and only
+        # this number tells them apart. The first version of this file dropped
+        # it and the resulting dump could not be interpreted.
+        lines.append("[%s] st=%-6s %-48s %s"
+                     % ("OK " if ok else "-- ", status, path, text))
+    lines.append("-> %d of %d readable" % (hits, len(paths)))
+    return hits
+
+
+def NodeDump(PyTool, tag="menu"):
+    """Survey and write the dump. ``tag`` labels the output file.
+
+    The GUI calls this with one argument, so ``tag`` defaults for that path;
+    the init script passes 'init' to mark a dump taken at GUI startup, where
+    no traps exist yet and only the container answers are meaningful.
+    """
+    lines = []
+    lines.append("Tweez 300 node-tree survey")
+    lines.append("run tag %r" % (tag,))
+    lines.append("written %s" % time.strftime("%Y-%m-%d %H:%M:%S"))
+    lines.append("python %s" % sys.version.replace("\n", " "))
+    lines.append("Tw300PyPath %r" % os.getenv("Tw300PyPath"))
+    lines.append("PyTool node %r" % (PyTool,))
+    lines.append("trap surveyed %r" % TRAP)
+    lines.append("")
+    lines.append("Run this twice to answer question 1: once with the trap")
+    lines.append("HELD at the breakpoint, once while it is moving. Any node")
+    lines.append("whose value differs between the two runs is a candidate for")
+    lines.append("the breakpoint-state readback, even if its name gives no")
+    lines.append("hint. Nothing else in this file distinguishes them.")
+
+    try:
+        survey(lines, "1. evidenced by vendor code -- must read", KNOWN)
+        survey(lines, "2. containers (does ReadNode enumerate children?)",
+               CONTAINERS)
+        survey(lines, "3. GUI Properties panel, mirrored", PANEL)
+        survey(lines, "4. guesses: breakpoint state / live position", PROBE_STATE)
+        survey(lines, "5. tracking tools (probe .Data column layout)", TOOLS)
+
+        # Whatever Tools enumeration returned, try to walk one level into any
+        # probe it names -- .Data Format is the authoritative column list.
+        ok, _status, text = read("Tools")
+        if ok:
+            lines.append("")
+            lines.append("Tools enumerated as: %s" % text)
+            lines.append("If that names a tracking tool T, the layout is at")
+            lines.append("  ReadNode('<T>.Data Format')  and the series at")
+            lines.append("  ReadNode('<T>.Data')  ->  (Time, PrbX, PrbY, TrpX, TrpY)")
+    except Exception:
+        lines.append("")
+        lines.append("SURVEY ABORTED:")
+        lines.append(traceback.format_exc())
+
+    text = "\n".join(lines) + "\n"
+
+    name = "%s_%s_%s.txt" % (OUT_STEM, time.strftime("%Y%m%d-%H%M%S"), tag)
+    written = None
+    for candidate in (os.path.join(OUT_DIR, name),
+                      os.path.join(os.path.expanduser("~"), name)):
+        try:
+            folder = os.path.dirname(candidate)
+            if folder and not os.path.isdir(folder):
+                os.makedirs(folder)
+            with open(candidate, "w") as handle:
+                handle.write(text)
+            written = candidate
+            break
+        except Exception:
+            continue
+
+    summary = "node dump -> %s" % (written or "FAILED TO WRITE ANYWHERE")
+
+    # Surface it in the GUI too, so a run that wrote nothing is still visible.
+    # Both of these are best-effort: the Report node is used by
+    # PyTool_PotentialBrownV1.0 but is not declared in any .xml, and .Output is
+    # declared in this tool's own .xml.
+    for path, value in ((PyTool + ".Report.Add", [summary, "clGreen"]),
+                        (PyTool + ".Report.Show", 0),
+                        (PyTool + ".Output", summary)):
+        try:
+            Tw300Nodes.WriteNode(path, value)
+        except Exception:
+            pass
+
+    print(summary)
+    return 0
