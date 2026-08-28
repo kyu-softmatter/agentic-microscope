@@ -8,3 +8,12 @@ __pycache__/
 data/index/*.sqlite
 data/index/*.sqlite-journal
 data/index/*.parquet
+
+# macOS Finder metadata. This repo is browsed from the Finder inside a Box sync
+# folder, so one of these appears in every directory that has ever been opened.
+.DS_Store
+
+# Generated tweezers point lists — try_hardware.py writes <name>.tpf to the repo
+# root, and a 1 Hz sine at 50 kHz is 50 000 lines / ~1.2 MB. Regenerate, do not
+# store. A .tpf kept deliberately as reference belongs in a subdirectory.
+/*.tpf
