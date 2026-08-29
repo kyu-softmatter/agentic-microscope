@@ -1,4 +1,4 @@
-# experimentalist
+# Agentic microsceop
 
 An agent that designs experiments and proposes microscope settings.
 
