@@ -1,4 +1,4 @@
-# Agentic microsceop
+# Agentic microscope
 
 An agent that designs experiments and proposes microscope settings.
 
