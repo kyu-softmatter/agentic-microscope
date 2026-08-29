@@ -2,6 +2,14 @@
 
 An agent that designs experiments and proposes microscope settings.
 
+> **A side project.** Agentic Microscope and
+> [Brownian-Dynamics Agent](https://github.com/kyu-softmatter/Brownian-Dynamics-Agent)
+> are independent side projects developed outside my primary research, primarily
+> during evenings and weekends. I began building them less than two months ago —
+> as of this writing, August 2026 — as an exploration of how agentic systems
+> could make scientific reasoning, simulation, and instrumentation more reliable
+> and auditable.
+
 It builds a knowledge base from past microscope metadata and hardware specs;
 given the goal of a new experiment, it proposes **settings that are executable on
 the current instrument**, with the reasoning attached. A proposal is confirmed
