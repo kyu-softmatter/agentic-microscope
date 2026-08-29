@@ -372,6 +372,66 @@ range is unrecorded, because an oversized pattern is clipped silently.
 
 ---
 
+## Phase 6 · Joining the simulation agent
+
+**Do not start before Phase 4.** This phase feeds the experiment-planning
+committee and consumes what it defines; without it a computed τ_c has nowhere to
+land.
+
+The counterpart is
+[**Brownian-Dynamics Agent**](https://github.com/kyu-softmatter/Brownian-Dynamics-Agent)
+— the same architecture pointed at the integrator instead of the instrument, and
+built from the same lessons. The case for joining them, with the physics numbers
+behind it, is in the README:
+→ [Future work](../README.md#future-work--joining-this-agent-to-the-simulation-agent).
+What follows is only what would have to exist **here**.
+
+### The interface is a quantity, not an API
+
+Nothing is gained by importing each other's modules; two repositories that share
+code share one bug surface instead of producing two independent verdicts. What
+crosses is a serialized physical quantity with its provenance and its tier
+attached — the same shape both sides already store internally.
+
+| What crosses | Direction | Consumed by | Today |
+|---|---|---|---|
+| τ_c · ℓ_c · `D` · κ | sim → scope | ①' and then G5 · G8 · G11 · G14 | a human estimate, `evidence: assumed` |
+| predicted effect size and its tolerance | sim → scope | Phase 4 planning: required precision → §4 photon count | not represented at all |
+| measured `T`, size distribution, salt, ζ | scope → sim | its SI specification stage, closing tier-1 *choices* | not exchanged |
+| the bias ledger for the intended quantity (G23) + the Savin–Doyle terms (§5) | scope → sim | its validation stage — added to the prediction, not subtracted from the data | not exchanged |
+| achievable localization precision · frame rate · duration | scope → sim | its design-power check: *can this design decide this item at all?* | not exchanged |
+
+### Preconditions, in order
+
+1. **A shared quantity serialization.** Both sides speak SI with a provenance
+   and a tier already; what is missing is one file format for *"particle
+   diameter, measured, tier 1, ±3 %"* that both can read and neither can strip
+   the tier off.
+2. **A provenance kind for computed values.** `measured` and `assumed` are the
+   only two tiers here ([`kb/literature/`](../kb/literature/)), and a simulated
+   τ_c is neither. It needs its own, with the simulation's own gate verdict as
+   its falsifier.
+3. **`kb/samples/`**, from Phase 4 — the place `characteristic_scales` lands
+   whether it was measured or computed.
+4. **Sealed predictions on their side.** Their item 1, not ours: an unsealed
+   prediction handed to an instrument produces an experiment designed around a
+   post-hoc rationalization.
+5. **The wiring**, which is small once 1–4 exist.
+
+### What this phase must not do
+
+- **A simulated number must never set `evidence: measured`.** Same rule as
+  [`kb/literature/`](../kb/literature/), and for a sharper reason: if a computed
+  threshold can advance a verdict, the loop closes on itself — the simulation
+  supplies the threshold, the gate clears against it, and the experiment
+  confirms the simulation that designed the experiment.
+- **No shared code**, per the interface note above.
+- **No claim that a mismatch is physics** until the bias ledger for that
+  quantity is clean. Lens 6 already judges each `intended_quantities` entry
+  separately, which is the granularity a comparison against simulation needs.
+
+---
+
 ## Dependencies
 
 ```
@@ -391,6 +451,13 @@ Phase 1                    Phase 2
         ┌────────────┴────────────┐
         ▼                         ▼
   Phase 4 (planning)      Phase 5 (operation automation)
+        │                         │
+        └────────────┬────────────┘
+                     ▼
+        Phase 6 (join the simulation agent)
+         └─ also waits on the other repo:
+            sealed predictions, and a shared
+            quantity vocabulary
 ```
 
 **Phases 1 and 2 can run in parallel, and both proceed substantially without

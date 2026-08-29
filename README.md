@@ -169,6 +169,18 @@ hardware measurements have runnable scripts in
 [`calibration/`](calibration/), and results already collected are in
 [`kb/calibrations/`](kb/calibrations/). → [Phase 0](docs/07-roadmap.md)
 
+**Where this is going.** The longer-term goal is to join this agent to
+[**Brownian-Dynamics Agent**](https://github.com/kyu-softmatter/Brownian-Dynamics-Agent)
+— the same architecture pointed at the integrator instead of the instrument. One
+decides what the system does, the other decides what the microscope can actually
+record, and today they are consulted separately and can silently contradict.
+Joined, a simulation would supply the τ_c · ℓ_c · target precision that
+[04 §1](docs/04-decision-engine.md) currently takes from a human, and a
+measurement would become the independent oracle a simulation has no grader for.
+**Neither is finished, and coupling two moving targets would be a mistake** — so
+it is future work, with a stated order of preconditions.
+→ [Future work](#future-work--joining-this-agent-to-the-simulation-agent)
+
 Read [the pitfalls](docs/06-pitfalls.md) before starting any implementation.
 
 ---
@@ -270,7 +282,7 @@ that looks safe is not the same as a question that has been answered.
 | [04 Decision engine](docs/04-decision-engine.md) | Decision order, photon budget / SNR / sampling / timing formulas, the 32 hard gates |
 | [05 Committee](docs/05-consensus-gate.md) | hard/bias/soft distinction, **difficulty grades**, **improvement proposals (sensitivity analysis)**, deadlock handling |
 | [06 Pitfalls](docs/06-pitfalls.md) | What actually goes wrong in this data and this science — grounded in measured evidence |
-| [07 Roadmap](docs/07-roadmap.md) | Phase 0 (secure the evidence) → 5 (automate manipulation). Three things that pay off immediately |
+| [07 Roadmap](docs/07-roadmap.md) | Phase 0 (secure the evidence) → 5 (automate manipulation) → 6 (join the simulation agent). Three things that pay off immediately |
 | [08 Optics lens design](docs/08-optical-path-spec.md) | Reviewer computation structure (check registry), hardware YAML description format |
 | [09 Expertise capture](docs/09-knowledge-capture.md) | **From conversation into the KB.** The real purpose of this project |
 | [Observed systems](reference/observed-systems.md) | ⚠ **Old setup** inventory. Full scan of 2,343 metadata records |
@@ -357,3 +369,116 @@ microrheology.
 The working PC and the microscope PC are separate, so a live connection is out of
 scope. For now this produces offline recommendations only.
 → [07](docs/07-roadmap.md)
+
+---
+
+## Future work — joining this agent to the simulation agent
+
+The other half of this project is
+[**Brownian-Dynamics Agent**](https://github.com/kyu-softmatter/Brownian-Dynamics-Agent):
+the same architecture pointed at the integrator instead of the instrument. It
+reads a physical system out of a sketch, fixes it in SI with a provenance on
+every number, derives a dimensionless specification, runs it in HOOMD-blue, and
+files what it learned — including the failures — into a knowledge base the next
+run queries first.
+
+| | **agentic-microscope** (this repo) | **Brownian-Dynamics Agent** |
+|---|---|---|
+| Input | a research goal | a sketch of a physical system |
+| Decides | what the instrument can actually record | what the system does, in silico |
+| Refuses when | a gate's input was never measured | a number has no provenance |
+| Produces | executable settings, an evidence tier, per-check margins | a dimensionless spec and a defended result |
+| Its knowledge base | instrument config, calibrations, tacit expertise, decisions | system cards, findings, benchmarks, post-mortems |
+| Its unit of doubt | `measured` vs `assumed`, and a falsifier on every prior | `tier` and `derived_from` on every number, and a sealed prediction |
+
+The two architectures match because the second was built from the first's
+lessons: hard gates that return `BLOCKED` naming the one missing input, a
+deterministic core under a thin agent layer, and a knowledge base read before
+every decision and written after every verdict. **Neither is finished, and
+coupling two moving targets would be a mistake** — so this is future work, with
+a stated order of preconditions.
+→ [07 Phase 6](docs/07-roadmap.md#phase-6--joining-the-simulation-agent)
+
+### Why joining them is worth doing
+
+**1 · The number this repo takes from a human is one the simulation computes.**
+The decision order opens with *"physical quantity to measure + target precision
+← the human gives this"*, and its step ①' wants the system's τ_c and ℓ_c,
+*measured if measurable, otherwise a theoretical estimate +
+`evidence: assumed`* → [04 §1](docs/04-decision-engine.md). Those are exactly
+what a simulation produces, and they propagate through the committee: G8 needs
+`D` or τ_c for the motion-blur ceiling, G5 needs ℓ_c and the task kind, G11
+needs a target error, G14 needs κ. Fed from a spec instead of from a person,
+four gates stop asking and start deriving — each number still carrying its own
+provenance.
+
+**2 · A measurement closes assumptions a simulation cannot close by itself.**
+Its most damaging soft spot is `T = 300 K`, labelled tier 1 but actually
+inherited from a sketch that never stated a temperature — worth −4 % to −14 % on
+every timescale it computes, because water's viscosity is 2.06 %/K sensitive. A
+thermometer reading ends that. The same holds for particle size distribution,
+salt concentration and surface potential: tier-1 *choices* over there, routine
+measurements over here. This repository is already built to accept an outside
+number without either side losing track of what it is —
+[`kb/literature/`](kb/literature/) exists precisely so a value nobody here
+measured can let a gate **compute** while never setting `evidence: measured`.
+
+**3 · Verifying a hypothesis needs both halves, and neither half can do it
+alone.** Its central result is that a colloidal chain held together by DLVO
+forces alone has no bending stiffness: bow of **0.1135 d** without adhesion
+against **0.00639 d** with JKR, 22.3σ apart, at a bead diameter of
+d = 1.47 µm. Read as an experiment, that is 167 nm against 9.4 nm of transverse
+displacement. The *difference* is 157 nm and comfortably resolvable; deciding
+whether the JKR branch is separable from zero sits at ~9 nm, at the 10 nm target
+precision this repo's own worked examples use — so it is settled by photon count
+and frame count ([04 §4](docs/04-decision-engine.md), G11), not by the physics.
+**That is the question neither repository can answer alone**, and today it is
+answered by consulting them separately and trusting that the two `d` mean the
+same thing in the same units.
+
+**4 · Proposing the next hypothesis, not only checking the current one.** The
+same result, read the other way: bow separates DLVO from JKR at 22.3σ under a
+soft trap and at only 1.4× under a stiff one. **Discriminating power is a
+property of the protocol, not of the effect** — so a simulation sweep scored
+against this repo's feasibility gates ranks candidate experiments by predicted
+separation *per unit of instrument time*, and the ones worth running are those
+whose predicted effect clears the achievable precision by a stated margin. That
+pairing — predicted separation against achievable precision — is a number both
+sides can compute and neither can compute alone. It is also what turns a
+`BLOCKED` into a proposal rather than a dead end: *the effect is below your
+localization precision; either deepen the DLVO well or change objective.*
+
+**5 · The bias ledger tells the simulation which mismatches are the
+instrument's.** The simulation side lists four layers of evidence and
+deliberately left the fifth — comparison against experiment — unadopted, because
+a mismatch there has too many candidate causes. Lens 6 removes most of them: G23
+carries every bias that damages the specific quantity being measured, G24–G26
+check that the calibrations behind it exist, and the terms are already written
+down here — a measured MSD carries `−2D·t_exp/3` from blur and `+2ε²` from
+static localization error, which at short lags **cancel into a plausible but
+wrong straight line** → [04 §5](docs/04-decision-engine.md). Those belong on the
+simulation's side of the comparison, added to the prediction rather than
+subtracted from the data. An independent measured oracle is the most valuable
+evidence there is in a domain with no grader — but only when it arrives with its
+own bias ledger attached.
+
+### What has to be true first
+
+| Precondition | Where it stands |
+|---|---|
+| This instrument is **connected** | not yet — the working PC and the microscope PC are separate. Stages 5a–5d are built (2026-08-26) but exercised against a demo config only; 5e not started |
+| Illumination power at the sample is **measured** | not yet — the top blocker, deferred by decision (2026-08-19). A power meter, not code |
+| τ_c · ℓ_c have **somewhere to live** | `kb/samples/` does not exist yet; it arrives with [Phase 4](docs/07-roadmap.md) |
+| Computed values have a **provenance kind of their own** | they do not. There are two tiers here, `measured` and `assumed`, and a simulated τ_c is neither a measurement of this sample nor a literature value. Giving it its own tier — with the simulation's own gate verdict as its falsifier — is the honest fix |
+| The simulation side **seals its predictions before running** | not yet; it is that repo's own item 1. An unsealed prediction handed to an instrument produces an experiment designed around a post-hoc rationalization |
+| A shared **quantity vocabulary** exists | it does not. Both sides already speak SI with a provenance and a tier, which is the hard half; a common serialization for *"particle diameter, measured, tier 1, ±3 %"* is the missing half |
+
+**The order matters.** Sealing first, on their side. Then the vocabulary, because
+that is the actual interface and nothing useful crosses until a number can cross
+with its provenance intact. The wiring itself is small once those two exist.
+
+**And one hazard to hold onto from the start:** a simulated number must never be
+allowed to set `evidence: measured`. If it can, the loop closes on itself — the
+simulation supplies the threshold, the gate clears against it, and the
+experiment confirms the simulation that designed it. The rule that keeps
+[`kb/literature/`](kb/literature/) honest is the same rule this interface needs.
