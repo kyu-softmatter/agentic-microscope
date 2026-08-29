@@ -10,6 +10,15 @@ detection, compute resources, sample geometry, photo-perturbation, and
 measurement validity, plus optical tweezers and mechanical/environmental when
 those apply.
 
+It is being built on **one** instrument — the microscope in **Prof. Sho
+Takatori's lab, Stanford Chemical Engineering**. Every calibration, expertise
+note and device record here is that instrument's and is labelled as such.
+**Being usable in other labs is a considered direction**, and the mechanism it
+would use is the one already at the centre of the design: device settings do not
+transfer between microscopes, physical quantities do. What would have to be
+replaced, and the failure mode that makes it more than a configuration exercise,
+are in [03 §8](docs/03-cross-system-transfer.md).
+
 > **Public repository.** Vendor manuals, proprietary DLLs, and commercial
 > correspondence are in no commit here — removed from the whole history on
 > 2026-08-28, not just from the tip. See [NOTICE](NOTICE.md) for what was

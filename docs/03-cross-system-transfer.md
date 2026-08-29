@@ -192,3 +192,45 @@ Every time a new `.cfg` arrives:
 5. Until calibration is done, every gate is `evidence: assumed` → `advances: NO`
 
 That diff file is the conversion table.
+
+---
+
+## 8. Another lab is the same problem, one step out
+
+This is built on the microscope in Prof. Sho Takatori's lab, Stanford Chemical
+Engineering. Running it in a different lab is a considered direction, and it is
+**not a new mechanism** — a lab whose instrument shares no history with this one
+is, to §7's fingerprint, simply an unknown system. What changes is only how much
+has to be replaced at once.
+
+### What is portable, and what is this instrument's
+
+| Portable — computes from physical quantities | This instrument's — must be replaced |
+|---|---|
+| The eight lenses and the 32 gates | [`kb/systems/current.md`](../kb/systems/current.md) — this device wiring, cross-checked three ways |
+| The 3-tier normalization and the `evidence` / `advances` split ([02 §2](02-knowledge-base.md), [01 §3](01-architecture.md)) | [`kb/calibrations/`](../kb/calibrations/) — pixel size, camera row time, disk bandwidth, all measured here |
+| The decision order and the formulas behind every gate ([04](04-decision-engine.md)) | [`kb/expertise/`](../kb/expertise/) — this lab's tacit priors: which coverslip is really in use, which immersion media, trapping with an oil objective in water |
+| The `data/*.yaml` registries as *catalogue* data — detectors, objectives, filters, light sources, fluorophores, spectra | Which entries of those registries are actually on the bench, and every empty field a power meter has to fill |
+| The knowledge-base schema: source, trust level, applicable scope, falsifier | [`hardware/`](../hardware/) — drivers bound to these vendor DLLs, this TCP surface, this NIDAQ wiring |
+| The refusal discipline itself, which is the part with no lab in it | The 2,343-record archive, which is one Nikon + Photometrics combination's precedent |
+
+### The failure mode that makes this more than a configuration exercise
+
+A new lab's mistakes would be **silent**, not loud. The dangerous entries are not
+the ones that are obviously missing — those already return `BLOCKED` and name
+themselves. They are the ones this lab **settled by decision**, which then look
+like properties of physics rather than choices.
+
+Lens 4's scope fix is the example: sample-medium index settled at 1.333 and
+coverslip at 170 µm ([`2026-08-19-lens-4-scope.md`](../kb/decisions/2026-08-19-lens-4-scope.md))
+because that is what is on this bench and it matches every objective's design.
+Hand that to a lab running 150 µm coverslips, a glycerol-based medium, or a
+collar objective set differently, and **G17 and G18 compute happily and are
+wrong**, with no field empty anywhere to hint at it.
+
+So the portability work is not "make the constants configurable". It is: **every
+value that was settled by decision has to know it was settled by decision**, and
+revert to `BLOCKED` for a system that did not make that decision. The
+[`kb/decisions/`](../kb/decisions/) entries already record which values those
+are, and a `scope:` field naming the system a decision applies to is the missing
+half — the same shape as the `falsifier` field, one level up.
