@@ -112,6 +112,12 @@ evidence back into it. `R` marks a read, `W` marks a write.
   |                    hardening, and effects ungated BY DECISION     |
   |                    rather than by omission.                       |
   |                                                                   |
+  |  kb/literature/    published values a gate needs and nobody here  |
+  |                    has measured. Always assumed, so they let a    |
+  |                    gate compute instead of BLOCK but never let a  |
+  |                    verdict advance -- each is a placeholder built |
+  |                    to be replaced by a calibration.               |
+  |                                                                   |
   |  Ingested: 2,343 heterogeneous Micro-Manager acquisitions across  |
   |  two schema generations. Every record carries its source, its     |
   |  trust level, its applicable scope, and the observation that      |

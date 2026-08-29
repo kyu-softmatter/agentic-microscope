@@ -36,6 +36,13 @@ kb\
 │
 ├── expertise\                  expertise captured from conversation → 09
 │
+├── literature\                 published values a gate needs and nobody here has
+│   └── README.md               measured. Always `evidence: assumed`, so they let a
+│                               gate compute instead of BLOCK but never let a
+│                               verdict advance. Schema and the reasoning are in
+│                               that README; each entry is a placeholder built to
+│                               be replaced by a calibration
+│
 └── envelope.sqlite             quantitative index of the 2,343 acquisitions (generated)
 ```
 

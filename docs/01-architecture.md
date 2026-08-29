@@ -357,13 +357,16 @@ experimentalist/
 │   ├── systems\current.md        current system dossier
 │   ├── calibrations\             measured calibrations
 │   ├── decisions\                past recommendations + outcomes
-│   └── expertise\                expertise captured from conversation
+│   ├── expertise\                expertise captured from conversation
+│   └── literature\               published values, and why they cannot advance a
+│                                 verdict — schema in kb\literature\README.md
 │
 ├── reference\
 │   ├── observed-systems.md       ⚠ old-setup inventory (not the current system)
-│   └── quotes\                   purchase quotes
+│   └── npcd-command-set.md       NPC-D command set, extracted from the vendor DLL
 │
-├── manual\                       vendor manuals (DMD · optical tweezers · piezo stage)
+├── manual\README.md              which datasheet revision to cite. The manuals
+│                                 themselves are not published — see NOTICE.md
 └── tests\
 ```
 
