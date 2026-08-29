@@ -172,6 +172,19 @@ and 5 is 5e itself
   cost is a number G13c can be asked about **before** the run rather than
   discovered as dropped frames during it.
 
+  **The first closed loop is the smallest one**, and it is where this starts:
+  *the particle has fallen out of the trap* — and then, one rung up, *pick up a
+  new one*. Detecting the loss costs almost nothing per frame, so lens 3 clears
+  it on any machine, and it catches the failure that quietly ruins the most
+  runs: a drag calibration or a microrheology sweep goes on producing
+  data after the bead is gone, and that data still looks like data. It also
+  exercises everything else exactly once. Saying "the bead left the trap"
+  requires knowing where the trap was on that frame, which is item 1's timestamp
+  problem. **Re-trapping is the first time feedback moves hardware rather than
+  merely stopping it** — an `allow_motion`-class write issued mid-run, which is
+  the first real test of item 3's reviewer and of the per-frame record the rules
+  below demand.
+
   What each of the four examples would get: 4.1 notices the bead leaving the
   trap and marks the constant-velocity segment live instead of in post; 4.2
   checks the drive is still in the linear regime and adjusts amplitude before
