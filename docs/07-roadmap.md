@@ -328,10 +328,15 @@ upload samples, set count and iterations, start/stop/pause/unpause, read state),
 which the vendor's own examples describe as building "simple raster profiles",
 plus `snapshot.*` triggered capture. So the piezo can hold a trajectory in
 hardware like the AOD trap loop does, and unlike the tweezers **its state is
-readable**, so a commanded trajectory can be verified. Established offline by
-extracting the command names from the vendor DLL —
-[`reference/npcd-command-set.md`](../reference/npcd-command-set.md), 178 commands
-with a superset caveat; sample generation in
+readable**, so a commanded trajectory can be verified. First established
+offline from the vendor DLL, then **settled on the controller itself**
+(2026-08-27) —
+[`reference/npcd-command-set.md`](../reference/npcd-command-set.md) is now 414
+names read over COM4, and the `function.waveform-generator.*` and
+`function.waveform-builder.*` families were among those the DLL route could not
+see at all
+([`scope`](../kb/decisions/2026-08-29-device-discovery-scope.md)); sample
+generation in
 [`hardware/piezo_waveform.py`](../hardware/piezo_waveform.py); confirm on the
 controller with
 [`config/piezo/verify_piezo_commands.py`](../config/piezo/verify_piezo_commands.py).

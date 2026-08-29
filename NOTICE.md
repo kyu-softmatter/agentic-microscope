@@ -79,9 +79,12 @@ piezo controller without it. To restore:
 
 Everything the DLLs were *read* for is still here and needs no vendor file:
 [`reference/npcd-command-set.md`](reference/npcd-command-set.md) is the command
-set extracted from the 64-bit binary, with the extraction command and the
-binary's md5 recorded in its header so the extraction can be repeated and
-checked against a fresh copy.
+set — and it no longer comes out of the binary at all. It was regenerated on
+2026-08-27 by reading the live controller over COM4 (414 names at User level),
+with the port, the firmware and the command that reproduces it recorded in its
+header. The earlier 178 names pulled from the 64-bit DLL with `strings` were a
+family-wide superset and are gone; what that swap corrected is in
+[`kb/decisions/2026-08-29-device-discovery-scope.md`](kb/decisions/2026-08-29-device-discovery-scope.md).
 
 `hardware/` is offline in this repository regardless — the working PC and the
 microscope PC are separate, so these drivers produce recommendations, not

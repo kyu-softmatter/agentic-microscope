@@ -47,11 +47,16 @@ WHAT IT IS FOR
 --------------
 Three questions, in order of how much they change:
 
-1. **Does this controller have the waveform generator?** The `function.*` family
-   is documented as "For NPC-D-6000 controllers" only, and the command list in
-   reference/npcd-command-set.md was extracted from a DLL that serves the whole
-   family -- so it is a superset and a hypothesis. `--describe function` settles
-   it, and its parameter list is what `WAVEFORM_PROTOCOL` needs.
+1. **Does this controller have the waveform generator?** *Settled on
+   2026-08-27: yes.* The `function.*` family is documented as "For NPC-D-6000
+   controllers" only, and the command list in reference/npcd-command-set.md was
+   once a DLL extraction serving the whole family -- a superset and a
+   hypothesis. It is now read off this controller (414 names, User level), and
+   `function.waveform.*`, `function.waveform-generator.*` and
+   `function.waveform-builder.*` are all on it. What remains here is the
+   parameter layout, not the existence question: `--describe function` returns
+   the argument list `WAVEFORM_PROTOCOL` needs.
+   -> kb/decisions/2026-08-29-device-discovery-scope.md
 2. **What are the position units?** Library manual 5.2 says a distance may be
    picometres for a linear stage or picoradians for an angular one, and that
    applications should always check. `piezo_stage.get_position_pm()` assumes

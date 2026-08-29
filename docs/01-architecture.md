@@ -363,7 +363,7 @@ experimentalist/
 │
 ├── reference\
 │   ├── observed-systems.md       ⚠ old-setup inventory (not the current system)
-│   └── npcd-command-set.md       NPC-D command set, extracted from the vendor DLL
+│   └── npcd-command-set.md       NPC-D command set, read off the live controller
 │
 ├── manual\README.md              which datasheet revision to cite. The manuals
 │                                 themselves are not published — see NOTICE.md

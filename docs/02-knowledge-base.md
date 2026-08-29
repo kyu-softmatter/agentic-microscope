@@ -161,6 +161,33 @@ Extract alongside from the `.cfg`: the `ConfigGroup,Channel,...` preset
 definitions (which device-property combination each channel is), the `Label,`
 lines (turret and wheel position names), and `Property,` defaults.
 
+### Where a device fact is allowed to come from
+
+The table above works because MM and NIS both publish a device list. The three
+subsystems in the bottom rows publish nothing — the piezo speaks a vendor DLL,
+the tweezers a documented 28-command TCP surface plus an undocumented node tree,
+and the LUN-F combiner is in neither stack. For those, what the device can do has
+to be **found out**, and the route it was found by decides what the answer is
+worth:
+
+| Rung | Route | Standing |
+|---|---|---|
+| **1** | read off the live device | **measured** — a fact about this unit, and the only rung that settles anything |
+| **2** | the vendor manual | assumed — a claim about the product family, which is wider than this unit |
+| **3** | reverse engineering the vendor's own files (`strings` over a DLL, embedded-Python introspection, vendor config files) | assumed and provisional — a hypothesis to confirm |
+
+**A rung-2 or rung-3 fact may be used to write code and may not be used to claim
+a capability**, the same rule [`kb/literature/`](../kb/literature/) applies to
+published values. Discovery is read-only. Asking the vendor is rung 2 with a
+better address, and never blocks the measurement.
+
+The worked example is the piezo command set: 178 names from a DLL `strings` pass
+became 414 read off the controller, and the DLL list was wrong in both
+directions at once — whole hyphenated families invisible to the extraction's
+regexp, and names belonging to other models in the family that do not exist
+here, one of which had already been cited as evidence.
+→ [`kb/decisions/2026-08-29-device-discovery-scope.md`](../kb/decisions/2026-08-29-device-discovery-scope.md)
+
 ---
 
 ## 5. Off-ledger settings — the sidecar
