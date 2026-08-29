@@ -21,7 +21,7 @@ return `BLOCKED` only because there is no input to compute from.
 | Parts per filter wheel position | `data/filters.yaml` | — | in hand |
 | Fluorescent dye data | `data/fluorophores.yaml` | — | in hand |
 | Objective barrel engravings | NA · WD · coverslip | 10 min | ✅ done (2026-08-11) — catalog cross-check (2026-08-10) + barrel cross-check (2026-08-11), user-confirmed |
-| **Illumination power measured** | `power_at_sample_mw` | 30 min | **Largest effect, still the top blocker — but deliberately deferred (user, 2026-08-19): all laser power measurement happens later.** Not forgotten and not dropped; simply not the next task. Until it lands, every dose/SNR number stays relative, and gates that need `power_at_sample_mw` keep returning `BLOCKED` by design |
+| **Illumination power measured** | `power_at_sample_mw` | 30 min | **Largest effect, still the top blocker — deferred 2026-08-19 for want of a meter, and a meter is being borrowed as of 2026-08-29, so it is next once it arrives (widefield sources first; see the update below).** The original decision, kept for the record: *deliberately deferred (user, 2026-08-19): all laser power measurement happens later.* Not forgotten and not dropped; simply not the next task. Until it lands, every dose/SNR number stays relative, and gates that need `power_at_sample_mw` keep returning `BLOCKED` by design |
 | Measured pixel size calibration | `ConfigPixelSize` (registered in MM2) | 30 min | ✅ in hand (Kinetix, 2025-04) |
 | Disk sustained-write bandwidth | `kb/calibrations/disk-bandwidth.yaml` | 10 min | ✅ in hand (2026-08-12) — D: drive 206.8 MB/s (4GB measured). Whether it is exactly the folder MM saves into is unconfirmed — if not, re-measure. Since 2026-08-19 the gate stops letting that slide: `disk_bandwidth_path_confirmed` defaults to false, which pins every lens-3 verdict to `evidence: assumed` until someone confirms the folder |
 | Camera row time | `ReadoutTimeNs / ROI height` | 5 min | ✅ in hand (2026-08-12) — `kb/calibrations/camera-readout.yaml`. The real PVCAM adapter property `Timing-ReadoutTimeNs` = 8,475,000 (ns strongly implied by the name; not yet cross-checked against a document) → row time ≈ 3531.2 ns/row (at ROI height 2400 rows). Loaded from `dual_cam_test.cfg` (PVCAM only, no NikonTi2/Mightex) rather than `DMD_dualcam.cfg` — reason in the note below |
@@ -41,6 +41,17 @@ problem anyway (the FT4222H SPI word format — see
 `kb/systems/current.md > devices_not_in_mm_config`), so measuring before that
 path exists would only characterise the laser at whatever power NIS last left
 it at.
+
+**Update, 2026-08-29 — the missing precondition is arriving.** A power meter is
+being borrowed (Saksham), which removes the practical half of the reason this
+was deferred. The 2026-08-19 decision stands as a record of why it was not the
+next task for six weeks; it is not a standing instruction to keep deferring once
+the instrument is on the bench. The scoping in the paragraph above survives
+intact and is what to follow: **measure the widefield sources first**
+(SpectraIII, AuraIII), where the number is meaningful the moment it is taken,
+and treat the confocal lines as contingent on the LUN-F per-line power path,
+since without it a measurement records whatever power NIS last left the laser
+at. It is now item 0 of the README's remaining work.
 
 **The code to run once the hardware is connected is ready in
 [`calibration/`](../calibration/)** (disk bandwidth, camera row time, EM1/EM2

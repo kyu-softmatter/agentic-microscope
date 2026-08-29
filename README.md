@@ -37,13 +37,44 @@ are in [03 §8](docs/03-cross-system-transfer.md).
 
 ## Remaining work
 
-Six items. **1–3 are the missing path from a committee verdict to a running
-instrument**; 4 is the first real use of that path, and the only test of whether
+Item 0 is not part of the chain and jumps the queue anyway. Then six items:
+**1–3 are the missing path from a committee verdict to a running instrument**; 4 is the first real use of that path, and the only test of whether
 any of the rest was right; 5 is what a run does with what it is seeing while it
 is still happening; 6 is a standard that appeared two days ago and might replace
 the plumbing under 1. Items 1–3 are what sits between stages 5d and 5e, and 5 is
 5e itself
 → [07 Phase 5](docs/07-roadmap.md#phase-5--automating-microscope-operation).
+
+- [ ] **0 · Measure the illumination power at the sample.** Outside the 1→6
+  chain, and ahead of all of it the moment the hardware is in hand: **Saksham is
+  borrowing a power meter.** That was the missing precondition — this is the one
+  blocker in the whole repository that **code cannot substitute for**, and it was
+  deferred on 2026-08-19 partly because no meter was available.
+
+  It is ~30 minutes and the procedure is already written down in
+  [`data/light_sources.yaml`](data/light_sources.yaml): sensor at the real
+  sample position (not the back focal plane with the objective removed), mW for
+  each line × objective × level 10/25/50/75/100%, divided by illuminated area
+  for W/cm², plus the level at which linearity breaks. It lands in
+  `power_at_sample_mw`, which is empty for **every** line of every registered
+  source today.
+
+  What it buys is out of proportion to the half hour. Every dose and SNR number
+  stops being relative and becomes absolute, so exposure can be computed from
+  scratch instead of copied from precedent; lens 5 stops returning `BLOCKED` on
+  this instrument ([the transcript above](#what-a-refusal-looks-like) is that
+  refusal); and the numbers become transferable to another microscope at all,
+  which is what [03](docs/03-cross-system-transfer.md) exists for and what the
+  other-labs direction rests on.
+
+  Two limits to hold onto, so the measurement is not oversold. **It does not by
+  itself unblock lens 5** — G10 also needs `bleach_photons`, which is empty for
+  every dye in the registry, and the photobleaching budget needs both numbers to
+  count anything. And it is **immediately meaningful for the widefield sources**
+  (SpectraIII, AuraIII) but contingent for the confocal lines: until the LUN-F
+  per-line power path exists, measuring those characterises the laser at
+  whatever power NIS last left it at, not at a power this repository can command
+  → [07 Phase 0](docs/07-roadmap.md).
 
 - [ ] **1 · Run the three subsystems on one timeline.** A master script over
   three sub-scripts — optical tweezers · microscope (Micro-Manager) · piezo
