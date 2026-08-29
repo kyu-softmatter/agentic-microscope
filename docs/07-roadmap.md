@@ -399,7 +399,7 @@ The counterpart is
 — the same architecture pointed at the integrator instead of the instrument, and
 built from the same lessons. The case for joining them, with the physics numbers
 behind it, is in the README:
-→ [Future work](../README.md#future-work--joining-this-agent-to-the-simulation-agent).
+→ [Future work](../README.md#toward-a-model-to-experiment-loop).
 What follows is only what would have to exist **here**.
 
 ### The interface is a quantity, not an API
