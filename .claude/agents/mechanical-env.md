@@ -184,7 +184,8 @@ it. An unexamined self-declaration is not evidence.
    ≈ −1e-4 per °C). These two files name lens 8 explicitly; they are the only KB
    entries that do.
 10. **Stage** → `hardware/piezo_stage.py` (Prior/Queensgate NPC-D, closed loop,
-    with a `sim:/NPC6330` simulator) and `manual/Piezo Stage/`. The piezo is
+    with a `sim:/NPC6330` simulator). Its vendor manuals and DLLs are not
+    published here — see `NOTICE.md`. The piezo is
     **off-ledger**: not registered in MM or NIS, driven by a separate program
     (`01 §3 Principle 3`), so its motion leaves no trace in the metadata.
 11. **Before asking for any measurement, read `kb/decisions/`.** Some absences

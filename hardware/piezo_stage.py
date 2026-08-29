@@ -1,15 +1,20 @@
 """Python control for the Prior/Queensgate NPC-D piezo stage controller (Nanobench 6000).
 
-Wraps the vendor ctypes DLL adapter, copied into hardware/piezo/vendor/
-(original source archived outside this repo -- see manual/README.md; the
-vendor's full C/C++/Python SDK and driver installers no longer live in this
-repo, only the manuals do). Full protocol reference:
-manual/Piezo Stage/Controller Interface DLL & Drivers/NPC-D Digital Controller Interface DLL Production Release/NPC-D_Series_Digital_Controller_Interface_Library_2.7.9.pdf
+Wraps the vendor ctypes DLL adapter in hardware/piezo/vendor/. **The two DLLs it
+loads are not published here** -- they are vendor-licensed and were removed on
+2026-08-28. Obtain the NPC-D Digital Controller Interface DLL release (2.7.9 is
+what this was written and tested against) from Prior/Queensgate and copy
+controller_interface.dll and controller_interface64.dll out of its
+controller_interface/bin/Windows/ into hardware/piezo/vendor/. Constructing
+PiezoStage without them raises with those instructions. See NOTICE.md.
 
-The vendor's command-set manual ("NPC-D-6xx0 NanoMechanism Controller Interface
-Command Set And Control System") is still not in this repo, so the names and
-signatures used here were read off the controller itself with
-config/piezo/verify_piezo_commands.py -- see WAVEFORM_PROTOCOL.
+Neither vendor document is in this repo either -- not the protocol reference
+(NPC-D_Series_Digital_Controller_Interface_Library_2.7.9.pdf) and not the
+command-set manual ("NPC-D-6xx0 NanoMechanism Controller Interface Command Set
+And Control System"). So the names and signatures used here were read off the
+controller itself with config/piezo/verify_piezo_commands.py -- see
+WAVEFORM_PROTOCOL. That is the better source anyway: the manual covers the whole
+NPC-D family, this is what *this* controller answered.
 
 Connection is a comms-link string: a COM port ("COM4"), an IP address
 ("192.168.0.7"), or "sim:/NPC6330" to run against the DLL's built-in simulator.
@@ -198,6 +203,16 @@ class PiezoStage:
         if dll_path is None:
             filename = _DLL_FILENAMES[ctypes.sizeof(ctypes.c_voidp)]
             dll_path = str(_VENDOR_DIR / filename)
+        if not Path(dll_path).exists():
+            raise PiezoStageError(
+                f"controller DLL not found: {dll_path}\n"
+                "This repository does not publish the vendor DLLs. Obtain the "
+                "NPC-D Digital Controller Interface DLL release (2.7.9) from "
+                "Prior/Queensgate and copy controller_interface.dll and "
+                "controller_interface64.dll out of its "
+                "controller_interface/bin/Windows/ into hardware/piezo/vendor/. "
+                "See NOTICE.md."
+            )
         self.allow_motion = allow_motion
         self._dll = dll_adapter.DllAdapter()
         if not self._dll.Init(dll_path):

@@ -10,10 +10,11 @@ detection, compute resources, sample geometry, photo-perturbation, and
 measurement validity, plus optical tweezers and mechanical/environmental when
 those apply.
 
-> **Public mirror.** Vendor manuals, proprietary DLLs, and commercial
-> correspondence have been removed from this repository and from its entire
-> commit history. See [NOTICE](NOTICE.md) for what was removed and how to
-> restore the hardware dependencies.
+> **Public repository.** Vendor manuals, proprietary DLLs, and commercial
+> correspondence are in no commit here — removed from the whole history on
+> 2026-08-28, not just from the tip. See [NOTICE](NOTICE.md) for what was
+> removed, what that did and did not accomplish, and how to restore the hardware
+> dependencies.
 
 ---
 

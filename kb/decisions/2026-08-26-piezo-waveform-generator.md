@@ -49,11 +49,17 @@ documented use case — exactly the piezo pattern generation being asked about.
 
 **How this was established without the controller.** The command-set manual
 ("NPC-D-6xx0 NanoMechanism Controller Interface Command Set And Control System")
-is not in this repo. But the vendor DLL is — `hardware/piezo/vendor/
+is not in this repo. But the vendor DLL was — `hardware/piezo/vendor/
 controller_interface64.dll` — and it carries its command names as ASCII
 literals. Pulling the dotted tokens out gives 178 commands in 10 families,
 filed with provenance and its caveats in
 [`reference/npcd-command-set.md`](../../reference/npcd-command-set.md).
+
+> **2026-08-28.** That DLL has since been removed from the repository
+> ([`NOTICE.md`](../../NOTICE.md)). The extraction stands: the command that
+> produced it, the binary's md5, and the resulting list are all recorded in
+> `reference/npcd-command-set.md`, so it can be repeated and checked against a
+> fresh copy from the vendor.
 
 **That list is a superset, not our command set.** One DLL serves the whole
 NPC-D family and the library manual says models have "slightly different command

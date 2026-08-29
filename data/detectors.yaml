@@ -29,8 +29,8 @@ detectors:
     source: "Photometrics Kinetix sCMOS Camera Datasheet, Rev A0-09152020 (Teledyne Photometrics, teledynevisionsolutions.com)"
     note: >
       ⚠ NOT THE INSTALLED CAMERA. 2026-08-19 user confirmation: the lab runs
-      **Kinetix22** x2, which matches the Nikon quote (2024-09-29, #REDACTED)
-      after all. Use the `Kinetix22` entry below; this entry is the standard
+      **Kinetix22** x2, which matches the purchase record (Nikon quotation,
+      2024-09-29) after all. Use the `Kinetix22` entry below; this entry is the standard
       Kinetix (3200x3200, 20.8x20.8mm) and is kept only because the device
       labels in kb/systems/current.md read "Kinetix", and because its datasheet
       is the source of the per-mode line times that the Kinetix22 shares.
@@ -164,10 +164,11 @@ detectors:
       Datasheet Rev A3-05112021 — see the line-time warning in `note`.
     note: >
       This is the installed camera: 2026-08-19 user confirmation, Kinetix22 x2
-      on PCIe. It matches the Nikon quote (2024-09-29 #REDACTED, part 77018310),
-      so the "quote says Kinetix22, current.md says Kinetix" discrepancy recorded
-      in reference/quotes/ is resolved in favour of the quote — the device
-      *labels* in MM just read "Kinetix".
+      on PCIe. It matches the purchase record (Nikon quotation 2024-09-29, part
+      77018310), so the "purchase record says Kinetix22, current.md says Kinetix"
+      discrepancy is resolved in favour of the purchase record — the device
+      *labels* in MM just read "Kinetix". That correspondence is not in this repo
+      (NOTICE.md); its conclusion is recorded here and in kb/systems/current.md.
 
       ⚠ DO NOT USE Rev A3-05112021's Line Time row (5 / 0.836 / 4.71 / 80.12
       us/line). Those values are the *Kinetix* (3200-row) full-frame readout
@@ -217,9 +218,9 @@ detectors:
           differ (GSENSE6510 here). That is an argument for a good estimate, not
           for calling it measured.
 
-      To retire the borrow: digitize the Rev 2024-10-21 graph
-      (manual/Camera/), or ask Photometrics for the curve as CSV, then set
-      `qe_verified: true`.
+      To retire the borrow: digitize the Rev 2024-10-21 graph (that datasheet is
+      not in this repo — obtain it from Teledyne Photometrics, see NOTICE.md), or
+      ask Photometrics for the curve as CSV, then set `qe_verified: true`.
 
     # BORROWED from the Kinetix entry above, verbatim — see `note`. Read off the
     # *Kinetix* datasheet graph by eye, against the grid lines only

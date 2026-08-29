@@ -1,0 +1,113 @@
+# NOTICE — what is not published here
+
+This repository is public. Vendor manuals, proprietary DLLs, and commercial
+correspondence were removed on 2026-08-28 because this repository has no licence
+to redistribute them, and because the quotes carried third parties' names
+alongside pricing.
+
+**Scope of this notice.** The 19 files below are in no commit of this
+repository. They were removed from every commit with `git filter-repo`, not just
+from the tip — see [Git history](#git-history) at the bottom for what that did
+and did not accomplish.
+
+---
+
+## 1 · Commercial correspondence — removed, not replaced
+
+| Removed | Carried |
+|---|---|
+| `reference/quotes/2024-09-29_nikon-quote-…md` | quote total, per-section line items, quote number, contract vehicle, payment terms, recipient's room address, vendor sales contact |
+| `reference/quotes/2024-09-29_nikon-quote-…pdf` | the original quotation document |
+| `reference/quotes/2026-08-20_teledyne-kinetix22-inquiry_…md` | indicative unit price, lead time, demo-loan terms, vendor sales contact |
+
+The filenames are elided above because they carried the quote number, which is
+itself a pointer to the document and is redacted throughout this history.
+
+These are not re-published in redacted form. The repository's own convention,
+stated in the second file's header before it was removed, is that **the source
+document stays in the mailbox and only the figures it settles are copied in** —
+so the correspondence was never the right thing to hold here in the first place.
+
+**What the knowledge base actually drew from them is still here**, stated inline
+wherever it is used:
+
+- `data/detectors.yaml > Kinetix22` — every spec number, with the datasheet
+  revision named as its source.
+- `kb/systems/current.md` — the purchase-record cross-check: 6 objectives, 4 EM1
+  filters, the FilterTurret1 pos-0 cube (MXR00724) and the CSU-W1 body all match
+  the purchase record down to the part number. The camera configuration does not
+  (purchased Kinetix22 + Prime95B, current Kinetix ×2), and that discrepancy and
+  its resolution are recorded there.
+
+No spec, gate, or verdict in this repository depends on a price.
+
+## 2 · Vendor manuals — obtain from the vendor
+
+14 PDFs under `manual/` were removed (~11 MB). They are reference documents,
+cited by filename and revision wherever a number comes out of them, and each is
+available from its manufacturer:
+
+| Was under | Documents | Source |
+|---|---|---|
+| `manual/Camera/` | Kinetix 22 datasheet, rev 2024-10-21 (cited) and rev A3-05112021 (kept only as provenance for a known-wrong line-time row) | Teledyne Photometrics |
+| `manual/Optical Tweezers/Manuals/` | Tweez 300 user manual, system installation guide, general hardware & safety, laser safety | Aresis — `support@aresis.com` |
+| `manual/Piezo Stage/` | NPC-D controller interface library 2.7.9 + release note, NPC-D-6xx0 firmware release note, Nanobench 6000 user manual + release note, NanoFlash user manual + release note | Prior / Queensgate |
+| `manual/DMD/` | Using Polygon1000 with Micro-Manager | Mightex |
+
+`manual/README.md` stays, and records which revision is the one to cite and why.
+
+## 3 · Proprietary DLLs — how to restore the hardware layer
+
+```
+hardware/piezo/vendor/controller_interface.dll     (32-bit)
+hardware/piezo/vendor/controller_interface64.dll   (64-bit)
+```
+
+`hardware/piezo_stage.py` loads one of these by word size and cannot reach the
+piezo controller without it. To restore:
+
+1. Obtain the **NPC-D Digital Controller Interface DLL** production release from
+   Prior/Queensgate. Version 2.7.9 is what the code in this repository was
+   written and tested against.
+2. Copy both DLLs out of the release — they sit under
+   `controller_interface/bin/Windows/` (and are duplicated under
+   `controller_interface/adapter/python/`) — into `hardware/piezo/vendor/`.
+3. Nothing else changes. The filenames in
+   [`hardware/piezo_stage.py`](hardware/piezo_stage.py) are the ones the release
+   ships, and `hardware/piezo/vendor/dll_adapter.py` — which is kept, since it
+   carries local modifications — already declares the entry points.
+
+Everything the DLLs were *read* for is still here and needs no vendor file:
+[`reference/npcd-command-set.md`](reference/npcd-command-set.md) is the command
+set extracted from the 64-bit binary, with the extraction command and the
+binary's md5 recorded in its header so the extraction can be repeated and
+checked against a fresh copy.
+
+`hardware/` is offline in this repository regardless — the working PC and the
+microscope PC are separate, so these drivers produce recommendations, not
+motion.
+
+---
+
+## Git history
+
+The 19 paths were removed from every commit with `git filter-repo`, not just from
+the tip. All 51 commits and their messages are intact; only these paths are gone,
+so the commit SHAs differ from those of the repository this history was rewritten
+out of.
+
+Rewriting in place would not have been enough. GitHub keeps serving objects whose
+refs are gone — a branch deleted from the original repository hours earlier was
+still fetchable by SHA — and `refs/pull/1/head` survives both a branch deletion
+and a force-push, which is exactly where one of the removed quotes remained
+reachable. So the filtered history was pushed to a new repository and the
+original was deleted, which is the only way those stop being served.
+
+**What was exposed before that, measured rather than assumed.** The original
+repository was public for seven days. At deletion it had 0 forks, 0 stars and 0
+watchers; GitHub's traffic data recorded 2 clones and 1 unique visitor, all on
+the day it was created, with no external referrer; and it was not in the Software
+Heritage archive. That is consistent with nobody outside having fetched it, but
+it is not proof of one — `raw.githubusercontent.com` requests do not appear in
+clone counts, and the traffic window did not include the final day. Anyone with a
+copy taken during those seven days still has it.

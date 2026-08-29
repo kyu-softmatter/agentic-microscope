@@ -7,7 +7,7 @@ sources:
   - {kind: calibration, path: "C:\\Users\\Takatori lab\\Desktop\\Confocal_microscope_conversion_factor(Apr 2025).xlsx", date: 2025-04}
   - {kind: nis_elements_device_manager, path: "live GUI — Device Manager (Nikon Ti2 hardware setup) + Filter Block Settings dialogs (Turret1/DM/Splitter/EM1)", date: 2026-08-10}
   - {kind: nikon_catalog, path: "https://www.microscope.healthcare.nikon.com/products/optics/selector/comparison/ [-179794, -179798, -179802, -1923, -179808, -179810]", date: 2026-08-10}
-  - {kind: purchase_quote, path: "reference/quotes/2024-09-29_nikon-quote-REDACTED_ti2e-csuw1_takatori.md", date: 2024-09-29, note: "Nikon quote #REDACTED (Takatori lab). The 6 objectives, 4 EM1 filters, FilterTurret1 pos0 cube (MXR00724), and the CSU-W1 body all match down to the part number — this can be promoted to the purchase-record source for those fields. Camera configuration does not match (quote: Kinetix22+Prime95B, current: Kinetix ×2) — either changed at final order or swapped later, unconfirmed. See that md file for the detailed cross-check."}
+  - {kind: purchase_quote, path: "not in repo — vendor correspondence, see NOTICE.md", date: 2024-09-29, note: "Nikon quotation for this Ti2E + CSU-W1. The 6 objectives, 4 EM1 filters, FilterTurret1 pos0 cube (MXR00724), and the CSU-W1 body all match down to the part number — this can be promoted to the purchase-record source for those fields. Camera configuration does not match (quote: Kinetix22+Prime95B, current: Kinetix ×2) — either changed at final order or swapped later, unconfirmed. The detailed cross-check lived in the removed file; its conclusions are the ones recorded here and in data/detectors.yaml."}
   - {kind: nis_elements_device_manager, path: "live GUI — Filter Block Settings (DM) re-check + calibration.cli camera-probe measured cross-check", date: 2026-08-11, note: "DM=CSUW1-Dichroic confirmed as the same physical element, EM1=Kinetix_red/EM2=Kinetix_blue camera assignment settled, EM2 filter configuration independently confirmed."}
   - {kind: calibration, path: kb/calibrations/disk-bandwidth.yaml, date: 2026-08-12, note: "D: drive sustained-write bandwidth measured at 206.8 MB/s (calibration.cli disk-bandwidth, 4GB). G12 budget = 0.7×206.8 = 144.8 MB/s. Whether this is exactly the folder MM actually saves to is unconfirmed — if it is a different folder, re-measure."}
   - {kind: calibration, path: kb/calibrations/camera-readout.yaml, date: 2026-08-12, note: "PVCAM adapter, measured (calibration.cli camera-readout, dual_cam_test.cfg). Timing-ReadoutTimeNs=8,475,000 → row time ≈3531.2 ns/row (ROI 2400 rows). Units assumed from the property name; no document cross-check yet."}
@@ -25,8 +25,8 @@ cameras:
   # 2026-08-19 user confirmation: both bodies are **Kinetix22** (2400x2400, 6.5 µm,
   # 15.6x15.6 mm, 22 mm diagonal), connected over **PCI-Express**. The MM device
   # labels read "Kinetix", which is what previously left the model unresolved; the
-  # Nikon quote (2024-09-29 #REDACTED, part 77018310 "Kinetix 22") was right all
-  # along, so the camera discrepancy flagged in reference/quotes/ is closed —
+  # purchase record (Nikon quotation 2024-09-29, part 77018310 "Kinetix 22") was right all
+  # along, so the camera discrepancy flagged against the purchase record is closed —
   # only the Prime95B→second-Kinetix22 substitution remains as a change from quote.
   # Independent corroboration: kb/calibrations/camera-readout.yaml's 8.475 ms over
   # 2400 rows is the Kinetix22 full-frame Sensitivity readout exactly (118 fps);

@@ -8,10 +8,10 @@
 > **To:** support@aresis.com (User Manual title page)
 > **From:** kyuchoi@stanford.edu
 >
-> When a reply arrives, file it as vendor correspondence following the pattern of
-> [`reference/quotes/2026-08-20_teledyne-kinetix22-inquiry_price-and-demo-loan.md`](../../reference/quotes/2026-08-20_teledyne-kinetix22-inquiry_price-and-demo-loan.md)
-> — quote figures and wording verbatim, and keep the email itself in the mailbox
-> rather than copying it in.
+> When a reply arrives, do not file the correspondence itself in this repository
+> — see [`NOTICE.md`](../../NOTICE.md). Record only the technical facts it
+> settles, where they are used, and name the reply and its date as their source.
+> The email stays in the mailbox.
 
 ## Before sending — two things to fill in
 

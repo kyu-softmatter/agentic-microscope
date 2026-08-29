@@ -61,7 +61,7 @@ correct on 2026-08-10 and is left as written. What has since changed:
 - The body is a **Kinetix22** (user confirmation), not the standard Kinetix whose
   entry the channel referenced. On **PCIe**, so the `pcie` column of the
   frame-rate tables binds.
-- Its datasheet (Rev 2024-10-21, now in `manual/Camera/`) does carry
+- Its datasheet (Rev 2024-10-21 — not published here, see `NOTICE.md`) does carry
   `read_noise_e`, `full_well_e`, conversion gain, dark current and line time —
   per mode. All four modes are in `data/detectors.yaml > Kinetix22`, and
   `config/channels/particle647-yoyo1-2color.yaml` now points at that entry.
