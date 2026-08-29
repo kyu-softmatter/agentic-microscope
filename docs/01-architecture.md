@@ -140,6 +140,32 @@ bound available in this repository, so it reports the screening product and
 refuses to quantify — the difference between "bounded generously" and
 "unbounded" is the whole point.
 
+#### Principle 1c — determinism fixes the scale, the margin covers the departure from it
+
+Refinement, user 2026-08-29. 1b said order of magnitude is what matters; this
+says what each of the two mechanisms is *for*, because they answer different
+questions and are easy to mistake for one attempt at the same one.
+
+**The physics under a lens is deterministic code, and not a language model,
+because its job is to establish the rough scale.** Is the exposure off by 2× or
+by 2000×; does the bead diffuse a pixel per frame or a field per frame. That
+question has a closed form, the closed form does not vary between runs, and a
+model that re-derives it each time can only add variance to an answer that was
+already available. So the code owns it, and the subagents in
+[`.claude/agents/`](../.claude/agents/) originate no number.
+
+**The margin is for what the deterministic part cannot cover.** An experiment
+is pointed at a phenomenon nobody here has measured — that is what makes it an
+experiment — so the true value is entitled to depart from the one the formula
+produced, and the formula's own assumptions are entitled to be the thing that
+is wrong. The margin `m = achieved / required` is how much departure there is
+room for, printed rather than collapsed into a verdict, so a reader sees a 1.0×
+as 1.0× instead of as a pass. → [05 §3](05-consensus-gate.md)
+
+The pairing is the point. Determinism without a margin claims a precision the
+physics does not have; a margin without determinism has nothing to be a ratio
+*of*.
+
 ### Principle 2 — 3-tier normalization; only physical quantities transfer
 
 ```

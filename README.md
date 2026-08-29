@@ -455,6 +455,17 @@ because that margin is computed against a threshold nobody has supplied. A numbe
 that looks safe is not the same as a question that has been answered.
 → [05](docs/05-consensus-gate.md), [06 D2](docs/06-pitfalls.md)
 
+**Why a ratio, and why the physics is code.** The computation under a lens is
+deterministic, and not a language model, because its job is to fix the **scale**
+— off by 2× or by 2000× — and that question has a closed form that does not vary
+between runs. The margin carries what the deterministic part cannot: an
+experiment is pointed at a phenomenon nobody here has measured, so the true value
+is entitled to depart from the one the formula produced, and the formula's
+assumptions are entitled to be what departs. `m = achieved / required` is how
+much room there is for that. Printing it beats collapsing it to `PASS`, which
+throws away the only number that says whether a small surprise is survivable.
+→ [01 §1c](docs/01-architecture.md), [05 §3](docs/05-consensus-gate.md)
+
 ---
 
 ## Document map

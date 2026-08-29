@@ -69,6 +69,15 @@ conditions on the same arithmetic the hard rows gate.
 
 Each gate reports its **margin** as a ratio: `m = achieved / required`.
 
+**Why a ratio and not a verdict.** The computation behind a gate is there to fix
+the *scale* — the deterministic core answers "off by 2× or by 2000×", which is a
+question with a closed form ([01 §1b · 1c](01-architecture.md)). The margin
+carries what that cannot: an experiment is aimed at a phenomenon nobody has
+measured yet, so the true value may depart from the one the formula produced,
+and the formula's assumptions may be what departs. `m` is how much room there is
+for that departure. Collapsing it to `PASS` throws away the one number that says
+whether a small surprise is survivable.
+
 | m | Grade | Meaning |
 |---|---|---|
 | ≥ 3 | **ROUTINE** | Comfortable headroom. If it fails, the settings are not to blame |
