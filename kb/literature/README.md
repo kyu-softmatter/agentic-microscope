@@ -6,7 +6,10 @@ can be *used* without being mistaken for measurements of this instrument.
 One file per quantity per subject. `bleach-photons-alexafluor488.md`, not
 `smith-2019.md`: the unit of storage is the number a gate consumes, not the paper
 it came out of. One paper supplying three quantities becomes three files, each
-citing it.
+citing it. Files beginning with `_` are not entries.
+
+**No entries yet.** The schema and the rules are here first, so the first entry
+does not have to invent them.
 
 ---
 
@@ -89,31 +92,12 @@ next.
 
 ## Schema
 
-```yaml
----
-id: bleach-photons-alexafluor488
-quantity: "data/fluorophores.yaml > AlexaFluor488 > bleach_photons"
-question: "How many photons does AlexaFluor488 emit before bleaching, and under
-  what conditions was that counted"
-source: literature
-citation: "<authors>, <title>, <journal> <vol>(<issue>) <pages>, <year>"
-doi: "10.xxxx/xxxxx"
-filed_by: KH
-date: 2026-08-28
-confidence: low            # low unless several independent papers agree
-evidence: assumed          # never `measured` — see "The rule" above
-gate: G10                  # the gate this unblocks, if any
-scope: "<which samples/channels this may be applied to>"
-applies_to_systems: [current, current-laser, current-spectra, current-aura]
-measured_on: "<instrument, dye lot, buffer, oxygen scavenger, temperature,
-  irradiance and duty cycle the published value was obtained under>"
-review_after: 2027-08-28
-supersedes: null
-superseded_by_measurement: null   # -> kb/calibrations/<file> once measured here
----
-```
+Copy [`_template.md`](_template.md) and fill it in — it carries the frontmatter
+and every required section, with a note in each explaining what makes that
+section useful rather than decorative. It is the authoritative copy; this file
+does not repeat it.
 
-## Required sections
+## What each section is for
 
 | Section | Contents |
 |---|---|
