@@ -258,6 +258,11 @@ deferral, so it can be resumed without re-deriving it:
   not document the DAC word format, so `set_power()` refuses by design.
 - **untried next move**: cable the chassis straight over USB-B; only fall back
   to a USBPcap capture if that turns up nothing.
+  **2026-08-29: the cable has arrived**, so this is no longer deferred for want
+  of hardware. First question is whether the chassis enumerates at all;
+  discovery stays read-only (enumerate and read descriptors, no `LASER_ON`, no
+  guessed DAC byte). It is item 0b of the README's execution boundary, and it
+  gates the confocal half of the power measurement.
   → [`hardware/lunf_power.py`](../hardware/lunf_power.py),
   `kb/systems/current.md > devices_not_in_mm_config`
 

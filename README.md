@@ -446,8 +446,9 @@ microrheology.
 
 ## Current execution boundary
 
-**What is missing is a seam, not a subsystem.** Item 0 is not part of the chain
-and jumps the queue anyway. Then five: **1–3 are the missing path from a
+**What is missing is a seam, not a subsystem.** Items 0a and 0b are not part of
+the chain and jump the queue anyway — both were waiting on hardware, and both
+pieces of hardware have now arrived. Then five: **1–3 are the missing path from a
 committee verdict to a running instrument**; 4 is the first real use of that
 path, and the only test of whether any of the rest was right; 5 is what a run
 does with what it is seeing while it is still happening. Items 1–3 sit between
@@ -457,7 +458,7 @@ A note on how this would look under Anthropic's Model Hardware Standard is in
 [`docs/mhs-integration.md`](docs/mhs-integration.md), deliberately off the main
 line.
 
-- [ ] **0 · Measure the illumination power at the sample.** Outside the 1→5
+- [ ] **0a · Measure the illumination power at the sample.** Outside the 1→5
   chain, and ahead of all of it the moment the hardware is in hand: **Saksham is
   borrowing a power meter.** That was the missing precondition — this is the one
   blocker in the whole repository that **code cannot substitute for**, and it was
@@ -487,6 +488,43 @@ line.
   per-line power path exists, measuring those characterises the laser at
   whatever power NIS last left it at, not at a power this repository can command
   → [07 Phase 0](docs/07-roadmap.md).
+
+- [ ] **0b · Reach the confocal laser without going through NIS-Elements.**
+  **The USB-B cable has arrived**, which makes the move recorded on 2026-08-20
+  as *untried* the next one to try: cable the LUN-F-XL chassis straight to the
+  PC on the free port.
+
+  The LUN-F-XL (405 · 488 · 561 · 640 nm, feeding `CSUW1-Hub`) is **the only
+  laser on this instrument**, and today it is reachable only through
+  NIS-Elements — which the 2026-08-11 decision took out of the control path
+  entirely. What already works is **blanking**: on/off over NI PCIe-6323 digital
+  lines `Dev1/port0/line2/4/6/8` through MM's stock NIDAQ adapter. What does not
+  is **per-line power**: it is reachable over the FTDI FT4222H, Nikon does not
+  document the DAC word format, and
+  [`hardware/lunf_power.py`](hardware/lunf_power.py) refuses to transmit rather
+  than send a guessed byte into a laser driver.
+
+  **The first question is one bit wide: does the chassis enumerate as its own
+  USB device at all?** If it does, the problem is solved by *bypassing* the
+  contended path rather than by decoding it, and the laser stops being a device
+  this repository can only watch. If it does not, the fallback is a USBPcap
+  capture on the NIS↔controller link — rung 3 of the discovery ladder, which
+  yields a hypothesis and not a fact
+  ([scope](kb/decisions/2026-08-29-device-discovery-scope.md)).
+
+  **Discovery stays read-only.** Enumerate, read descriptors, stop. No
+  `LASER_ON`, and no guessed byte — writing to a class-4 laser driver is not a
+  discovery step. Note also that the current topology may move the problem
+  rather than solve it: the laser sits behind the Nikon/Yokogawa confocal
+  controller, so if it is only reachable *through* that controller, the thing
+  that needs a direct path is the controller.
+
+  **This is what decides whether 0a's confocal half means anything.** Until a
+  power path this repository can command exists, measuring the laser lines
+  records whatever power NIS last left them at — so 0a's widefield half is
+  unconditional and its confocal half waits here. And it is the same *kind* of
+  problem as the camera-ownership conflict in item 1: not physics, not protocol,
+  but **who is allowed to command a device, through which stack.**
 
 - [ ] **1 · Run the three subsystems on one timeline.** A master script over
   three sub-scripts — optical tweezers · microscope (Micro-Manager) · piezo
