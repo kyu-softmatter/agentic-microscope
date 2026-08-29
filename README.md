@@ -18,6 +18,98 @@ those apply.
 
 ---
 
+## Remaining work
+
+Four items, in order. **1–3 are the missing path from a committee verdict to a
+running instrument**; 4 is the first real use of that path, and the only test of
+whether any of the rest was right. Items 1–3 are what sits between stages 5d and
+5e → [07 Phase 5](docs/07-roadmap.md#phase-5--automating-microscope-operation).
+
+- [ ] **1 · Run the three subsystems on one timeline.** A master script over
+  three sub-scripts — optical tweezers · microscope (Micro-Manager) · piezo
+  stage — with the shared variables **confirmed** rather than assumed. Partly
+  standing already: [`hardware/orchestrator.py`](hardware/orchestrator.py) holds
+  the one monotonic clock, the camera arbiter, the latency log and the shared
+  store, and the four rosters are settled — the microscope is always on the
+  roster, because its per-frame `ElapsedTime-ms` is the series every other
+  subsystem is aligned onto
+  ([`2026-08-27`](kb/decisions/2026-08-27-optional-subsystems-one-timeline.md)).
+  Each subsystem has had first light **alone**: the piezo drove 60 cycles at
+  1 Hz with 0/6000 overruns and reads back every sample; the tweezers ran a 1 Hz
+  ±10 µm drive with a 2 s breakpoint hold. What is missing is **the three of
+  them at once**, and one conflict is already measured and unresolved: while the
+  Tweez GUI owns the camera there is trap-position readback and no imaging from
+  pymmcore-plus, and while Micro-Manager owns it, the reverse. Active
+  microrheology needs bead *and* trap position simultaneously, and **only one
+  owner can see both**
+  ([`2026-08-27` §7](kb/decisions/2026-08-27-tweezers-first-light-measured-limits.md)).
+
+- [ ] **2 · An LLM node that turns gate verdicts into that master script.**
+  Today the committee ends at a proposal a human reads, and `hardware/` begins
+  at a script a human writes; nothing joins them. This node takes the verdict,
+  its margins and the settings that produced them, and emits the master +
+  sub-script pair from item 1. Two properties it has to have, or it is worse
+  than the gap it fills: **every emitted line traces to the check that justified
+  it**, and **anything the verdict does not fix is `BLOCKED`, never defaulted** —
+  a node that silently picks a plausible exposure has undone every refusal
+  upstream of it.
+
+- [ ] **3 · A sub-agent that reviews item 2's output against each instrument's
+  measured limits.** Per-instrument, and grounded in what has actually been
+  measured rather than what the manuals claim: the piezo's travel, settle and
+  waveform behaviour; the tweezers' 28-command TCP surface, its GUI-only
+  properties and its absent trap readback; camera timing and ROI; and the write
+  switches that already default off (`allow_write`, `allow_motion`,
+  `allow_laser`, and the `.cfg` refusal on `NIDAQAO-Dev1/ao2`). It must be able
+  to **refuse a script before it runs** — a reviewer that has never blocked
+  anything is not a reviewer, and here the thing being reviewed drives glass
+  into glass and a laser into a sample.
+
+- [ ] **4 · Four first measurements, with the priors deliberately withheld.**
+  The point of the exercise is not the four numbers; it is what the agent does
+  without precedent. **It gets no archive** — not the 2,343 past acquisitions,
+  and this round not the recorded instrument description either. The only prior
+  it is allowed is **the published literature**. Whatever it cannot look up it
+  has to derive or measure, and a `BLOCKED` that names the missing input is a
+  correct answer, not a failure.
+
+  1. **Drag calibration in water** (tweezers + piezo). Stokes drag at a known
+     stage velocity → κ. Needs laser power, the traverse speed and simple
+     particle tracking. The hard part is **reading the trap position** — see the
+     camera-ownership conflict in item 1. And one practical thing decides
+     whether the number is real: **both ends of the traverse have to be cut**,
+     keeping only the constant-velocity segment. Acceleration at the turnarounds
+     is bias, not signal.
+  2. **Microrheology, passive and active** (tweezers + piezo). Needs the piezo
+     position and the exact start and end times — and, the real problem, those
+     times expressed on **the camera's clock**, not the host's. Amplitude and
+     frequency have to be *recommended* rather than chosen, because the result
+     is only a modulus while the drive stays in the **linear regime**. Partly
+     specified already in
+     [`config/channels/active-microrheology-probe-tracer.yaml`](config/channels/active-microrheology-probe-tracer.yaml)
+     and [`config/tweezers/active-microrheology-drive.yaml`](config/tweezers/active-microrheology-drive.yaml);
+     the motion-blur bias that decides it is [04 §5](docs/04-decision-engine.md).
+  3. **FRAP** (DMD). Bleach circle size, the conversion matrix behind it, camera
+     rate, total duration, objective choice, the dye's band, and a **two-level
+     light schedule in time** — DMD-intense to bleach, Aura-mild to watch the
+     recovery. Then the check that matters across all four: does the time index
+     it estimates agree with the timestamps everyone else is sharing? Two named
+     blockers stand in front of this one: the DMD's vendor package is pinned to
+     MM interface v71 against the v75 core, making it **the one device that does
+     not load through pymmcore-plus**, and lens 5 refuses without
+     `power_at_sample_mw` and `bleach_photons` — which for FRAP is not a side
+     check but the measurement itself.
+  4. **Simple hydrodynamics** (dual-cam, still being specified). One large
+     particle and small tracers, split across the two cameras. The test is
+     whether the agent designs the **wavelength bands** itself (G1–G4:
+     coupling · collection · blocking · crosstalk) and then finds the
+     **characteristic time scale** from what it recorded — which is the same
+     τ_c the [future-work section](#future-work--joining-this-agent-to-the-simulation-agent)
+     argues a simulation should supply. Here it has to come out of the data
+     instead, which makes it the cleanest check of the two against each other.
+
+---
+
 ## Architecture
 
 Every stage either **reads** evidence out of the knowledge base or **writes**
