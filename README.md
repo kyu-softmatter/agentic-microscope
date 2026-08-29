@@ -20,10 +20,12 @@ those apply.
 
 ## Remaining work
 
-Four items, in order. **1–3 are the missing path from a committee verdict to a
+Five items, in order. **1–3 are the missing path from a committee verdict to a
 running instrument**; 4 is the first real use of that path, and the only test of
-whether any of the rest was right. Items 1–3 are what sits between stages 5d and
-5e → [07 Phase 5](docs/07-roadmap.md#phase-5--automating-microscope-operation).
+whether any of the rest was right; 5 is what a run does with what it is seeing
+while it is still happening. Items 1–3 are what sits between stages 5d and 5e,
+and 5 is 5e itself
+→ [07 Phase 5](docs/07-roadmap.md#phase-5--automating-microscope-operation).
 
 - [ ] **1 · Run the three subsystems on one timeline.** A master script over
   three sub-scripts — optical tweezers · microscope (Micro-Manager) · piezo
@@ -152,6 +154,39 @@ whether any of the rest was right. Items 1–3 are what sits between stages 5d a
      τ_c the [future-work section](#future-work--joining-this-agent-to-the-simulation-agent)
      argues a simulation should supply. Here it has to come out of the data
      instead, which makes it the cleanest check of the two against each other.
+
+- [ ] **5 · Real-time analysis, and the feedback it pays for — as far as the
+  compute budget allows.** Analyse during the acquisition rather than after it,
+  and let what comes out change the run: trim, extend, adjust, or abort. This is
+  stage 5e, the one stage of Phase 5 not started.
+
+  **How much analysis is affordable is a verdict, not a preference.** Lens 3
+  already states the condition — with real-time processing attached, CPU time
+  per frame must stay under `1/f_total` (G13c), on top of the data rate holding
+  under 0.7× disk bandwidth (G12a) and the buffer covering 5 seconds (G13a). So
+  the live layer is built as a ladder and the gate decides how far up it can
+  run: per-frame drop and saturation checks at the bottom — the same
+  [`compute/drops.py`](compute/drops.py) logic that today only runs post hoc on
+  the archive — then focus and drift, then single-particle tracking, then
+  anything that fits a model. Each rung costs CPU per frame, and each rung's
+  cost is a number G13c can be asked about **before** the run rather than
+  discovered as dropped frames during it.
+
+  What each of the four examples would get: 4.1 notices the bead leaving the
+  trap and marks the constant-velocity segment live instead of in post; 4.2
+  checks the drive is still in the linear regime and adjusts amplitude before
+  spending an hour outside it; 4.3 watches the recovery curve and stops when it
+  has plateaued; 4.4 estimates τ_c early and sets the frame rate from it.
+
+  **Two rules to write before the first loop closes, not after.** A run whose
+  settings change mid-acquisition is a run whose provenance changes with them,
+  so **every adjustment has to land in the record per-frame** or lens 6's bias
+  ledger (G23) is judging a session that no longer exists. And **the stop
+  criterion has to be fixed in advance**: a loop that halts when the curve looks
+  right will produce curves that look right, which is the same self-confirming
+  failure the [future-work section](#future-work--joining-this-agent-to-the-simulation-agent)
+  guards against on the simulation side. Seal the rule, then let the loop run
+  against it.
 
 ---
 
