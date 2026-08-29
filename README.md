@@ -619,3 +619,38 @@ allowed to set `evidence: measured`. If it can, the loop closes on itself — th
 simulation supplies the threshold, the gate clears against it, and the
 experiment confirms the simulation that designed it. The rule that keeps
 [`kb/literature/`](kb/literature/) honest is the same rule this interface needs.
+
+---
+
+## References
+
+**What inspired the shape of this one**
+
+- **[`jmsung/einstein`](https://github.com/jmsung/einstein)** — JSAgent, an
+  agent for hard mathematical optimization. **Its knowledge base is the part
+  this one was built after**: a structured wiki that every later attempt
+  queries first, so what one attempt learns compounds instead of evaporating
+  when the run ends. [`kb/`](kb/) is that, pointed at an instrument.
+
+**Found while building this — to read**
+
+Neither has been distilled into [`kb/literature/`](kb/literature/) yet, so
+nothing from either is a value any gate here may consume.
+
+- **[SmartTrap: automated precision experiments with optical
+  tweezers](https://www.nature.com/articles/s41592-026-03129-3)** — Selin *et
+  al.*, *Nature Methods*, 2026-06-18
+  ([10.1038/s41592-026-03129-3](https://doi.org/10.1038/s41592-026-03129-3)).
+  Autonomous optical-tweezers experiments: real-time three-dimensional particle
+  tracking, custom electronics, a microfluidics system, and long unattended
+  runs, published as an open-source framework. The closest published work to
+  items 1 and 4.1–4.2 above, and worth reading **before** committing to one of
+  the three trap-timestamp routes — real-time tracking is precisely the
+  capability the camera-ownership conflict denies on this instrument, so how
+  they arranged the tracking and the trap on one clock is the part to look for.
+- **[Thinking microscopes: agentic AI and the future of electron
+  microscopy](https://www.nature.com/articles/s41524-026-02077-y)** — Jamali,
+  Aghazadeh & Kacher, *npj Computational Materials*, 2026-04-10
+  ([10.1038/s41524-026-02077-y](https://doi.org/10.1038/s41524-026-02077-y)).
+  The same premise as this repository, in electron microscopy rather than
+  optical.
