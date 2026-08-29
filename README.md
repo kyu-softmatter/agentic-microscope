@@ -42,7 +42,35 @@ whether any of the rest was right. Items 1–3 are what sits between stages 5d a
   pymmcore-plus, and while Micro-Manager owns it, the reverse. Active
   microrheology needs bead *and* trap position simultaneously, and **only one
   owner can see both**
-  ([`2026-08-27` §7](kb/decisions/2026-08-27-tweezers-first-light-measured-limits.md)).
+  ([`2026-08-27` §8](kb/decisions/2026-08-27-tweezers-first-light-measured-limits.md)).
+
+  **So the piece to build or find is a timestamp that comes from the tweezers
+  itself, rather than from analysing the camera's images.** Three routes, none
+  of them free:
+
+  - **The probe's own `.Data` series** — `TimOrg, PrbOrgX, PrbOrgY, TrpOrgX,
+    TrpOrgY`. A flat `TrpOrgX` would give arrival time, hold duration and
+    achieved frequency at once, which is better than any boolean status. But it
+    **does not escape the conflict**: samples accumulate only while the Tweez
+    GUI is tracking, and reaching the node at all means reaching the
+    undocumented embedded node tree, which nothing has read yet — 0 of 51 paths
+    at GUI startup, because the tree is not up when the init script runs (§7).
+  - **The hardware trigger**, which TCP has and the node API does not. Start the
+    trap loop and the camera from one edge and the trap position at any frame is
+    *computed* from a hardware-clocked pattern — 50 kHz at the lab's current
+    operating point, `points × n_traps / period` — instead of read back.
+    Open-loop, though: `TRAP_PATT_RELEASE_BP` answers 0 whether the trap was
+    waiting at the breakpoint or the pattern had already finished, so nothing on
+    this route confirms that a given pass actually happened.
+  - **An out-of-band sensor** on the trap beam, landing on the same NIDAQ clock
+    as the camera. Nothing like it exists here today, and it is the only one of
+    the three that yields an **independent** time base rather than a computed
+    one or one borrowed from the camera.
+
+  None of them can be replaced by timing the drive from the host:
+  [`hardware/orchestrator.py`](hardware/orchestrator.py) says it in its own
+  docstring — **the host clock is not the experiment clock**, and mapping host
+  stamps onto MM's series afterwards is a correlation, not a synchronisation.
 
 - [ ] **2 · An LLM node that turns gate verdicts into that master script.**
   Today the committee ends at a proposal a human reads, and `hardware/` begins
@@ -75,8 +103,8 @@ whether any of the rest was right. Items 1–3 are what sits between stages 5d a
 
   1. **Drag calibration in water** (tweezers + piezo). Stokes drag at a known
      stage velocity → κ. Needs laser power, the traverse speed and simple
-     particle tracking. The hard part is **reading the trap position** — see the
-     camera-ownership conflict in item 1. And one practical thing decides
+     particle tracking. The hard part is **knowing where the trap is, on the
+     camera's clock** — the three routes under item 1 are its precondition. And one practical thing decides
      whether the number is real: **both ends of the traverse have to be cut**,
      keeping only the constant-velocity segment. Acceleration at the turnarounds
      is bias, not signal.
