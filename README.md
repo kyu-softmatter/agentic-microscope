@@ -354,6 +354,15 @@ hardware measurements have runnable scripts in
 [`calibration/`](calibration/), and results already collected are in
 [`kb/calibrations/`](kb/calibrations/). → [Phase 0](docs/07-roadmap.md)
 
+**`BLOCKED` is the current default, not the permanent one.** One `UNKNOWN`
+among the 32 gates blocks the verdict today, which is the only defensible
+setting while there is no record to check a verdict against. As experiments
+accumulate, strictness relaxes — but against the record rather than against
+confidence, by promoting an input's evidence tier rather than lowering a
+threshold, and never on a hard gate or a bias gate. What has to be accumulated
+for that is **the outcome of refusals**, not the count of runs that went well.
+→ [05 §7](docs/05-consensus-gate.md)
+
 **Where this is going.** The longer-term goal is to join this agent to
 [**Brownian-Dynamics Agent**](https://github.com/kyu-softmatter/Brownian-Dynamics-Agent)
 — the same architecture pointed at the integrator instead of the instrument. One

@@ -594,7 +594,48 @@ over incompatible requirements.
 
 ---
 
-## 7. Open questions
+## 7. Loosening — how a gate is allowed to become less strict
+
+**Today one `UNKNOWN` among the 32 blocks the verdict.** That is deliberate and
+it is the right default *while the record is empty*: with no runs to check a
+verdict against, the only defensible thing a gate can do with an unknown is
+refuse and name it.
+
+It is not meant to stay that strict. As experiments accumulate and the agent's
+verdicts can be compared against what the instrument actually did, strictness
+relaxes — **gradually, against the record, and never against confidence.**
+
+### What relaxes, and what does not
+
+| Relaxes | Stays |
+|---|---|
+| **What counts as sufficient evidence for an input.** The ladder already exists: `BLOCKED` → a literature value that lets the gate compute but never advance ([`kb/literature/`](../kb/literature/)) → measured once → measured repeatedly with a known spread, at which point it becomes a default carrying its own tolerance | **A hard gate's threshold.** Trust does not raise the disk's write bandwidth. If G12a is exceeded the frames drop, on run 1 and on run 500 |
+| **Whether a gate is asked at all.** An input that has come back the same on N consecutive runs on this instrument can default instead of prompting | **The bias gates.** A bias gate fails by producing data that looks right, so a record of successful runs is precisely the evidence that cannot detect it. G8, G12b/c, G23–G26 do not loosen on accumulated success |
+| **The treatment of "never asked".** Sample photoresponsiveness warns on every run today; a system with a recorded answer should stop being asked | **Saying what was relaxed.** Every loosening is a dated [`kb/decisions/`](../kb/decisions/) entry naming the evidence that bought it, and is revertible — the falsifier field is what makes it revertible |
+
+The promotion target already exists: a value that graduates lands in
+[`kb/calibrations/`](../kb/calibrations/) with its date and its scope, so a
+relaxation is a *change of tier*, not a lowered bar.
+
+### The hazard, and the only measure that avoids it
+
+*"The agent has not been wrong yet"* is survivorship. **A gate that never fired
+is not evidence that it was unnecessary** — it may be evidence that it was never
+reached, which is what happened once already: a gate that refused 80 of 83 specs
+with zero real failures went unnoticed for weeks because the runner never called
+it.
+
+So the quantity to accumulate is **not** the count of runs that went well. It is
+**how often a refusal was later shown to have been right** — which requires
+recording the outcome of refusals, not only the outcome of acquisitions. Until
+refusals carry outcomes, "trust in the agent" has nothing to be measured
+against, and a relaxation would be a preference wearing evidence's clothes. The
+post-hoc record that would supply it is items 4 and 5 of the README's remaining
+work.
+
+---
+
+## 8. Open questions
 
 - [ ] Are the difficulty-grade boundaries (3 / 1.5 / 1.0 / 0.5 / 0.2)
       appropriate — adjust with real use
