@@ -11,8 +11,8 @@ left out on purpose -- pymmcore is already known to work, and
 
 Default drive for both: a sine of **10 um peak-to-peak** (so +/-5 um about the
 centre) at **1 Hz**. ``--peak-to-peak-um`` and ``--amplitude-um`` are separate
-flags, and every report prints both numbers, because "왕복 10 um" can be read
-either way and the amplitude enters the result.
+flags, and every report prints both numbers, because "왕복 10 um" ("round trip
+10 um") can be read either way and the amplitude enters the result.
 
 HOW THE TWO PATHS DIFFER, AND WHY THAT SHOWS UP IN THE OUTPUT
 -------------------------------------------------------------

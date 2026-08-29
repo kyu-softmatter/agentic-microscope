@@ -1,10 +1,10 @@
 # 2026-08-26 · Tweezers: direct TCP vs generated patterns
 
-> **Decided the same day: `.tpf` patterns** (user, "tpf로 하자"). The concept
-> section below is what that decision was made on; the implementation that
-> followed it is in "What was built". Execution stays on the microscope PC, so
-> the open facts at the bottom are still open — the code reports `BLOCKED` on
-> them rather than assuming them.
+> **Decided the same day: `.tpf` patterns** (user, "tpf로 하자" — let's go with
+> tpf). The concept section below is what that decision was made on; the
+> implementation that followed it is in "What was built". Execution stays on the
+> microscope PC, so the open facts at the bottom are still open — the code
+> reports `BLOCKED` on them rather than assuming them.
 > Companion to `2026-08-26-microscope-config-control.md` (same session).
 >
 > **SUPERSEDED IN PART, 2026-08-27.** This ran on the real instrument the next
