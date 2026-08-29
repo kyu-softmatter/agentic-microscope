@@ -27,8 +27,25 @@ whether any of the rest was right. Items 1–3 are what sits between stages 5d a
 
 - [ ] **1 · Run the three subsystems on one timeline.** A master script over
   three sub-scripts — optical tweezers · microscope (Micro-Manager) · piezo
-  stage — with the shared variables **confirmed** rather than assumed. Partly
-  standing already: [`hardware/orchestrator.py`](hardware/orchestrator.py) holds
+  stage — with the shared variables **confirmed** rather than assumed.
+
+  **The first action is smaller than that**: re-run the two scripts that have
+  already driven each subsystem alone. [`try_hardware.py`](try_hardware.py)
+  (`tweezers` · `tweezers --send` · `piezo` · `piezo --move --unlock`) and
+  [`gated_oscillations.py`](gated_oscillations.py), the three 2 s
+  breakpoint-gated holds at +10 µm. They are the **first-light** path and
+  deliberately not the production one —
+  [`config/tweezers/run_pattern.py`](config/tweezers/run_pattern.py) refuses on
+  precisely the blockers that first light exists to resolve, and you cannot
+  record the trapezoid off the GUI until something has drawn a pattern in it.
+  Three things decide whether that re-run means anything, none of them readable
+  from Python: `Breakpoints > Enable Bits` must cover `0001` — it defaults to
+  `0000`, which reduces every breakpoint to nothing while every return code
+  still says 0 — `Repeat > Enabled` must be true, and the piezo's `--move`
+  refuses without `--unlock`, whose access code is not in this repo. The repo
+  path is hardcoded at the top of `gated_oscillations.py`.
+
+  Partly standing already: [`hardware/orchestrator.py`](hardware/orchestrator.py) holds
   the one monotonic clock, the camera arbiter, the latency log and the shared
   store, and the four rosters are settled — the microscope is always on the
   roster, because its per-frame `ElapsedTime-ms` is the series every other
@@ -104,10 +121,10 @@ whether any of the rest was right. Items 1–3 are what sits between stages 5d a
   1. **Drag calibration in water** (tweezers + piezo). Stokes drag at a known
      stage velocity → κ. Needs laser power, the traverse speed and simple
      particle tracking. The hard part is **knowing where the trap is, on the
-     camera's clock** — the three routes under item 1 are its precondition. And one practical thing decides
-     whether the number is real: **both ends of the traverse have to be cut**,
-     keeping only the constant-velocity segment. Acceleration at the turnarounds
-     is bias, not signal.
+     camera's clock** — the three routes under item 1 are its precondition. And
+     one practical thing decides whether the number is real: **both ends of the
+     traverse have to be cut**, keeping only the constant-velocity segment.
+     Acceleration at the turnarounds is bias, not signal.
   2. **Microrheology, passive and active** (tweezers + piezo). Needs the piezo
      position and the exact start and end times — and, the real problem, those
      times expressed on **the camera's clock**, not the host's. Amplitude and
