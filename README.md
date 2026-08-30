@@ -702,6 +702,122 @@ line.
 
 ---
 
+## How this is meant to be maintained
+
+**Prototype first, and it is not close.** Everything below is a convenience
+layer over a system that cannot yet run an experiment end to end, and building
+convenience on top of an unfinished foundation is how the convenience ends up
+shaped wrong. Items 0–5 above come first. The plan is written down now so the
+*shape* is fixed while it is still free to change.
+
+### Then: one folder per instrument
+
+The person looking after this microscope should find everything about one device
+in one place, instead of reconstructing it from six. The intended shape:
+
+```text
+hardware/
+  piezo/
+    README.md       what this device is, how it is reached, what it refuses
+                    and why — written by the agent and kept current by it
+    MANIFEST.yaml   what belongs in vendor/: which file, which version, where
+                    to obtain it, checksum, and the version the code was
+                    tested against
+    vendor/         .gitignore'd — manual, DLL, SDK samples. Never committed
+    first-light.py  the smallest run that proves the device is alive.
+                    Read-only by default
+    limits.yaml     limits that were *measured*, not the catalogue's
+```
+
+Two rules decide whether this helps or just adds a second copy of everything.
+
+**It indexes; it does not duplicate.** The source of truth stays where it is —
+wiring in [`kb/systems/current.md`](kb/systems/current.md), measured numbers in
+[`kb/calibrations/`](kb/calibrations/), registries in `data/*.yaml`, scope calls
+in [`kb/decisions/`](kb/decisions/). The folder holds only what is genuinely
+per-device and links the rest. The companion repository's two unmerged knowledge
+schemas are the cautionary case: once there are two stores, a lesson filed in
+one is invisible to a reader of the other, and nobody remembers to query both.
+
+**The vendor material cannot be committed.** Manuals, DLLs and commercial
+correspondence were removed from the entire history on 2026-08-28
+([NOTICE](NOTICE.md)), so `vendor/` is the ignored slot and `MANIFEST.yaml` is
+the committed half — enough to restore the folder without shipping anything that
+is not ours. [`hardware/piezo/vendor/`](hardware/piezo/) already works this way:
+`dll_adapter.py` is committed because it carries local modifications, the DLLs
+are not. **One piece of that is missing today** — `.gitignore` has no rule for
+`vendor/`. The scrub cleaned the history and left nothing standing in the way of
+a re-commit. That rule belongs in place *before* the pattern is generalised to
+eight devices, not after.
+
+### `FIRST RUN`: what is here, and what is new
+
+Its job is a **comparison**, not a scan. Enumerate what the machine can see — MM
+`.cfg`, pymmcore-plus, USB, serial ports, whether each vendor DLL is present —
+and diff that against the recorded dossier:
+
+| Set | What it means |
+|---|---|
+| **expected and found** | the boring majority. Record firmware and serial wherever they are readable, since those are rung-1 facts and mostly still missing |
+| **expected and missing** | something was unplugged, moved, or stopped loading. The most useful alarm in the whole tool, and the one nothing reports today |
+| **found and unknown** | the interesting case, and the one below |
+
+For an unknown device the agent's job is to get it onto **rung 1** of the
+[discovery ladder](kb/decisions/2026-08-29-device-discovery-scope.md) and to
+produce a **stub**, not an answer:
+
+- **Read what the device says about itself first** — USB descriptors and
+  `VID:PID`, the MM adapter name, a `--describe` or identity query. That is the
+  only rung that settles anything about *this unit*.
+- **Then look for manual and driver *candidates*, each carrying the evidence
+  that matched it** — the `VID:PID`, the model string, the firmware version.
+  Never a bare link. Retrieval is exactly where a model is confidently wrong,
+  and a manual for the neighbouring firmware revision is worse than no manual,
+  because it reads as authoritative.
+- **Write the stub, and stop.** A new `hardware/<device>/` with the description
+  and the open questions. **Nothing is written into `kb/systems/` until a human
+  confirms it** — that file is the wiring dossier every lens reads, and a guess
+  landing in it propagates into 32 gates.
+- **Read-only.** Enumerate and read descriptors; issue no commands. Same rule as
+  item 0b, and for the same reason.
+
+Worth noticing: this is also the **onboarding path for a different lab**. An
+instrument that shares no history with this one is precisely the case *expected:
+nothing · found: everything*, which is what
+[03 §8](docs/03-cross-system-transfer.md) describes from the other direction.
+
+### What else would make it easier to keep
+
+Five, in the order they would pay off.
+
+1. **One command that says what state the instrument is in.** That answer is
+   currently spread over [`calibration/`](calibration/), `compute.cli scan`, the
+   MM config check and three decision notes. A single `doctor` should print what
+   loads, what is missing, which gates are `BLOCKED`, and the one input that
+   would unblock each. **Every lens already produces that last part** — nothing
+   collects it.
+2. **An expiry on every measured number.** `kb/calibrations/` records when a
+   value was measured and never when it stops being trustworthy. The pixel-size
+   calibration is from 2025-04 and is treated exactly like the disk bandwidth
+   measured on 2026-08-12. A re-measure interval is a falsifier on a timer, and
+   the doctor should say what has aged out.
+3. **A fingerprint stamped on every acquisition.**
+   [03 §7](docs/03-cross-system-transfer.md) already computes one when a new
+   `.cfg` appears. If each acquisition records *which* fingerprint it ran under,
+   data taken before and after a hardware change can be re-scoped instead of
+   silently mixed.
+4. **A checklist of what software cannot see.** The Splitter has no `Device,`
+   line in any config, the polarizer and analyzer are manual, the coverslip is a
+   micrometer reading, and three GUI-only tweezers properties gate an entire
+   drive. These are the settings that invalidate a run without leaving a trace.
+   A per-configuration manual-steps list, confirmed at run time, is the only
+   place they can honestly live.
+5. **A diff of what changed since the last run.** Nearly free once 1 and 3
+   exist: store what the doctor printed, per run. *"It worked last week"* then
+   becomes a diff rather than a memory.
+
+---
+
 ## Toward a model-to-experiment loop
 
 The other half of this project is
