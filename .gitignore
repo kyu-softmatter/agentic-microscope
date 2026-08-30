@@ -17,3 +17,22 @@ data/index/*.parquet
 # root, and a 1 Hz sine at 50 kHz is 50 000 lines / ~1.2 MB. Regenerate, do not
 # store. A .tpf kept deliberately as reference belongs in a subdirectory.
 /*.tpf
+
+# ── Vendor material — not ours to redistribute ────────────────────────────
+# 19 files (manuals, DLLs, quotes) were removed from the *entire* history on
+# 2026-08-28; see NOTICE.md. That scrub cleaned the past and left nothing
+# standing in the way of committing the same material straight back in, which
+# is what these rules are. Each device's vendor/ folder is restored from its
+# MANIFEST.yaml: the folder shape is committed, the files never are.
+manual/*
+!manual/README.md
+hardware/*/vendor/*
+!hardware/piezo/vendor/dll_adapter.py
+reference/quotes/
+
+# Belt and braces: no vendor binary or document format has ever belonged in
+# this repository, and each of these has been committed here once already.
+*.pdf
+*.dll
+*.exe
+*.msi
