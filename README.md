@@ -17,11 +17,15 @@ originate a physical value and cannot overrule a failed gate.
 > calibration, expertise note and device record here is that instrument's,
 > labelled as such. Not a supported product.
 >
-> **Companion project.**
+> **Companion projects — three axes of one system.**
 > [`Brownian-Dynamics Agent`](https://github.com/kyu-softmatter/Brownian-Dynamics-Agent)
 > applies the same provenance and validation rules to simulation. It asks what
 > the physical system should do; this asks whether the instrument can measure
-> the difference well enough to decide.
+> the difference well enough to decide. A third, `research-topic` (private),
+> asks which question is worth asking at all, and is meant to hold the knowledge
+> base and the definitions of rigor that both of the others enforce. **It is a
+> sketch — nothing is built there yet**, and neither working repository depends
+> on it. → [below](#toward-a-model-to-experiment-loop)
 
 ---
 
@@ -844,6 +848,44 @@ every decision and written after every verdict. **Neither is finished, and
 coupling two moving targets would be a mistake** — so this is future work, with
 a stated order of preconditions.
 → [07 Phase 6](docs/07-roadmap.md#phase-6--joining-the-simulation-agent)
+
+### A third axis, and the question neither repo asks
+
+Both repositories take the scientific question from a human, and both hand their
+evidence back to one. `research-topic` (private, sketch stage) is meant to sit in
+both of those places: it proposes the question, and it keeps what came back —
+**including the failures, which is the part that gets skipped.**
+
+| Axis | Repository | Asks | Status |
+|---|---|---|---|
+| **Topic** | `research-topic` *(private)* | which question is worth asking, and what the other two should read | sketch only. **Nothing built** |
+| **Experiment** | **this repository** | what the instrument can actually record | running |
+| **Simulation** | [`Brownian-Dynamics Agent`](https://github.com/kyu-softmatter/Brownian-Dynamics-Agent) | what the physical system should do | running |
+
+Two things it is specifically meant to own, because neither of the working
+repositories can:
+
+**1 · A knowledge base both can read.** This repository has one, and it is
+**bound to the instrument** — `kb/systems/current.md` is which machine this
+microscope actually is, and a simulation cannot use that. The third repository is
+where the domain-neutral half goes.
+
+**2 · The definitions of rigor, in one place.** This repository enforces 32
+gates; the simulation side enforces ten rigor axes. They were built independently
+and converged on the same shape — division by axis rather than by person, a
+deterministic gate, default-to-`BLOCKED`, a falsifier attached to every judgment,
+and an LLM that originates no number. **That convergence is the argument for a
+third place:** what two projects reached without consulting each other is not
+domain-specific, and keeping one copy of it beats keeping two that drift.
+
+The intended shape is a loop rather than a pipeline, and **that is why the risk is
+worth stating out loud**: three components that feed each other will amplify
+whatever bias they share. The third repository carries that objection as a
+registered conflict, and its answer is that a topic may only enter the loop in a
+form the other two can falsify.
+
+**No dependency runs the other way.** Nothing here imports, reads or waits on the
+third repository, and if it is never built, nothing here breaks.
 
 ### Why joining them is worth doing
 
