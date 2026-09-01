@@ -44,15 +44,17 @@ design, not a gap.
 | **32 deterministic gates** | G1–G32, each classified `hard` / `bias` / `soft` by what its failure costs → [05 §2](docs/05-consensus-gate.md) |
 | **Provenance on every input** | `measured` vs `assumed`, with a separate `advances` axis that only `measured` can satisfy. Literature values compute but never advance → [`kb/literature/`](kb/literature/) |
 | **2,343 prior acquisitions** | normalized out of Micro-Manager metadata into transferable physical quantities, across two schema generations |
-| **811 tests, 3 skipped** | offline; the instrument is not required to run any of them |
+| **884 tests, 841 on CI** | offline; the instrument is not required to run any of them. The badge covers 841 — the other 43 need a Micro-Manager device-adapter install → [running the tests](#running-the-tests) |
 | **Hardware drivers** | microscope (pymmcore-plus), optical tweezers (TCP), piezo stage (vendor DLL), trap patterns, piezo waveforms, and a shared-clock orchestrator |
 | **First light on real hardware** | piezo and optical tweezers each driven from this repository, **separately** — 2026-08-27 |
+| **An MCP surface over both bespoke paths** | tweezers and piezo as 9 MCP tools in four tiers, the two moving ones refused by default, verified end to end over stdio but **not yet against a device** → [below](#an-mcp-surface-over-the-two-bespoke-paths) |
 | **Refusal paths that hold** | `hardware/lunf_power.py` is complete as transport and refuses to transmit, because the DAC word format is undocumented and a guessed byte goes into a laser driver |
 
 What is **not** true today, stated here so nothing above implies it: the three
-subsystems have not been run together on one clock; no experiment has been
-executed end to end by the agent; there is no closed feedback loop. Those are
-the [current execution boundary](#current-execution-boundary).
+subsystems have not been run together on one clock; **no MCP tool has reached a
+device**; no experiment has been executed end to end by the agent; there is no
+closed feedback loop. Those are the
+[current execution boundary](#current-execution-boundary).
 
 > The useful measure is not how much of this exists. It is how many places the
 > system refuses to turn a missing number into a confident one.
@@ -457,13 +459,13 @@ microrheology.
 
 ## Current execution boundary
 
-**What is missing is a seam, not a subsystem.** Items 0a and 0b are not part of
-the chain and jump the queue anyway — both were waiting on hardware, and both
-pieces of hardware have now arrived. Then five: **1–3 are the missing path from a
-committee verdict to a running instrument**; 4 is the first real use of that
-path, and the only test of whether any of the rest was right; 5 is what a run
-does with what it is seeing while it is still happening. Items 1–3 sit between
-stages 5d and 5e, and 5 is 5e itself
+**What is missing is a seam, not a subsystem.** Items 0a, 0b and 0c are not part
+of the chain and jump the queue anyway — each is waiting only on being at the
+instrument, and 0a's and 0b's hardware has now arrived. Then five: **1–3 are the
+missing path from a committee verdict to a running instrument**; 4 is the first
+real use of that path, and the only test of whether any of the rest was right; 5
+is what a run does with what it is seeing while it is still happening. Items 1–3
+sit between stages 5d and 5e, and 5 is 5e itself
 → [07 Phase 5](docs/07-roadmap.md#phase-5--automating-microscope-operation).
 A note on how this would look under Anthropic's Model Hardware Standard is in
 [`docs/mhs-integration.md`](docs/mhs-integration.md), deliberately off the main
@@ -536,6 +538,53 @@ line.
   unconditional and its confocal half waits here. And it is the same *kind* of
   problem as the camera-ownership conflict in item 1: not physics, not protocol,
   but **who is allowed to command a device, through which stack.**
+
+- [ ] **0c · Confirm the MCP surface reaches the hardware.** Built 2026-08-31
+  ([`mcp_server/`](mcp_server/), 9 tools, 30 tests) and verified end to end over
+  stdio — handshake, tool list, a plan matching what
+  [`config/tweezers/run_pattern.py`](config/tweezers/run_pattern.py) prints, a
+  refused move. **No tool has reached a device.** The vendor DLL is not on the
+  working PC and the Tweez GUI is not listening on it, so the `read` and `move`
+  tiers have only been exercised along their refusal and unavailable paths. Until
+  that changes, the claim is *the interface is correct*, not *the interface
+  works*.
+
+  Three checks, in this order, because the cheap ones are also the ones that
+  cannot damage anything:
+
+  1. **`piezo_read_state` against `sim:/NPC6330`**, the DLL's own simulator. Then
+     against COM4. If the identity, channels and travel it returns do not match
+     what [`config/piezo/verify_piezo_commands.py`](config/piezo/verify_piezo_commands.py)
+     prints, the tool is not the thin wrapper it claims to be — which is the
+     actual risk here, not a crash.
+  2. **`piezo_move` on `sim:` with `AGENTIC_MICROSCOPE_ALLOW_MOTION=1`.** The one
+     path with no test coverage, exercised on a device that cannot be hurt. It
+     should move the simulated axis and read the position back.
+  3. **`tweezers_probe` with the GUI live.** `reachable: true` with a status is
+     the whole claim; `tweezers_run` stays refused.
+
+  **The piezo goes first, and the asymmetry is the reason.** Its state is
+  readable, so a commanded position can be checked against a measured one, and it
+  has a simulator. The tweezers have neither — no trap readback over TCP and no
+  simulator — so there the tool's output can be compared only against the GUI by
+  eye. That is also why `tweezers_run` is gated on `allow_laser` as well as
+  `allow_motion` → [the MCP section](#an-mcp-surface-over-the-two-bespoke-paths).
+
+  **What this does not settle, and should not be read as settling.** It exercises
+  one of the tweezers' three control surfaces; `Breakpoints > Enable Bits`,
+  `Repeat > Enabled` and laser power stay GUI-only, so a plan the server accepts
+  is still not a drive that runs unattended. And it says nothing about whether an
+  agent *should* be driving the instrument — the committee decides that, above any
+  transport → [`kb/decisions/2026-08-31-mcp-hardware-server-scope.md`](kb/decisions/2026-08-31-mcp-hardware-server-scope.md).
+
+  One thing to fix while at it, and it is not cosmetic:
+  [`hardware/optical_tweezers.py`](hardware/optical_tweezers.py) has **no safety
+  switch of its own**, unlike the other two drivers — its constructor opens the
+  socket and all 28 commands including `laser_on()` are directly callable. Today
+  `mcp_server/switches.py` is the only brake in that path. The switch belongs in
+  the driver, where the other two put theirs and where MHS puts device safety
+  limits; it changes six call sites, which is why it was not done as a side
+  effect of adding the server.
 
 - [ ] **1 · Run the three subsystems on one timeline.** A master script over
   three sub-scripts — optical tweezers · microscope (Micro-Manager) · piezo
