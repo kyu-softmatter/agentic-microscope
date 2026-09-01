@@ -197,10 +197,41 @@ D:\experimentalist\
 - Committee orchestration + deadlock handling ([05 §6](05-consensus-gate.md))
 - The expertise capture loop ([09 §3](09-knowledge-capture.md))
 - Teaching mode ([09 §5](09-knowledge-capture.md))
+- **A declared tool surface**, so the model calls this repository instead of
+  reading a CLI's help text — half built, see below
+
+**Half of the tool surface exists, 2026-08-31.**
+[`mcp_server/`](../mcp_server/) exposes the **two hardware paths** — tweezers and
+piezo — as 9 MCP tools in four tiers (`plan` · `write` · `read` · `move`), each
+tier declared in the tool's own MCP annotations. It was built hardware-first by
+decision: those two are the subsystems with no abstraction at all, so if a tool
+surface can go over them honestly the Micro-Manager path is the smaller version
+of the same job. 30 tests, and CI runs them.
+
+Two properties carried over from the gates, because an MCP client is a model and
+not a person at a prompt. **A refusal is a value, not an exception** — an MCP tool
+that raises reads as *this tool is broken*, and a model that believes a tool is
+broken routes around it, so `advances: false`, `check: REFUSED`, `refused: true`
+and `available: false` all arrive as results with their reasons and with what
+would have happened. And **nothing in the `plan` tier recomputes anything**: each
+tool calls the entry point `config/`'s own scripts call, so a tool and a script
+that disagree is a bug rather than a difference of opinion.
+
+**What remains is the larger half: the eight lenses.** Each lens's CLI would have
+to grow a `--json` — two of eight have one — and hand its `argparse` parser over
+as the tool schema, so the CLI and the tool surface cannot drift apart. That is
+the piece that would let a model run the committee rather than only reach the
+instrument, and it is not started.
+→ [`kb/decisions/2026-08-31-mcp-hardware-server-scope.md`](../kb/decisions/2026-08-31-mcp-hardware-server-scope.md)
 
 **Verification**: a junior says "I want to track 647 in ATPS" — and out comes
 questions → computation → committee → difficulty grade → a setting proposal with
 its basis and its failure signatures.
+
+**Verification of the tool surface** is narrower and separate: the same verdict,
+reached by a model calling the tools, matches the one the CLIs print. For the
+hardware half that is the next hardware task — see the note at the end of
+[Phase 5](#phase-5--automating-microscope-operation).
 
 ---
 
@@ -390,6 +421,54 @@ loaded over `LOAD_PROJECT`, with patterns and everything else generated per
 experiment from Python. `plan()` returns `BLOCKED` while the calibrated trapping
 range is unrecorded, because an oversized pattern is clipped silently.
 → [`kb/decisions/2026-08-26-tweezers-pattern-vs-direct.md`](../kb/decisions/2026-08-26-tweezers-pattern-vs-direct.md)
+
+*(Two dates in that paragraph have since moved: "nothing has been run against
+the GUI yet" was true until 2026-08-27, when a 1 Hz ±10 µm sine drive ran on
+Trap 1 with a host-timed 2 s breakpoint hold — and wait states turn out to be
+GUI-only over *TCP* only, since the GUI's embedded Python writes them.
+→ [`kb/decisions/2026-08-27-tweezers-first-light-measured-limits.md`](../kb/decisions/2026-08-27-tweezers-first-light-measured-limits.md))*
+
+**Both of these now have an MCP surface, 2026-08-31.**
+[`mcp_server/`](../mcp_server/) puts the piezo and the tweezers behind 9 MCP
+tools, which is the same two paths this section has been scoping and the reason
+they were chosen first ([Phase 3](#phase-3--the-agent-layer)). It changes nothing
+about the drivers underneath; it is a declared interface over them, so a model
+reaches the instrument through the same entry points
+[`config/tweezers/run_pattern.py`](../config/tweezers/run_pattern.py) and
+[`config/piezo/verify_piezo_commands.py`](../config/piezo/verify_piezo_commands.py)
+already use. The two moving tools (`tweezers_run`, `piezo_move`) are refused by
+default, and `tweezers_run` needs `allow_laser` as well as `allow_motion`.
+
+**It has not reached a device, and that is the next hardware task.** The vendor
+DLL is not on the working PC and the Tweez GUI is not listening on it, so the
+`read` and `move` tiers have been exercised only along their refusal and
+unavailable paths — the claim today is *the interface is correct*, not *the
+interface works*. Three checks, in this order:
+
+| # | Check | Why here |
+|---|---|---|
+| 1 | `piezo_read_state` against `sim:/NPC6330`, then COM4 | The DLL's own simulator, so nothing can be hurt. If the identity, channels and travel do not match what `verify_piezo_commands.py` prints, the tool is not the thin wrapper it claims to be — which is the real risk, not a crash |
+| 2 | `piezo_move` on `sim:` with `AGENTIC_MICROSCOPE_ALLOW_MOTION=1` | The one path with no test coverage, on a device that cannot be damaged |
+| 3 | `tweezers_probe` with the GUI live | `reachable: true` with a status is the whole claim; `tweezers_run` stays refused |
+
+**The piezo goes first because of the asymmetry this section already found.** Its
+state is readable and it has a simulator, so a commanded position can be checked
+against a measured one. The tweezers have neither — no trap readback over TCP and
+no simulator — so a tool there can be checked only against the GUI by eye. Same
+contrast as the two first-light notes of 2026-08-27, and it is why the order is
+not arbitrary.
+
+**One repair belongs with this trip to the bench.**
+[`hardware/optical_tweezers.py`](../hardware/optical_tweezers.py) has no safety
+switch of its own, unlike `hardware/microscope.py` and
+`hardware/piezo_stage.py`: its constructor opens the socket and all 28 commands
+including `laser_on()` are directly callable. First light armed the laser on a
+typed confirmation *in the calling script*, which is why the gap never showed.
+Today `mcp_server/switches.py` is the only brake in that path. The switch belongs
+in the driver — where the other two put theirs, and where MHS puts device safety
+limits ([`mhs-integration.md`](mhs-integration.md)) — and it changes six call
+sites, which is why it was not done as a side effect of adding the server.
+→ [`kb/decisions/2026-08-31-mcp-hardware-server-scope.md`](../kb/decisions/2026-08-31-mcp-hardware-server-scope.md)
 
 ---
 
