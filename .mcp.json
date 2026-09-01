@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "agentic-microscope-hardware": {
+      "command": "uv",
+      "args": ["run", "python", "-m", "mcp_server.server"],
+      "env": {
+        "AGENTIC_MICROSCOPE_ALLOW_MOTION": "0",
+        "AGENTIC_MICROSCOPE_ALLOW_LASER": "0"
+      }
+    }
+  }
+}

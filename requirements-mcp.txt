@@ -1,0 +1,9 @@
+# The MCP server over the two hardware paths (mcp_server/). Pure Python and
+# hardware-independent, so unlike requirements-micromanager.txt this one runs
+# everywhere and CI installs it -- the 30 tests in tests/test_mcp_server.py are
+# inside the badge.
+#
+# Pinned to 2.x on purpose. The SDK renamed FastMCP to MCPServer at 2.0 and
+# moved it from mcp.server.fastmcp to mcp.server.mcpserver; mcp_server/server.py
+# imports the 2.x name, so a 1.x install fails at import rather than at run time.
+mcp>=2.1,<3

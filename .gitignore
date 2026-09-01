@@ -36,3 +36,9 @@ reference/quotes/
 *.dll
 *.exe
 *.msi
+
+# uv.lock — a by-product, not a decision. `.mcp.json` launches the MCP server
+# with `uv run`, which writes a lock file for the whole dependency tree. The
+# requirements*.txt files deliberately carry loose bounds instead, and a
+# committed lock would quietly become the real specification.
+uv.lock

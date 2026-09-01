@@ -362,8 +362,8 @@ Lens-by-lens implementation status is in the **Code** table below.
 ## Current status
 
 **Design complete; all eight committee lenses are implemented.** Nine design
-documents, 32 hard gates (G1–G32), 854 tests passing. The badge above reports
-811 of them — the other 43 need a Micro-Manager device-adapter install and run
+documents, 32 hard gates (G1–G32), 884 tests passing. The badge above reports
+841 of them — the other 43 need a Micro-Manager device-adapter install and run
 in a separate workflow, which is stated at the top of each file in
 [`.github/workflows/`](.github/workflows/) and again under [running the
 tests](#running-the-tests). The six standing
@@ -710,6 +710,36 @@ line.
   failure the [model-to-experiment section](#toward-a-model-to-experiment-loop)
   guards against on the simulation side. Seal the rule, then let the loop run
   against it.
+
+---
+
+## An MCP surface over the two bespoke paths
+
+[`mcp_server/`](mcp_server/) exposes the tweezers and the piezo as MCP tools —
+the two subsystems with no abstraction at all, a 28-command TCP surface and a
+vendor DLL. Nine tools in four tiers, each declared in the tool's own MCP
+annotations: **plan** (no device), **write** (a file), **read** (the device,
+reads only), **move** (the laser, the stage). Nothing in the plan tier
+recomputes anything — each tool calls the same entry point
+[`config/tweezers/run_pattern.py`](config/tweezers/run_pattern.py) and
+[`config/piezo/verify_piezo_commands.py`](config/piezo/verify_piezo_commands.py)
+call, so a tool and a script that disagree is a bug, and the tests compare them
+field by field.
+
+The two moving tools are refused by default and the refusal is a value, not an
+exception: `refused: true` naming the switch and how to set it, plus the exact
+TCP lines or the exact target it would have commanded. An MCP tool that raises
+reads to the calling model as a broken tool, and a model that believes a tool is
+broken routes around it — which is the failure this whole repository is built
+against. `advances: false` behaves the same way, and the tool descriptions say
+in as many words that it is a valid result.
+
+Two things it does not do. It does not expose the eight committee lenses, which
+is the other half of the job and needs each lens's CLI to hand its parser over
+as the tool schema. And it reaches one of the tweezers' three control surfaces:
+`Breakpoints > Enable Bits`, `Repeat > Enabled` and laser power are GUI-only, so
+a plan the server accepts is still not a drive that runs unattended.
+→ [`kb/decisions/2026-08-31-mcp-hardware-server-scope.md`](kb/decisions/2026-08-31-mcp-hardware-server-scope.md)
 
 ---
 
@@ -1087,9 +1117,9 @@ scope. For now this produces offline recommendations only.
 ## Running the tests
 
 ```console
-$ pip install -r requirements.txt
+$ pip install -r requirements.txt -r requirements-mcp.txt
 $ pytest -q -rs
-811 passed, 3 skipped
+841 passed, 3 skipped
 ```
 
 `pyproject.toml` puts the repository root on `sys.path`, so the bare `pytest`
@@ -1102,6 +1132,12 @@ count above cannot quietly shrink. To run those too:
 ```console
 $ pip install -r requirements-micromanager.txt && mmcore install
 ```
+
+Three requirement files, and the split is the point: `requirements.txt` is the
+811 tests that need nothing but numpy and pyyaml, `requirements-mcp.txt` adds
+the 30 that exercise the MCP server and is in CI because it is pure Python, and
+`requirements-micromanager.txt` is the 43 that need a vendor device-adapter
+download and is not.
 
 ---
 
