@@ -1,0 +1,12 @@
+# Not a package. There is no [build-system] table and nothing here is meant to
+# be installed -- the lens packages are imported from the repository root, the
+# way every command in the docs runs them (`python -m optics.cli check ...`).
+#
+# This file exists for one reason. Without it pytest never puts the repository
+# root on sys.path: `python -m pytest` happened to work, because the `-m` form
+# adds the current directory, while a bare `pytest` failed collection with
+# `ModuleNotFoundError: No module named 'optics'`. CI runs the bare form, and
+# the two should not disagree about whether the test suite passes.
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

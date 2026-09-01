@@ -1,5 +1,8 @@
 # Agentic microscope
 
+[![tests](https://github.com/kyu-softmatter/agentic-microscope/actions/workflows/tests.yml/badge.svg)](https://github.com/kyu-softmatter/agentic-microscope/actions/workflows/tests.yml)
+[![licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
+
 An agent that turns a research goal into a microscope configuration that is
 checked against what the instrument can physically do — and refuses when the
 evidence for a setting does not exist.
@@ -359,7 +362,11 @@ Lens-by-lens implementation status is in the **Code** table below.
 ## Current status
 
 **Design complete; all eight committee lenses are implemented.** Nine design
-documents, 32 hard gates (G1–G32), full test suite passing. The six standing
+documents, 32 hard gates (G1–G32), 854 tests passing. The badge above reports
+811 of them — the other 43 need a Micro-Manager device-adapter install and run
+in a separate workflow, which is stated at the top of each file in
+[`.github/workflows/`](.github/workflows/) and again under [running the
+tests](#running-the-tests). The six standing
 lenses — optics, detection, compute resources, sample geometry,
 photo-perturbation, measurement validity — and both conditional lenses —
 optical tweezers, mechanical/environmental — each compute their verdict and
@@ -1077,12 +1084,40 @@ scope. For now this produces offline recommendations only.
 
 ---
 
+## Running the tests
+
+```console
+$ pip install -r requirements.txt
+$ pytest -q -rs
+811 passed, 3 skipped
+```
+
+`pyproject.toml` puts the repository root on `sys.path`, so the bare `pytest`
+and `python -m pytest` agree — before it, only the second form worked. The three
+skips are modules, not tests: they open with
+`pytest.importorskip("pymmcore_plus")` and hold 43 tests that need live
+Micro-Manager access. `-rs` names them and their reason in every run, so the
+count above cannot quietly shrink. To run those too:
+
+```console
+$ pip install -r requirements-micromanager.txt && mmcore install
+```
+
+---
+
 ## Public-repository constraints
 
 > Vendor manuals, proprietary DLLs, and commercial correspondence are in no
 > commit here — removed from the whole history on 2026-08-28, not just from the
 > tip. See [NOTICE](NOTICE.md) for what was removed, what that did and did not
 > accomplish, and how to restore the hardware dependencies.
+
+The code is [MIT](LICENSE). Three things here are **not** the repository's to
+licence — the vendor piezo adapter, the third-party spectral curves, and the
+datasheet figures transcribed into `data/*.yaml` — and
+[NOTICE §4](NOTICE.md#4--here-but-not-covered-by-the-licence) names each with
+its source. A licence is a claim of ownership, so what it cannot cover is stated
+as precisely as what was removed.
 
 ---
 

@@ -1,0 +1,16 @@
+# Live Micro-Manager access. Three modules need it:
+#
+#   calibration/mm_live.py      camera readout time, EM1/EM2 camera probing
+#   calibration/ram_capture.py  RAM burst capture
+#   hardware/microscope.py      config read / compare / propose / apply (5a-5d)
+#
+# Their tests -- tests/test_calibration_mm_live.py, tests/test_ram_capture.py,
+# tests/test_microscope.py, 43 tests in all -- open with
+# `pytest.importorskip("pymmcore_plus")`, so nothing else in the repository
+# imports it or tests against it.
+#
+# The package alone is not enough: the device adapters have to be there too.
+# Run `mmcore install`, or point pymmcore-plus at the lab's own MM2 setup on
+# the microscope PC. On Apple Silicon there is no nightly to install
+# (docs/07-roadmap.md, Phase 5) -- use Windows or Linux.
+pymmcore-plus>=0.13

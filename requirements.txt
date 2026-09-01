@@ -2,8 +2,7 @@ numpy>=2.0
 pyyaml>=6.0
 pytest>=8.0
 
-# Only calibration/mm_live.py (camera readout time, EM1/EM2 camera probing)
-# needs this -- it's imported lazily, so the rest of the repo doesn't require
-# it. Also needs a working Micro-Manager device-adapter install: run
-# `mmcore install`, or use the lab's own MM2 setup on the microscope PC.
-pymmcore-plus>=0.13
+# That is everything 811 of the 854 tests need, which is why CI installs this
+# file alone. The other 43 need live Micro-Manager access -- pymmcore-plus plus
+# a device-adapter install -- and open with `pytest.importorskip`, so they skip
+# rather than fail when it is absent. See requirements-micromanager.txt.

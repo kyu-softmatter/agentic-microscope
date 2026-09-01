@@ -1,0 +1,51 @@
+name: tests (Micro-Manager)
+
+# The 43 tests that tests.yml skips: live Micro-Manager access through
+# pymmcore-plus. Deliberately not the badge workflow -- it depends on
+# `mmcore install` fetching a Micro-Manager nightly, so a red run here can mean
+# the download changed rather than the repository did.
+#
+# Manual trigger only for now, because this workflow has never run. Uncomment
+# the schedule once it has come back green once; until then an unattended
+# failure would say nothing.
+
+on:
+  workflow_dispatch:
+  # schedule:
+  #   - cron: '17 9 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  pytest:
+    name: ubuntu-latest py3.12 live MM
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-micromanager.txt
+
+      - run: python -m pip install --upgrade pip
+      - run: pip install -r requirements.txt -r requirements-micromanager.txt
+
+      # Not cached on purpose: a stale device-adapter tree is a worse failure
+      # mode than a slow job, and this runs at most nightly.
+      - run: mmcore install
+      - run: mmcore list
+
+      # These three are the whole point of this workflow. Naming them instead of
+      # running the full suite means a green run here cannot be green because
+      # they skipped again.
+      - name: the modules tests.yml skips
+        run: >
+          pytest -q -rs
+          tests/test_calibration_mm_live.py
+          tests/test_ram_capture.py
+          tests/test_microscope.py

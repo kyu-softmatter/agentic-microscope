@@ -1,0 +1,61 @@
+name: tests
+
+# The badge in README.md reports this workflow, so what it does and does not
+# cover has to be stated rather than implied.
+#
+# It covers 811 of the 854 tests. The other 43 live in three modules that open
+# with `pytest.importorskip("pymmcore_plus")` and so are skipped whole, not
+# collected -- `-rs` prints each one and its reason in every run's log, which is
+# the only reason the count above can be trusted. Those 43 are run by
+# tests-micromanager.yml.
+#
+# Measured in a clean venv with requirements.txt alone (pytest 9.1.1, Windows,
+# py3.12): 811 passed, 3 skipped in 99 s.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pytest:
+    name: ${{ matrix.os }} py${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The two machines this repository is actually edited from -- it lives
+          # in a Box sync folder touched from both -- plus Linux, which is what
+          # any CI or container will be.
+          - {os: windows-latest, python-version: '3.12'}
+          - {os: macos-latest, python-version: '3.12'}
+          - {os: ubuntu-latest, python-version: '3.12'}
+          # Forward check. 3.12.13 is what the local venv runs.
+          - {os: ubuntu-latest, python-version: '3.13'}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - run: python -m pip install --upgrade pip
+      - run: pip install -r requirements.txt
+
+      # Bare `pytest`, not `python -m pytest`. The two disagreed until
+      # pyproject.toml put the repository root on sys.path -- the `-m` form adds
+      # the current directory and the bare form does not -- and running the bare
+      # form here is what stops them disagreeing again.
+      - run: pytest -q -rs

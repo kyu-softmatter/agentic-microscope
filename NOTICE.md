@@ -1,14 +1,19 @@
-# NOTICE — what is not published here
+# NOTICE — what is not published here, and what is not mine to licence
 
 This repository is public. Vendor manuals, proprietary DLLs, and commercial
 correspondence were removed on 2026-08-28 because this repository has no licence
 to redistribute them, and because the quotes carried third parties' names
 alongside pricing.
 
-**Scope of this notice.** The 19 files below are in no commit of this
+**Scope of this notice.** The 19 files listed in §1–3 are in no commit of this
 repository. They were removed from every commit with `git filter-repo`, not just
 from the tip — see [Git history](#git-history) at the bottom for what that did
 and did not accomplish.
+
+**§4 is the converse**, added 2026-08-31 alongside the [MIT
+licence](LICENSE): material that *is* here and that the licence does not reach.
+A licence is a claim of ownership, so what it cannot cover has to be named as
+precisely as what was removed.
 
 ---
 
@@ -89,6 +94,28 @@ family-wide superset and are gone; what that swap corrected is in
 `hardware/` is offline in this repository regardless — the working PC and the
 microscope PC are separate, so these drivers produce recommendations, not
 motion.
+
+## 4 · Here, but not covered by the licence
+
+[LICENSE](LICENSE) is MIT and covers this repository's own work — the lens
+packages, the gates, the tests, `docs/`, `kb/`, `config/`. It does not cover the
+three things below, which came from elsewhere and whose terms are somebody
+else's to set. Their presence here grants no right over them.
+
+| Path | Where it came from | What that means |
+|---|---|---|
+| `hardware/piezo/vendor/dll_adapter.py` | The Prior/Queensgate NPC-D Controller Interface release, `controller_interface/adapter/python/`, carrying local modifications | Vendor code. `.gitignore` ignores `hardware/*/vendor/*` and excepts exactly this one file, because `hardware/piezo_stage.py` imports it and the modifications are load-bearing (§3). For an unmodified original, obtain the release |
+| `data/spectra/*.txt` | [FPbase](https://www.fpbase.org) CSV exports — FPbase's own data is CC-BY 4.0 — plus Semrock/IDEX and Chroma product-page ASCII downloads and Lumencor datasheets. Per-target provenance is tabulated in [`data/spectra/README.md`](data/spectra/README.md) | Third-party reference curves, used byte-exact and never renormalized (see `.gitattributes`). Re-obtain them from the source rather than taking them as MIT |
+| `data/detectors.yaml`, `data/objectives.yaml`, `data/filters.yaml`, `data/light_sources.yaml`, `data/fluorophores.yaml` | Figures transcribed from manufacturer datasheets and catalogues, each with its source and revision named where it is used | The individual specifications are the manufacturers' published numbers. The selection, the schema and the commentary around them are this repository's |
+
+**One file that belongs here and does not.**
+[`reference/npcd-command-set.md`](reference/npcd-command-set.md) would have been
+a fourth row until 2026-08-27, when it stopped being names pulled out of the
+64-bit DLL with `strings` and became 414 names read off the live controller over
+COM4 (§3). It is now this repository's own measurement of a device on the bench,
+not vendor material passing through — which is a second thing that regeneration
+bought, beyond correcting a family-wide superset down to what this controller
+actually answers.
 
 ---
 
