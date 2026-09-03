@@ -903,10 +903,10 @@ devices_not_in_mm_config:   # docs/02 §4 "three-way cross-check table" — sepa
       attach to one System Manager with the TCP port incrementing per instance,
       so the port selects which camera and which calibration you are driving.
   - name: "LUN-F-XL laser combiner (405/488/561/640)"
-    control: "split: blanking (on/off) via MM NIDAQ — working; per-line power via FT4222H SPI — transport only, blocked on the SPI word format"
+    control: "split: blanking (on/off + wavelength select) via DAQ — driven from Python 2026-09-02, polarity active-HIGH measured; per-line power via FT4222H SPI — writes reach the DAC and are channel-selective, word format narrowed to one of nine framings"
     mm_registered: partial   # blanking lines yes (as NIDAQ devices); the laser itself is not one MM device
     python_control: partial
-    confirmed_date: 2026-08-19
+    confirmed_date: 2026-09-02
     note: >
       History: user dictation on 2026-08-10 said "Python control confirmed",
       with no record of which interface. On 2026-08-12 grep + an actual
@@ -938,9 +938,39 @@ devices_not_in_mm_config:   # docs/02 §4 "three-way cross-check table" — sepa
       If that USB-B route exposes a documented command set it supersedes the
       SPI-capture plan in lunf_power.py's docstring (USBPcap + Wireshark on
       the FT4222 endpoint) and removes the word-format unknown entirely — so
-      **try USB-B first, capture second**. Not yet attempted.
+      **try USB-B first, capture second**.
       Consistent with [[project-pymmcore-only-no-nis]]: whatever path lands,
       the NIS control route is not used.
+
+      **2026-09-02 — attempted, and the picture changed.** Full record in
+      `kb/decisions/2026-09-02-lunf-first-light-measured-limits.md`; the
+      headlines:
+        - **USB-B is COM8** (FTDI FT232R, EEPROM serial `FTDD2RRL`), confirmed
+          by unplug/replug. It is **silent** at five standard baud rates and
+          **NIS never opens it**. It does *not* supersede the SPI plan, because
+          `v6_w32_device_LUNF.dll` has no COM/baud/serial strings at all —
+          NIS's "USB Power & Blanking" mode *is* the FT4222.
+        - **Blanking works from Python and is active-HIGH** (measured; the
+          polarity both this repo and Nikon left undocumented). Wavelength
+          select + on/off now run from plain DAQmx with NIS closed.
+        - **The SPI link reaches the DAC.** A burst of candidate frames
+          carrying data=0 extinguished 561 and left 640 alive, and a 5 V↔0 V
+          alternation flickered 561 with its blanking held open. So arbitrary
+          levels are writable; the word format is narrowed to **one of nine**
+          framings, three bisection rounds from being named.
+        - **DAC full scale is 0–5 V**, read off the NIS pad, which displays
+          volts because `Segmented Linear Scale` is off. Setpoints as found:
+          405 2.95 / 488 2.40 / 561 1.50 / 640 2.35 V.
+        - **The NIDAQ-AO alternative is dead** — ao0..ao3 are not cabled to the
+          LUN-F's analog inputs. Tested at full scale, at speed, per channel,
+          on two wavelengths. Closes that open item for good.
+        - **Nothing about this device can be read back** — no DAC readback, no
+          monitor on any of the 32 DAQ analog inputs, and `SetShutterState` /
+          `CLxLUNFShutter` are not exported from the DLL. Control is open-loop.
+        - **NIS and Python cannot share the DAQ** (`-200587`), so "set levels in
+          NIS, close NIS, drive from here" is forced rather than preferred.
+        - **The fiber shutter (`Fiber1`) is the real blocker for headless use**,
+          and its mechanism is *not* established — see §9 of that entry.
   - name: "CSUW1-Dichroic / EM1(CSUW1-Filter_Red) / EM2(CSUW1-Filter_Blue) filter elements (confocal path)"
     control: pymmcore-plus
     mm_registered: true

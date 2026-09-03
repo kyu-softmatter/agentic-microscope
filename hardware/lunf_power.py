@@ -37,32 +37,69 @@ Control dropdown ("Power Only" / "Power & Blanking") can rebind PowerResource%d
 to a ``%s/ao%d`` NI channel, and then power becomes a plain NIDAQAO device --
 faster, sequenceable, and this module becomes unnecessary. Worth checking first.
 
+**Checked 2026-09-02: they are not cabled. This route is dead.** Dev1 has
+exactly four AO channels at +/-10 V and the LUN-F has exactly four lines, which
+is suggestive and wrong. ao0..ao3 were driven together 0->5 V in steps, then
+0<->5 V for contrast, then at speed (5, 1, 4, 2, 0 V at 0.5 s from one
+persistent DAQmx task) with the blanking line **held open** so the light never
+went off, then per channel -- ao2 against 561 and ao3 against 640. No response
+at any point. Consistent with the dialog showing ``Connector Block: Not
+Specified`` and the Power column as fixed text (DAC 0..3) rather than a resource
+selector. Do not propose this again.
+
 WHAT IS NOT KNOWN YET
 ---------------------
-**The SPI framing.** LibFT4222 puts bytes on the wire, but the DAC's word format
-(channel select, bit depth, reference, chip-select behaviour) is not documented
-by Nikon. Until it is, ``PROTOCOL`` is ``None``, ``set_power`` refuses, and this
-module is transport + scaffolding only. Writing guessed bytes at an unknown SPI
-device driving a laser AOTF is not worth the risk.
+**The SPI framing -- narrowed, 2026-09-02, but still not named.** LibFT4222 puts
+bytes on the wire, and it is now established that those bytes **reach the DAC**:
+a burst of candidate frames carrying data = 0 extinguished 561 and left 640
+alive, and a 5 V <-> 0 V alternation flickered 561 with its blanking line held
+open. So writes land, they are channel-selective, and arbitrary levels are
+writable -- not just zero.
 
-To determine it: install USBPcap + Wireshark, capture the FT4222 endpoint while
-dragging one line's power slider in NIS through known values (0 / 50 / 100 %),
-and correlate -- four channels and a monotonic slider make the word format fall
-out quickly. Or ask Nikon for the LUN-F SDK.
+What remains is *which* framing. The field is down to nine, all addressing DAC
+index 2 (561 is Wave2, and the burst spared Wave3)::
 
-NEXT THING TO TRY FIRST (user plan, 2026-08-19)
------------------------------------------------
-Getting the LUN-F talking to the PC directly is proving awkward, and the plan is
-to **cable it straight over USB-B** rather than keep going through the FT4222
-bridge that NIS uses. Do that before the capture above: if the chassis' own USB
-port speaks a documented command set (ASCII serial / CDC / vendor VCP), the SPI
-word format stops mattering and this whole module reduces to a thin wrapper over
-that link. Only fall back to USBPcap if USB-B turns up nothing.
+    3B/16b  [cmd<<4|2][d>>8][d]      cmd in {0,1,2,3}
+    3B/16b  [0x14][d>>8][d]          DAC8564-style control byte
+    4B/12b  [0x03][0x20|d>>8][d][0]  AD5628 / AD5668
+    2B/14b  [0x80|d>>8][d]
+    2B/12b  [0x30|d>>8][d]           MCP4922 A
+    2B/12b  [0xB0|d>>8][d]           MCP4922 B
 
-Also note power *measurement* (a power meter at the sample) is deliberately
-deferred -- user decision 2026-08-19, see docs/07-roadmap.md Phase 0. So a
-working set_power() will initially be in percent-of-maximum with no mW behind
-it; do not let the two blockers be confused for one.
+**Three bisection rounds would name it**, and the reset is free: re-sending the
+data = 0 burst extinguishes 561 on demand, so no NIS restart is needed between
+rounds. Until one is named ``PROTOCOL`` stays ``None`` and ``set_power``
+refuses -- knowing the answer is in a set of nine is not knowing the answer.
+
+Full record: ``kb/decisions/2026-09-02-lunf-first-light-measured-limits.md``.
+
+WHY GUESSED BYTES BECAME ALLOWABLE
+----------------------------------
+``kb/decisions/2026-08-29-device-discovery-scope.md`` forbids writing to a device
+to find out what it does. That rule was written when there was no way to bound
+the consequence. Two things changed on 2026-09-02: **blanking control** (measured
+active-HIGH, so the laser is gated off in software before any SPI byte is sent)
+and **a power meter** (retiring the 2026-08-19 deferral). The probe was built so
+the rule's purpose still held -- every discovery frame carried data = 0, so no
+candidate could raise the output, and all four blanking lines were closed for the
+duration. The relaxation was the user's explicit decision, not an assumption.
+
+THE USB-B PLAN (2026-08-19) WAS TRIED, AND DOES NOT SUPERSEDE THIS
+------------------------------------------------------------------
+The chassis was cabled straight over USB-B on 2026-09-02. It enumerates as
+**COM8**, an FTDI FT232R with EEPROM serial ``FTDD2RRL`` and a vendor-programmed
+product string; identity confirmed by unplug/replug. It is **silent** at 9600 /
+19200 / 38400 / 57600 / 115200, and nothing has been sent to it.
+
+But it cannot replace this module, because ``v6_w32_device_LUNF.dll`` contains no
+``COM`` / ``baud`` / ``serial port`` strings at all -- only FTD2XX and FT4222
+symbols. NIS's Control dropdown reads "**USB** Power & Blanking", and that USB
+*is the FT4222*. So the capture plan stands on its own merits rather than as a
+fallback.
+
+Power *measurement* is no longer deferred -- a meter is available as of
+2026-09-02 -- but it is a standalone display, not PC-readable, so volts -> mW is
+a manual exercise. Do not confuse that with the word-format blocker.
 
 MEASURED ON THIS MACHINE (2026-08-19)
 -------------------------------------
@@ -70,6 +107,30 @@ MEASURED ON THIS MACHINE (2026-08-19)
     FT4222_GetVersion       ->  chipVersion 0x42220400 (rev D), dll 1.4.2.184
     FT4222_GetClock         ->  system clock 60 MHz
     interfaces              ->  00294-BOA/B/C/D, mode FT4222H_1_2
+
+MEASURED ON THIS MACHINE (2026-09-02)
+-------------------------------------
+    FT4222_SPIMaster_Init   ->  rc=0  (SINGLE, div 128 = 469 kHz, mode 0, SS_0)
+    SPI writes              ->  reach the DAC, channel-selective
+    DAC full scale          ->  0-5 V, read off the NIS pad (Value [V], because
+                                Segmented Linear Scale is off and there is no
+                                calibration table -- CALIBRATED0..3 all 0)
+    setpoints as found      ->  405 2.95 V | 488 2.40 V | 561 1.50 V | 640 2.35 V
+    blanking polarity       ->  active-HIGH  (405 line2, 488 line4,
+                                561 line6, 640 line8 -- from the live dialog)
+    NIS holds, while running -> FT4222 A/B/C  (D stays free), and Dev1 port0
+                                exclusively: a DO task elsewhere gets -200587
+    DAC readback            ->  none, and no monitor on any of Dev1's 32 AI
+                                channels (all 32 float to the +/-10 V rail)
+
+A NOTE ON WHAT set_power() WILL STILL NOT GIVE YOU
+--------------------------------------------------
+Even with PROTOCOL filled in, this device cannot be read back and the fiber
+shutter (``Fiber1``) is not reachable from this repo -- ``SetShutterState``,
+``CLxLUNFShutter`` and ``ILxDeviceShutter`` are string-table and RTTI names, not
+exports; the DLL exports 33 symbols and none of them are those. A correct
+set_power() with a closed shutter still emits nothing, so treat the shutter as
+the senior blocker for headless operation.
 """
 
 from __future__ import annotations
