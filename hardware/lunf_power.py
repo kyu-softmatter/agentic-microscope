@@ -123,14 +123,26 @@ MEASURED ON THIS MACHINE (2026-09-02)
     DAC readback            ->  none, and no monitor on any of Dev1's 32 AI
                                 channels (all 32 float to the +/-10 V rail)
 
-A NOTE ON WHAT set_power() WILL STILL NOT GIVE YOU
---------------------------------------------------
-Even with PROTOCOL filled in, this device cannot be read back and the fiber
-shutter (``Fiber1``) is not reachable from this repo -- ``SetShutterState``,
-``CLxLUNFShutter`` and ``ILxDeviceShutter`` are string-table and RTTI names, not
-exports; the DLL exports 33 symbols and none of them are those. A correct
-set_power() with a closed shutter still emits nothing, so treat the shutter as
-the senior blocker for headless operation.
+THE FIBER SHUTTER, AND THE HANDOFF THAT GETS AROUND IT
+-------------------------------------------------------
+``Fiber1`` gates everything downstream of it, and it is **not reachable from
+this repo** -- ``SetShutterState``, ``CLxLUNFShutter`` and ``ILxDeviceShutter``
+are string-table and RTTI names; the DLL exports 33 symbols and none are those.
+A correct set_power() with a closed shutter still emits nothing.
+
+Measured 2026-09-02, and it is the reason this is not a hard blocker: **the
+shutter survives a force-kill of NIS.** It is NIS's *clean* shutdown that closes
+it, and the LUN-F has no link-drop watchdog. So::
+
+    1. start NIS, open Fiber1, set the four line voltages on the pad
+    2. taskkill /F nis_ar.exe        -- releases Dev1 port0 and FT4222 A/B/C
+    3. drive from Python
+
+``config/lunf/handoff_from_nis.py`` does steps 2-3 and verifies each. Treat it
+as a workaround, not a solution: it leaves a per-session NIS dependency against
+[[project-pymmcore-only-no-nis]], depends on force-killing rather than any
+documented interface, and holds a laser shutter open by skipping the vendor's
+shutdown path. A supported route is a question for Nikon.
 """
 
 from __future__ import annotations

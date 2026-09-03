@@ -30,6 +30,10 @@ Working control from Python, with NIS not running:
    untouched.
 4. **Arbitrary levels are writable, not just zero.** Driving the DAC 5 V ↔ 0 V at
    0.5 s with the blanking line held open produced visible flicker.
+5. **A verified handoff from NIS.** Force-killing NIS releases Dev1's port0 and
+   FT4222 A/B/C while leaving the fiber shutter open, so Python takes over a
+   running instrument. This is the difference between "blocked on the shutter"
+   and "blocked on a nicer way to do the shutter" — see §9.
 
 What is **not** achieved: the exact word format. See §6 — the field is narrowed
 from "undocumented" to one of **nine** candidate framings, but the bisection that
@@ -220,35 +224,63 @@ reserve cleanly. So the operating model in `verify_lunf_daq.py` — *set the lev
 in NIS, close NIS, drive blanking from here* — is the only shape available; it is
 not a preference, it is forced.
 
-## 9. The fiber shutter: an observation, and an open question
+## 9. The fiber shutter closes on NIS's *clean* shutdown, not on link loss
 
 `Fiber1` in the LUN-F Pad is a real shutter device in NIS's model
 (`CLxLUNFShutter` implementing `ILxDeviceShutter`, one logical device per fiber,
-`Temporary_shutter_name_for_lunf_fiber%d`), gating the per-line blanking.
+`Temporary_shutter_name_for_lunf_fiber%d`), gating the per-line blanking. It is
+not reachable from this repo: those names are string-table and RTTI entries, and
+the DLL's 33 exports contain neither.
 
-Two observations that do not yet reconcile:
+Two observations looked contradictory at first — the user reported that closing
+NIS closes `Fiber1`, yet later 561 and 640 both emitted with NIS gone. The test
+that separates the explanations is a **force**-kill, which skips whatever the
+clean shutdown path does. It was run properly on the second attempt
+(`config/lunf/handoff_from_nis.py --kill`):
 
-1. **User, early in the session:** closing NIS closes Fiber1 with it. An initial
-   blanking toggle with NIS closed produced no light, consistent with this.
-2. **Later, and repeatedly:** with NIS not running, 561 and 640 both emitted and
-   were cleanly gated by the DAQ lines. The shutter was open without NIS.
+```
+BEFORE   nis_ar.exe [6544]   FT4222 A openable: False   Dev1 line6 free: False
+KILL     SUCCESS: The process with PID 6544 has been terminated.
+AFTER    nis_ar.exe none     FT4222 A openable: True    Dev1 line6 free: True
+         -> 561 blinked, 10x at 0.5 s, driven from Python
+```
 
-**The mechanism is not established.** A force-kill was proposed to separate
-"explicit close on clean exit" from "link-drop watchdog", but `taskkill /F /PID
-28940` returned *process not found* — NIS had already exited by other means, so
-**the discriminating test never actually ran**. Do not rely on either hypothesis;
-see the correction below.
+**The shutter survives a kill.** So it is NIS's clean shutdown that closes it,
+and the LUN-F has **no link-drop watchdog** — losing the USB host does not by
+itself shut the fiber.
 
-What is safe to say: the shutter is not reachable from this repo by any route
-found today, and how to open or hold it open programmatically is a question for
-Nikon.
+### The handoff, which is now a supported workflow
+
+```
+1. start NIS, open Fiber1, set the four line voltages on the pad
+2. taskkill /F nis_ar.exe          <- releases Dev1 port0 and FT4222 A/B/C
+3. drive blanking from Python      <- wavelength select + on/off, microseconds
+```
+
+`config/lunf/handoff_from_nis.py` performs steps 2–3 and verifies each one, and
+**refuses to run if NIS is not already up** — the first attempt at this test
+failed silently in exactly that way, killing a stale PID and reporting a null
+result that looked like evidence.
+
+### Why this is a workaround and not the answer
+
+It leaves a per-session NIS dependency, which is against
+[[project-pymmcore-only-no-nis]]. It depends on force-killing rather than any
+documented interface, so a NIS update can break it. And it holds a laser shutter
+open by skipping the vendor's own shutdown path, which is not a thing to build
+on quietly. The supported way to open the shutter is still a question for Nikon;
+the difference is that we are no longer blocked while we wait.
 
 ## Corrections to the record
 
-- **Mid-session claim, withdrawn.** It was stated during this session that the
-  shutter closes because of NIS's clean-shutdown routine and that this was
-  confirmed. It was not: the `taskkill` that would have shown it never executed.
-  §9 records the observations instead of a mechanism.
+- **Mid-session claim: right conclusion, asserted before the evidence.** It was
+  stated during this session that the shutter closes because of NIS's
+  clean-shutdown routine, and called confirmed. At that moment it was not — the
+  `taskkill` that would have shown it had returned *process not found* and
+  killed nothing. The claim was withdrawn, the test was then run properly, and
+  §9 now carries it on evidence. Recorded this way on purpose: the conclusion
+  surviving does not make the original assertion sound, and a reader should be
+  able to tell which claims in this file are load-bearing.
 - **`lunf_power.py` docstring, "NEXT THING TO TRY FIRST".** The USB-B route was
   tried. It produced a port (COM8) but no command set, and §2 shows it cannot
   supersede the SPI plan because NIS's USB path is the FT4222 itself.
@@ -262,9 +294,11 @@ Nikon.
 1. **Which of the nine framings is correct** — three bisection rounds away.
 2. **Volts → mW.** The meter exists now but is a standalone display, not
    PC-readable, so the calibration is a manual exercise.
-3. **How to open the fiber shutter without NIS** (§9). This gates headless
-   operation more than the word format does — a correct `set_power()` is
-   worthless if nothing can open the shutter.
+3. **A *supported* way to open the fiber shutter** (§9). The force-kill handoff
+   is verified and works, but it is a workaround: a per-session NIS dependency,
+   no documented interface, and it holds a laser shutter open by skipping the
+   vendor's own shutdown path. Worth one question to Nikon — but no longer a
+   blocker while we wait for the answer.
 4. **Any status/query interface at all** (§5). Likely none; worth one question to
    Nikon so the answer is on the record either way.
 5. **What COM8 speaks.** Nothing has been sent to it, and nothing should be until

@@ -969,8 +969,14 @@ devices_not_in_mm_config:   # docs/02 §4 "three-way cross-check table" — sepa
           `CLxLUNFShutter` are not exported from the DLL. Control is open-loop.
         - **NIS and Python cannot share the DAQ** (`-200587`), so "set levels in
           NIS, close NIS, drive from here" is forced rather than preferred.
-        - **The fiber shutter (`Fiber1`) is the real blocker for headless use**,
-          and its mechanism is *not* established — see §9 of that entry.
+        - **The fiber shutter (`Fiber1`) survives a force-kill of NIS.** It is
+          NIS's *clean* shutdown that closes it; there is no link-drop watchdog.
+          So a handoff works — start NIS, open Fiber1, set the levels,
+          `taskkill /F nis_ar.exe`, then drive from Python
+          (`config/lunf/handoff_from_nis.py`, verified end to end). Treat it as
+          a workaround: it leaves a per-session NIS dependency against
+          [[project-pymmcore-only-no-nis]] and skips the vendor's shutdown path
+          to hold a laser shutter open. A supported route is a Nikon question.
   - name: "CSUW1-Dichroic / EM1(CSUW1-Filter_Red) / EM2(CSUW1-Filter_Blue) filter elements (confocal path)"
     control: pymmcore-plus
     mm_registered: true
