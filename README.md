@@ -13,6 +13,36 @@ deterministic gates decide whether a proposal may advance. The LLM contributes
 the qualitative half of a judgment where there is no closed form; it does not
 originate a physical value and cannot overrule a failed gate.
 
+> ## ⚠ Read [`SAFETY.md`](SAFETY.md) before moving any hardware
+>
+> Not a formality. This instrument carries a **class-4 1064 nm trap laser**,
+> four confocal laser lines, and objectives whose working distance is short
+> enough (0.13 mm on the `100x-Oil`) that a nosepiece write is the worst
+> irreversible risk on the bench. The property that generates most of the
+> hazards: **on the optical tweezers a return code of `0` means "the GUI
+> accepted the command", not "the thing happened"** — the Tweez 300 TCP
+> interface has no readback of any kind, so six distinct wrong states and a
+> success are the same byte
+> ([SAFETY §0](SAFETY.md)). Never treat a `0` from the tweezers as
+> confirmation; confirm by eye in the GUI, or by measuring the result in the
+> camera data.
+>
+> **`SAFETY.md` is a first draft and is not yet reviewed by the operator.** It
+> is the current best account of the hazards, not a cleared procedure.
+
+**The hardware setup is 28 devices.** Not a subsystem count — the number
+Micro-Manager actually loads from
+[`config/micromanager/single_cam_red_noDMD.cfg`](config/micromanager/single_cam_red_noDMD.cfg),
+the configuration the three-subsystem run uses: the Ti2-E body with its 14
+sub-devices (nosepiece, both filter turrets and their shutters, PFS and
+PFSOffset, ZDrive, XYStage, light path, condenser, `LappMainBranch1`, dia lamp,
+intermediate magnification), one `Kinetix_red` over PVCAM, the seven `CSUW1-*`
+spinning-disk devices, two Lumencor light engines (`LightEngine`, `Aura`), the
+`NIDAQHub` with `LUNF-Blanking`, and a serial manager. The DMD-in variants load
+29–30. The optical tweezers and the piezo stage are **not** among the 28 —
+they are driven outside Micro-Manager, over TCP and a vendor DLL respectively,
+which is exactly why a shared clock had to be built rather than assumed.
+
 > **Development context.** An independent project, developed primarily during
 > evenings and weekends alongside full-time postdoctoral research at Stanford,
 > begun in early July 2026. It is built on **one** instrument — the microscope
@@ -45,16 +75,23 @@ design, not a gap.
 | **Provenance on every input** | `measured` vs `assumed`, with a separate `advances` axis that only `measured` can satisfy. Literature values compute but never advance → [`kb/literature/`](kb/literature/) |
 | **2,343 prior acquisitions** | normalized out of Micro-Manager metadata into transferable physical quantities, across two schema generations |
 | **884 tests, 841 on CI** | offline; the instrument is not required to run any of them. The badge covers 841 — the other 43 need a Micro-Manager device-adapter install → [running the tests](#running-the-tests) |
+| **A 28-device instrument** | what Micro-Manager loads from `single_cam_red_noDMD.cfg` — Ti2-E and its 14 sub-devices, one Kinetix, seven CSU-W1 devices, two Lumencor engines, NIDAQ hub + LUN-F blanking, serial manager. Tweezers and piezo sit outside those 28 → [above](#agentic-microscope) |
 | **Hardware drivers** | microscope (pymmcore-plus), optical tweezers (TCP), piezo stage (vendor DLL), trap patterns, piezo waveforms, and a shared-clock orchestrator |
-| **First light on real hardware** | piezo and optical tweezers each driven from this repository, **separately** — 2026-08-27 |
+| **First light on real hardware** | piezo and optical tweezers each driven from this repository, **separately** — 2026-08-27. **All three subsystems together on one clock — 2026-09-03**, with per-frame timestamps; κ = 3.65–4.5 pN/µm from three independent routes |
+| **A written hazard account** | [`SAFETY.md`](SAFETY.md) — laser classes, the objective/coverslip collision procedure, camera ownership order, and the failure modes that return `0`. **First draft, not yet operator-reviewed** |
 | **An MCP surface over both bespoke paths** | tweezers and piezo as 9 MCP tools in four tiers, the two moving ones refused by default, verified end to end over stdio but **not yet against a device** → [below](#an-mcp-surface-over-the-two-bespoke-paths) |
 | **Refusal paths that hold** | `hardware/lunf_power.py` is complete as transport and refuses to transmit, because the DAC word format is undocumented and a guessed byte goes into a laser driver |
 
-What is **not** true today, stated here so nothing above implies it: the three
-subsystems have not been run together on one clock; **no MCP tool has reached a
-device**; no experiment has been executed end to end by the agent; there is no
-closed feedback loop. Those are the
+What is **not** true today, stated here so nothing above implies it: **no MCP
+tool has reached a device**; no experiment has been executed end to end by the
+agent; there is no closed feedback loop; and nothing analyses a frame while the
+run is still going. Those are the
 [current execution boundary](#current-execution-boundary).
+
+One correction the 2026-09-03 run forced, kept here rather than quietly
+dropped: `Breakpoints > Enable Bits` is `0000`, so `TRAP_PATT_RELEASE_BP`
+returns `0` while doing nothing. **Every release-round-trip latency figure
+measured before that date is precision on a command with no effect.**
 
 > The useful measure is not how much of this exists. It is how many places the
 > system refuses to turn a missing number into a confident one.
@@ -462,11 +499,17 @@ microrheology.
 **What is missing is a seam, not a subsystem.** Items 0a, 0b and 0c are not part
 of the chain and jump the queue anyway — each is waiting only on being at the
 instrument, and 0a's and 0b's hardware has now arrived. Then five: **1–3 are the
-missing path from a committee verdict to a running instrument**; 4 is the first
-real use of that path, and the only test of whether any of the rest was right; 5
-is what a run does with what it is seeing while it is still happening. Items 1–3
+missing path from a committee verdict to a running instrument** — **item 1 is
+done as of 2026-09-03** — 4 is the first real use of that path, and the only
+test of whether any of the rest was right; **5 is the next step**, and is what a
+run does with what it is seeing while it is still happening. Items 1–3
 sit between stages 5d and 5e, and 5 is 5e itself
 → [07 Phase 5](docs/07-roadmap.md#phase-5--automating-microscope-operation).
+
+> **Every item below that moves hardware — 0a, 0b, 0c, 1, 4, 5 — is gated on
+> [`SAFETY.md`](SAFETY.md) first.** Read it before the laser is armed, before a
+> nosepiece write, and before the piezo is unlocked. It is a first draft and
+> not yet operator-reviewed.
 A note on how this would look under Anthropic's Model Hardware Standard is in
 [`docs/mhs-integration.md`](docs/mhs-integration.md), deliberately off the main
 line.
@@ -586,9 +629,19 @@ line.
   limits; it changes six call sites, which is why it was not done as a side
   effect of adding the server.
 
-- [ ] **1 · Run the three subsystems on one timeline.** A master script over
-  three sub-scripts — optical tweezers · microscope (Micro-Manager) · piezo
-  stage — with the shared variables **confirmed** rather than assumed.
+- [x] **1 · Run the three subsystems on one timeline.** ✅ **Done 2026-09-03.**
+  A master script over three sub-scripts — optical tweezers · microscope
+  (Micro-Manager) · piezo stage — with the shared variables **confirmed**
+  rather than assumed.
+  [`config/session/run_trap_stage_sine.py`](config/session/run_trap_stage_sine.py)
+  put both zeros on the camera's clock and recorded per-frame timestamps
+  through [`calibration/timestamped_capture.py`](calibration/timestamped_capture.py).
+
+  **What is still open inside this item**, so the checkbox is not read as more
+  than it is: the tweezers still have no timestamp of their own — all three
+  routes below remain unbuilt, and the breakpoint route is now known to be
+  worse than it looked, because `TRAP_PATT_RELEASE_BP` returns `0`
+  unconditionally. The camera-ownership conflict is unresolved.
 
   **The first action is smaller than that**: re-run the two scripts that have
   already driven each subsystem alone. [`try_hardware.py`](try_hardware.py)
@@ -714,10 +767,27 @@ line.
      argues a simulation should supply. Here it has to come out of the data
      instead, which makes it the cleanest check of the two against each other.
 
-- [ ] **5 · Real-time analysis, and the feedback it pays for — as far as the
-  compute budget allows.** Analyse during the acquisition rather than after it,
-  and let what comes out change the run: trim, extend, adjust, or abort. This is
-  stage 5e, the one stage of Phase 5 not started.
+- [ ] **5 · Real-time image analysis — ⭐ THE NEXT STEP (from 2026-09-03).**
+  With item 1 done, this is what the queue advances to. Analyse during the
+  acquisition rather than after it, and let what comes out change the run:
+  trim, extend, adjust, or abort. This is stage 5e, the one stage of Phase 5
+  not started.
+
+  **Two halves, and the second is what makes the first trustworthy.**
+
+  - **Particle trapping, live.** Detect on each frame whether a bead is held —
+    and, one rung up, re-acquire one that has been lost. This is the smallest
+    closed loop available and the first place feedback moves hardware instead
+    of merely stopping it.
+  - **Post-processing that confirms the physical experiment is actually
+    working.** Run the analysis against the frames as they land and check the
+    result is physics and not an artefact: does the MSD have the slope the
+    drive implies, does κ from the live data agree with the 3.65–4.5 pN/µm
+    already measured by three independent routes, is the bead responding to the
+    trap at the commanded frequency at all. **This is the only thing that can
+    catch a tweezers command that returned `0` and did nothing** — the
+    `TRAP_PATT_RELEASE_BP` failure was found this way and no other way. On an
+    instrument with no readback, measuring the result *is* the readback.
 
   **How much analysis is affordable is a verdict, not a preference.** Lens 3
   already states the condition — with real-time processing attached, CPU time
