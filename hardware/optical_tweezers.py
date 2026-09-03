@@ -294,19 +294,25 @@ class OpticalTweezers:
     def load_pattern(self, pattern_name, pattern_file, file_first=False):
         """Load a .tpf pattern file and name it.
 
-        The manual contradicts itself on the argument order, so this is the one
-        command here whose form is unconfirmed. The Command List (p.68) gives
-        ``LOAD_PATTERN <pattern name> <pattern file>``; the worked example
-        (p.69) writes ``LOAD_PATTERN Sample.tsf "Patt 1"`` -- file first, and
-        with the extension misspelt (.tsf; it is .tpf everywhere else) and a
-        relative path where the same page states "File paths are absolute".
-        The example looks like the sloppier of the two, so the Command List
-        order is the default; pass ``file_first=True`` to flip it.
+        **Argument order settled 2026-09-03 on the real GUI: name first.**
 
-        Resolve it on the microscope PC by watching the GUI's Status Pane >
-        TCP/IP Svr log: a wrong order should come back -10 (invalid command
-        line) or -27 (invalid parameters). Paths should be absolute either way.
-        Pattern files can be generated with hardware/tweezers_patterns.py.
+            LOAD_PATTERN "Sine 1Hz Y" "C:\\agentic_microscope\\sine-1hz-y-bp.tpf"
+            -> 0
+
+        The manual contradicted itself and this was the one command here whose
+        form was unconfirmed: the Command List (p.68) gives ``LOAD_PATTERN
+        <pattern name> <pattern file>``, while the worked example (p.69) writes
+        ``LOAD_PATTERN Sample.tsf "Patt 1"`` -- file first, with the extension
+        misspelt (.tsf; it is .tpf everywhere else) and a relative path on the
+        same page that states "File paths are absolute". The Command List wins;
+        the example is the sloppier of the two, as suspected. ``file_first=True``
+        is kept for the other GUI versions this has not been tried against.
+
+        What the 0 does **not** establish, because the TCP interface has no
+        readback of any kind: that the pattern arrived under the name asked for,
+        or that its point count matches the file. Check the GUI's pattern list.
+        Paths are absolute either way. Pattern files can be generated with
+        hardware/tweezers_patterns.py.
         """
         args = (pattern_file, pattern_name) if file_first else (pattern_name, pattern_file)
         self.do(f"LOAD_PATTERN {_quote(args[0])} {_quote(args[1])}")

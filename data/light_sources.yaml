@@ -90,9 +90,38 @@ light_sources:
   # — fwhm unconfirmed.
   # ══════════════════════════════════════════════════════════════════════
   LightEngine:
-    model: "Lumencor Spectra III"     # 2026-08-10 confirmed (earlier assumption "8-NII-XS" dropped — actually 7 channels)
+    # ⚠⚠ 2026-09-03: THE DEVICE CONTRADICTS THIS ENTRY. Read live over MMCore
+    # from the loaded adapter (config/micromanager/single_cam_red_noDMD.cfg):
+    #
+    #     LEModel        = "Spectra III 8-NII-XS"      <- the name dropped below
+    #     SerialNumber   = 28145
+    #     FirmwareVersion= 3.5.4
+    #     Connection     = COM3                        <- not Ethernet
+    #     lines (8, NAMED not numeric):
+    #       VIOLET  BLUE  CYAN  TEAL  GREEN  YELLOW  RED  NIR
+    #     each as <NAME> (0/1) + <NAME>_Intensity (0-1000 PER-MILLE, not %)
+    #
+    # So both the channel count (7 vs 8) and the "8-NII-XS dropped" note are
+    # wrong, and GREEN — the 555 line this entry implies does not exist — is
+    # right there on the device. The common factor with the Aura entry below is
+    # that both were read from NIS-Elements diagram icons rather than from the
+    # hardware.
+    #
+    # The numeric keys under `lines:` are LEFT IN PLACE deliberately, because
+    # config/scopes/current-spectra.yaml enumerates them and renaming them is a
+    # multi-file change with gate consequences. Treat the keys as unverified
+    # labels, not as measured centre wavelengths.
+    # Full detail: kb/decisions/2026-09-03-three-subsystems-first-light.md §3
+    model: "Lumencor Spectra III"     # device says "Spectra III 8-NII-XS" (2026-09-03)
     vendor: Lumencor
-    connection: "192.168.201.200 (Ethernet)"
+    connection: "COM3"                # 2026-09-03 read off the device; was recorded as Ethernet
+    device_reported:                  # 2026-09-03, live over MMCore
+      le_model: "Spectra III 8-NII-XS"
+      serial: "28145"
+      firmware: "3.5.4"
+      connection: "COM3"
+      line_names: [VIOLET, BLUE, CYAN, TEAL, GREEN, YELLOW, RED, NIR]
+      intensity_unit: "per-mille (0-1000)"
     note: >
       ⚠ 42 records have `Core-Shutter = LightEngine` yet no non-zero intensity
       was observed anywhere in the scanned range. Means either the property name
@@ -101,6 +130,8 @@ light_sources:
       the NIS-Elements diagram (365/440/488/514/561/594/640). fwhm and measured
       power are still missing — the fwhm_nm values below are catalog-approximation
       placeholders, not measured.
+      ⚠ 2026-09-03: the device reports EIGHT named lines including GREEN — see
+      the comment block above. The line keys below are unverified.
     lines:
       "365": { center_nm: 365, fwhm_nm: 20, power_at_sample_mw: {}, note: "fwhm unconfirmed placeholder" }
       "440": { center_nm: 440, fwhm_nm: 20, power_at_sample_mw: {}, note: "fwhm unconfirmed placeholder" }
@@ -116,10 +147,42 @@ light_sources:
   # — fwhm unconfirmed.
   # ══════════════════════════════════════════════════════════════════════
   Aura:
-    model: "Lumencor Aura III"
+    # ⚠⚠ 2026-09-03: THE DEVICE CONTRADICTS THE LINE LIST BELOW.
+    #
+    #     LEModel        = "Aura III 5-NII-WA"
+    #     SerialNumber   = 30859
+    #     FirmwareVersion= 3.14.7
+    #     lines (5, NAMED not numeric):  UV  CYAN  GREEN  RED  NIR
+    #     each as <NAME> (0/1) + <NAME>_Intensity (0-1000 PER-MILLE, not %)
+    #
+    # The keys below (405/440/488/561/640) came from NIS-Elements diagram icons
+    # and do not match. GREEN is the line actually used for 555 ex / red em on
+    # 2026-09-03; a bead peak of ~30,100 counts over a 208 background was
+    # reached at GREEN_Intensity = 50/1000 (5%) with a 33.33 ms exposure at
+    # 100x, and showed NO measurable bleaching over 5 s (+2.19% first-15 vs
+    # last-15 frames).
+    #
+    # Also: this chassis had to be POWERED ON. Before that, initialisation
+    # failed with "Error : 573" while COM7 opened cleanly from a bare
+    # SerialPort — so 573 from the Lumencor adapter means "no reply", not
+    # "no port".
+    #
+    # Keys left in place: config/scopes/current-aura.yaml enumerates them.
+    # Full detail: kb/decisions/2026-09-03-three-subsystems-first-light.md §3
+    model: "Lumencor Aura III"        # device says "Aura III 5-NII-WA" (2026-09-03)
     vendor: Lumencor
     connection: COM7
-    note: "2026-08-10 product name confirmed in NIS-Elements Device Manager. No fwhm, no measured power."
+    device_reported:                  # 2026-09-03, live over MMCore
+      le_model: "Aura III 5-NII-WA"
+      serial: "30859"
+      firmware: "3.14.7"
+      line_names: [UV, CYAN, GREEN, RED, NIR]
+      intensity_unit: "per-mille (0-1000)"
+    note: >
+      2026-08-10 product name confirmed in NIS-Elements Device Manager. No fwhm,
+      no measured power.
+      ⚠ 2026-09-03: the device reports five NAMED lines (UV/CYAN/GREEN/RED/NIR),
+      not the numeric keys below — see the comment block above. Keys unverified.
     lines:
       "405": { center_nm: 405, fwhm_nm: 20, power_at_sample_mw: {}, note: "fwhm unconfirmed placeholder" }
       "440": { center_nm: 440, fwhm_nm: 20, power_at_sample_mw: {}, note: "fwhm unconfirmed placeholder" }

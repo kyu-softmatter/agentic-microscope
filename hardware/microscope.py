@@ -101,6 +101,47 @@ LASER_DEVICES = frozenset({"LUNF-Blanking"})
 #: kb/decisions/2026-08-26-tweezers-pattern-vs-direct.md.
 COLLISION_DEVICES = frozenset({"Nosepiece", "ZDrive", "PFSOffset"})
 
+#: Where the sample sits in ZDrive coordinates on this instrument, in um.
+#: User, 2026-09-03: "your sample is usually around 2800-3200um in z", and
+#: measured the same day: focused on the sample at 100x Oil with a trapped bead,
+#: ``ZDrive = 2959.000`` and ``PFS in Range = In Range`` -- inside the window.
+SAMPLE_Z_WINDOW_UM = (2800.0, 3200.0)
+
+#: The PFS property that reads whether the coverslip is within capture range.
+#: Named exactly this on the device -- ``getProperty("PFS", "PFS in Range")``,
+#: not a ``<device>-<property>`` composite, which is why the archive key
+#: ``PFS in Range`` looks like it has no device prefix.
+PFS_IN_RANGE_PROPERTY = "PFS in Range"
+PFS_IN_RANGE_VALUE = "In Range"
+
+#: **The Z sign convention is NOT recorded here, on purpose.**
+#:
+#: Which direction of ``ZDrive`` retracts the objective from the sample is still
+#: unmeasured on this instrument. The available argument is circumstantial: the
+#: 4x -> 100x rotation happened at ``ZDrive = 8288.740`` with the sample plane at
+#: 2959, and if +Z moved the lens *toward* the sample a 0.13 mm working-distance
+#: front element would have ended ~5.2 mm past the coverslip -- which does not
+#: happen quietly. Nothing broke, so +Z is probably the retracted direction.
+#:
+#: "Probably" is not good enough to point a 100x Oil objective with, so no guard
+#: below uses it. Both guards are sign-free: one refuses inside the sample
+#: window, the other refuses when PFS can see the coverslip.
+Z_RETRACT_DIRECTION = None  # unmeasured -- do not infer one
+
+#: **The stand does not escape.** Measured 2026-09-03: rotating the Nosepiece
+#: through this adapter from 4x to 100x Oil left ZDrive at 8288.740 um, moving
+#: it +0.000 um -- so the Ti2's own objective-escape does *not* run on an MM
+#: nosepiece write. Whatever Z was focused for the outgoing objective is still
+#: commanded when the incoming one arrives, and a `Plan Apo LmbdD0.13 100x Oil`
+#: has 0.13 mm of working distance to absorb the difference.
+#:
+#: So the guard below is the only escape there is on this path, and it is
+#: deliberately the sign-independent half of the rule: rotating while the front
+#: element is *at* the sample plane is unsafe no matter which way ZDrive counts.
+#: Which direction is retracted is **not** recorded here, because it is not
+#: known -- see `Microscope.change_objective`.
+NOSEPIECE_HAS_NO_ESCAPE = True
+
 #: Devices this repo does not exclusively own. The optical-tweezers GUI loads a
 #: Kinetix, uses it, then releases it (user, 2026-08-26), and PVCAM hands a
 #: camera to one process at a time -- so whoever opens it first locks the other
@@ -334,11 +375,26 @@ class Microscope:
         the stand -- objective, filter turrets, light path, CSU-W1 port. Core
         roles (Camera, Shutter, Focus) are folded in under ``Core.<role>``
         because they are configuration too and MM stores them the same way.
+
+        **Not every state device has labels.** A state device whose positions
+        were never named answers ``getStateLabel`` with "Cannot get current
+        position label", and on the lab's own configuration two do:
+        ``CSUW1-Bright`` and ``LUNF-Blanking`` (measured 2026-09-03 on
+        config/micromanager/single_cam_red_noDMD.cfg). Unguarded that raised
+        out of ``state()`` and took the whole read-state layer with it -- a
+        device with no labels is normal, so it reports its numeric position as
+        ``"state N"`` rather than ending the snapshot.
         """
         out: dict[str, str] = {}
         for label, kind in self.devices().items():
             if kind == DeviceType.StateDevice.name:
-                out[label] = self.core.getStateLabel(label)
+                try:
+                    out[label] = self.core.getStateLabel(label)
+                except Exception:
+                    try:
+                        out[label] = f"state {self.core.getState(label)}"
+                    except Exception:
+                        out[label] = "unreadable"
         for role in ("Camera", "Shutter", "Focus", "XYStage", "AutoFocus"):
             try:
                 out[f"Core.{role}"] = self.core.getProperty("Core", role)
@@ -550,6 +606,74 @@ class Microscope:
             raise MicroscopeError(
                 f"{setting.device}.{setting.property} moves glass toward the "
                 "sample: pass allow_motion=True and check clearance/PFS first"
+            )
+        if setting.device == "Nosepiece":
+            self._require_clear_of_sample()
+
+    def _require_clear_of_sample(self) -> None:
+        """Refuse a Nosepiece rotation with the front element at the sample.
+
+        ``allow_motion`` is not enough here, because the thing it opts into is
+        not the thing that breaks: the stand runs no escape
+        (NOSEPIECE_HAS_NO_ESCAPE), so the rotation happens at whatever Z the
+        previous objective was focused at.
+
+        Two independent checks, in order of how much they are worth:
+
+            PFS ``In Range``   a *measurement* -- PFS bounces IR off the
+                               coverslip, so it reports proximity to the real
+                               sample rather than to a remembered coordinate.
+            Z window           an *assumption* -- that the sample is still where
+                               SAMPLE_Z_WINDOW_UM says it was.
+
+        Both are sign-free, which is the point: ``Z_RETRACT_DIRECTION`` is
+        unmeasured on this instrument, so neither check is allowed to reason
+        about which way is away.
+
+        **The asymmetry matters.** PFS ``In Range`` proves the coverslip is
+        there; PFS ``Out of Range`` proves nothing -- an objective PFS cannot
+        use, a missing coverslip, and a genuinely retracted lens all read the
+        same. So PFS can veto a rotation and can never authorise one, and the Z
+        window is still checked after it passes.
+        """
+        # 1. PFS: a measurement of proximity, not a coordinate. Checked first
+        #    because it is the stronger signal -- it sees the coverslip itself
+        #    rather than trusting that the sample is where it usually is.
+        try:
+            in_range = self.core.getProperty("PFS", PFS_IN_RANGE_PROPERTY)
+        except Exception:
+            in_range = None  # no PFS on this core; fall through to the window
+        if in_range is not None and in_range.strip() == PFS_IN_RANGE_VALUE:
+            raise MicroscopeError(
+                "refusing to rotate the Nosepiece: PFS reports "
+                f"{PFS_IN_RANGE_PROPERTY!r} = {in_range!r}, which means the "
+                "coverslip is within its capture range -- the front element is "
+                "at the sample. The stand runs no objective-escape "
+                "(NOSEPIECE_HAS_NO_ESCAPE), so the incoming objective arrives "
+                "exactly there. Retract clear of the sample first."
+            )
+
+        # 2. The Z window: weaker, because it assumes the sample is where it was
+        #    last recorded. Note the asymmetry deliberately -- PFS "Out of
+        #    Range" is NOT proof of clearance (an objective PFS cannot use, or a
+        #    missing coverslip, reads the same as being far away), so it is
+        #    never allowed to authorise a rotation on its own.
+        lo, hi = SAMPLE_Z_WINDOW_UM
+        try:
+            z_um = self.core.getPosition("ZDrive")
+        except Exception as exc:
+            raise MicroscopeError(
+                "refusing to rotate the Nosepiece: ZDrive position is "
+                f"unreadable ({exc}), so clearance cannot be checked. The "
+                "stand runs no escape -- see NOSEPIECE_HAS_NO_ESCAPE."
+            ) from exc
+        if lo <= z_um <= hi:
+            raise MicroscopeError(
+                f"refusing to rotate the Nosepiece at ZDrive = {z_um:.1f} um: "
+                f"that is inside the sample window {lo:.0f}-{hi:.0f} um, and "
+                "the stand runs no objective-escape, so the incoming front "
+                "element arrives at the coverslip. Retract Z clear of the "
+                "sample first."
             )
 
     def _check_value(self, setting: Setting) -> None:

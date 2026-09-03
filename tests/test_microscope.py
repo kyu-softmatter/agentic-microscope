@@ -55,6 +55,96 @@ def test_laser_blanking_device_is_gated():
     assert "LUNF-Blanking" in mscope.LASER_DEVICES
 
 
+# ---- the Nosepiece has no escape (measured 2026-09-03) ----------------
+
+
+class _FakeCore:
+    """Just enough core to answer a ZDrive position and a PFS range flag."""
+
+    def __init__(self, z_um, pfs=None):
+        self._z = z_um
+        self._pfs = pfs
+
+    def getPosition(self, device):
+        if self._z is None:
+            raise RuntimeError(f"no such device: {device}")
+        return self._z
+
+    def getProperty(self, device, prop):
+        if device == "PFS" and prop == mscope.PFS_IN_RANGE_PROPERTY:
+            if self._pfs is None:
+                raise RuntimeError("no PFS on this core")
+            return self._pfs
+        raise RuntimeError(f"no property {device}.{prop}")
+
+
+def _writable_scope_at_z(z_um, pfs=None):
+    return Microscope(_FakeCore(z_um, pfs), allow_write=True, allow_motion=True)
+
+
+@pytest.mark.parametrize("z_um", [2800.0, 3000.0, 3200.0])
+def test_nosepiece_refuses_inside_the_sample_window(z_um):
+    """The rotation happens at whatever Z the outgoing objective was focused
+    at, because the stand runs no escape -- so inside the sample window the
+    incoming front element arrives at the coverslip."""
+    scope = _writable_scope_at_z(z_um)
+    with pytest.raises(MicroscopeError, match="inside the sample window"):
+        scope.set_property("Nosepiece", "State", "5")
+
+
+@pytest.mark.parametrize("z_um", [0.0, 2799.0, 3201.0, 8288.74])
+def test_nosepiece_guard_is_sign_independent(z_um):
+    """Outside the window the guard makes no claim -- it does not know which
+    side is retracted, so it must not pretend one is safe and one is not.
+    Both sides get past this guard and fail later on the fake core instead."""
+    scope = _writable_scope_at_z(z_um)
+    with pytest.raises(Exception) as exc:
+        scope.set_property("Nosepiece", "State", "5")
+    assert "inside the sample window" not in str(exc.value)
+
+
+def test_nosepiece_refuses_when_z_is_unreadable():
+    scope = _writable_scope_at_z(None)
+    with pytest.raises(MicroscopeError, match="unreadable"):
+        scope.set_property("Nosepiece", "State", "5")
+
+
+def test_sample_z_window_is_the_users_recorded_range():
+    assert mscope.SAMPLE_Z_WINDOW_UM == (2800.0, 3200.0)
+
+
+def test_pfs_in_range_vetoes_a_rotation_even_well_clear_of_the_z_window():
+    """PFS measures proximity to the real coverslip; the Z window only assumes
+    the sample is where it was recorded. So an In Range reading must veto even
+    at a Z the window calls safe -- measured 2026-09-03 at ZDrive 2959 with
+    PFS In Range, i.e. the sample was exactly where PFS said."""
+    scope = _writable_scope_at_z(8288.74, pfs="In Range")
+    with pytest.raises(MicroscopeError, match="capture range"):
+        scope.set_property("Nosepiece", "State", "5")
+
+
+def test_pfs_out_of_range_does_not_authorise_a_rotation():
+    """The asymmetry: Out of Range proves nothing -- an objective PFS cannot
+    use reads the same as a retracted one -- so the Z window is still enforced
+    behind it."""
+    scope = _writable_scope_at_z(2959.0, pfs="Out of Range")
+    with pytest.raises(MicroscopeError, match="inside the sample window"):
+        scope.set_property("Nosepiece", "State", "5")
+
+
+def test_missing_pfs_falls_through_to_the_z_window():
+    """A core with no PFS at all must not silently skip the check."""
+    scope = _writable_scope_at_z(2959.0, pfs=None)
+    with pytest.raises(MicroscopeError, match="inside the sample window"):
+        scope.set_property("Nosepiece", "State", "5")
+
+
+def test_z_retract_direction_is_deliberately_unrecorded():
+    """If this ever becomes non-None it must be because someone measured it,
+    not because a guard wanted it."""
+    assert mscope.Z_RETRACT_DIRECTION is None
+
+
 # ---- live demo core ---------------------------------------------------
 
 
