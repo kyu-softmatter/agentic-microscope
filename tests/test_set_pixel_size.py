@@ -26,15 +26,28 @@ _spec.loader.exec_module(sps)
 
 @pytest.fixture
 def bare(tmp_path: Path) -> Path:
-    """A copy of the lab config with its pixel-size presets stripped."""
-    raw = CFG.read_bytes()
+    """A copy of the lab config with its pixel-size presets stripped.
+
+    Split with the module's own `read_cfg`, not on a hardcoded CRLF. This
+    fixture used to split on CRLF, which is what `core.autocrlf` gives a
+    Windows working copy and is not what macOS and Linux get. Against an LF
+    checkout that split returns the entire file as one "line", no line matches
+    either prefix, nothing is stripped, and every test taking this fixture is
+    handed a verbatim copy with all six presets still in it -- so the tool was
+    asked to add a preset that was already there and reported "already covers"
+    instead. Green on Windows, three failures on the other two, and the tool
+    itself was never at fault. See
+    `test_the_lab_config_line_endings_are_consistent` for the same hazard
+    stated as a property.
+    """
+    lines, eol = sps.read_cfg(CFG)
     kept = [
         line
-        for line in raw.split(b"\r\n")
-        if not line.startswith((b"ConfigPixelSize,", b"PixelSize_um,"))
+        for line in lines
+        if not line.startswith(("ConfigPixelSize,", "PixelSize_um,"))
     ]
     out = tmp_path / "bare.cfg"
-    out.write_bytes(b"\r\n".join(kept))
+    out.write_bytes(eol.join(kept).encode("utf-8"))
     return out
 
 
@@ -60,14 +73,32 @@ def test_the_lab_config_line_endings_are_consistent():
 
 
 def test_reader_survives_a_mixed_file(bare: Path, tmp_path: Path):
-    """The parser must not trust the file to be clean -- see read_cfg."""
+    """The parser must not trust the file to be clean -- see read_cfg.
+
+    The odd line is swapped to *the other* ending, whichever this checkout
+    produced, so the file is genuinely mixed on all three platforms. Written
+    as a fixed CRLF-to-LF swap, this was a no-op against an LF checkout: the
+    substring did not occur, `mixed` was a clean copy, and the assertion below
+    passed without a mixed file ever existing. It is the one test here that
+    stayed green on macOS and Linux while testing nothing.
+    """
     additions, _ = sps.plan(bare, 40, 1.0)
     sps.apply(bare, additions)
 
+    _, eol = sps.read_cfg(bare)
+    other = "\n" if eol == "\r\n" else "\r\n"
+    target = f"{eol}ConfigPixelSize,40x-1x"
+    raw = bare.read_bytes()
+    assert target.encode("utf-8") in raw, "fixture did not write the 40x preset"
+
     mixed = tmp_path / "mixed.cfg"
-    mixed.write_bytes(bare.read_bytes().replace(
-        b"\r\nConfigPixelSize,40x-1x", b"\nConfigPixelSize,40x-1x"
-    ))
+    mixed.write_bytes(
+        raw.replace(target.encode("utf-8"), f"{other}ConfigPixelSize,40x-1x".encode("utf-8"), 1)
+    )
+    blob = mixed.read_bytes()
+    crlf, lf_total = blob.count(b"\r\n"), blob.count(b"\n")
+    assert 0 < crlf < lf_total, f"not mixed: {crlf} CRLF among {lf_total} lines"
+
     lines, _ = sps.read_cfg(mixed)
     assert sps.existing_presets(lines)["40x-1x"] == ("4-Apo LmbdS 40x WI", 0.1625)
 
@@ -92,11 +123,23 @@ def test_write_then_the_preset_is_there_and_matches(bare: Path):
     assert presets["40x-1x"] == ("4-Apo LmbdS 40x WI", 0.1625)
 
 
-def test_write_preserves_crlf(bare: Path):
+def test_write_preserves_the_files_own_line_ending(bare: Path):
+    """`apply` keeps whichever ending it was given, and does not mix.
+
+    Was `test_write_preserves_crlf`, asserting every newline is CRLF. That is
+    only true where `core.autocrlf` produced a CRLF working copy, so it failed
+    on macOS and Linux for a reason that had nothing to do with `apply`. What
+    `apply` actually promises is the property `read_cfg` documents: write back
+    the ending the file already had, and never leave a mixed file behind.
+    """
+    _, eol_before = sps.read_cfg(bare)
     additions, _ = sps.plan(bare, 40, 1.0)
     sps.apply(bare, additions)
+
     raw = bare.read_bytes()
-    assert raw.count(b"\n") - raw.count(b"\r\n") == 0
+    crlf, lf_total = raw.count(b"\r\n"), raw.count(b"\n")
+    assert crlf in (0, lf_total), f"mixed: {crlf} CRLF among {lf_total} lines"
+    assert sps.read_cfg(bare)[1] == eol_before
 
 
 def test_running_twice_is_not_a_duplicate(bare: Path):
