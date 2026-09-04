@@ -1,6 +1,6 @@
 name: tests (Micro-Manager)
 
-# The 43 tests that tests.yml skips: live Micro-Manager access through
+# The 56 tests that tests.yml skips: live Micro-Manager access through
 # pymmcore-plus. Deliberately not the badge workflow -- it depends on
 # `mmcore install` fetching a Micro-Manager nightly, so a red run here can mean
 # the download changed rather than the repository did.

@@ -61,8 +61,20 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from math import isclose
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from pymmcore_plus import CMMCorePlus, DeviceType, PropertyType
+# pymmcore-plus is imported at each use site, not here, and that is load-bearing
+# rather than tidiness. Importing this module must not require it:
+# `_objective_mag_from_label` and `_intermediate_mag_from_label` are pure label
+# parsing, and both config/micromanager/set_pixel_size.py and
+# tests/test_pixel_size.py pull them in on machines with no Micro-Manager at
+# all -- which includes every CI runner, since tests.yml installs
+# requirements-mcp.txt and deliberately not requirements-micromanager.txt. A
+# top-level import here made those two test modules fail *collection*, so
+# `pytest` exited 2 and no test in the suite ran, rather than the 43 live-MM
+# tests skipping the way tests.yml documents.
+if TYPE_CHECKING:
+    from pymmcore_plus import CMMCorePlus
 
 #: Device-adapter strings that must never appear in a loaded configuration,
 #: mapped to why. MM initializes an analog-output device by writing 0 V, and
@@ -178,7 +190,18 @@ _IDENTITY_PROPERTIES = frozenset({"Description", "Name", "HubID"})
 READBACK_RTOL = 1e-3
 READBACK_ATOL = 1e-6
 
-_NUMERIC_TYPES = frozenset({PropertyType.Float, PropertyType.Integer})
+def _numeric_types() -> frozenset:
+    """The ``PropertyType`` members `_readback_ok` compares with tolerance.
+
+    A function rather than a module constant because it was the one use of
+    pymmcore-plus that ran at *import* time, and so the one thing standing
+    between this module and being importable without Micro-Manager installed.
+    Resolved on each call; `_readback_ok` only reaches here for a property that
+    already failed an exact-string comparison.
+    """
+    from pymmcore_plus import PropertyType
+
+    return frozenset({PropertyType.Float, PropertyType.Integer})
 
 
 class MicroscopeError(RuntimeError):
@@ -340,6 +363,8 @@ class Microscope:
         to point at the lab's MM install rather than the ``mmcore install``
         build (see module docstring on Ti2_Mic_Driver.dll).
         """
+        from pymmcore_plus import CMMCorePlus  # deferred: see the module header
+
         core = CMMCorePlus()
         if mm_dir is not None:
             core.setDeviceAdapterSearchPaths([str(mm_dir)])
@@ -426,6 +451,8 @@ class Microscope:
         device with no labels is normal, so it reports its numeric position as
         ``"state N"`` rather than ending the snapshot.
         """
+        from pymmcore_plus import DeviceType  # deferred: see the module header
+
         out: dict[str, str] = {}
         for label, kind in self.devices().items():
             if kind == DeviceType.StateDevice.name:
@@ -617,7 +644,7 @@ class Microscope:
         tolerance, everything else exactly. See READBACK_RTOL."""
         if got == wanted:
             return True
-        if self.core.getPropertyType(device, prop) not in _NUMERIC_TYPES:
+        if self.core.getPropertyType(device, prop) not in _numeric_types():
             return False
         try:
             return isclose(

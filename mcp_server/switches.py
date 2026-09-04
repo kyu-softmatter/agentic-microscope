@@ -75,7 +75,8 @@ class Switches:
             ),
             "how_to_enable": (
                 f"set {env}=1 in the environment the MCP server is launched "
-                "with (.mcp.json > mcpServers > agentic-microscope > env), then "
+                "with (.mcp.json > mcpServers > agentic-microscope-hardware > "
+                "env), then "
                 "restart it. Do that only at the instrument, with clearance "
                 "checked."
             ),

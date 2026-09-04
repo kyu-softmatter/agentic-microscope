@@ -5,9 +5,24 @@
 #   hardware/microscope.py      config read / compare / propose / apply (5a-5d)
 #
 # Their tests -- tests/test_calibration_mm_live.py, tests/test_ram_capture.py,
-# tests/test_microscope.py, 43 tests in all -- open with
+# tests/test_microscope.py, 56 tests in all -- open with
 # `pytest.importorskip("pymmcore_plus")`, so nothing else in the repository
 # imports it or tests against it.
+#
+# That last clause was false between the pixel-size work and 2026-09-04.
+# hardware/microscope.py imported pymmcore-plus at module level, so
+# config/micromanager/set_pixel_size.py and tests/test_pixel_size.py -- which
+# want two pure label parsers out of it and nothing else -- dragged the package
+# in transitively and failed collection wherever it was absent.
+#
+# Only hardware/microscope.py was changed, and the asymmetry is deliberate.
+# It defers pymmcore-plus to its use sites because non-Micro-Manager code
+# imports it for those parsers. mm_live.py still imports at module level, which
+# is safe precisely because nothing reaches it unguarded: calibration/cli.py
+# imports it inside the three subcommands that need it, and the two test
+# modules import it after `importorskip`. ram_capture.py already deferred.
+# The rule is not "never import at module level" -- it is that a module
+# reachable from code which does not need Micro-Manager must not require it.
 #
 # The package alone is not enough: the device adapters have to be there too.
 # Run `mmcore install`, or point pymmcore-plus at the lab's own MM2 setup on
