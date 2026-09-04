@@ -117,6 +117,60 @@ def test_intermediate_label_parses(label):
 
 
 @pytest.mark.parametrize("label", [None, "state 0", "state 1", "unreadable", ""])
-def test_unlabelled_intermediate_refuses_rather_than_assuming_1x(label):
-    """A turret position is not a factor, and 1x is wrong when 1.5x is in."""
+def test_unlabelled_intermediate_is_not_parsed_as_a_factor(label):
+    """A turret position is not a magnification.
+
+    ``Microscope.pixel_size_um`` then falls back to
+    :data:`~hardware.microscope.DEFAULT_INTERMEDIATE_MAG` and says so in its
+    provenance; the parser's job is only to refuse to invent a factor from a
+    position index.
+    """
     assert _intermediate_mag_from_label(label) is None
+
+
+def test_the_cfg_presets_match_the_recorded_table():
+    """The .cfg's 1x block and data/pixel_size.yaml cannot drift apart.
+
+    Two copies of the same number in two files is how a calibration goes stale
+    silently, so this reads the .cfg back and compares every preset.
+    """
+    from pathlib import Path
+
+    from hardware.microscope import _objective_mag_from_label
+
+    cfg = (
+        Path(__file__).resolve().parent.parent
+        / "config"
+        / "micromanager"
+        / "single_cam_red_noDMD.cfg"
+    )
+    lines = cfg.read_text(encoding="utf-8").splitlines()
+
+    objective_of: dict[str, str] = {}
+    for line in lines:
+        if line.startswith("ConfigPixelSize,") and ",Nosepiece,Label," in line:
+            preset = line.split(",")[1]
+            objective_of[preset] = line.split(",Label,", 1)[1]
+
+    sizes = {
+        line.split(",")[1]: float(line.split(",")[2].split("#")[0])
+        for line in lines
+        if line.startswith("PixelSize_um,")
+    }
+
+    assert sizes, "the .cfg lost its PixelSize block"
+    assert set(sizes) == set(objective_of), "a preset is missing one of its two lines"
+
+    for preset, um in sizes.items():
+        mag = _objective_mag_from_label(objective_of[preset])
+        assert mag is not None, preset
+        assert recorded_pixel_um(mag, 1.0)[0] == pytest.approx(um), preset
+
+    # Every objective on the nosepiece is covered, so no position silently
+    # falls back to MM's 0.0.
+    nosepiece_labels = {
+        line.split(",", 3)[3]
+        for line in lines
+        if line.startswith("Label,Nosepiece,")
+    }
+    assert set(objective_of.values()) == nosepiece_labels

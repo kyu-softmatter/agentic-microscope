@@ -1,6 +1,7 @@
 """Command-line front end for Phase-0 hardware calibration measurements.
 
     python -m calibration.cli disk-bandwidth D:\\data\\_bench --size-gb 4
+    python -m calibration.cli intermediate-mag "C:\\...\\single_cam_red_noDMD.cfg"
     python -m calibration.cli camera-readout "C:\\...\\DMD_dualcam.cfg"
     python -m calibration.cli camera-probe "C:\\...\\DMD_dualcam.cfg" --cameras Camera-1,Camera-2
     python -m calibration.cli ram-burst "C:\\...\\DMD_dualcam.cfg" --camera Camera-1 \\
@@ -34,6 +35,79 @@ def cmd_disk_bandwidth(args: argparse.Namespace) -> int:
         "\nrecord this in kb/systems/current.md (e.g. a `calibrations:` "
         "block) -- G12 needs it as disk_bandwidth_mb_s to gate camera data "
         "rate at 0.7x this value (docs/04-decision-engine.md §9)."
+    )
+    return 0
+
+
+def cmd_intermediate_mag(args: argparse.Namespace) -> int:
+    """Read the intermediate-magnification turret and emit the .cfg lines for it.
+
+    The one reading this repository cannot take from the offline PC, and the
+    one thing standing between ``data/pixel_size.yaml`` and Micro-Manager
+    answering ``getPixelSizeUm()`` for itself. Run it at the microscope, paste
+    what it prints.
+    """
+    from . import mm_live  # deferred: only this subcommand needs pymmcore-plus
+
+    from optics.components import recorded_pixel_um
+
+    core = mm_live.connect(args.config)
+    device = args.device
+
+    try:
+        positions = mm_live.state_device_positions(core, device)
+    except Exception as exc:
+        print(f"could not read {device!r}: {exc}")
+        print("\nis it loaded in this config? `Device,<label>,NikonTi2,...`")
+        return 1
+
+    print(f"{device}: {len(positions)} positions")
+    for state, label in positions:
+        shown = repr(label) if label else "(unnamed)"
+        print(f"  state {state} -> {shown}")
+
+    unnamed = [s for s, lab in positions if not lab]
+    print(
+        "\nWhich state is 1x and which is 1.5x is a fact about the stand, not "
+        "about this output. Turn the turret by hand, confirm, then name them:"
+    )
+    for state, label in positions:
+        suggested = label or ("1x" if state == 0 else "1.5x")
+        print(f"  Label,{device},{state},{suggested}")
+    if unnamed:
+        print(
+            f"\n  ^ {len(unnamed)} of those are guesses at the ordering. "
+            "Confirm before pasting."
+        )
+
+    # The pixel-size block, one preset per objective x intermediate.
+    print("\n# PixelSize settings   -- paste under the .cfg's own header")
+    nosepiece = args.nosepiece
+    for state, label in positions:
+        factor_label = label or ("1x" if state == 0 else "1.5x")
+        try:
+            factor = float(factor_label.rstrip("xX"))
+        except ValueError:
+            print(f"# {factor_label!r} is not a magnification -- skipped")
+            continue
+        for obj_state, obj_label in mm_live.state_device_positions(core, nosepiece):
+            from hardware.microscope import _objective_mag_from_label
+
+            mag = _objective_mag_from_label(obj_label)
+            if mag is None:
+                continue
+            hit = recorded_pixel_um(mag, factor)
+            if hit is None:
+                print(f"# no recorded pixel size for {mag:g}x x {factor:g}x")
+                continue
+            um, evidence = hit
+            preset = f"{mag:g}x-{factor_label}"
+            print(f"ConfigPixelSize,{preset},{nosepiece},Label,{obj_label}")
+            print(f"ConfigPixelSize,{preset},{device},Label,{factor_label}")
+            print(f"PixelSize_um,{preset},{um}   # {evidence}")
+    print(
+        "\nA preset matches only when EVERY property line in it matches, so at "
+        "an unlisted combination MM reports 0.0 rather than a wrong number."
     )
     return 0
 
@@ -129,6 +203,21 @@ def main(argv: list[str] | None = None) -> int:
         help="test file size in GB (default 2 -- large enough that OS cache can't absorb it)",
     )
     d.set_defaults(func=cmd_disk_bandwidth)
+
+    i = sub.add_parser(
+        "intermediate-mag",
+        help="read the intermediate-magnification turret and emit its .cfg lines",
+    )
+    i.add_argument("config", help="Micro-Manager .cfg path (on the microscope PC)")
+    i.add_argument(
+        "--device", default="IntermediateMagnification",
+        help="state-device label of the magnification changer",
+    )
+    i.add_argument(
+        "--nosepiece", default="Nosepiece",
+        help="state-device label of the objective turret",
+    )
+    i.set_defaults(func=cmd_intermediate_mag)
 
     r = sub.add_parser(
         "camera-readout",

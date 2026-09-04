@@ -630,14 +630,31 @@ pixel_size_calibration:
     cells turn out to be arithmetic.**
 
     It had been recorded here since 2026-08-10 and read by nobody: the MM `.cfg`
-    carries an empty `# PixelSize settings` block, so `getPixelSizeUm()` answers
+    carried an empty `# PixelSize settings` block, so `getPixelSizeUm()` answered
     0.0, and `detection.photometry.effective_pixel_nm` computed
     `p_sensor / (M_obj * M_int)` from the datasheet instead. An agent asked at
     the instrument for a pixel size and was told there was none. It is now
     mirrored to `data/pixel_size.yaml`, loaded by
     `optics.components.recorded_pixel_um`, preferred by G5 through
     `DetectionSetup.pixel_size_nm`, and reachable live through
-    `Microscope.pixel_size_um`.
+    `Microscope.pixel_size_um`. **The `.cfg` block is filled too**, so MM itself
+    answers -- but only for the 1x column, and that is the open half:
+
+      `IntermediateMagnification` has **no `Label` lines anywhere in the `.cfg`**
+      while the Nosepiece has six, so a pixel-size preset naming both devices
+      cannot be written. The presets key on the Nosepiece alone and MM therefore
+      reports the 1x number **whatever the changer is set to** -- high by exactly
+      1.5x when the 1.5x is engaged. 1x is the assumed default on the operator's
+      instruction (2026-09-04) because it is the stand's normal state;
+      `Microscope.pixel_size_um` returns `assumed_intermediate_1x` as its
+      provenance whenever it leans on that, so the assumption travels with the
+      number.
+
+      **One command at the instrument closes it:**
+      `python -m calibration.cli intermediate-mag <cfg>` reads the turret,
+      prints its `Label` lines and a full two-property preset per objective x
+      factor. Once a preset names both devices MM matches only when both agree,
+      and reports 0.0 at an unlisted combination -- absent rather than wrong.
 
     **Mirroring it exposed something the spreadsheet did not say.** Against
     6.5 um / (M_obj * M_int), eleven of the twelve cells agree to every digit

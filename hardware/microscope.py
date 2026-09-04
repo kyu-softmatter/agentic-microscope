@@ -242,6 +242,15 @@ def check_config_file(cfg_path: str | Path) -> None:
         raise MicroscopeError(f"{cfg_path} declares a forbidden device -- {detail}")
 
 
+#: What to assume when the intermediate-magnification turret cannot be read.
+#: Set to 1x on the operator's instruction (2026-09-04): it is the stand's
+#: normal state. **The assumption is not silent** -- `pixel_size_um` returns
+#: ``"assumed_intermediate_1x"`` as its provenance whenever it is used, because
+#: this factor is the one place a wrong pixel size is wrong by 1.5x rather than
+#: by a rounding error. `python -m calibration.cli intermediate-mag <cfg>` reads
+#: the turret and retires the assumption.
+DEFAULT_INTERMEDIATE_MAG = 1.0
+
 #: A magnification token standing alone: " 40x", "100x " -- but not the digits
 #: inside a design code. The lab's own labels are the reason this is not a bare
 #: ``\d+x`` search: "1-Plan Apo LmbdD20 4x" and "6-Plan Apo LmbdD0.13 100x Oil"
@@ -444,17 +453,30 @@ class Microscope:
         microscope what its pixel size is gets told nothing. The value has been
         recorded since 2025-04; it was just never anywhere code could reach.
         ``data/pixel_size.yaml`` is that value, and this method is the bridge.
+        The ``.cfg`` now carries the 1x presets too, so ``getPixelSizeUm()``
+        answers as well -- but only this path reports where the number came from.
 
-        Returns ``(um_per_px, provenance)``. Raises :class:`MicroscopeError`
-        rather than guessing when either magnification cannot be read -- a
-        pixel size is the scale factor under every distance this instrument
-        reports, so a plausible default here is silently wrong everywhere.
+        Returns ``(um_per_px, provenance)``, and **the provenance is the part to
+        read**:
 
-        Two things it deliberately does not do. It does not fall back to
-        ``p_sensor / M`` when the objective is off-table, because the caller
-        should know it is holding arithmetic and not a record. And it does not
-        write the answer back into the running core -- see the note below on
-        why the ``.cfg`` was left alone.
+        ``"measured"``
+            the 20x row, the one that departs from ``p_sensor / M``.
+        ``"nominal"``
+            the table agrees with the quotient, so this is arithmetic.
+        ``"assumed_intermediate_1x"``
+            the magnification changer could not be read and
+            :data:`DEFAULT_INTERMEDIATE_MAG` was used. **Whatever the objective
+            row claimed, the product is an assumption** -- and if the 1.5x is
+            actually engaged this number is high by exactly 1.5x. Retire it with
+            ``python -m calibration.cli intermediate-mag <cfg>``.
+
+        It still raises :class:`MicroscopeError` when the *objective* cannot be
+        read, because there is no comparable default for that -- the six
+        objectives differ by 25x end to end, not by 1.5x.
+
+        One thing it deliberately does not do: fall back to ``p_sensor / M``
+        when the objective is off-table. The caller should know it is holding
+        arithmetic rather than a record.
         """
         from optics.components import recorded_pixel_um
 
@@ -472,6 +494,7 @@ class Microscope:
                 f"{label!r}; data/pixel_size.yaml is keyed on magnification"
             )
 
+        assumed_intermediate = False
         if "IntermediateMagnification" not in self.devices():
             # No changer on this stand, so 1x is the only thing it can be.
             mag_int: float | None = 1.0
@@ -479,13 +502,8 @@ class Microscope:
             raw_int = state.get("IntermediateMagnification")
             mag_int = _intermediate_mag_from_label(raw_int)
             if mag_int is None:
-                raise MicroscopeError(
-                    f"the intermediate magnification reads {raw_int!r}, which is "
-                    "not a magnification this repository can key on. It scales "
-                    "the pixel size by 1.5x, so defaulting to 1x is wrong exactly "
-                    "when the 1.5x is engaged -- name the turret's positions in "
-                    "the .cfg, or read the factor off the stand"
-                )
+                mag_int = DEFAULT_INTERMEDIATE_MAG
+                assumed_intermediate = True
 
         binning = 1
         try:
@@ -499,7 +517,13 @@ class Microscope:
                 f"no recorded pixel size for {mag:g}x x {mag_int:g}x "
                 f"(binning {binning}) in data/pixel_size.yaml"
             )
-        return hit
+        um, evidence = hit
+        if assumed_intermediate:
+            # The factor was not readable and 1x was assumed. Whatever the table
+            # said about the objective row, the product is now an assumption --
+            # the weakest link sets the tier, or the tier means nothing.
+            evidence = "assumed_intermediate_1x"
+        return um, evidence
 
     def groups(self) -> dict[str, tuple[str, ...]]:
         """ConfigGroup name -> its preset names."""

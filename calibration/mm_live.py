@@ -89,3 +89,34 @@ def snap_mean_intensity(core: CMMCorePlus, camera: str) -> float:
     core.setCameraDevice(camera)
     core.snapImage()
     return float(core.getImage().mean())
+
+
+def state_device_positions(core: CMMCorePlus, device: str) -> list[tuple[int, str]]:
+    """Every ``(state, label)`` pair a state device has, whether named or not.
+
+    Written for ``IntermediateMagnification``, whose positions are named
+    nowhere in the lab's ``.cfg`` -- the Nosepiece has six ``Label`` lines and
+    that turret has none. Until they are read, the factor it applies to the
+    pixel size (1x vs 1.5x) is unknown to this repository, and a pixel size is
+    the scale under every distance the instrument reports.
+
+    An unnamed position answers with a raw ``"State-N"`` or raises; both come
+    back here as the empty string rather than ending the scan, because a device
+    with unnamed positions is exactly the case this function exists to report.
+
+    **Read-only, and deliberately so.** ``getStateLabelFromPosition`` is a table
+    lookup against the loaded configuration -- it does not move anything -- so
+    this never issues a ``setState``, not even to restore a position it did not
+    change. That matters because the caller also runs it against the
+    ``Nosepiece``, which is in ``hardware.microscope.COLLISION_DEVICES``: an
+    objective change swings glass past a coverslip 0.13 mm away, and writing a
+    turret's current position back to it is still a write (SAFETY.md).
+    """
+    out: list[tuple[int, str]] = []
+    for state in range(core.getNumberOfStates(device)):
+        try:
+            label = core.getStateLabelFromPosition(device, state)
+        except Exception:
+            label = ""
+        out.append((state, str(label)))
+    return out

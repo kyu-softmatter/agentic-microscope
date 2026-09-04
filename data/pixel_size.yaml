@@ -46,6 +46,23 @@ pixel_size:
   source_date: 2025-04
   mirrors: "kb/systems/current.md > pixel_size_calibration"
 
+  # 2026-09-04: the .cfg's PixelSize block, empty until now, carries the 1x
+  # column of this table (config/micromanager/single_cam_red_noDMD.cfg), so
+  # getPixelSizeUm() answers instead of returning 0.0. tests/test_pixel_size.py
+  # reads those presets back and compares them here, because the same number in
+  # two files is how a calibration goes stale without anyone noticing.
+  #
+  # Those presets key on the Nosepiece ALONE and are therefore only right at
+  # intermediate 1x -- IntermediateMagnification's turret positions are named
+  # nowhere in the .cfg, so a two-property preset cannot be written yet. At 1.5x
+  # MM reports the 1x number, high by exactly 1.5x. Closing it is one command at
+  # the instrument: `python -m calibration.cli intermediate-mag <cfg>`.
+  cfg_presets:
+    file: config/micromanager/single_cam_red_noDMD.cfg
+    covers: intermediate 1x only
+    keyed_on: [Nosepiece]
+    pending: "IntermediateMagnification labels -- see calibration.cli intermediate-mag"
+
   # Keyed by nominal objective magnification, then by intermediate magnification.
   # `evidence` is per row, because it differs per row.
   table:
