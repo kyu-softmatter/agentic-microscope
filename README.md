@@ -75,7 +75,7 @@ design, not a gap.
 | **32 deterministic gates** | G1–G32, each classified `hard` / `bias` / `soft` by what its failure costs → [05 §2](docs/05-consensus-gate.md) |
 | **Provenance on every input** | `measured` vs `assumed`, with a separate `advances` axis that only `measured` can satisfy. Literature values compute but never advance → [`kb/literature/`](kb/literature/) |
 | **2,343 prior acquisitions** | normalized out of Micro-Manager metadata into transferable physical quantities, across two schema generations |
-| **884 tests, 841 on CI** | offline; the instrument is not required to run any of them. The badge covers 841 — the other 43 need a Micro-Manager device-adapter install → [running the tests](#running-the-tests) |
+| **939 tests, 883 on CI** | offline; the instrument is not required to run any of them. The badge covers 883 — the other 56 need a Micro-Manager device-adapter install → [running the tests](#running-the-tests) |
 | **A 28-device instrument** | what Micro-Manager loads from `single_cam_red_noDMD.cfg` — Ti2-E and its 14 sub-devices, one Kinetix, seven CSU-W1 devices, two Lumencor engines, NIDAQ hub + LUN-F blanking, serial manager. Tweezers and piezo sit outside those 28 → [above](#agentic-microscope) |
 | **Hardware drivers** | microscope (pymmcore-plus), optical tweezers (TCP), piezo stage (vendor DLL), trap patterns, piezo waveforms, and a shared-clock orchestrator |
 | **First light on real hardware** | piezo and optical tweezers each driven from this repository, **separately** — 2026-08-27. **All three subsystems together on one clock — 2026-09-03**, with per-frame timestamps; κ = 3.65–4.5 pN/µm from three independent routes |
@@ -402,8 +402,8 @@ Lens-by-lens implementation status is in the **Code** table below.
 ## Current status
 
 **Design complete; all eight committee lenses are implemented.** Nine design
-documents, 32 hard gates (G1–G32), 884 tests passing. The badge above reports
-841 of them — the other 43 need a Micro-Manager device-adapter install and run
+documents, 32 hard gates (G1–G32), 939 tests passing. The badge above reports
+883 of them — the other 56 need a Micro-Manager device-adapter install and run
 in a separate workflow, which is stated at the top of each file in
 [`.github/workflows/`](.github/workflows/) and again under [running the
 tests](#running-the-tests). The six standing
@@ -1223,7 +1223,7 @@ needs a power meter and cannot be replaced by code.
 | Experiment protocols | `D:\experiment method` | Obtained, not yet integrated |
 | Analysis code | `D:\codes` | Obtained, not yet integrated |
 | **Current system MM `.cfg`** | `kb/systems/current.md` | Obtained (`DMD_dualcam.cfg`, 2026-07-03) — most serials not yet obtained |
-| Measured pixel size calibration | `kb/systems/current.md` | Obtained (Kinetix, 4x–100x × 1x/1.5x, 2025-04) |
+| Pixel size calibration | [`data/pixel_size.yaml`](data/pixel_size.yaml), mirroring `kb/systems/current.md` | Obtained (Kinetix, 4x–100x × 1x/1.5x, 2025-04), and **readable by code since 2026-09-04**. ⚠ **Only the 20x row is a measurement** — the other eleven cells are exactly `p_sensor / (M_obj · M_int)` to every digit they carry, so they return what the formula already returned. The 20x is 0.39 % low at both intermediate settings, i.e. a real 20.078x. A stage micrometer is still owed |
 | Camera row time, disk bandwidth | `kb/calibrations/` | Obtained (2026-08-12) |
 | **Illumination power at sample** | `data/light_sources.yaml` | **Not obtained — top blocker** |
 | **Hardware spec documents** | Location unspecified | **Not obtained** |
@@ -1241,13 +1241,13 @@ scope. For now this produces offline recommendations only.
 ```console
 $ pip install -r requirements.txt -r requirements-mcp.txt
 $ pytest -q -rs
-841 passed, 3 skipped
+883 passed, 3 skipped
 ```
 
 `pyproject.toml` puts the repository root on `sys.path`, so the bare `pytest`
 and `python -m pytest` agree — before it, only the second form worked. The three
 skips are modules, not tests: they open with
-`pytest.importorskip("pymmcore_plus")` and hold 43 tests that need live
+`pytest.importorskip("pymmcore_plus")` and hold 56 tests that need live
 Micro-Manager access. `-rs` names them and their reason in every run, so the
 count above cannot quietly shrink. To run those too:
 
@@ -1256,9 +1256,9 @@ $ pip install -r requirements-micromanager.txt && mmcore install
 ```
 
 Three requirement files, and the split is the point: `requirements.txt` is the
-811 tests that need nothing but numpy and pyyaml, `requirements-mcp.txt` adds
+853 tests that need nothing but numpy and pyyaml, `requirements-mcp.txt` adds
 the 30 that exercise the MCP server and is in CI because it is pure Python, and
-`requirements-micromanager.txt` is the 43 that need a vendor device-adapter
+`requirements-micromanager.txt` is the 56 that need a vendor device-adapter
 download and is not.
 
 ---

@@ -55,6 +55,7 @@ missing it; copy it from the lab's ``C:\\Program Files\\Micro-Manager-2.0``
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -241,6 +242,37 @@ def check_config_file(cfg_path: str | Path) -> None:
         raise MicroscopeError(f"{cfg_path} declares a forbidden device -- {detail}")
 
 
+#: A magnification token standing alone: " 40x", "100x " -- but not the digits
+#: inside a design code. The lab's own labels are the reason this is not a bare
+#: ``\d+x`` search: "1-Plan Apo LmbdD20 4x" and "6-Plan Apo LmbdD0.13 100x Oil"
+#: both carry a number that is *not* the magnification.
+_MAG_TOKEN = re.compile(r"(?:^|\s)(\d+(?:\.\d+)?)[xX](?=\s|$)")
+
+
+def _mags_in(label: str) -> set[float]:
+    return {float(m) for m in _MAG_TOKEN.findall(label)}
+
+
+def _objective_mag_from_label(label: str) -> float | None:
+    """``"3-Plan Apo LmbdD0.8 20x"`` -> ``20.0``. ``None`` if not exactly one."""
+    found = _mags_in(label)
+    return found.pop() if len(found) == 1 else None
+
+
+def _intermediate_mag_from_label(label: str | None) -> float | None:
+    """``"1.5x"`` -> ``1.5``. ``None`` for anything that is not a magnification.
+
+    ``state()`` renders an unlabelled state device as ``"state N"``, and N is a
+    turret position, not a factor -- so that returns ``None`` and the caller
+    refuses. Guessing 1x from a position index would be wrong exactly when the
+    1.5x is engaged, which is the case worth catching.
+    """
+    if label is None:
+        return None
+    found = _mags_in(label)
+    return found.pop() if len(found) == 1 else None
+
+
 def _load_failure_hint(cfg_path: str | Path, exc: Exception) -> str:
     """Turn a config-load failure into something actionable.
 
@@ -401,6 +433,73 @@ class Microscope:
             except Exception:  # role not defined on this core
                 continue
         return out
+
+    def pixel_size_um(self) -> tuple[float, str]:
+        """um/px at the sample, from the recorded table, with its provenance.
+
+        **This exists because the instrument cannot answer.** MM's own
+        ``getPixelSizeUm()`` reads a ``PixelSize settings`` block, and on
+        ``config/micromanager/single_cam_red_noDMD.cfg`` that block is present
+        and **empty** -- so the core returns ``0.0`` and an agent asking the
+        microscope what its pixel size is gets told nothing. The value has been
+        recorded since 2025-04; it was just never anywhere code could reach.
+        ``data/pixel_size.yaml`` is that value, and this method is the bridge.
+
+        Returns ``(um_per_px, provenance)``. Raises :class:`MicroscopeError`
+        rather than guessing when either magnification cannot be read -- a
+        pixel size is the scale factor under every distance this instrument
+        reports, so a plausible default here is silently wrong everywhere.
+
+        Two things it deliberately does not do. It does not fall back to
+        ``p_sensor / M`` when the objective is off-table, because the caller
+        should know it is holding arithmetic and not a record. And it does not
+        write the answer back into the running core -- see the note below on
+        why the ``.cfg`` was left alone.
+        """
+        from optics.components import recorded_pixel_um
+
+        state = self.state()
+        label = state.get("Nosepiece")
+        if label is None or label == "unreadable":
+            raise MicroscopeError(
+                "cannot read the Nosepiece, so the objective magnification is "
+                "unknown and no pixel size can be named"
+            )
+        mag = _objective_mag_from_label(label)
+        if mag is None:
+            raise MicroscopeError(
+                f"no magnification could be parsed out of the objective label "
+                f"{label!r}; data/pixel_size.yaml is keyed on magnification"
+            )
+
+        if "IntermediateMagnification" not in self.devices():
+            # No changer on this stand, so 1x is the only thing it can be.
+            mag_int: float | None = 1.0
+        else:
+            raw_int = state.get("IntermediateMagnification")
+            mag_int = _intermediate_mag_from_label(raw_int)
+            if mag_int is None:
+                raise MicroscopeError(
+                    f"the intermediate magnification reads {raw_int!r}, which is "
+                    "not a magnification this repository can key on. It scales "
+                    "the pixel size by 1.5x, so defaulting to 1x is wrong exactly "
+                    "when the 1.5x is engaged -- name the turret's positions in "
+                    "the .cfg, or read the factor off the stand"
+                )
+
+        binning = 1
+        try:
+            binning = int(self.core.getProperty(self.core.getCameraDevice(), "Binning"))
+        except Exception:
+            pass  # a camera that does not expose Binning is binning 1
+
+        hit = recorded_pixel_um(mag, mag_int, binning)
+        if hit is None:
+            raise MicroscopeError(
+                f"no recorded pixel size for {mag:g}x x {mag_int:g}x "
+                f"(binning {binning}) in data/pixel_size.yaml"
+            )
+        return hit
 
     def groups(self) -> dict[str, tuple[str, ...]]:
         """ConfigGroup name -> its preset names."""

@@ -460,6 +460,40 @@ def _load_yaml(name: str) -> dict[str, Any]:
 
 
 @lru_cache(maxsize=1)
+def pixel_size_table() -> dict[str, Any]:
+    """``data/pixel_size.yaml`` -- the recorded um/px per objective x intermediate.
+
+    Mirrors ``kb/systems/current.md > pixel_size_calibration``, which is where
+    the value lives that the Micro-Manager ``.cfg`` does not carry.
+    """
+    return _load_yaml("pixel_size.yaml").get("pixel_size") or {}
+
+
+def recorded_pixel_um(
+    mag_objective: float, mag_intermediate: float = 1.0, binning: int = 1
+) -> tuple[float, str] | None:
+    """um/px at the sample from the recorded table, with its evidence tier.
+
+    Returns ``(um_per_px, evidence)`` or ``None`` when the combination is not in
+    the table. **``evidence`` is ``"measured"`` for exactly one row** -- the 20x,
+    the only one that departs from ``p_sensor / (M_obj * M_int)``. The rest are
+    ``"nominal"`` and reproduce
+    :func:`detection.photometry.effective_pixel_nm` exactly, so a caller that
+    treats a ``nominal`` hit as a measurement has invented provenance rather
+    than found it (``data/pixel_size.yaml`` header, and lens 6's G23-G27).
+    """
+    table = pixel_size_table().get("table") or {}
+    row = table.get(str(int(mag_objective))) if float(mag_objective).is_integer() else None
+    if row is None:
+        return None
+    values = row.get("values") or {}
+    key = f"{mag_intermediate:g}x"
+    if key not in values:
+        return None
+    return float(values[key]) * binning, str(row.get("evidence", "nominal"))
+
+
+@lru_cache(maxsize=1)
 def fluorophores() -> dict[str, Fluorophore]:
     """Dye registry, keyed by canonical name and by every alias."""
     raw = _load_yaml("fluorophores.yaml").get("fluorophores") or {}

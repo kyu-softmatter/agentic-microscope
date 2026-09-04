@@ -97,3 +97,45 @@ class DetectionSetup:
     acquisition: Acquisition
     mag_intermediate: float = 1.0
     photons: PhotonBudget = field(default_factory=PhotonBudget)
+
+    def pixel_size_nm(self) -> tuple[float, str]:
+        """Effective pixel at the sample, in nm, with where the number came from.
+
+        Three sources, in this order, and the order is the point:
+
+        ``"measured"``
+            ``data/pixel_size.yaml`` has a row that **departs** from the nominal
+            quotient. Today that is the 20x alone -- 0.32373 um/px against a
+            nominal 0.325, i.e. a real magnification of 20.078x. Only this tier
+            tells you something the formula cannot.
+        ``"nominal"``
+            the recorded table agrees with ``p_sensor / (M_obj * M_int)`` to
+            every digit it carries, so the lookup and the formula return the
+            same float. Reported separately from ``computed`` only so a reader
+            can see the table was consulted and had nothing to add.
+        ``"computed"``
+            no row for this combination; the formula stands alone.
+
+        **A ``nominal`` hit is not evidence.** Lens 6 owns pixel calibration
+        (G23-G27) and grades on ``measured`` vs ``assumed``; promoting eleven
+        quotients to measurements because they happen to sit in a file called
+        `calibration` is the failure this repository is built against. See the
+        header of ``data/pixel_size.yaml``.
+        """
+        from optics.components import recorded_pixel_um
+
+        from .photometry import effective_pixel_nm
+
+        hit = recorded_pixel_um(self.mag_objective, self.mag_intermediate, self.camera.binning)
+        if hit is not None:
+            um, evidence = hit
+            return um * 1000.0, evidence
+        return (
+            effective_pixel_nm(
+                self.camera.detector.pixel_um,
+                self.camera.binning,
+                self.mag_objective,
+                self.mag_intermediate,
+            ),
+            "computed",
+        )

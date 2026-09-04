@@ -623,6 +623,37 @@ pixel_size_calibration:
   date: 2025-04
   camera: Kinetix
   unit: um/px
+  mirrored_to: data/pixel_size.yaml   # 2026-09-04 -- the machine-readable copy code reads
+  reachable_from_code: true           # was false until 2026-09-04; see the note below
+  note: >
+    **2026-09-04 -- this table is now reachable from code, and 11 of its 12
+    cells turn out to be arithmetic.**
+
+    It had been recorded here since 2026-08-10 and read by nobody: the MM `.cfg`
+    carries an empty `# PixelSize settings` block, so `getPixelSizeUm()` answers
+    0.0, and `detection.photometry.effective_pixel_nm` computed
+    `p_sensor / (M_obj * M_int)` from the datasheet instead. An agent asked at
+    the instrument for a pixel size and was told there was none. It is now
+    mirrored to `data/pixel_size.yaml`, loaded by
+    `optics.components.recorded_pixel_um`, preferred by G5 through
+    `DetectionSetup.pixel_size_nm`, and reachable live through
+    `Microscope.pixel_size_um`.
+
+    **Mirroring it exposed something the spreadsheet did not say.** Against
+    6.5 um / (M_obj * M_int), eleven of the twelve cells agree to every digit
+    they carry -- 6.5/4 = 1.625, 6.5/15 = 0.43333, 6.5/150 = 0.04333. Eleven
+    independent stage-micrometer readings agreeing with division to five
+    significant figures is not what a measurement looks like, so those eleven
+    are carried as `evidence: nominal` and change no verdict.
+
+    **The 20x is the exception and the only row that carries information:**
+    0.32373 against a nominal 0.325, and 0.21582 against 0.216667 -- both low by
+    0.39 %, consistently, which reads as a real magnification of 20.078x. That
+    row alone is `evidence: measured`.
+
+    So the roadmap Phase 0 item "measured pixel-size calibration" is **not**
+    closed by this file. What would close it: a stage micrometer at each
+    objective. Until then the 20x entry is the whole of what was gained.
   table:
     "4x":   {"1x": 1.625,   "1.5x": 1.0833}
     "10x":  {"1x": 0.65,    "1.5x": 0.43333}

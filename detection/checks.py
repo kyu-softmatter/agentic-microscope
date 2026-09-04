@@ -131,10 +131,7 @@ def check_sampling(setup: "DetectionSetup") -> CheckResult:
     optimum only exists because of background, so the tracking branch needs
     a measured photon budget to grade, not just geometry.
     """
-    cam = setup.camera
-    p_nm = effective_pixel_nm(
-        cam.detector.pixel_um, cam.binning, setup.mag_objective, setup.mag_intermediate
-    )
+    p_nm, p_evidence = setup.pixel_size_nm()
     r_nm = setup.objective.resolution_nm(setup.wavelength_em_nm)
     sigma_nm = setup.objective.psf_sigma_nm(setup.wavelength_em_nm)
     task = setup.acquisition.task_kind
@@ -154,7 +151,12 @@ def check_sampling(setup: "DetectionSetup") -> CheckResult:
             if ok
             else "Increase magnification/intermediate lens or reduce binning "
             "to bring the effective pixel below the Nyquist limit.",
-            numbers={"pixel_nm": p_nm, "nyquist_nm": nyquist_nm, "rayleigh_nm": r_nm},
+            numbers={
+                "pixel_nm": p_nm,
+                "pixel_evidence": p_evidence,
+                "nyquist_nm": nyquist_nm,
+                "rayleigh_nm": r_nm,
+            },
         )
 
     # tracking
@@ -170,7 +172,11 @@ def check_sampling(setup: "DetectionSetup") -> CheckResult:
             "background (docs/04 §2), which have not been supplied yet.",
             action="Supply photons.signal_e_per_s and photons.background_e_per_s "
             "to grade this.",
-            numbers={"pixel_nm": p_nm, "psf_sigma_nm": sigma_nm},
+            numbers={
+                "pixel_nm": p_nm,
+                "pixel_evidence": p_evidence,
+                "psf_sigma_nm": sigma_nm,
+            },
         )
 
     exposure_s = setup.acquisition.exposure_ms * 1e-3
@@ -196,6 +202,7 @@ def check_sampling(setup: "DetectionSetup") -> CheckResult:
         "(docs/06-pitfalls.md §C6). Choose a pixel size near sigma_PSF instead.",
         numbers={
             "pixel_nm": p_nm,
+            "pixel_evidence": p_evidence,
             "psf_sigma_nm": sigma_nm,
             "loc_precision_nm": math.sqrt(var_actual),
             "nyquist_loc_precision_nm": math.sqrt(var_nyquist),

@@ -1,0 +1,75 @@
+# Effective pixel size at the sample, per objective x intermediate magnification.
+#
+# Machine-readable mirror of `kb/systems/current.md > pixel_size_calibration`,
+# the same way data/objectives.yaml mirrors that file's `objectives` entry. The
+# dossier stays the record; this file is what code reads.
+#
+# Source: "Confocal_microscope_conversion_factor(Apr 2025).xlsx", Sheet1,
+# dated 2025-04, provided by the user. Camera: Kinetix.
+#
+# ---------------------------------------------------------------------------
+# READ THIS BEFORE TREATING THE TABLE AS MEASURED  (added 2026-09-04)
+# ---------------------------------------------------------------------------
+# Eleven of the twelve cells are exactly the nominal quotient
+#
+#     p_sample = p_sensor / (M_obj * M_int),   p_sensor = 6.5 um (Kinetix)
+#
+# to every digit the spreadsheet carries. 6.5/4 = 1.625, 6.5/15 = 0.43333,
+# 6.5/150 = 0.04333, and so on. A stage-micrometer measurement agreeing with
+# arithmetic to five significant figures in eleven independent cells is not
+# what a measurement looks like -- so those eleven are recorded here as
+# `nominal`, and they return exactly what detection.photometry.effective_pixel_nm
+# already computes from data/detectors.yaml. Using them changes no verdict.
+#
+# **The 20x row is the exception, and it is the only row that carries
+# information.** 6.5/20 = 0.325 against a table value of 0.32373, and
+# 6.5/30 = 0.216667 against 0.21582 -- both low by 0.39 %, consistently, which
+# is what a real objective whose magnification is 20.078x rather than 20.000x
+# looks like. That one row is marked `measured`.
+#
+# The distinction is not pedantry here: lens 6 owns pixel calibration (G23-G27)
+# and the whole provenance axis is `measured` vs `assumed`. Importing eleven
+# quotients as measurements would put an `advances: YES` under a number nobody
+# measured, which is the exact failure this repository exists to prevent.
+#
+# What would settle it: image a stage micrometer at each objective and record
+# the result with `evidence: measured`. Until then the 20x entry is the only one
+# that beats the formula, and it is worth having for exactly that reason.
+
+pixel_size:
+  camera: Kinetix
+  sensor_pixel_um: 6.5        # cross-check against data/detectors.yaml > Kinetix > pixel_um
+  unit: um_per_px
+  binning: 1                  # every cell below is at binning 1; scale linearly
+  source_file: "Confocal_microscope_conversion_factor(Apr 2025).xlsx"
+  source_sheet: Sheet1
+  source_date: 2025-04
+  mirrors: "kb/systems/current.md > pixel_size_calibration"
+
+  # Keyed by nominal objective magnification, then by intermediate magnification.
+  # `evidence` is per row, because it differs per row.
+  table:
+    "4":
+      evidence: nominal
+      values: {"1x": 1.625, "1.5x": 1.0833}
+    "10":
+      evidence: nominal
+      values: {"1x": 0.65, "1.5x": 0.43333}
+    "20":
+      evidence: measured
+      values: {"1x": 0.32373, "1.5x": 0.21582}
+      effective_magnification: 20.078   # 6.5 / 0.32373
+      note: >
+        The one row that departs from the nominal quotient, and it departs
+        consistently: -0.39 % at both intermediate magnifications. Read as a
+        real objective magnification of 20.078x rather than the label's 20.000x.
+        Nominal would give 0.325 and 0.216667.
+    "40":
+      evidence: nominal
+      values: {"1x": 0.1625, "1.5x": 0.10833}
+    "60":
+      evidence: nominal
+      values: {"1x": 0.10833, "1.5x": 0.07222}
+    "100":
+      evidence: nominal
+      values: {"1x": 0.065, "1.5x": 0.04333}
