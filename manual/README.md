@@ -5,7 +5,7 @@
 documentation. Each is available from its manufacturer;
 [`NOTICE.md`](../NOTICE.md) lists which document came from whom. This file stays
 because *which revision to cite, and why*, is the part that took work — see
-[Camera/](#camera--re-created-2026-08-19) below.
+[Camera/](#camera--which-kinetix-22-revision-to-cite) below.
 
 Distilled on 2026-08-10. This folder used to be 1.3 GB (573 files): PDFs mixed
 in with vendor installer executables, driver packages, and SDK/sample code
@@ -42,6 +42,44 @@ Two exceptions worth knowing if something breaks:
   2026-08-28 with everything else vendor-licensed. `dll_adapter.py` was kept
   because it carries local modifications; restoring the DLLs is step 3 of
   [`NOTICE.md`](../NOTICE.md).
+
+---
+
+## Restored onto this machine, 2026-09-04 — 12 of the 14, plus Ti2
+
+`manual/` holds 14 PDFs again (20 MB), copied from
+`C:\Users\Takatori lab\Desktop\Maintanance\Setup\`. **They are still
+not published.** `.gitignore` ignores `manual/*` and excepts only this file, and
+`*.pdf` catches them a second time, so `git status` stays clean and
+`git add manual/` adds nothing — verified file by file with `git check-ignore -v`
+on the day of the copy. Nothing about the public repository changed; only this
+working copy has the documents.
+
+Against the §2 table in [`NOTICE.md`](../NOTICE.md):
+
+| Folder | §2 expects | Restored | From |
+|---|---|---|---|
+| `Optical Tweezers/Manuals/` | 4 | 4 | `Setup/Optical Tweezers/` |
+| `Piezo Stage/` | 7 | 7 | `Setup/Piezo Stage/{Controller Interface DLL & Drivers,User Manuals,Nanobench,Nanoflash}/` |
+| `DMD/` | 1 | 1 | `Setup/DMD/Mightex Polygon1000 uManager … V1.0-202103/…/Polygon1000/Documentation/` |
+| `Camera/` | 2 | **0** | — |
+| `Ti2/` | — | 2 | `Setup/Ti2 Ver2.90/MEA54000_Ti2 Control Ver2.90_Windows/Docs/` |
+
+**`Camera/` is the gap that matters.** Neither Kinetix 22 revision is in that
+Desktop folder — nothing there matches `*kinetix*` or `*datasheet*` except DMD
+and OT calibration files. That folder is *install media* (1049 files: the
+LabVIEW 2017 runtime, PVCam and DMD driver packages, Tweez300 and Nanobench
+setups), and a camera datasheet is not install media, so it was never there to
+begin with. Every number in `data/detectors.yaml > Kinetix22` cites the
+2024-10-21 revision, which is therefore on no disk this repository can reach:
+re-obtain it from Teledyne Photometrics, and read the next section first,
+because which revision arrives decides whether the numbers are right. The
+curated backup named above is the other place to look.
+
+**`Ti2/` is not a restore.** `M706_E15_Ti2Control_Windows.pdf` (English) and
+`M706_J15` (Japanese) are the Ti2 Control 2.90 software manual. Neither was
+among the 14, and nothing here cites either one yet — they are filed because
+the stand is a Ti2 and the document was sitting in the install media.
 
 ---
 
