@@ -62,6 +62,13 @@ pixel_size:
     covers: intermediate 1x only
     keyed_on: [Nosepiece]
     pending: "IntermediateMagnification labels -- see calibration.cli intermediate-mag"
+    # Do not hand-edit the block. `config/micromanager/set_pixel_size.py` adds a
+    # preset for a recommended objective from this table, dry-run by default,
+    # and `--audit` reports every nosepiece position the .cfg cannot name a
+    # pixel size for. It refuses to substitute p_sensor/M for a missing row, to
+    # key on a label the nosepiece does not have, or to overwrite a preset that
+    # disagrees. File only -- it never opens a device.
+    maintained_by: config/micromanager/set_pixel_size.py
 
   # Keyed by nominal objective magnification, then by intermediate magnification.
   # `evidence` is per row, because it differs per row.

@@ -650,6 +650,17 @@ pixel_size_calibration:
       provenance whenever it leans on that, so the assumption travels with the
       number.
 
+      **Maintaining the block is a script, not a hand-edit.**
+      `config/micromanager/set_pixel_size.py --objective <M>` adds the preset for
+      a recommended objective out of `data/pixel_size.yaml`, dry-run unless
+      `--write`, and `--audit` reports every nosepiece position MM cannot name a
+      pixel size for. It refuses on three things rather than writing something
+      plausible: an objective with no row in the table (it will not substitute
+      `p_sensor / M` -- a quotient written into a `.cfg` reads as a calibration
+      downstream), a magnification the `.cfg`'s own Nosepiece does not have, and
+      an existing preset that disagrees. **File only; it opens no device**, which
+      is the whole reason it is separate from turning the turret.
+
       **One command at the instrument closes it:**
       `python -m calibration.cli intermediate-mag <cfg>` reads the turret,
       prints its `Label` lines and a full two-property preset per objective x
