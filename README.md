@@ -54,7 +54,8 @@ which is exactly why a shared clock had to be built rather than assumed.
 > [`Brownian-Dynamics Agent`](https://github.com/kyu-softmatter/Brownian-Dynamics-Agent)
 > applies the same provenance and validation rules to simulation. It asks what
 > the physical system should do; this asks whether the instrument can measure
-> the difference well enough to decide. A third, `research-topic` (private),
+> the difference well enough to decide. A third,
+> [`research-topic`](https://github.com/kyu-softmatter/research-topic),
 > asks which question is worth asking at all, and is meant to hold the knowledge
 > base and the definitions of rigor that both of the others enforce. **It is a
 > sketch — nothing is built there yet**, and neither working repository depends
@@ -1008,13 +1009,15 @@ a stated order of preconditions.
 ### A third axis, and the question neither repo asks
 
 Both repositories take the scientific question from a human, and both hand their
-evidence back to one. `research-topic` (private, sketch stage) is meant to sit in
-both of those places: it proposes the question, and it keeps what came back —
-**including the failures, which is the part that gets skipped.**
+evidence back to one.
+[`research-topic`](https://github.com/kyu-softmatter/research-topic) (sketch
+stage) is meant to sit in both of those places: it proposes the question, and it
+keeps what came back — **including the failures, which is the part that gets
+skipped.**
 
 | Axis | Repository | Asks | Status |
 |---|---|---|---|
-| **Topic** | `research-topic` *(private)* | which question is worth asking, and what the other two should read | sketch only. **Nothing built** |
+| **Topic** | [`research-topic`](https://github.com/kyu-softmatter/research-topic) | which question is worth asking, and what the other two should read | sketch only. **Nothing built** |
 | **Experiment** | **this repository** | what the instrument can actually record | running |
 | **Simulation** | [`Brownian-Dynamics Agent`](https://github.com/kyu-softmatter/Brownian-Dynamics-Agent) | what the physical system should do | running |
 
