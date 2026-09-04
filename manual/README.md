@@ -45,11 +45,12 @@ Two exceptions worth knowing if something breaks:
 
 ---
 
-## Restored onto this machine, 2026-09-04 — 12 of the 14, plus Ti2
+## Restored onto this machine, 2026-09-04 — 13 of the 14, plus Ti2
 
-`manual/` holds 14 PDFs again (20 MB), copied from
-`C:\Users\Takatori lab\Desktop\Maintanance\Setup\`. **They are still
-not published.** `.gitignore` ignores `manual/*` and excepts only this file, and
+`manual/` holds 15 PDFs again (21 MB). Twelve were copied from
+`C:\Users\Takatori lab\Desktop\Maintanance\Setup\`; the thirteenth, the Kinetix
+22 datasheet, arrived separately from the vendor later the same day (below).
+**They are still not published.** `.gitignore` ignores `manual/*` and excepts only this file, and
 `*.pdf` catches them a second time, so `git status` stays clean and
 `git add manual/` adds nothing — verified file by file with `git check-ignore -v`
 on the day of the copy. Nothing about the public repository changed; only this
@@ -62,19 +63,49 @@ Against the §2 table in [`NOTICE.md`](../NOTICE.md):
 | `Optical Tweezers/Manuals/` | 4 | 4 | `Setup/Optical Tweezers/` |
 | `Piezo Stage/` | 7 | 7 | `Setup/Piezo Stage/{Controller Interface DLL & Drivers,User Manuals,Nanobench,Nanoflash}/` |
 | `DMD/` | 1 | 1 | `Setup/DMD/Mightex Polygon1000 uManager … V1.0-202103/…/Polygon1000/Documentation/` |
-| `Camera/` | 2 | **0** | — |
+| `Camera/` | 2 | **1** | vendor, direct — not the Desktop folder |
 | `Ti2/` | — | 2 | `Setup/Ti2 Ver2.90/MEA54000_Ti2 Control Ver2.90_Windows/Docs/` |
 
-**`Camera/` is the gap that matters.** Neither Kinetix 22 revision is in that
-Desktop folder — nothing there matches `*kinetix*` or `*datasheet*` except DMD
-and OT calibration files. That folder is *install media* (1049 files: the
-LabVIEW 2017 runtime, PVCam and DMD driver packages, Tweez300 and Nanobench
-setups), and a camera datasheet is not install media, so it was never there to
-begin with. Every number in `data/detectors.yaml > Kinetix22` cites the
-2024-10-21 revision, which is therefore on no disk this repository can reach:
-re-obtain it from Teledyne Photometrics, and read the next section first,
-because which revision arrives decides whether the numbers are right. The
-curated backup named above is the other place to look.
+**`Camera/` was the gap, and the cited revision is now closed.** Neither Kinetix
+22 revision is in the Desktop folder — nothing there matches `*kinetix*` or
+`*datasheet*` except DMD and OT calibration files. That folder is *install
+media* (1049 files: the LabVIEW 2017 runtime, PVCam and DMD driver packages,
+Tweez300 and Nanobench setups), and a camera datasheet is not install media, so
+it was never there to begin with. It came from the vendor instead, and is filed
+as:
+
+    manual/Camera/Kinetix22-Datasheet_Rev-2024-10-21.pdf
+
+`Revision Date: 2024 10 21` on its last page, so this is the revision every
+number in `data/detectors.yaml > Kinetix22` cites — a document that, between
+2026-08-28 and this date, was on no disk this repository could reach.
+
+**Which bytes, since that mattered once.** This is the 597,606 B / md5
+`2be65728…` vendor attachment described at the end of the next section, not the
+634,093 B / md5 `95a52c6c…` mirrored copy. That note explains why the
+attachment was *not* filed at the time: a second copy of one revision is how
+the "which one do I cite" question comes back. The mirror went with the
+2026-08-28 removal, so the attachment is now the only copy and the ambiguity it
+guarded against no longer exists. The two were verified text-identical when both
+were in hand, so nothing citing the mirror's content is disturbed by the swap.
+`pdftotext -layout` here gives 197 lines against the 196 recorded next door;
+the file ends `\r\n\f`, so that is a page-break/poppler-version artifact, and
+the md5 matching the recorded attachment exactly is the check that settles
+identity.
+
+**Still missing: Rev A3-05112021**, the second of the two, which is why the
+table above reads 1 of 2. It is wanted only as provenance for a known-wrong
+line-time row and nothing cites it for a value, so this is the cheap half of
+the gap — see the next section for why it was kept at all.
+
+**One thing the recovered document settles.** Rev 2024-10-21 states the
+Speed-mode full-frame rate twice and disagrees with itself: the page-1 bullet
+and the CAMERA MODES table say **664 fps**, the KINETIX22 SPEED TABLE's
+`2400 x 2400` row says **663**. `data/detectors.yaml` carries both — 664 at the
+`Speed` mode entry, 663 in `frame_rate_by_roi_fps` — because each was
+transcribed faithfully from its own table. That is the right behaviour and it
+reads like a typo, so it is recorded here now that the source is back and can
+be pointed at.
 
 **`Ti2/` is not a restore.** `M706_E15_Ti2Control_Windows.pdf` (English) and
 `M706_J15` (Japanese) are the Ti2 Control 2.90 software manual. Neither was
@@ -115,3 +146,9 @@ of the same revision, identical in text but not in bytes (597,606 B, md5
 `2be65728…` against the 634,093 B, md5 `95a52c6c…` copy that was here), and a
 second copy of one revision is how the "which one do I cite" question comes
 back. Nothing cited the bytes, only the content.
+
+**Superseded 2026-09-04.** That attachment is now filed, as
+`Camera/Kinetix22-Datasheet_Rev-2024-10-21.pdf`, and is the only copy in
+existence here — the mirrored copy this paragraph weighs it against went with
+the 2026-08-28 removal. Filing it no longer creates the second copy the decision
+above was avoiding; it ends a stretch with none. See the restore section above.
