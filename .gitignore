@@ -37,8 +37,11 @@ reference/quotes/
 *.exe
 *.msi
 
-# uv.lock — a by-product, not a decision. `.mcp.json` launches the MCP server
-# with `uv run`, which writes a lock file for the whole dependency tree. The
-# requirements*.txt files deliberately carry loose bounds instead, and a
-# committed lock would quietly become the real specification.
+# uv.lock — a by-product, not a decision. This rule was written when `.mcp.json`
+# launched the MCP server with `uv run`, which writes a lock file for the whole
+# dependency tree. Since 2026-09-04 it launches a venv interpreter directly and
+# nothing here invokes uv, so nothing generates this file any more — the rule
+# stays because the reason it existed has not changed: the requirements*.txt
+# files deliberately carry loose bounds, and a committed lock would quietly
+# become the real specification.
 uv.lock
