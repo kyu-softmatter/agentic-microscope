@@ -436,6 +436,40 @@ threshold, and never on a hard gate or a bias gate. What has to be accumulated
 for that is **the outcome of refusals**, not the count of runs that went well.
 → [05 §7](docs/05-consensus-gate.md)
 
+**First end-to-end run: 2026-09-04, operator-guided.** A single experiment —
+wall-hindered Brownian motion of sedimented 5 µm carboxylate polystyrene beads
+in a closed 1 mm PDMS well — was carried from a bare question ("suggest a
+sample geometry") through all eight lenses, into device state on the
+instrument, and out as timestamped image stacks with zero dropped frames and a
+run record naming every assumption they rest on. That path had never been
+walked before.
+
+**It was a commissioning run, and the committee said so.** No lens returned
+`advances: YES`. Lenses 5 and 8 returned `BLOCKED` (no measured power at the
+sample; no drift rate anywhere in `kb/calibrations/`), lens 4 graded
+`INFEASIBLE` on the near-wall drag that *was* the measurand, and lens 6's
+ruling was explicit: run it, label it commissioning, and **report no hindrance
+ratio from it**. No `D` has been extracted. Calling this a successful
+measurement would be wrong; calling it a successful *run* is precisely right,
+and the distinction is the one [05 §7](docs/05-consensus-gate.md) is built on.
+
+**What the run actually yielded was six falsified records** — and that, not the
+data, is the return on it:
+
+| Record | What it said | What the instrument said |
+|---|---|---|
+| `lapp_branch` | `mirror_in` couples Aura to the sample | **`mirror_out` does.** Following the record turned the light off and cost a diagnosis session |
+| `Splitter` `current_position` | `1` (unverified since 2026-08-10) | Not readable at all — it is not in the `.cfg`. Now `null` |
+| Z retract direction | "+Z is probably the retracted direction" | Backwards. Z → 0 is the safe park (KH) |
+| `IntermediateMagnification` | a state device, per `calibration.cli intermediate-mag` | a **MagnifierDevice**. The tool mismatched it and reported "0 positions" |
+| `sample/aberration.py` Faxén term | "a bound, and it errs the safe way" | Not a bound below `h/a ≈ 1.70`. At `h/a = 1.05` it understates the drag |
+| PVCAM despeckle | enabled in every archive generation ([06 C1](docs/06-pitfalls.md)) | a **sticky camera default that returns on every config load** — not carelessness. Dark-frame max 148 ADU with it on, 1193 with it off |
+
+Every one was found because a gate or a script refused rather than proceeding,
+and **five of the six were corrected by the operator supplying a fact the
+repository had wrong or did not hold** — which is what "operator-guided" means
+here, and why this is not yet an autonomous loop.
+
 **Where this is going.** The longer-term goal is to join this agent to
 [**Brownian-Dynamics Agent**](https://github.com/kyu-softmatter/Brownian-Dynamics-Agent)
 — the same architecture pointed at the integrator instead of the instrument. One
@@ -1160,6 +1194,106 @@ make the loop worth closing is the one sentence above the diagram's left branch:
 a simulation should not merely predict a value, it should state **the precision
 an experiment must reach to tell two models apart** — and only the right branch
 knows whether this instrument can reach it.
+
+---
+
+## To do
+
+Raised by the operator (KH) at the end of the 2026-09-04 wall-diffusion
+session. Each one is here because something that session needed was missing,
+and the "why it cost something" line is the point — an item without it drifts
+into a wish list.
+
+### 1. A particle and dye information sheet
+
+One row per stock: catalogue number, diameter and its CV, density, **surface
+chemistry**, dye excitation/emission, ε, Φ, τ, `bleach_photons`, and the
+storage buffer's ionic strength.
+
+*What it cost on 2026-09-04:* the bead's dye was never identified, so lens 5
+returned **BLOCKED** on `missing.bleach_photons` *and* `missing.lifetime` —
+`bleach_photons` is empty for **every** dye in `data/fluorophores.yaml`, so
+G10 has nothing to count against. The channel had to run on a proxy
+(`ATTO550`), and lens 1's `collection` **FAIL** turned out to be an artifact of
+that proxy's 576 nm emission rather than a real problem — the operator's
+confirmation of 605 nm cleared it. `docs/06-pitfalls.md` D4 already says a
+conjugate name is not a fluorophore name; "5 µm red PS bead" is a product
+description, not a photophysics record.
+
+And the field that mattered most was not photophysics at all: **carboxylate**
+surface chemistry plus DI water puts the bead ~1 µm off the coverslip instead
+of the 126 nm gravity alone would give, which moved the predicted `D‖/D_bulk`
+from 0.39 to 0.58. The measurand's controlling parameter came out of a line
+that no sheet currently holds.
+
+### 2. Many more experimental geometries, to exercise the decision layer
+
+The committee has been run end to end on exactly one geometry — sedimented,
+untrapped, near-wall, single colour, widefield. Whole branches have never been
+executed against real inputs: `sample.gate`'s Phase-0 blocks for multiphase and
+birefringent media, G16c's *trapped* absorption route, the confocal path, the
+dual-camera split, ATPS per-phase reasoning. A gate that has never refused a
+real experiment is a gate nobody has tested.
+
+### 3. A sample-finding method, and a folder for it
+
+Live view plus Titus' method, with its own folder.
+
+> **TODO(human):** describe Titus' method — what it does, what it needs on the
+> stand, and what output it leaves behind. It is not in this repository and I
+> should not guess at it. Once it is written down the folder and the entry
+> point can follow.
+
+Context for whoever writes it: `config/micromanager/live_view.py` exists and
+was used for field-finding on 2026-09-04, but it saves nothing — deliberately
+("no histogram, no LUTs, no overlays, no saving"). Finding a field currently
+leaves no record of *which* field, which matters because
+`kb/decisions/2026-09-03-three-subsystems-first-light.md` §10 records that a
+too-concentrated sample defeated every tracker written that day, and field
+choice is the cheapest lever on that.
+
+### 4. The filter-wheel pass bands
+
+EM1/EM2 positions 0–4 are `multi / 405 / 488 / 555 / 647` and all carry
+`registry: null` in `kb/systems/current.md`. The labels are named by
+**excitation** line, not by the emission band they pass (KH 2026-09-04). The
+2026-08-11 correction in that file explicitly retracted the
+`88000v2-Quad/455-50/525-36/605-52/705-72` set as EM1's filters — another
+element's data had been attached there by mistake — so `EM1-605/52` in
+`data/filters.yaml` is **not** confirmed to be in this wheel.
+
+*What it cost:* the channel config for 2026-09-04 listed `EM1-605/52` as an
+emission element and lens 1 computed `collection` and `emission.centering`
+with it in the path. Lens 1 flagged it in `assumed_inputs`, but "curve not
+measured" and "this filter may not be in this wheel at all" are different
+problems and only the first was noticed. The run went ahead on `multi`, which
+is known to pass red and to block the PFS IR that lens 8 warned about.
+
+> **TODO(human):** the actual centre and FWHM for positions 1–4. Then link them
+> into `data/filters.yaml` and decide whether `555` beats `multi` for the
+> ex555/em605 channel — it should, if it is a bandpass, because `multi` also
+> opens three bands we do not use.
+
+### 5. Connect the Splitter position to the configuration file
+
+The `Splitter` (dual-camera image splitter, `{0: 100/0 mirror, 1: DM A561LP,
+2: open}`) is **not in the Micro-Manager `.cfg`** — its absence was settled
+2026-08-12. So nothing can read it back, and the recorded position ages in
+silence.
+
+*What it cost:* `current_position: 1` had stood unverified since 2026-08-10.
+On 2026-09-04 `Kinetix_red` returned frames statistically identical to a dark
+frame while **every** software-readable element in the path checked out, and
+the Splitter was the last suspect standing precisely because it was the one
+nobody could check. It is now recorded as `current_position: null` with
+position 2's consequence written down ("the red camera is the only one that
+sees light"), which is honest but still not readable.
+
+The general form of this item, worth stating because it is not only the
+Splitter: **an element MM cannot read is an element whose record drifts.**
+Either get it into the `.cfg`, or make the acquisition record the operator's
+assertion about it the way `run_wall_diffusion.py` does for the 1064 nm
+emission state.
 
 ---
 

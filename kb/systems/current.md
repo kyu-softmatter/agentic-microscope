@@ -129,15 +129,31 @@ optical_path_nis:      # confirmed 2026-08-10 via NIS-Elements Device Manager on
   - device: Splitter
     purpose: "dual-camera (C3PO/R2D2) image splitter"
     positions:
-      0: {label: "100/0 mirror", note: "full reflection — single-camera mode"}
+      0: {label: "100/0 mirror", note: "full reflection — single-camera mode. Reflection goes to Kinetix_blue (see the side_by_camera entry in light_paths), so in this position **Kinetix_red receives nothing at all**"}
       1: {label: "DM A561LP", mirror_nm: [[561, null]], note: "561 nm longpass", registry: "DM A561LP"}
-      2: Empty
-    current_position: 1 # DM A561LP
+      2: {label: "open (empty slot)", note: "no element in the path. **The red camera is the only one that sees light** (KH 2026-09-04). This is the position for single-camera red imaging: it drops the A561LP's ~5% transmission loss, and the 561 nm rejection it provides is not needed because MXR00724-EM (606/34) already blocks the excitation at 17 OD"}
+    current_position: null   # NOT READABLE. See the note below.
     note: >
-      Confirmed by user 2026-08-10: the current configuration uses both
+      Confirmed by user 2026-08-10: the configuration at that time used both
       cameras (Kinetix_red/Kinetix_blue) simultaneously, and this splitter
       divides the emission between them at 561 nm (position 1, DM A561LP).
-      Not single-camera mode (position 0).
+
+      ⚠ 2026-09-04: `current_position` is now **null, and that is the honest
+      value** — this device is not in the MM `.cfg` (absence settled
+      2026-08-12), so nothing can read it back and the recorded position ages
+      silently. It had said `1` since 2026-08-10 and nothing had verified it
+      since. On 2026-09-04, with every software-readable element in the path
+      confirmed correct (LappMainBranch1 = mirror_in, FilterTurret1 = MXR00724,
+      LightPath = 3 = the cameras' port, CSUW1-Port = red_only, EM1 = multi,
+      both turret shutters open, Aura answering with GREEN = 1), Kinetix_red
+      still returned a frame statistically identical to a dark frame — zero
+      photons, which rules out defocus and bead absence, both of which would
+      still add counts. That symptom points at position 0.
+
+      **The lesson worth keeping: an element MM cannot read is an element whose
+      record drifts, and it will be the last suspect standing precisely because
+      it is the one nobody can check.** Set it deliberately and record the
+      setting with the session, rather than trusting this field.
       → optics.Channel currently has only one dichroic field, so it cannot
       yet express the two-stage wavelength split — main confocal dichroic
       (Di01-T) followed by this splitter. Building per-camera channels
@@ -583,6 +599,17 @@ confocal_scanner:
 light_path:               # LightPath device — eyepiece / left-right port selection
   device: LightPath
   positions: {0: EYE, 1: R100, 2: AUX, 3: L100}
+  # 2026-09-04 (KH, at the instrument): **the CSU-W1 and both cameras are on
+  # position 3 (L100).** So 3 is the imaging position and any other value sends
+  # the emission somewhere the cameras cannot see it. Recorded because the
+  # position list alone does not say which port carries the detection path, and
+  # that gap cost a diagnosis session: with Kinetix_red reading a pure dark
+  # frame, LightPath = 3 could not be cleared as a suspect until the operator
+  # said so. Read live 2026-09-04: LightPath = 3, i.e. correct.
+  cameras_and_csuw1_on: 3
+  verified: true
+  verified_date: 2026-09-04
+  source: user_statement
 
 intermediate_magnification:
   device: IntermediateMagnification
@@ -591,7 +618,33 @@ intermediate_magnification:
 lapp_branch:
   device: LappMainBranch1
   positions: {0: mirror_in, 1: mirror_out}
-  current_position: 0 # mirror_in — assumed to be the state at the time of user confirmation; whether it is permanently fixed is unconfirmed
+  # ⚠⚠ 2026-09-04 MEASURED, AND IT REVERSES THE NOTE BELOW.
+  #
+  # Same sample, same 33.3 ms exposure, same Aura GREEN 20/1000, post-processing
+  # off, one snap per state, offset 102 ADU from a dark frame:
+  #
+  #     dark                    p99.9   139    max  1183
+  #     state 0 = mirror_in     p99.9   139    max  1314   <- identical to dark
+  #     state 1 = mirror_out    p99.9 21083    max 25889   <- full signal
+  #
+  # **mirror_out (state 1) is the position in which Aura reaches the sample.
+  # mirror_in (state 0) blocks it completely.** The note below says the
+  # opposite. Either the MM labels are swapped relative to the physical states,
+  # or the geometric account is inverted (Aura inline, SpectraIII side-coupled,
+  # rather than the reverse). This measurement does not distinguish those two,
+  # and it does not need to: the operational fact is settled.
+  #
+  # HOW THIS COST A SESSION. On 2026-09-04 the branch was set from mirror_out
+  # to mirror_in *because of the note below*, which turned the light off. The
+  # blackout was then diagnosed by elimination, and this device was eliminated
+  # early on the grounds that "the readback confirms mirror_in, and the record
+  # says mirror_in is the Aura position". Both halves were true and the
+  # conclusion was wrong. **A readback confirms the device went where it was
+  # told, never that being told to go there was correct** -- so a device whose
+  # correct value comes from a record, not from a measurement, cannot be
+  # cleared by reading it back.
+  measured_aura_position: 1   # mirror_out
+  current_position: null      # a physical turret; read it, do not assume it
   note: >
     Confirmed by user 2026-08-10 (fully resolved). The two light sources are
     geometrically asymmetric: SpectraIII enters inline on the main optical
@@ -613,9 +666,13 @@ lapp_branch:
     widefield imaging usually does not need a high light level. mirror_out is
     for when that combination is not needed (Aura unused, SpectraIII inline
     kept at 100%).
-  verified: true
-  verified_date: 2026-08-10
+  # `verified` splits in two, because the two halves now have different status.
+  verified: false             # the geometric account in the note above is CONTRADICTED
+  verified_date: 2026-08-10   # date of that dictation, kept so the claim is traceable
   source: user_dictation
+  aura_position_verified: true
+  aura_position_verified_date: 2026-09-04
+  aura_position_source: measured   # signal vs dark, one snap per state
 
 pixel_size_calibration:
   source_file: "Confocal_microscope_conversion_factor(Apr 2025).xlsx"
