@@ -46,9 +46,8 @@
 # average, giving a 14.0 ms tick against the 13.5 ms a perfect GPU detector
 # would give. The case that *would* need one is full-frame live detection --
 # HoughCircles on 2400x2400 is 93 ms on CPU, which fits no usable tick, so that
-# is a missing capability rather than a slow one. No GPU compute runtime is
-# installed on the instrument PC (no torch, cupy, numba, pyopencl, no nvcc),
-# only the driver.
+# is a missing capability rather than a slow one. That case is now served, by
+# CuPy rather than by OpenCV -- see the cupy entry below.
 
 opencv-python>=4.8
 
