@@ -105,8 +105,10 @@ import argparse
 import base64
 import struct
 import sys
+import time
 import tkinter as tk
 import zlib
+from collections import deque
 from pathlib import Path
 
 import numpy as np
@@ -554,6 +556,15 @@ def cv2_loop(core, camera, tracker, display_px, refresh_ms):
     which is what makes 2400x2400 live detection usable rather than merely
     possible.
 
+    ``refresh_ms`` does **not** cap this loop. ``waitKey(1)`` is the shortest
+    wait highgui allows and is what pumps its event queue, so the tick is
+    whatever the work costs -- unlike the Tk path, where ``after(refresh_ms)``
+    sets it. That made the startup line's "samples at N Hz" a fiction on this
+    path, so the rate is now **measured here and reported** instead: a rolling
+    figure in the overlay, and per-stage means on exit. ~38 ms was an estimate
+    added up from component benchmarks; this is the loop answering for itself.
+    ``refresh_ms`` survives only as the wait used while no frame has arrived.
+
     Requires ``opencv-python``, not ``opencv-python-headless`` -- the headless
     wheel omits highgui and ``namedWindow`` raises "The function is not
     implemented".
@@ -563,6 +574,12 @@ def cv2_loop(core, camera, tracker, display_px, refresh_ms):
     win = f"{camera} - live"
     cv2.namedWindow(win, cv2.WINDOW_AUTOSIZE)
     n_shown = 0
+    # Rolling window of recent tick durations, plus running totals per stage.
+    # The window is short so the overlay tracks what is happening now; the
+    # totals are what gets reported at the end.
+    recent = deque(maxlen=20)
+    tot = {"detect": 0.0, "display": 0.0, "draw": 0.0, "tick": 0.0}
+    t_prev = None
     print(f"  cv2 window: ESC or closing the window stops it.")
     while True:
         try:
@@ -571,7 +588,13 @@ def cv2_loop(core, camera, tracker, display_px, refresh_ms):
             if cv2.waitKey(max(1, refresh_ms)) == 27:
                 break
             continue
+        t_tick = time.perf_counter()
+        if t_prev is not None:
+            recent.append(t_tick - t_prev)
+            tot["tick"] += t_tick - t_prev
+        t_prev = t_tick
         raw = np.asarray(frame)
+        t0 = time.perf_counter()
         if tracker is not None and getattr(tracker, "full_frame", False):
             circles = tracker.update(raw)
             small, step = decimate(raw, display_px)
@@ -582,6 +605,7 @@ def cv2_loop(core, camera, tracker, display_px, refresh_ms):
             scale = 1.0
         frame8, stats = autoscale(small)
         bgr = cv2.cvtColor(frame8, cv2.COLOR_GRAY2BGR)
+        t_draw = time.perf_counter()
         if tracker is not None:
             if not getattr(tracker, "full_frame", False):
                 circles = tracker.update(frame8, step)
@@ -593,13 +617,22 @@ def cv2_loop(core, camera, tracker, display_px, refresh_ms):
             cv2.putText(bgr, tracker.summary(), (6, 16),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1,
                         cv2.LINE_AA)
+        rate = ""
+        if recent:
+            ms = sum(recent) / len(recent) * 1e3
+            rate = f"  tick {ms:.0f} ms ({1e3 / ms:.0f} Hz)"
         cv2.putText(bgr, f"{raw.shape[1]}x{raw.shape[0]} (shown 1/{step})  "
                          f"exp {core.getExposure():.1f} ms  "
-                         f"raw {stats['min']}-{stats['max']}  n={n_shown}",
+                         f"raw {stats['min']}-{stats['max']}  n={n_shown}"
+                         f"{rate}",
                     (6, bgr.shape[0] - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.4,
                     (255, 255, 255), 1, cv2.LINE_AA)
+        t_show = time.perf_counter()
         cv2.imshow(win, bgr)
         n_shown += 1
+        tot["detect"] += t_draw - t0
+        tot["draw"] += t_show - t_draw
+        tot["display"] += time.perf_counter() - t_show
         if cv2.waitKey(1) == 27:
             break
         try:
@@ -609,6 +642,19 @@ def cv2_loop(core, camera, tracker, display_px, refresh_ms):
             break
     cv2.destroyAllWindows()
     cv2.waitKey(1)
+    # The estimate this replaces was ~38 ms, added up from separately measured
+    # components. Print the loop's own figures next to their stages so the two
+    # can be compared instead of assumed equal. `tick` includes the camera
+    # wait, so it is >= the three stages summed by however long the loop sat
+    # idle waiting for a new frame -- that gap is headroom, not overhead.
+    if n_shown > 1:
+        n = n_shown - 1
+        print(f"  measured over {n} ticks: "
+              f"tick {tot['tick'] / n * 1e3:.1f} ms "
+              f"({n / tot['tick']:.1f} Hz)  = detect "
+              f"{tot['detect'] / n_shown * 1e3:.1f} + draw "
+              f"{tot['draw'] / n_shown * 1e3:.1f} + display "
+              f"{tot['display'] / n_shown * 1e3:.1f} ms + camera wait")
 
 
 class Viewer:
@@ -794,15 +840,20 @@ def main() -> int:
 
         core.startContinuousSequenceAcquisition(0)
         root = tk.Tk()
+        # --gpu's implications first: the refresh default below reads
+        # args.track, so setting it afterwards left `--gpu` alone running at
+        # 50 ms instead of 100. Harmless -- the tick just ran late -- but the
+        # printed rate said 20 Hz when the intent was 10, which is how it was
+        # noticed.
+        if args.gpu:
+            args.track = True
+            args.cv2_window = True
         if args.refresh_ms is None:
             args.refresh_ms = 100 if args.track else _REFRESH_MS
             if args.track:
                 print(f"display tick set to {args.refresh_ms} ms (10 Hz) for "
                       "tracking; pass --refresh-ms to override")
         tracker = None
-        if args.gpu:
-            args.track = True
-            args.cv2_window = True
         if args.track:
             px_um = core.getPixelSizeUm()
             if not px_um:
@@ -830,9 +881,18 @@ def main() -> int:
                 print(f"TRACKING: Hough on the displayed 8-bit frame, "
                       f"pixel {px_um:.5f} um, isolation "
                       f"{args.track_isolation_um:.0f} um.")
-            print("  Field selection only -- this samples the newest frame at "
-                  f"{1000 / args.refresh_ms:.0f} Hz out of 30 fps, so it drops "
-                  "frames by design and cannot make an MSD.")
+            if args.cv2_window:
+                # Not `1000/refresh_ms`: cv2_loop does not honour refresh_ms
+                # (waitKey(1), not after()), so any figure printed here would
+                # be invented. It measures its own tick and reports it.
+                print("  Field selection only -- it samples the newest frame "
+                      "out of 30 fps and drops the rest by design, so it "
+                      "cannot make an MSD. Achieved rate is measured by the "
+                      "loop and shown in the overlay.")
+            else:
+                print("  Field selection only -- this samples the newest frame "
+                      f"at {1000 / args.refresh_ms:.0f} Hz out of 30 fps, so "
+                      "it drops frames by design and cannot make an MSD.")
         if args.cv2_window:
             cv2_loop(core, camera, tracker, args.display, args.refresh_ms)
         else:
