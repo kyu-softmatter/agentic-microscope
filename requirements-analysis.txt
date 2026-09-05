@@ -1,0 +1,53 @@
+# Live particle detection and post-hoc tracking. One module needs it:
+#
+#   config/micromanager/live_view.py   --track only (cv2.HoughCircles)
+#
+# The import is deferred into `Tracker.update`, so `live_view.py` runs and
+# `--help` works with this file uninstalled; only `--track` fails, and it fails
+# with a message in the status line rather than a traceback. Nothing the test
+# suite collects imports cv2, so CI does not need this file.
+#
+# ⚠ `opencv-python`, NOT `opencv-python-headless`.
+#
+# The two wheels install the same `cv2` module and conflict, so one has to be
+# uninstalled before the other goes in. The headless build omits highgui: it
+# raises
+#
+#     error: (-2:Unspecified error) The function is not implemented.
+#     Rebuild the library with Windows, GTK+ 2.x or Cocoa support
+#
+# from `cv2.namedWindow`, which rules out `cv2.imshow`. That matters because
+# imshow is measured at **11.8 ms per 800x800 frame against 43.1 ms for the
+# Tk path** (palette PNG -> base64 -> PhotoImage) -- a 3.6x difference and the
+# largest single saving available in the live view, since the display is 64% of
+# a Tk tick. Installing headless by mistake costs that option silently.
+#
+# WHAT THIS PACKAGE DOES NOT BUY: GPU
+#
+# The PyPI wheel is built without CUDA (`cv2.cuda.getCudaEnabledDeviceCount()`
+# is 0, `build has CUDA: False`) and its OpenCL path did not beat the CPU on
+# any operation this repository uses. Measured 2026-09-04 on an RTX A4000,
+# 800x800 frames, uploads hoisted out of the timed loop so the transfer is not
+# being charged:
+#
+#     HoughCircles     CPU 14.43 ms   OpenCL 14.40 ms   1.00x
+#     GaussianBlur     CPU  0.13 ms   OpenCL  1.34 ms   0.09x
+#     matchTemplate    CPU 12.54 ms   OpenCL 15.89 ms   0.79x
+#     imshow           numpy 11.82 ms   UMat 11.65 ms   1.01x
+#
+# A ratio of exactly 1.00x on HoughCircles is the signature of no OpenCL kernel
+# at all -- the UMat is downloaded internally and the CPU implementation runs.
+# imshow at 1.01x is a different story and worth knowing: the window blit is
+# already GPU-composited by the OS, so there was never anything there to
+# accelerate. The Tk path's 31 ms was not GPU-able work, it was avoidable work.
+#
+# So GPU is not a dependency here, and the free alternative reaches the same
+# ceiling: detection every tenth tick takes detection from 14.9 ms to 1.5 ms
+# average, giving a 14.0 ms tick against the 13.5 ms a perfect GPU detector
+# would give. The case that *would* need one is full-frame live detection --
+# HoughCircles on 2400x2400 is 93 ms on CPU, which fits no usable tick, so that
+# is a missing capability rather than a slow one. No GPU compute runtime is
+# installed on the instrument PC (no torch, cupy, numba, pyopencl, no nvcc),
+# only the driver.
+
+opencv-python>=4.8
