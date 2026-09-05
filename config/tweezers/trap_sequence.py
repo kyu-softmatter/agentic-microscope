@@ -110,9 +110,16 @@ _TURRET_SHUTTERS = ("Turret1Shutter", "Turret2Shutter")
 GRAB_WATCH_S = 1.5
 
 #: A free 5 um bead near the coverslip covers sqrt(2 D t) ~ 350 nm in 1.5 s at
-#: the D measured on 2026-09-04 (0.0395 um^2/s). A held one covers tens of nm.
+#: the D measured on 2026-09-04 (0.0395 um^2/s). A held one covers tens of nm
+#: -- two windows that stayed on one bead read 55 and 61 nm the same day.
 #: Halfway between, in nm, on the RMS excursion.
 HELD_EXCURSION_NM = 150.0
+
+#: Hysteresis on the held verdict. One cut at 150 nm flipped on noise alone:
+#: measured 55, 152, 61, 155, 143, 151, 149 nm in sequence. Entering "held"
+#: and leaving it are deliberately different numbers.
+HELD_ENTER_NM = 110.0
+HELD_LEAVE_NM = 220.0
 
 
 def provisional_transform(um_per_px, frame_shape, objective, camera):
@@ -182,6 +189,8 @@ class Sequence:
         # gap is unexplained -- and the way to stop guessing is to count.
         self.hold_hist: list[tuple[float, float, float]] = []
         self.hold_state = None
+        self.hold_lock = None
+        self.hold_lost = 0
         self.ramping = False
         self.ramp_from = np.zeros(2)
         self.ramp_dist = 0.0
@@ -207,8 +216,8 @@ class Sequence:
             if not self.judged:
                 self.message = "still watching -- wait for the verdict"
                 return
-            self.stage = 3
-            self.drive = []
+            if not self.start_drive():
+                return
         elif self.stage == 3:
             pass                       # the drive ends itself
         elif self.stage == 4:
@@ -253,6 +262,8 @@ class Sequence:
         self.stage = 5
         self.hold_hist = []
         self.hold_state = None
+        self.hold_lock = None
+        self.hold_lost = 0
         self.ramping = self.ramp_dist > 1e-6
         self.t_stage = time.perf_counter()
         if not self.ramping:
@@ -303,39 +314,83 @@ class Sequence:
                       "what this trap drags. Lower --speed-um-s.")
 
     def _hold_tick(self, img, t):
+        """Follow ONE bead and judge whether it is held.
+
+        The first version re-picked the detection nearest the centre on every
+        tick, which is wrong whenever two beads compete for "nearest": the
+        target hops between them, the excursion history mixes two positions,
+        and the RMS it reports is the distance between the beads rather than
+        the motion of either. Measured 2026-09-04, that produced a verdict
+        chattering at the 150 nm cut -- 55, 152, 61, 155, 143, 151, 149 nm --
+        while the reported position jumped 300 px across the field. None of
+        that was physics.
+
+        So the bead is chosen once and then *followed*, and re-picking clears
+        the history rather than extending it. The verdict also has hysteresis
+        now, because a single cut on a noisy statistic is a coin toss at the
+        boundary by construction.
+        """
         if len(self.circles) == 0:
             self.message = "nothing detected at the centre"
             return
         h, w = img.shape
         centre = np.array([w / 2.0, h / 2.0])
-        near = self.circles[np.argmin(
-            np.linalg.norm(self.circles[:, :2] - centre, axis=1))]
-        self.target_px = np.array(near[:2], dtype=float)
+        if self.hold_lock is None:
+            near = self.circles[np.argmin(
+                np.linalg.norm(self.circles[:, :2] - centre, axis=1))]
+            self.hold_lock = np.array(near[:2], dtype=float)
+            self.target_px = self.hold_lock.copy()
+            self.hold_hist = []
+            print(f"  locked onto the bead at ({self.hold_lock[0]:.1f}, "
+                  f"{self.hold_lock[1]:.1f}) px, "
+                  f"{np.linalg.norm(self.hold_lock - centre) * self.um_per_px:.2f}"
+                  " um from the centre")
         p = self._refine_target(img)
         if p is None:
+            self.hold_lost += 1
+            if self.hold_lost > 10:
+                print("  lost the locked bead; re-picking")
+                self.hold_lock, self.hold_lost = None, 0
+                self.hold_hist, self.hold_state = [], None
             return
+        self.hold_lost = 0
         self.hold_hist.append((t, p[0], p[1]))
         self.hold_hist = [r for r in self.hold_hist if t - r[0] <= HOLD_WINDOW_S]
         if len(self.hold_hist) < 8:
             return
+        span = self.hold_hist[-1][0] - self.hold_hist[0][0]
+        if span < 0.8 * HOLD_WINDOW_S:
+            return                     # judge on a full window or not at all
         a = np.array(self.hold_hist, dtype=float)[:, 1:3]
         rms = float(np.sqrt(((a - a.mean(axis=0)) ** 2).sum(axis=1).mean()))
         nm = rms * self.um_per_px * 1000.0
         off = float(np.linalg.norm(a.mean(axis=0) - centre))
-        held = nm < HELD_EXCURSION_NM
-        self.message = (f"centre bead: {nm:.0f} nm RMS, {off:.0f} px from the "
-                        f"cross -> {'HELD' if held else 'free'}")
+        # Hysteresis, not one cut. A single threshold on a noisy statistic
+        # flips on noise alone at the boundary, which is what produced the
+        # 150 nm chatter -- so entering "held" and leaving it are different
+        # numbers and the state persists between them.
+        if self.hold_state is None:
+            held = nm < HELD_ENTER_NM
+        elif self.hold_state:
+            held = nm < HELD_LEAVE_NM
+        else:
+            held = nm < HELD_ENTER_NM
+        self.message = (f"locked bead: {nm:.0f} nm RMS over {span:.1f} s, "
+                        f"{off:.0f} px from the cross -> "
+                        f"{'HELD' if held else 'free'}")
         if held != self.hold_state:
             self.hold_state = held
             if held:
                 print(f"  CAUGHT: bead held at ({a[:, 0].mean():.1f}, "
-                      f"{a[:, 1].mean():.1f}) px, {nm:.0f} nm RMS, "
-                      f"{off:.0f} px ({off * self.um_per_px:.2f} um) from the "
-                      "frame centre.")
-                print("    that pixel position IS p0 -- the trap origin, "
-                      "measured rather than assumed.")
+                      f"{a[:, 1].mean():.1f}) px, {nm:.0f} nm RMS over "
+                      f"{span:.1f} s, {off:.0f} px "
+                      f"({off * self.um_per_px:.2f} um) from the frame centre.")
+                print("    if the trap is what is holding it, that pixel "
+                      "position is p0. A bead stuck to the coverslip reads "
+                      "the same, so press D to drive it -- only a trapped "
+                      "bead follows.")
             else:
-                print(f"  released or lost: {nm:.0f} nm RMS at the centre")
+                print(f"  released or lost: {nm:.0f} nm RMS over {span:.1f} s")
 
     def _pick_target(self):
         if len(self.circles) == 0:
@@ -456,6 +511,46 @@ class Sequence:
             print("  a free bead here means the trap is not where the "
                   "transform says. The oscillation settles it either way.")
         self.judged = True                     # waiting for space
+
+    def start_drive(self):
+        """Check the whole sine before the first command, not per tick.
+
+        The first version checked each commanded point as it went and stopped
+        the drive when one left the limit. Measured 2026-09-04: the target
+        bead sat 17.5 um from the origin, +5 um of x drive put the peak at
+        22.4 um, and the run aborted after 4 tracked frames -- a fit that
+        needs 20. The operator paid a full stage transition to learn
+        something computable in advance.
+
+        The fix that matters is not the check, it is what the refusal says.
+        A bead near the edge of the range cannot be driven *there*, but it can
+        be **brought to the origin first** and driven from there, where +-5 um
+        is nowhere near any limit. That is what HOLD is for, and it is now the
+        advice rather than a dead end.
+        """
+        centre = np.asarray(self.target_um, dtype=float)
+        sched = TFT.sine_schedule(self.args.amp_um, self.args.freq_hz, "x",
+                                  self.args.cycles, 50.0,
+                                  (float(centre[0]), float(centre[1])))
+        worst = max(math.hypot(x, y) for _, x, y in sched)
+        if worst > self.args.max_offset_um:
+            self.message = (f"drive would reach {worst:.1f} um > "
+                            f"{self.args.max_offset_um:g} -- press H to bring "
+                            "it to (0,0) first, then D")
+            print(f"\n  REFUSED: the bead sits {np.linalg.norm(centre):.1f} um "
+                  f"from the origin, so a {self.args.amp_um:g} um sine about "
+                  f"it reaches {worst:.1f} um, past --max-offset-um "
+                  f"{self.args.max_offset_um:g}.")
+            print("    Press H to ramp it to (0,0) first and then D to drive "
+                  "it there -- the same sine about the origin reaches only "
+                  f"{self.args.amp_um:g} um.")
+            print("    Or read the green trapping trapezoid off the GUI and "
+                  "raise --max-offset-um deliberately. Points outside it are "
+                  "clipped silently, which is why this refuses.")
+            return False
+        self.stage = 3
+        self.drive = []
+        return True
 
     def _drive_tick(self, img, t):
         el = t - self.t_stage
@@ -719,8 +814,13 @@ def main() -> int:
             elif key in (ord("h"), ord("H")):
                 seq.enter_hold()
             elif key in (ord("d"), ord("D")) and seq.target_um is not None:
-                seq.stage, seq.drive = 3, []
-                seq.t_stage = time.perf_counter()
+                # After HOLD the bead is at the origin, so target_um has to
+                # follow it there or the drive would be planned about where
+                # the bead used to be.
+                if seq.stage == 5 and not seq.ramping:
+                    seq.target_um = np.zeros(2, dtype=float)
+                if seq.start_drive():
+                    seq.t_stage = time.perf_counter()
             try:
                 if cv2.getWindowProperty(win, cv2.WND_PROP_VISIBLE) < 1:
                     break

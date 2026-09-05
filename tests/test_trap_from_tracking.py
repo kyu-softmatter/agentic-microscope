@@ -443,3 +443,70 @@ def test_no_ramp_when_the_trap_is_already_at_the_origin():
     seq.enter_hold()
     assert seq.ramping is False
     assert seq.ot.sent == [(0.0, 0.0)]
+
+
+# ---- the drive gate, and the locked hold target ------------------------
+
+def test_a_drive_that_would_leave_the_range_is_refused_before_it_starts():
+    """Measured 2026-09-04: the bead sat 17.5 um out, +5 um of x drive put
+    the peak at 22.4 um, and the per-tick check aborted the run after 4
+    tracked frames -- for a fit that needs 20. Computable in advance."""
+    seq = _sequence(um_start=(16.9, -4.55))
+    assert seq.start_drive() is False
+    assert seq.stage == 0                     # did not enter OSCILLATE
+    assert seq.ot.sent == []                  # and sent nothing
+    assert "press H" in seq.message
+
+
+def test_the_same_bead_can_be_driven_once_it_is_at_the_origin():
+    """Which is the point of the refusal's advice: HOLD first, then drive."""
+    seq = _sequence(um_start=(0.0, 0.0))
+    assert seq.start_drive() is True
+    assert seq.stage == 3
+
+
+def test_the_gate_accounts_for_the_full_amplitude_not_just_the_centre():
+    seq = _sequence(um_start=(17.0, 0.0))     # inside 20 on its own
+    assert np.linalg.norm(seq.target_um) < seq.args.max_offset_um
+    assert seq.start_drive() is False         # 17 + 5 is not
+
+
+def test_hold_locks_onto_one_bead_and_does_not_re_pick_each_tick():
+    """The first version re-picked the nearest-to-centre detection every
+    tick, so with two beads competing the history mixed two positions and
+    the RMS it reported was the distance between them. Measured: a verdict
+    chattering 55, 152, 61, 155, 143, 151, 149 nm while the reported
+    position jumped 300 px."""
+    seq = _sequence(um_start=None)
+    seq.enter_hold()
+    # two beads, the far one very slightly nearer the centre on later ticks
+    seq.circles = np.array([[100.0, 100.0, 8.0], [160.0, 160.0, 8.0]])
+    img = _blob(cx=100.0, cy=100.0)
+    seq._hold_tick(img, 0.0)
+    locked = seq.hold_lock.copy()
+    seq.circles = np.array([[160.0, 160.0, 8.0], [100.0, 100.0, 8.0]])
+    for k in range(1, 12):
+        seq._hold_tick(img, k * 0.03)
+    assert np.allclose(seq.hold_lock, locked)
+    assert np.linalg.norm(seq.target_px - np.array([100.0, 100.0])) < 2.0
+
+
+def test_hold_judges_a_still_bead_as_held_and_says_where_it_is():
+    seq = _sequence(um_start=None)
+    seq.enter_hold()
+    seq.circles = np.array([[100.0, 100.0, 8.0]])
+    img = _blob(cx=100.0, cy=100.0)
+    for k in range(80):
+        seq._hold_tick(img, k * 0.033)        # 2.6 s, a full window
+    assert seq.hold_state is True
+    assert "HELD" in seq.message
+
+
+def test_the_held_verdict_has_hysteresis_rather_than_one_cut():
+    assert TS.HELD_ENTER_NM < TS.HELD_EXCURSION_NM < TS.HELD_LEAVE_NM
+    # and the band brackets the measured chatter that motivated it
+    for observed in (143.0, 149.0, 151.0, 152.0, 155.0):
+        assert TS.HELD_ENTER_NM < observed < TS.HELD_LEAVE_NM
+    # while the two clean single-bead windows sit clear of it
+    for held in (55.0, 61.0):
+        assert held < TS.HELD_ENTER_NM
