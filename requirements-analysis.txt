@@ -51,3 +51,30 @@
 # only the driver.
 
 opencv-python>=4.8
+
+# GPU detection on the FULL sensor frame, for config/micromanager/live_view.py
+# --gpu only. Deferred into GpuTracker.__init__, so nothing else notices it.
+#
+# `[ctk]` is not optional: CuPy JIT-compiles its kernels, so without the CUDA
+# headers every array operation raises "Failed to find CUDA headers". The extra
+# pulls the nvidia-* wheels (cufft, curand, cusolver, nvrtc, runtime) and runs
+# to roughly 2 GB. No CUDA toolkit install is needed -- only the driver, which
+# was 595.97 here.
+#
+# What it buys, measured on an RTX A4000 against the CPU HoughCircles it
+# replaces, scored on the isolated count against a full-resolution reference:
+#
+#      800x800    CPU 13.9 ms (err -1)   GPU 11.5 ms (err +3)   1.2x
+#    2400x2400    CPU 90.6 ms (err +3)   GPU 18.7 ms (err +6)   4.9x
+#
+# The second row is the reason this dependency exists. 90.6 ms fits no usable
+# display tick, so full-frame live detection was absent rather than slow, and
+# field choice needs the full frame: a 500 px crop held 1 bead past the
+# isolation cut where the full frame held 37. Of the 18.7 ms, 9.8 ms is the
+# upload.
+#
+# It is a different algorithm, not a faster Hough -- a box-matched filter has
+# no radius vote, so it rejects aggregates less well (+6 against +3). Fine for
+# choosing a field, and it is never used to measure one.
+
+cupy-cuda12x[ctk]>=13

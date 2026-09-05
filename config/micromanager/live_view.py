@@ -17,11 +17,35 @@ between looking and running costs a handoff, and a handoff is where the Tweez
 GUI's claim on the other body gets renegotiated too. This viewer runs on the
 *same* ``CMMCorePlus`` a run would use, so looking and acquiring are one owner.
 
-It is deliberately small: no histogram, no LUTs, no overlays, no saving. Tk 8.6
-reads base64 PNG, and stdlib ``zlib`` writes one, so the whole display path
-needs nothing that is not in the standard library -- which matters because the
-venv on the microscope PC has no matplotlib, no OpenCV and no Qt (checked
-2026-09-03).
+The default display path is deliberately small: no histogram, no LUTs, no
+saving. Tk 8.6 reads base64 PNG, and stdlib ``zlib`` writes one, so plain
+viewing needs nothing outside the standard library.
+
+⚠ 2026-09-04: the reason that mattered has expired. It was written when the
+venv on the microscope PC had no OpenCV, no matplotlib and no Qt; it now has
+``opencv-python`` (see requirements-analysis.txt) and ``cupy-cuda12x``. The
+stdlib path is kept because it still works and costs nothing to keep, not
+because it is the only option -- and it is **not** the fast option. Tk needs an
+*encoded* image, so every tick pays zlib + base64 + a PNG decode: measured
+43.1 ms on an 800x800 frame against 11.8 ms for ``cv2.imshow`` handed the same
+array. ``--cv2-window`` takes that path instead, and ``--gpu`` implies it,
+because a full-frame tick does not fit otherwise.
+
+THREE THINGS IT CAN DO NOW, AND WHAT EACH IS FOR
+------------------------------------------------
+``--track``      HoughCircles on the frame the display has already decimated
+                 to 8 bits. ~15 ms. Counts beads and how many are isolated.
+``--gpu``        The same question answered on the FULL sensor frame, via a
+                 CuPy box-matched filter. 90.6 ms on CPU, 18.7 ms on an
+                 RTX A4000 -- so this is a capability rather than a speedup,
+                 and it matters because cropping does not thin a sample: a
+                 500 px crop held 1 isolated bead where the full frame held 37.
+``--cv2-window`` Native window instead of Tk. Implied by ``--gpu``.
+
+All three are for **choosing a field**, never for measuring one. This samples
+the newest frame out of a 30 fps stream and drops the rest by design, so no MSD
+can come out of it; ``config/session/run_wall_diffusion.py`` drains every frame
+with its timestamp for that.
 
 (PGM would be less code and Tk claims to support it, but ``PhotoImage(data=)``
 answers "couldn't recognize image data" for base64 P5 -- Tk's base64 path covers
@@ -367,8 +391,119 @@ class Tracker:
                 f"(<{self.STUCK_NM:.0f}nm)  [{c['history_s']:.1f}s]")
 
 
+
+class GpuTracker:
+    """Full-frame detection on the GPU, for field selection at 2400x2400.
+
+    WHY THIS EXISTS AND THE CPU TRACKER DOES NOT COVER IT
+    -----------------------------------------------------
+    ``Tracker`` runs on the frame the display has already decimated to ~800 px,
+    which is what makes HoughCircles affordable at 14 ms. Detection at the
+    sensor's own 2400x2400 costs **90.6 ms on CPU** and fits no usable display
+    tick, so full-frame live detection has not been a slow feature -- it has
+    been an absent one. That matters because the field is chosen on the count
+    of *isolated* beads, and cropping does not thin the sample, it only removes
+    candidates: measured 2026-09-04, a 500 px crop held 1 bead past the
+    isolation cut where the full 2400 px frame held 37.
+
+    On an RTX A4000 the same job is **18.7 ms**, a 4.9x gain, and it fits even
+    a 33 ms tick.
+
+    IT IS A DIFFERENT ALGORITHM, NOT A FASTER HOUGH
+    -----------------------------------------------
+    OpenCV's OpenCL path does not accelerate HoughCircles at all -- measured
+    1.00x with the upload hoisted, which is the signature of there being no
+    kernel. So this replaces the detector with one that suits the hardware: a
+    dyed bead is a bright disk, a uniform filter the width of that disk is a
+    matched filter for it, and both the uniform filter and the local-maximum
+    comparison are separable. Only the peak coordinates cross the bus.
+
+    The cost is accuracy. A box filter has no radius criterion, so it cannot
+    reject an aggregate the way Hough's radius vote does: isolated count came
+    out +6 against ground truth where Hough gave +3. Both are inside 10%, which
+    is ample for choosing a field and would not be for a measurement -- and
+    this is not used for measurement.
+    """
+
+    def __init__(self, px_um: float, isolation_um: float,
+                 refresh_ms: int = _REFRESH_MS, history_s: float = 4.0):
+        import cupy as cp  # noqa: PLC0415  (optional -- only --gpu needs it)
+        from cupyx.scipy.ndimage import maximum_filter, uniform_filter  # noqa: PLC0415
+        self._cp, self._uf, self._mf = cp, uniform_filter, maximum_filter
+        self.px_um = px_um
+        self.isolation_um = isolation_um
+        self.refresh_ms = refresh_ms
+        self.n_hist = max(2, int(round(history_s * 1000.0 / refresh_ms)))
+        self.hist: list[np.ndarray] = []
+        self.counts = {}
+        self.iso_mask = np.zeros(0, dtype=bool)
+        r = 2.5 / px_um
+        self._k = max(3, int(round(2 * r)) | 1)
+        self._sep = max(3, int(round(1.4 * r)) | 1)
+        self._buf = None
+        self.device = cp.cuda.runtime.getDeviceProperties(0)["name"].decode()
+
+    STUCK_NM = 300.0
+    full_frame = True
+
+    def update(self, frame_raw: np.ndarray, thr_frac: float = 0.35):
+        """Detect on the FULL-resolution raw frame. Returns (x, y, r) in sensor px."""
+        cp = self._cp
+        if self._buf is None or self._buf.shape != frame_raw.shape:
+            self._buf = cp.empty(frame_raw.shape, dtype=cp.float32)
+        # uint16 straight up, cast on device: half the bytes of a float32 upload.
+        self._buf.set(np.ascontiguousarray(frame_raw, dtype=np.uint16)
+                      .astype(np.float32, copy=False))
+        resp = self._uf(self._buf, size=self._k, mode="nearest")
+        lo = cp.percentile(resp, 20)
+        hi = cp.percentile(resp, 99.9)
+        thr = lo + thr_frac * (hi - lo)
+        peak = self._mf(resp, size=self._sep, mode="nearest")
+        ys, xs = cp.nonzero((resp >= peak) & (resp > thr))
+        c = cp.asnumpy(cp.stack([xs, ys], axis=1)).astype(float)
+        r = 2.5 / self.px_um
+        circles = np.column_stack([c, np.full(len(c), r)]) if len(c)             else np.empty((0, 3))
+
+        self.hist.append(circles[:, :2].copy())
+        if len(self.hist) > self.n_hist:
+            self.hist.pop(0)
+
+        self.iso_mask = np.zeros(len(circles), dtype=bool)
+        n_iso = 0
+        if len(circles) > 1:
+            d = np.linalg.norm(circles[:, None, :2] - circles[None, :, :2],
+                               axis=-1)
+            np.fill_diagonal(d, np.inf)
+            self.iso_mask = d.min(axis=1) * self.px_um >= self.isolation_um
+            n_iso = int(self.iso_mask.sum())
+
+        n_moving = n_stuck = 0
+        if len(self.hist) >= self.n_hist and len(circles) and len(self.hist[0]):
+            old = self.hist[0]
+            d = np.linalg.norm(circles[:, None, :2] - old[None, :, :], axis=-1)
+            moved = d.min(axis=1) * self.px_um * 1e3
+            n_stuck = int((moved < self.STUCK_NM).sum())
+            n_moving = int(len(circles) - n_stuck)
+
+        self.counts = {"detected": int(len(circles)), "isolated": n_iso,
+                       "moving": n_moving, "stuck": n_stuck,
+                       "history_s": len(self.hist) * self.refresh_ms / 1000.0}
+        return circles
+
+    def summary(self) -> str:
+        c = self.counts
+        if not c:
+            return f"gpu track ({self.device}): warming up"
+        return (f"gpu full-frame: {c['detected']} detected  "
+                f"GREEN {c['isolated']} isolated "
+                f"(nn>={self.isolation_um:.0f}um)  "
+                f"RED {c['detected'] - c['isolated']} crowded  "
+                f"{c['moving']} moving  {c['stuck']} stuck  "
+                f"[{c['history_s']:.1f}s]")
+
+
 def index_with_rings(frame8: np.ndarray, circles: np.ndarray,
-                     isolated: np.ndarray) -> np.ndarray:
+                     isolated: np.ndarray, scale: float = 1.0) -> np.ndarray:
     """Quantize to the palette and ring each detection in its category colour.
 
     Green for isolated, red for crowded, because that is the decision the
@@ -381,7 +516,11 @@ def index_with_rings(frame8: np.ndarray, circles: np.ndarray,
     if not len(circles):
         return idx
     H, W = idx.shape
-    for (cx, cy, r), iso in zip(circles, isolated):
+    for (cx0, cy0, r0), iso in zip(circles, isolated):
+        # `scale` maps detection coordinates onto display coordinates. Full-frame
+        # GPU detection returns sensor pixels while the display is decimated, so
+        # the two are not the same grid.
+        cx, cy, r = cx0 * scale, cy0 * scale, max(2.0, r0 * scale)
         pad = int(r) + 2
         x0, x1 = max(0, int(cx) - pad), min(W, int(cx) + pad + 1)
         y0, y1 = max(0, int(cy) - pad), min(H, int(cy) + pad + 1)
@@ -392,6 +531,84 @@ def index_with_rings(frame8: np.ndarray, circles: np.ndarray,
         ring = (d2 >= (r - 1) ** 2) & (d2 <= (r + 1) ** 2)
         idx[y0:y1, x0:x1][ring] = _ISOLATED if iso else _CROWDED
     return idx
+
+
+
+def cv2_loop(core, camera, tracker, display_px, refresh_ms):
+    """Display through a native cv2 window instead of Tk. Returns on ESC / close.
+
+    Tk needs an *encoded* image: ``PhotoImage`` takes base64 PNG, so every tick
+    pays a zlib compress, a base64 encode and a PNG decode. Measured on an
+    800x800 frame that is **43.1 ms**, and it is 64% of a Tk tick -- more than
+    the detector. ``cv2.imshow`` takes the array and hands it to the driver:
+    **11.8 ms**, a 3.6x difference, and none of that work was ever GPU-able. It
+    was avoidable.
+
+    Drawing moves too. ``cv2.cvtColor`` plus one ``cv2.circle`` per detection
+    costs **2.5 ms** for 182 circles against **8.5 ms** for the numpy indexed
+    rings, and the circle calls themselves are 0.4 ms of it -- the colour
+    conversion is most of the cost. (An earlier benchmark had cv2 at 101 ms and
+    was wrong: it copied the frame once per circle, 350 MB of copying.)
+
+    Together those two changes take a GPU full-frame tick from ~90 ms to ~38 ms,
+    which is what makes 2400x2400 live detection usable rather than merely
+    possible.
+
+    Requires ``opencv-python``, not ``opencv-python-headless`` -- the headless
+    wheel omits highgui and ``namedWindow`` raises "The function is not
+    implemented".
+    """
+    import cv2  # noqa: PLC0415  (optional -- only this display path needs it)
+
+    win = f"{camera} - live"
+    cv2.namedWindow(win, cv2.WINDOW_AUTOSIZE)
+    n_shown = 0
+    print(f"  cv2 window: ESC or closing the window stops it.")
+    while True:
+        try:
+            frame = core.getLastImage()
+        except Exception:
+            if cv2.waitKey(max(1, refresh_ms)) == 27:
+                break
+            continue
+        raw = np.asarray(frame)
+        if tracker is not None and getattr(tracker, "full_frame", False):
+            circles = tracker.update(raw)
+            small, step = decimate(raw, display_px)
+            scale = 1.0 / step
+        else:
+            small, step = decimate(raw, display_px)
+            circles = np.empty((0, 3))
+            scale = 1.0
+        frame8, stats = autoscale(small)
+        bgr = cv2.cvtColor(frame8, cv2.COLOR_GRAY2BGR)
+        if tracker is not None:
+            if not getattr(tracker, "full_frame", False):
+                circles = tracker.update(frame8, step)
+            for (cx, cy, r), iso in zip(circles, tracker.iso_mask):
+                cv2.circle(bgr, (int(round(cx * scale)), int(round(cy * scale))),
+                           max(2, int(round(r * scale))),
+                           (90, 220, 90) if iso else (80, 80, 235), 1,
+                           cv2.LINE_AA)
+            cv2.putText(bgr, tracker.summary(), (6, 16),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1,
+                        cv2.LINE_AA)
+        cv2.putText(bgr, f"{raw.shape[1]}x{raw.shape[0]} (shown 1/{step})  "
+                         f"exp {core.getExposure():.1f} ms  "
+                         f"raw {stats['min']}-{stats['max']}  n={n_shown}",
+                    (6, bgr.shape[0] - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.4,
+                    (255, 255, 255), 1, cv2.LINE_AA)
+        cv2.imshow(win, bgr)
+        n_shown += 1
+        if cv2.waitKey(1) == 27:
+            break
+        try:
+            if cv2.getWindowProperty(win, cv2.WND_PROP_VISIBLE) < 1:
+                break
+        except cv2.error:
+            break
+    cv2.destroyAllWindows()
+    cv2.waitKey(1)
 
 
 class Viewer:
@@ -421,11 +638,17 @@ class Viewer:
             self.root.after(self.refresh_ms, self.tick)
             return
 
-        small, step = decimate(np.asarray(frame), self.display_px)
+        raw = np.asarray(frame)
+        small, step = decimate(raw, self.display_px)
         frame8, stats = autoscale(small)
         if self.tracker is not None:
-            circles = self.tracker.update(frame8, step)
-            idx = index_with_rings(frame8, circles, self.tracker.iso_mask)
+            if getattr(self.tracker, "full_frame", False):
+                circles = self.tracker.update(raw)
+                idx = index_with_rings(frame8, circles,
+                                       self.tracker.iso_mask, 1.0 / step)
+            else:
+                circles = self.tracker.update(frame8, step)
+                idx = index_with_rings(frame8, circles, self.tracker.iso_mask)
             self.status.configure(text=self.tracker.summary())
             self.photo = tk.PhotoImage(data=to_png_base64_indexed(idx))
         else:
@@ -467,6 +690,23 @@ def main() -> int:
                          "which fits a 100 ms tick with room and does not fit "
                          "a 33 ms one. The tracking history is held in seconds, "
                          "so the tick rate does not change what 'moving' means")
+    ap.add_argument("--cv2-window", action="store_true",
+                    help="display through a native cv2 window instead of Tk. "
+                         "Tk needs an ENCODED image, so every tick pays zlib + "
+                         "base64 + PNG decode: 43.1 ms against 11.8 ms for "
+                         "cv2.imshow on the same 800x800 frame, and drawing "
+                         "with cv2.circle is 2.5 ms against 8.5 ms for the "
+                         "numpy rings. Implied by --gpu, because a full-frame "
+                         "tick does not fit otherwise")
+    ap.add_argument("--gpu", action="store_true",
+                    help="detect on the FULL sensor frame using CuPy instead of "
+                         "HoughCircles on the decimated one. Implies --track. "
+                         "Full-frame detection is 90.6 ms on CPU and 18.7 ms on "
+                         "an RTX A4000 -- the point is not the 4.9x, it is that "
+                         "90.6 ms fits no tick, so this is a capability rather "
+                         "than a speedup. Costs accuracy: the box-matched "
+                         "filter has no radius criterion, so the isolated count "
+                         "came out +6 against ground truth where Hough gave +3")
     ap.add_argument("--track", action="store_true",
                     help="detect beads live with cv2.HoughCircles and report "
                          "how many are isolated, moving and stuck. FIELD "
@@ -560,6 +800,9 @@ def main() -> int:
                 print(f"display tick set to {args.refresh_ms} ms (10 Hz) for "
                       "tracking; pass --refresh-ms to override")
         tracker = None
+        if args.gpu:
+            args.track = True
+            args.cv2_window = True
         if args.track:
             px_um = core.getPixelSizeUm()
             if not px_um:
@@ -568,14 +811,34 @@ def main() -> int:
                       "nosepiece position. See config/micromanager/"
                       "set_pixel_size.py", file=sys.stderr)
                 return 2
-            tracker = Tracker(px_um, args.track_isolation_um, args.refresh_ms)
-            print(f"TRACKING: Hough on the displayed 8-bit frame, "
-                  f"pixel {px_um:.5f} um, isolation "
-                  f"{args.track_isolation_um:.0f} um. Field selection only -- "
-                  f"this samples 20 Hz out of 30 fps and cannot make an MSD.")
-        Viewer(core, root, args.display, camera, tracker,
-               args.refresh_ms).tick()
-        root.mainloop()
+            if args.gpu:
+                try:
+                    tracker = GpuTracker(px_um, args.track_isolation_um,
+                                         args.refresh_ms)
+                except Exception as exc:
+                    print(f"--gpu unavailable ({type(exc).__name__}: {exc}). "
+                          "Needs cupy and the CUDA headers: "
+                          "pip install 'cupy-cuda12x[ctk]'", file=sys.stderr)
+                    return 2
+                print(f"GPU TRACKING on the FULL {core.getImageWidth()}x"
+                      f"{core.getImageHeight()} frame via {tracker.device}: "
+                      f"pixel {px_um:.5f} um, isolation "
+                      f"{args.track_isolation_um:.0f} um.")
+            else:
+                tracker = Tracker(px_um, args.track_isolation_um,
+                                  args.refresh_ms)
+                print(f"TRACKING: Hough on the displayed 8-bit frame, "
+                      f"pixel {px_um:.5f} um, isolation "
+                      f"{args.track_isolation_um:.0f} um.")
+            print("  Field selection only -- this samples the newest frame at "
+                  f"{1000 / args.refresh_ms:.0f} Hz out of 30 fps, so it drops "
+                  "frames by design and cannot make an MSD.")
+        if args.cv2_window:
+            cv2_loop(core, camera, tracker, args.display, args.refresh_ms)
+        else:
+            Viewer(core, root, args.display, camera, tracker,
+                   args.refresh_ms).tick()
+            root.mainloop()
     finally:
         for step, action in (
             ("stop acquisition", lambda: core.stopSequenceAcquisition()),
