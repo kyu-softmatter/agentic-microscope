@@ -269,16 +269,32 @@ def test_bead_windows_scale_with_the_pixel_size():
 TS = _load("config/tweezers/trap_sequence.py", "_trap_sequence")
 
 
-def test_provisional_transform_flips_y_and_centres_the_origin():
+def test_provisional_transform_flips_y():
     """Image y runs down, so +y in trap um has to go UP in pixels. Getting
     this backwards is one of the eight orientations and it is the one that
     looks nearly right -- the trap lands mirrored about the centre line."""
     t = TS.provisional_transform(UM_PX, (1200, 1200), "100x", "Kinetix_red")
-    assert t.p0 == [600.0, 600.0]
-    assert t.taken == "PROVISIONAL"
-    assert t.to_px(np.array([0.0, 0.0]))[1] == pytest.approx(600.0)
-    assert t.to_px(np.array([0.0, 5.0]))[1] < 600.0      # +y um is up in px
-    assert t.to_px(np.array([5.0, 0.0]))[0] > 600.0
+    assert t.taken.startswith("PROVISIONAL")
+    p00 = t.to_px(np.array([0.0, 0.0]))
+    assert t.to_px(np.array([0.0, 5.0]))[1] < p00[1]     # +y um is up in px
+    assert t.to_px(np.array([5.0, 0.0]))[0] > p00[0]
+
+
+def test_the_origin_is_the_measured_offset_not_the_frame_centre():
+    """Five beads ramped to trap (0,0) and held all came to rest at
+    (584.4, 584.4) in a 1200 ROI, 15.6 px from the centre in both axes. So
+    the frame centre is the wrong answer by about 1 um in each direction."""
+    t = TS.provisional_transform(UM_PX, (1200, 1200), "100x", "Kinetix_red")
+    assert t.p0[0] == pytest.approx(584.42, abs=0.3)
+    assert t.p0[1] == pytest.approx(584.38, abs=0.3)
+
+
+def test_the_origin_offset_is_physical_so_it_scales_with_the_pixel_size():
+    """It is a place, not a pixel count. Halve um/px and the same offset has
+    to come out twice as many pixels from the centre."""
+    fine = TS.provisional_transform(UM_PX / 2, (1200, 1200), "100x", "cam")
+    coarse = TS.provisional_transform(UM_PX, (1200, 1200), "100x", "cam")
+    assert (600.0 - fine.p0[0]) == pytest.approx(2 * (600.0 - coarse.p0[0]))
 
 
 def _saved(tmp_path, name="cal.yaml", **over):
@@ -301,7 +317,7 @@ def test_a_different_roi_falls_back_to_the_guess(tmp_path):
     t, why = TS.usable_transform(_saved(tmp_path), (2400, 2400), "100x",
                                  UM_PX, "Kinetix_red")
     assert "taken at 1200x1200" in why
-    assert t.taken == "PROVISIONAL"
+    assert t.taken.startswith("PROVISIONAL")
 
 
 def test_a_different_objective_falls_back_to_the_guess(tmp_path):
@@ -322,7 +338,7 @@ def test_no_saved_file_is_reported_rather_than_raising(tmp_path):
     t, why = TS.usable_transform(tmp_path / "absent.yaml", (1200, 1200),
                                  "100x", UM_PX, "K")
     assert why == "no saved transform"
-    assert t.taken == "PROVISIONAL"
+    assert t.taken.startswith("PROVISIONAL")
 
 
 def test_the_held_cut_sits_between_a_free_and_a_trapped_bead():

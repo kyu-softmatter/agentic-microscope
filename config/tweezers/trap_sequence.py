@@ -3,13 +3,36 @@
     python config/tweezers/trap_sequence.py --cfg config/micromanager/single_cam_red_noDMD.cfg \
         --roi 1200 --line GREEN --intensity 20 --gpu
 
-    SPACE  advance     H  hold at (0,0)     D  drive again     ESC  stop
-    stage 0  LIVE       frames only, no detection
+    SPACE  LIVE -> DETECT -> TRAP -> HOLD -> DETECT -> ...   ESC  stop
+    D      the 5 um 1 Hz sine, from wherever the trap is (a measurement)
+    H      jump straight to HOLD
+
+    stage 0  LIVE       frames only, no detection, TRAP OFF
     stage 1  DETECT     isolated particles circled, green isolated / red crowded
-    stage 2  TRAP       the isolated particle nearest the field centre
+    stage 2  TRAP       position the trap on the isolated particle nearest the
+                        centre and TRAP_ON there -- the beam starts here
+    stage 5  HOLD       ramp the held bead to (0,0) and keep it there
     stage 3  OSCILLATE  5 um, 1 Hz in x -- confirms the trap AND measures px->um
     stage 4  DONE       the fit on screen
-    stage 5  HOLD       bring the held bead to (0,0) and keep it there
+
+The space bar walks detect - trap - hold and then **loops back to detect**,
+so one key repeats the whole cycle on the next bead. The oscillation is a
+*measurement* of the px->um transform rather than a step towards holding a
+bead, so it sits behind D and is not in the loop.
+
+THE BEAM IS OFF UNTIL STAGE 2, AND THAT IS SET RATHER THAN ASSUMED
+------------------------------------------------------------------
+Stage 1 is for looking, so there is no reason for 1064 nm to be in the sample
+yet. The trap is created and positioned at startup but ``TRAP_OFF`` is sent
+explicitly -- assumed-off is not off, and this tool's own exit path leaves the
+trap on by design, so a previous run is exactly the case that would have left
+it live. ``TRAP_ON`` happens in stage 2, at the target, *after* the position
+command: the other order puts the beam wherever the trap was last and then
+sweeps it across the field to the target, grabbing whatever it crosses.
+
+Restarting sends ``TRAP_OFF`` too. That is the honest release -- it lets the
+bead go where it is rather than dragging it to wherever the next target is --
+and it puts stage 1 back to the state stage 1 is supposed to have.
 
 HOLD NEEDS NO CALIBRATION, WHICH IS WHY IT IS WORTH HAVING SEPARATELY
 ---------------------------------------------------------------------
@@ -34,18 +57,21 @@ interface reads it back (52 command names probed 2026-08-27, all -11). Eight
 orientations agree with "the origin is the field centre" and seven of them send
 the trap to a mirrored or rotated position.
 
-So on a **first** run stage 2 is a labelled guess: the nominal pixel size, no
-rotation, and a y flip because image y runs downwards. It is drawn on screen as
-PROVISIONAL and it is checked immediately rather than trusted -- a held bead
-stops diffusing, so the target bead's excursion over the next second
-discriminates sharply (a free 5 um bead near the wall covers ~350 nm RMS in
-1.5 s at the D measured on 2026-09-04; a held one covers tens of nm).
+So stage 2 starts from a labelled guess -- nominal pixel size, no rotation, a
+y flip because image y runs downwards -- and it is drawn on screen as
+PROVISIONAL. On 2026-09-04 that guess turned out to be **right**: four beads
+in four different quadrants were targeted through it, all four were trapped,
+and all four followed the ramp home at 98.6-99.8%. Nothing but the correct
+rotation and handedness does that four times in four directions. The origin
+was measured at the same time and is no longer guessed (TRAP_ORIGIN_OFFSET_UM).
+The *scale* is still nominal, and only the sine can fix that.
 
-Stage 3 then *measures* the transform from the oscillation the operator wanted
-anyway, and saves it. From the second run onwards stage 2 is not a guess, and
-the window says which it is. If the provisional guess was wrong, stage 3 says
-by how many degrees -- the failure is legible instead of just being a bead that
-never got caught.
+⚠ The first version of this paragraph claimed the target bead's excursion over
+the next second "discriminates sharply" between held and free. **It does not.**
+Measured the same day, the excursion verdict was wrong in five cycles out of
+five -- see ``_judge_grab``. A bead stuck to the coverslip sits as still as a
+trapped one, and a bead just trapped is still travelling into the well. The
+ramp is the test that separates them, and it separated them completely.
 
 THE DRIVE RUNS ON THE DISPLAY TICK
 ----------------------------------
@@ -59,9 +85,11 @@ anything a 5 um bead resolves, and it buys a window that stays alive.
 
 WHAT IT LEAVES BEHIND
 ---------------------
-The trap is **parked, never switched off**. Closing this window must not be
-able to drop a bead, which is the same rule the turret shutters follow in
-``live_view`` (Turret 2 is the 1064 path). The light engine *is* taken down,
+On the way *out* the trap is **parked, never switched off**. Closing a window
+must not be able to drop a bead, which is the same rule the turret shutters
+follow in ``live_view`` (Turret 2 is the 1064 path). That is deliberately not
+symmetric with the restart above: releasing a bead is something the operator
+asked for, and closing a window is not. The light engine *is* taken down,
 because leaving excitation on bleaches the sample and nothing depends on it.
 
 ⚠ The illumination block duplicates ``live_view.main``'s. The two have to stay
@@ -109,6 +137,15 @@ _TURRET_SHUTTERS = ("Turret1Shutter", "Turret2Shutter")
 #: How long stage 2 watches the target before judging whether it is held.
 GRAB_WATCH_S = 1.5
 
+#: ...and how long it throws away first. Measured 2026-09-04: stage 2 called
+#: two beads STILL DIFFUSING at 208 and 189 nm RMS, and the ramp that followed
+#: carried both of them 100% and 99% of the way to the origin -- they were
+#: held the whole time. The verdict was reading the wrong thing. Right after
+#: TRAP_ON the bead is being *pulled into* the trap from wherever it was, so
+#: the first second of its excursion is that approach and not thermal motion
+#: in a well. Held, it read 28 nm once settled.
+GRAB_SETTLE_S = 0.8
+
 #: A free 5 um bead near the coverslip covers sqrt(2 D t) ~ 350 nm in 1.5 s at
 #: the D measured on 2026-09-04 (0.0395 um^2/s). A held one covers tens of nm
 #: -- two windows that stayed on one bead read 55 and 61 nm the same day.
@@ -122,19 +159,51 @@ HELD_ENTER_NM = 110.0
 HELD_LEAVE_NM = 220.0
 
 
+#: Where trap (0, 0) actually lands, as an offset from the frame centre in
+#: **image** um (x right, y down). MEASURED 2026-09-04: five separate beads
+#: were ramped to the origin and held, and all five came to rest at
+#: (584.42, 584.38) +- (0.68, 0.48) px in a 1200x1200 ROI at 0.065 um/px --
+#: (-15.58, -15.62) px from the centre. The two axes agree to 0.04 px against
+#: a per-hold scatter of 1.30 px, which is what makes it a systematic offset
+#: rather than five coincidences.
+#:
+#: Stored in um because it is a physical place: the pixel offset scales with
+#: the pixel size, so this stays right at another magnification or ROI.
+#:
+#: The *scale* is still nominal. These ramps cannot measure it -- the bead's
+#: starting pixel is where the bead was, not where the trap was commanded, so
+#: solving for the matrix from them mixes in that unknown offset (it comes out
+#: 12% anisotropic, which is the contamination, not the optics). Only the sine
+#: drives a bead already sitting in the trap, and only it measures the matrix.
+TRAP_ORIGIN_OFFSET_UM = (-1.013, -1.015)
+
+
 def provisional_transform(um_per_px, frame_shape, objective, camera):
-    """The guess, clearly labelled as one. See the module docstring."""
+    """The guess -- with the origin no longer guessed. See the module docstring.
+
+    The orientation here is still an assumption in principle, but not much of
+    one any more: on 2026-09-04 four beads at (-15.5,+16.5), (-10.1,-4.5),
+    (+17.5,+2.6) and (-19.4,+11.1) um -- four different quadrants -- were all
+    targeted through this matrix, all got trapped, and all four followed the
+    ramp home at 98.6-99.8%. A wrong rotation or handedness cannot do that
+    four times in four directions.
+    """
     h, w = frame_shape
     b = (1.0 / um_per_px) * np.diag([1.0, -1.0])
+    p0 = [w / 2.0 + TRAP_ORIGIN_OFFSET_UM[0] / um_per_px,
+          h / 2.0 + TRAP_ORIGIN_OFFSET_UM[1] / um_per_px]
     return TFT.TrapTransform(
-        b=b.tolist(), p0=[w / 2.0, h / 2.0], objective=objective,
+        b=b.tolist(), p0=p0, objective=objective,
         camera=camera, frame_shape=[int(h), int(w)],
         nominal_um_per_px=float(um_per_px),
         fitted_um_per_px=float(um_per_px), anisotropy=0.0, rotation_deg=0.0,
         handedness=-1, lag_deg=[0.0, 0.0], follow_frac=[0.0, 0.0],
-        residual=[0.0, 0.0], amp_um=0.0, freq_hz=0.0, taken="PROVISIONAL",
-        note="never measured: nominal scale, no rotation, y flipped because "
-             "image y runs down. One of eight orientations.")
+        residual=[0.0, 0.0], amp_um=0.0, freq_hz=0.0,
+        taken="PROVISIONAL (origin measured, scale nominal)",
+        note="scale is nominal and unmeasured; the origin offset is measured "
+             "over 5 holds and the orientation is confirmed by 4 ramps in 4 "
+             "quadrants, all following 98.6-99.8%. Only the sine measures the "
+             "matrix itself.")
 
 
 def usable_transform(path, frame_shape, objective, um_per_px, camera):
@@ -191,6 +260,10 @@ class Sequence:
         self.hold_state = None
         self.hold_lock = None
         self.hold_lost = 0
+        self.det_logged = None
+        self.det_logged_t = 0.0
+        self.cycles_done = 0
+        self.trap_live = False
         self.ramping = False
         self.ramp_from = np.zeros(2)
         self.ramp_dist = 0.0
@@ -216,14 +289,63 @@ class Sequence:
             if not self.judged:
                 self.message = "still watching -- wait for the verdict"
                 return
-            if not self.start_drive():
-                return
+            # SPACE walks the goal path -- detect, trap, bring to the centre.
+            # The oscillation is a measurement, not a step towards holding a
+            # bead, so it is behind D rather than in the way. Operator's call,
+            # 2026-09-04.
+            self.enter_hold()
+            return
         elif self.stage == 3:
             pass                       # the drive ends itself
         elif self.stage == 4:
             self.enter_hold()
             return
+        elif self.stage == 5:
+            self.restart()
+            return
         self.t_stage = time.perf_counter()
+
+    def restart(self):
+        """Back to DETECT for another bead. SPACE at HOLD, operator's request.
+
+        The trap stays where it is until TRAP picks the next target, and then
+        it **jumps** rather than ramps -- which is right here and wrong in the
+        other direction. Ramping to a new target would carry the bead
+        currently held at the origin along with it, undoing the work just
+        done; jumping releases it on the spot and leaves it at the centre
+        where it was put. The ramp exists to *keep* a bead, so it belongs on
+        the way in, not the way out.
+
+        Nothing about the trap is switched off. The cycle is 1 -> 2 -> 4 and
+        back to 1, so the laser state is not part of it.
+        """
+        self.cycles_done += 1
+        try:
+            self.ot.trap_off(self.args.trap_name)
+            self.trap_live = False
+        except Exception as exc:
+            print(f"  could not turn the trap off: {exc}")
+        if self.hold_state:
+            print(f"  TRAP_OFF -- released the bead at the origin, looking "
+                  f"for the next one (cycle {self.cycles_done + 1})")
+        else:
+            print(f"  TRAP_OFF -- back to DETECT "
+                  f"(cycle {self.cycles_done + 1})")
+        self.stage = 1
+        self.judged = False
+        self.target_px = None
+        self.target_um = None
+        self.watch = []
+        self.drive = []
+        self.hold_hist = []
+        self.hold_state = None
+        self.hold_lock = None
+        self.hold_lost = 0
+        self.det_logged = None
+        self.result = None
+        self.ramping = False
+        self.t_stage = time.perf_counter()
+        self.message = "SPACE to trap the one nearest the centre"
 
     def enter_hold(self):
         """Ramp the trap to (0, 0) on a straight line, then keep it there.
@@ -283,8 +405,9 @@ class Sequence:
         print("  No transform is used here -- moving a held bead to the "
               "origin needs only the origin.")
         print(f"  then watching the detection nearest the centre over a "
-              f"{HOLD_WINDOW_S:.1f} s window; held is < "
-              f"{HELD_EXCURSION_NM:.0f} nm RMS")
+              f"{HOLD_WINDOW_S:.1f} s window; held below "
+              f"{HELD_ENTER_NM:.0f} nm RMS, released above "
+              f"{HELD_LEAVE_NM:.0f}")
 
     def _ramp_tick(self, img, t):
         """One step of the straight-line move, tracking the bead as it goes."""
@@ -411,13 +534,21 @@ class Sequence:
             self.target_px = None
             return False
         self.target_um = um
+        # Position BEFORE TRAP_ON, always. The other order puts the beam at
+        # wherever the trap was last -- (0, 0) on a fresh run, the previous
+        # bead on a repeat -- and then sweeps it across the field to here,
+        # grabbing and dragging whatever it crosses. Placing a trap and
+        # sweeping one are different operations and only one was asked for.
         self.ot.set_trap_position(self.args.trap_name, float(um[0]),
                                   float(um[1]))
+        self.ot.trap_on(self.args.trap_name)
+        self.trap_live = True
         tag = "PROVISIONAL" if self.provisional_why else "measured"
-        print(f"\nTRAP -> ({um[0]:+.3f}, {um[1]:+.3f}) um  for bead at "
+        print(f"\nTRAP ON -> ({um[0]:+.3f}, {um[1]:+.3f}) um  for bead at "
               f"({self.target_px[0]:.1f}, {self.target_px[1]:.1f}) px "
               f"[{tag} transform]")
-        self.message = f"watching {GRAB_WATCH_S:.1f} s: is it held?"
+        self.message = (f"settling {GRAB_SETTLE_S:.1f} s then watching "
+                        f"{GRAB_WATCH_S:.1f} s: is it held?")
         return True
 
     # -- per-tick work ----------------------------------------------------
@@ -436,6 +567,54 @@ class Sequence:
         self.reject["ok"] += 1
         self.target_px = np.array([nx, ny])
         return self.target_px
+
+    def _log_detection(self, img, t):
+        """Put the detection counts in the log, not only on the screen.
+
+        The 2026-09-04 run spent 53 s in DETECT and then exited, and the
+        record of what it found is empty: the counts lived in the overlay and
+        nowhere else. Whoever reads the log afterwards -- including whoever
+        has to decide whether the detector is behaving -- cannot see the one
+        number the decision rests on. So the first detection is logged, and
+        after that only when the isolated count actually moves, which keeps a
+        minute of holding still to one line.
+        """
+        iso = getattr(self.tracker, "iso_mask", np.zeros(0, dtype=bool))
+        n_iso = int(iso.sum()) if len(iso) == len(self.circles) else 0
+        if (self.det_logged is not None
+                and abs(n_iso - self.det_logged) < 3
+                and t - self.det_logged_t < 15.0):
+            return
+        self.det_logged, self.det_logged_t = n_iso, t
+        h, w = img.shape
+        centre = np.array([w / 2.0, h / 2.0])
+        line = (f"  detect: {len(self.circles)} objects, {n_iso} isolated "
+                f"past {self.args.isolation_um:g} um")
+        if len(self.circles):
+            pool = (self.circles[iso] if n_iso else self.circles)
+            d = np.linalg.norm(pool[:, :2] - centre, axis=1)
+            near = pool[int(np.argmin(d))]
+            um = np.asarray(self.transform.to_um(near[:2]), dtype=float)
+            line += (f"; target at ({near[0]:.0f}, {near[1]:.0f}) px = "
+                     f"{d.min() * self.um_per_px:.1f} um from the centre, "
+                     f"({um[0]:+.1f}, {um[1]:+.1f}) um in trap coordinates")
+            # What the isolation cut is costing, in the only currency that
+            # matters here: how far the trap has to reach. Measured
+            # 2026-09-04, this field had nothing isolated within 28 um of the
+            # centre twice in a row, which makes every reach a long one and
+            # every ramp a slow one -- and the trapping trapezoid may not
+            # even cover it. Printing both distances turns "lower the cut?"
+            # into a decision with a number attached instead of a hunch.
+            if n_iso:
+                d_all = np.linalg.norm(self.circles[:, :2] - centre, axis=1)
+                closest = d_all.min() * self.um_per_px
+                if closest < 0.7 * d.min() * self.um_per_px:
+                    line += (f" -- the nearest object of any kind is "
+                             f"{closest:.1f} um out, so the "
+                             f"{self.args.isolation_um:g} um isolation cut is "
+                             f"costing {d.min() * self.um_per_px - closest:.1f}"
+                             " um of reach")
+        print(line)
 
     def rate_report(self):
         out = []
@@ -481,11 +660,14 @@ class Sequence:
                 c = self.tracker.update(frame8, step)
                 self.circles = (np.asarray(c, dtype=float) * float(step)
                                 if len(c) else np.empty((0, 3)))
+        if self.stage == 1 and len(self.circles):
+            self._log_detection(img, t)
         if self.stage == 2 and self.target_px is not None:
             p = self._refine_target(img)
-            if p is not None:
+            if p is not None and t - self.t_stage >= GRAB_SETTLE_S:
                 self.watch.append((t, p[0], p[1]))
-            if (not self.judged and t - self.t_stage > GRAB_WATCH_S
+            if (not self.judged
+                    and t - self.t_stage > GRAB_SETTLE_S + GRAB_WATCH_S
                     and len(self.watch) > 5):
                 self._judge_grab()
         elif self.stage == 3 and self.target_px is not None:
@@ -497,19 +679,38 @@ class Sequence:
                 self._hold_tick(img, t)
 
     def _judge_grab(self):
+        """Report the excursion. Do NOT call it a verdict -- it is not one.
+
+        This printed HELD or STILL DIFFUSING and was **wrong in all five
+        cycles** of 2026-09-04: 208, 189, 193 and 229 nm called free on beads
+        the following ramp carried 98.6-99.8% of the way home, and 101 nm
+        called held on the one bead that moved 2.9%. Four false negatives and
+        a false positive out of five.
+
+        Raising or lowering the cut cannot fix that, because the two
+        populations it has to separate are not separated by this statistic. A
+        bead **stuck to the coverslip** sits as still as a trapped one -- that
+        is what the 101 nm reading was -- and a bead that has just been
+        trapped is still travelling into the well, which is what the 190-230
+        nm readings were. GRAB_SETTLE_S removes the second confusion but
+        nothing here removes the first.
+
+        The test that does work is in the ramp: a held bead comes with the
+        trap and a stuck one does not, and the two answers were 98.6-99.8%
+        against 2.9% with nothing in between. So the number is printed as an
+        observation and the ramp is named as the test.
+        """
         w = np.array(self.watch, dtype=float)[:, 1:3]
         rms = float(np.sqrt(((w - w.mean(axis=0)) ** 2).sum(axis=1).mean()))
         nm = rms * self.um_per_px * 1000.0
-        held = nm < HELD_EXCURSION_NM
-        self.message = (f"excursion {nm:.0f} nm over {GRAB_WATCH_S:.1f} s -> "
-                        f"{'looks HELD' if held else 'looks FREE'}; "
-                        "SPACE to oscillate")
-        print(f"  {len(self.watch)} frames, RMS excursion {nm:.0f} nm "
-              f"(cut {HELD_EXCURSION_NM:.0f}) -> "
-              f"{'HELD' if held else 'STILL DIFFUSING'}")
-        if not held:
-            print("  a free bead here means the trap is not where the "
-                  "transform says. The oscillation settles it either way.")
+        self.message = (f"excursion {nm:.0f} nm (does not decide it) -- "
+                        "SPACE to ramp to (0,0); the ramp is the test")
+        print(f"  {len(self.watch)} frames over {GRAB_WATCH_S:.1f} s "
+              f"(first {GRAB_SETTLE_S:.1f} s discarded as the approach): RMS "
+              f"excursion {nm:.0f} nm")
+        print("    Not a verdict -- this statistic was 0 for 5 on "
+              "2026-09-04. A stuck bead sits as still as a held one. The "
+              "ramp decides: a held bead comes with the trap.")
         self.judged = True                     # waiting for space
 
     def start_drive(self):
@@ -636,7 +837,9 @@ def draw(cv2, frame8, seq, step, tick_ms):
     cv2.drawMarker(bgr, (w // 2, h // 2), (200, 200, 200), cv2.MARKER_CROSS,
                    14, 1)
     name = STAGES[seq.stage]
-    head = f"[{int(seq.stage)}] {name}   {seq.message}"
+    head = (f"[{seq.stage}] {name}" +
+            (f" (cycle {seq.cycles_done + 1})" if seq.cycles_done else "")
+            + f"   {seq.message}")
     cv2.putText(bgr, head, (6, 18), cv2.FONT_HERSHEY_SIMPLEX, 0.45,
                 (255, 255, 255), 1, cv2.LINE_AA)
     if seq.stage >= 1:
@@ -646,6 +849,10 @@ def draw(cv2, frame8, seq, step, tick_ms):
                          f"{seq.args.isolation_um:g} um", (6, 36),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.4, (200, 255, 200), 1,
                     cv2.LINE_AA)
+    cv2.putText(bgr, "TRAP ON" if seq.trap_live else "trap off",
+                (w - 74, 18), cv2.FONT_HERSHEY_SIMPLEX, 0.42,
+                (90, 90, 245) if seq.trap_live else (150, 150, 150), 1,
+                cv2.LINE_AA)
     if seq.provisional_why:
         cv2.putText(bgr, f"PROVISIONAL transform: {seq.provisional_why}",
                     (6, 54), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (80, 200, 255), 1,
@@ -684,7 +891,6 @@ def build_parser():
     ap.add_argument("--trap-name", default="Trap 1")
     ap.add_argument("--create", action="store_true")
     ap.add_argument("--strength", type=float, default=1.0)
-    ap.add_argument("--no-trap-on", action="store_true")
     ap.add_argument("--centre-um", type=float, nargs=2, default=[0.0, 0.0],
                     metavar=("X", "Y"))
     ap.add_argument("--max-offset-um", type=float, default=TFT.MAX_OFFSET_UM)
@@ -772,9 +978,21 @@ def main() -> int:
         if args.gpu:
             print(f"GPU detection on the full {w}x{h} ROI via "
                   f"{tracker.device}")
+        # The trap is created and positioned but NOT switched on: stage 1 is
+        # for looking, and there is no reason to put 1064 nm into the sample
+        # before anything is being trapped. TRAP_ON happens in stage 2, at
+        # the target. Operator's request, 2026-09-04.
         ot = TFT.connect_trap(args.trap_name, args.create, args.strength,
-                              (args.centre_um[0], args.centre_um[1]),
-                              not args.no_trap_on)
+                              (args.centre_um[0], args.centre_um[1]), False)
+        # And the starting state is *set* rather than assumed -- a previous
+        # run of this tool leaves the trap on by design, so "off at stage 1"
+        # is only true if this says so.
+        try:
+            ot.trap_off(args.trap_name)
+            print(f"  TRAP_OFF {args.trap_name!r} -- no beam until stage 2. "
+                  "Check Active reads false in the GUI.")
+        except Exception as exc:
+            print(f"  could not turn the trap off: {exc}")
         seq = Sequence(core, camera, ot, tracker, transform, why, args,
                        um_per_px)
 
