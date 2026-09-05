@@ -449,9 +449,37 @@ walked before.
 sample; no drift rate anywhere in `kb/calibrations/`), lens 4 graded
 `INFEASIBLE` on the near-wall drag that *was* the measurand, and lens 6's
 ruling was explicit: run it, label it commissioning, and **report no hindrance
-ratio from it**. No `D` has been extracted. Calling this a successful
-measurement would be wrong; calling it a successful *run* is precisely right,
-and the distinction is the one [05 §7](docs/05-consensus-gate.md) is built on.
+ratio from it**. Calling this a successful measurement would be wrong; calling
+it a successful *run* is precisely right, and the distinction is the one
+[05 §7](docs/05-consensus-gate.md) is built on.
+
+A `D` **was** extracted later the same day, over 9 independent fields on a
+300 µm grid: `D‖ = 0.03951 ± 0.00039 µm²/s` (SEM 1.1 %, field SD 3.0 %, 173 of
+235 isolated beads from 2692 detections), `D/D_bulk = 0.461`, inverting through
+the full Faxén series to a mean gap of 373 nm and `h/a = 1.149`. It is robust
+to ±0.9 % across three treatments of the MSD intercept and `d ln D / d ln h`
+is 1.73. **It is still not a measurement of the wall effect**, because lens 6's
+`BLOCKED` items are what dominate the error budget and none of them were
+closed: sample temperature at the coverslip (3–8 %, one-sided, unmeasured),
+Faxén truncation at `h/a = 1.15` (3–5 %), and the bead radius CV (2–5 %). The
+number's use is that it makes a *testable prediction about the medium* — pure DI
+water would put the gap at 889 nm, so 373 nm implies an ionic strength of
+roughly 0.05–0.1 mM. Measuring the medium's conductivity would confirm or break
+it.
+
+**The same day, the loop was closed to the optical trap.** Live GPU detection
+now hands a chosen particle to the tweezers: five cycles of detect → trap →
+ramp-to-origin at 100×, four beads caught and carried 11–26 µm to the field
+origin at 98.6–99.8 % follow, driven from Python over TCP with the laser armed
+by hand. That fixed the px → trap-µm orientation (four quadrants, four
+catches — nothing but the right rotation and handedness does that) and measured
+the trap origin to `(584.42, 584.38) ± (0.68, 0.48)` px, a systematic
+`(−1.013, −1.015) µm` from the frame centre. The scale is still nominal, and
+the session also **falsified the test used to check the catch**: a bead's RMS
+excursion was wrong in five cycles out of five, because a bead stuck to the
+coverslip sits as still as a trapped one. Moving the trap and watching whether
+the bead comes separates them completely.
+→ [`kb/decisions/2026-09-04-closed-loop-trapping-measured.md`](kb/decisions/2026-09-04-closed-loop-trapping-measured.md)
 
 **What the run actually yielded was six falsified records** — and that, not the
 data, is the return on it:
@@ -1294,6 +1322,34 @@ Splitter: **an element MM cannot read is an element whose record drifts.**
 Either get it into the `.cfg`, or make the acquisition record the operator's
 assertion about it the way `run_wall_diffusion.py` does for the 1064 nm
 emission state.
+
+### 6. The trapping range, and the rest of the px → trap-µm transform
+
+Two numbers stand between the closed-loop trapper and being able to reach any
+particle in the field.
+
+**The green trapping trapezoid's half-extents at 100×.** GUI-only, produced by
+the *Beam Position* calibration and not readable over TCP. It decides whether
+targeting covers the whole 78 µm field or only the middle of it.
+
+*What it cost on 2026-09-04:* nothing yet, and that is luck. Points outside
+the calibrated field are **clipped silently by the GUI and not drawn**, so an
+over-long reach lands the trap somewhere else with no error on either side.
+`--max-offset-um` is a placeholder — 30 µm was used because the nearest
+isolated bead was 23–29 µm out — and it is a guard against a limit nobody has
+measured.
+
+**The scale.** The orientation and origin are settled (four catches in four
+quadrants; origin to ±0.7 px), but `um_per_px` is still the nominal 0.065 and
+the ramps cannot measure it: the bead's starting pixel is where the *bead* was,
+not where the trap was *commanded*, and solving the matrix from that mixes the
+two (it comes out 12 % anisotropic, which is the contamination, not the
+optics). One 5 µm 1 Hz sine on a bead **already sitting in the trap** closes
+it — `trap_from_tracking.py calibrate` — and takes about ten seconds.
+
+> **TODO(human):** read the trapezoid half-extents off the GUI at 100× and put
+> them in `config/tweezers/*.yaml` `trapping_range`, which has been `null` on
+> purpose since 2026-08-26 for exactly this reason.
 
 ---
 
