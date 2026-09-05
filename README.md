@@ -27,6 +27,12 @@ originate a physical value and cannot overrule a failed gate.
 > confirmation; confirm by eye in the GUI, or by measuring the result in the
 > camera data.
 >
+> The sharpest instance measured so far, 2026-09-04: `SIMPLE_TRAP_CREATE`,
+> `TRAP_POSITION` and `TRAP_ON` **all returned `0` with the laser unarmed**,
+> while the GUI showed the trap's `Active` = false and nothing was trapped. Six
+> commands that would report or set that state all answer `-11, unknown
+> command`. So "the trap is on" is not a fact any code here can establish.
+>
 > **`SAFETY.md` is a first draft and is not yet reviewed by the operator.** It
 > is the current best account of the hazards, not a cleared procedure.
 
@@ -75,19 +81,30 @@ design, not a gap.
 | **32 deterministic gates** | G1–G32, each classified `hard` / `bias` / `soft` by what its failure costs → [05 §2](docs/05-consensus-gate.md) |
 | **Provenance on every input** | `measured` vs `assumed`, with a separate `advances` axis that only `measured` can satisfy. Literature values compute but never advance → [`kb/literature/`](kb/literature/) |
 | **2,343 prior acquisitions** | normalized out of Micro-Manager metadata into transferable physical quantities, across two schema generations |
-| **952 tests, 896 on CI** | offline; the instrument is not required to run any of them. The badge covers 896 — the other 56 need a Micro-Manager device-adapter install → [running the tests](#running-the-tests) |
+| **996 tests, 940 on CI** | offline; the instrument is not required to run any of them. The badge covers 940 — the other 56 need a Micro-Manager device-adapter install → [running the tests](#running-the-tests) |
 | **A 28-device instrument** | what Micro-Manager loads from `single_cam_red_noDMD.cfg` — Ti2-E and its 14 sub-devices, one Kinetix, seven CSU-W1 devices, two Lumencor engines, NIDAQ hub + LUN-F blanking, serial manager. Tweezers and piezo sit outside those 28 → [above](#agentic-microscope) |
 | **Hardware drivers** | microscope (pymmcore-plus), optical tweezers (TCP), piezo stage (vendor DLL), trap patterns, piezo waveforms, and a shared-clock orchestrator |
 | **First light on real hardware** | piezo and optical tweezers each driven from this repository, **separately** — 2026-08-27. **All three subsystems together on one clock — 2026-09-03**, with per-frame timestamps; κ = 3.65–4.5 pN/µm from three independent routes |
+| **Live detection driving the trap** | 2026-09-04, operator-gated: GPU detection on the full frame picks an isolated particle, the trap is placed on it and ramped to the field origin. Four beads of five caught and carried 11–26 µm at 98.6–99.8 % follow → [`kb/decisions/2026-09-04-closed-loop-trapping-measured.md`](kb/decisions/2026-09-04-closed-loop-trapping-measured.md) |
 | **A written hazard account** | [`SAFETY.md`](SAFETY.md) — laser classes, the objective/coverslip collision procedure, camera ownership order, and the failure modes that return `0`. **First draft, not yet operator-reviewed** |
 | **An MCP surface over both bespoke paths** | tweezers and piezo as 9 MCP tools in four tiers, the two moving ones refused by default, verified end to end over stdio but **not yet against a device** → [below](#an-mcp-surface-over-the-two-bespoke-paths) |
 | **Refusal paths that hold** | `hardware/lunf_power.py` is complete as transport and refuses to transmit, because the DAC word format is undocumented and a guessed byte goes into a laser driver |
 
 What is **not** true today, stated here so nothing above implies it: **no MCP
-tool has reached a device**; no experiment has been executed end to end by the
-agent; there is no closed feedback loop; and nothing analyses a frame while the
-run is still going. Those are the
+tool has reached a device**, and no experiment has been executed end to end by
+the agent. Those are the
 [current execution boundary](#current-execution-boundary).
+
+Two items that stood in that list until 2026-09-04 have to be narrowed rather
+than kept or dropped. **A feedback loop does now close** — live detection picks
+a particle, the trap is placed on it, and the trap is moved with the bead
+following — but it is **gated by a keypress at every stage and it serves
+selection, not measurement**: the live path samples the newest frame and drops
+the rest by design, so nothing it produces can become an MSD. And frames *are*
+analysed while the camera is streaming, for the same purpose. What is still
+absent is the thing item 5 is about: analysis that runs against **a measurement
+in progress** and changes it, with the per-frame provenance record that would
+make the changed run judgeable.
 
 One correction the 2026-09-03 run forced, kept here rather than quietly
 dropped: `Breakpoints > Enable Bits` is `0000`, so `TRAP_PATT_RELEASE_BP`
@@ -402,8 +419,8 @@ Lens-by-lens implementation status is in the **Code** table below.
 ## Current status
 
 **Design complete; all eight committee lenses are implemented.** Nine design
-documents, 32 hard gates (G1–G32), 952 tests passing. The badge above reports
-896 of them — the other 56 need a Micro-Manager device-adapter install and run
+documents, 32 hard gates (G1–G32), 996 tests passing. The badge above reports
+940 of them — the other 56 need a Micro-Manager device-adapter install and run
 in a separate workflow, which is stated at the top of each file in
 [`.github/workflows/`](.github/workflows/) and again under [running the
 tests](#running-the-tests). The six standing
@@ -560,13 +577,15 @@ microrheology.
 ## Current execution boundary
 
 **What is missing is a seam, not a subsystem.** Items 0a, 0b and 0c are not part
-of the chain and jump the queue anyway — each is waiting only on being at the
-instrument, and 0a's and 0b's hardware has now arrived. Then five: **1–3 are the
-missing path from a committee verdict to a running instrument** — **item 1 is
-done as of 2026-09-03** — 4 is the first real use of that path, and the only
-test of whether any of the rest was right; **5 is the next step**, and is what a
-run does with what it is seeing while it is still happening. Items 1–3
-sit between stages 5d and 5e, and 5 is 5e itself
+of the chain and jump the queue anyway — each was waiting only on being at the
+instrument. **0b is done as of 2026-09-02**; 0a is now waiting on nothing but
+half an hour, and 0c on a DLL that is still not on this PC. Then five: **1–3
+are the missing path from a committee verdict to a running instrument** —
+**item 1 is done as of 2026-09-03** — 4 is the first real use of that path, and
+the only test of whether any of the rest was right; **5 is the next step**, is
+what a run does with what it is seeing while it is still happening, and
+**was started on 2026-09-04**, where its first rung returned a negative result.
+Items 1–3 sit between stages 5d and 5e, and 5 is 5e itself
 → [07 Phase 5](docs/07-roadmap.md#phase-5--automating-microscope-operation).
 
 > **Every item below that moves hardware — 0a, 0b, 0c, 1, 4, 5 — is gated on
@@ -578,10 +597,15 @@ A note on how this would look under Anthropic's Model Hardware Standard is in
 line.
 
 - [ ] **0a · Measure the illumination power at the sample.** Outside the 1→5
-  chain, and ahead of all of it the moment the hardware is in hand: **Saksham is
-  borrowing a power meter.** That was the missing precondition — this is the one
-  blocker in the whole repository that **code cannot substitute for**, and it was
-  deferred on 2026-08-19 partly because no meter was available.
+  chain and ahead of all of it. This is the one blocker in the whole repository
+  that **code cannot substitute for**, and it was deferred on 2026-08-19 partly
+  because no meter was available.
+
+  **The equipment excuse is gone.** A power meter was in hand by 2026-09-02 —
+  it is one of the two things that made the LUN-F SPI probe's consequence
+  boundable enough to run (0b §6). So this is now blocked on nothing but doing
+  it, and `power_at_sample_mw` is still `{}` for **every line of every
+  registered source** as of 2026-09-04.
 
   It is ~30 minutes and the procedure is already written down in
   [`data/light_sources.yaml`](data/light_sources.yaml): sensor at the real
@@ -608,52 +632,74 @@ line.
   whatever power NIS last left it at, not at a power this repository can command
   → [07 Phase 0](docs/07-roadmap.md).
 
-- [ ] **0b · Reach the confocal laser without going through NIS-Elements.**
-  **The USB-B cable has arrived**, which makes the move recorded on 2026-08-20
-  as *untried* the next one to try: cable the LUN-F-XL chassis straight to the
-  PC on the free port.
+- [x] **0b · Reach the confocal laser without going through NIS-Elements.**
+  ✅ **Done 2026-09-02**, and it answered more than it was asked
+  → [`kb/decisions/2026-09-02-lunf-first-light-measured-limits.md`](kb/decisions/2026-09-02-lunf-first-light-measured-limits.md).
 
   The LUN-F-XL (405 · 488 · 561 · 640 nm, feeding `CSUW1-Hub`) is **the only
-  laser on this instrument**, and today it is reachable only through
-  NIS-Elements — which the 2026-08-11 decision took out of the control path
-  entirely. What already works is **blanking**: on/off over NI PCIe-6323 digital
-  lines `Dev1/port0/line2/4/6/8` through MM's stock NIDAQ adapter. What does not
-  is **per-line power**: it is reachable over the FTDI FT4222H, Nikon does not
-  document the DAC word format, and
-  [`hardware/lunf_power.py`](hardware/lunf_power.py) refuses to transmit rather
-  than send a guessed byte into a laser driver.
+  laser on this instrument** and was reachable only through NIS-Elements, which
+  the 2026-08-11 decision had taken out of the control path entirely. It is now
+  driven from Python with NIS not running: wavelength selection and on/off per
+  line, **blanking polarity measured as active-HIGH** where Nikon documents
+  nothing, and — the part nothing in the record had established — **the DAC is
+  writable.** A 32-frame probe extinguished 561 while leaving 640 emitting, so
+  the FT4222 SPI link reaches the DAC and writes are channel-selective; nine
+  candidate framings alternated full-scale against zero with the blanking line
+  held open made 561 flicker, so **arbitrary levels write, not just zero.**
 
-  **The first question is one bit wide: does the chassis enumerate as its own
-  USB device at all?** If it does, the problem is solved by *bypassing* the
-  contended path rather than by decoding it, and the laser stops being a device
-  this repository can only watch. If it does not, the fallback is a USBPcap
-  capture on the NIS↔controller link — rung 3 of the discovery ladder, which
-  yields a hypothesis and not a fact
-  ([scope](kb/decisions/2026-08-29-device-discovery-scope.md)).
+  The one-bit question was answered too: the chassis **does** enumerate as its
+  own USB device — **COM8**, an FT232R with a vendor-programmed EEPROM, and NIS
+  never opens it. But that turned out not to be the way in. NIS's own "USB"
+  control mode *is* the FT4222 (`v6_w32_device_LUNF.dll` contains no `COM` or
+  `baud` strings at all), so COM8 is a separate link whose command set is
+  entirely unknown and nothing has ever been sent to it.
 
-  **Discovery stays read-only.** Enumerate, read descriptors, stop. No
-  `LASER_ON`, and no guessed byte — writing to a class-4 laser driver is not a
-  discovery step. Note also that the current topology may move the problem
-  rather than solve it: the laser sits behind the Nikon/Yokogawa confocal
-  controller, so if it is only reachable *through* that controller, the thing
-  that needs a direct path is the controller.
+  Two things closed negatively, which is worth as much. **The AO route is
+  dead** — the PCIe-6323's four AO channels against the LUN-F's four lines was
+  suggestive and wrong, tested per-channel and at rate with the blanking held
+  open, no flicker; no one needs to propose it again. And **nothing about the
+  LUN-F can be read back, at all**, which puts it with the tweezers rather than
+  the piezo.
 
-  **This is what decides whether 0a's confocal half means anything.** Until a
-  power path this repository can command exists, measuring the laser lines
-  records whatever power NIS last left them at — so 0a's widefield half is
-  unconditional and its confocal half waits here. And it is the same *kind* of
-  problem as the camera-ownership conflict in item 1: not physics, not protocol,
-  but **who is allowed to command a device, through which stack.**
+  **The successor item is narrower: name the DAC word format.** It is one of
+  **nine** candidate framings (§6), and three bisection rounds would settle it.
+  Until then levels are writable but not *commandable* — you cannot ask for
+  50 %. [`hardware/lunf_power.py`](hardware/lunf_power.py) still refuses to
+  transmit without `PROTOCOL` set, which is the right default for a byte going
+  into a laser driver.
+
+  Note what changed about the discovery rule, because it was a deliberate
+  relaxation and not a lapse.
+  [`2026-08-29-device-discovery-scope.md`](kb/decisions/2026-08-29-device-discovery-scope.md)
+  forbids writing to a device to learn what it does. Two things made the
+  consequence boundable — measured blanking, so the laser can be gated off in
+  software before any byte is sent, and a power meter — and every frame in the
+  probe carried **data = 0** with all four blanking lines closed, so no
+  candidate could raise the output. The rule's *purpose* held. The relaxation
+  was the operator's explicit call.
 
 - [ ] **0c · Confirm the MCP surface reaches the hardware.** Built 2026-08-31
   ([`mcp_server/`](mcp_server/), 9 tools, 30 tests) and verified end to end over
   stdio — handshake, tool list, a plan matching what
   [`config/tweezers/run_pattern.py`](config/tweezers/run_pattern.py) prints, a
-  refused move. **No tool has reached a device.** The vendor DLL is not on the
-  working PC and the Tweez GUI is not listening on it, so the `read` and `move`
-  tiers have only been exercised along their refusal and unavailable paths. Until
-  that changes, the claim is *the interface is correct*, not *the interface
-  works*.
+  refused move. **No tool has reached a device**, and that is still true after
+  2026-09-04 — but for only one of the two reasons it used to be true, so the
+  wording matters.
+
+  **The tweezers half is no longer blocked by the instrument.** The Tweez GUI
+  answered on port 2070 all through the 2026-09-04 session and this repository
+  drove it — created a trap, positioned it, armed it, streamed positions — so
+  check 3 below is now a 30-second job rather than a wait. What it went through
+  was [`hardware/optical_tweezers.py`](hardware/optical_tweezers.py) **directly,
+  not the MCP server**, which is exactly the distinction this item exists to
+  keep: the driver reaching a device says nothing about whether the nine tools
+  wrapping it do.
+
+  **The piezo half is still blocked, and it is the equipment.**
+  `controller_interface64.dll` and its 32-bit sibling are not on this PC
+  (re-checked 2026-09-04), so the `read` and `move` tiers have still only been
+  exercised along their refusal and unavailable paths. Until that changes the
+  claim is *the interface is correct*, not *the interface works*.
 
   Three checks, in this order, because the cheap ones are also the ones that
   cannot damage anything:
@@ -704,7 +750,16 @@ line.
   than it is: the tweezers still have no timestamp of their own — all three
   routes below remain unbuilt, and the breakpoint route is now known to be
   worse than it looked, because `TRAP_PATT_RELEASE_BP` returns `0`
-  unconditionally. The camera-ownership conflict is unresolved.
+  unconditionally.
+
+  The camera-ownership conflict is **unresolved but no longer untested.** On
+  2026-09-04 a full session ran with Micro-Manager owning `Kinetix_red` while
+  TCP drove the trap, which is the workaround the 2026-08-27 note predicted and
+  is now demonstrated rather than argued: trap commands survive the GUI
+  releasing the camera. What that does *not* fix is the case the conflict was
+  raised for — active microrheology needs bead **and** trap position at the
+  same instant, and the trap position on that route is commanded rather than
+  read, so it is known only to the host clock.
 
   **The first action is smaller than that**: re-run the two scripts that have
   already driven each subsystem alone. [`try_hardware.py`](try_hardware.py)
@@ -798,7 +853,11 @@ line.
   1. **Drag calibration in water** (tweezers + piezo). Stokes drag at a known
      stage velocity → κ. Needs laser power, the traverse speed and simple
      particle tracking. The hard part is **knowing where the trap is, on the
-     camera's clock** — the three routes under item 1 are its precondition. And
+     camera's clock** — the three routes under item 1 are its precondition.
+     2026-09-04 settled the *spatial* half of that and only the spatial half:
+     the trap's origin is measured to ±0.7 px and its orientation confirmed, so
+     a commanded position converts to camera pixels. *When* the trap was there
+     is still host-clock only. And
      one practical thing decides whether the number is real: **both ends of the
      traverse have to be cut**, keeping only the constant-velocity segment.
      Acceleration at the turnarounds is bias, not signal.
@@ -835,6 +894,30 @@ line.
   acquisition rather than after it, and let what comes out change the run:
   trim, extend, adjust, or abort. This is stage 5e, the one stage of Phase 5
   not started.
+
+  **Started 2026-09-04, and the first rung came back with a negative result
+  worth more than the rung.** The first bullet below — detect whether a bead is
+  held — was built and **measured wrong in five cycles out of five**. A bead's
+  RMS excursion over 1.5 s called four held beads free and one unheld bead
+  held, because *a bead stuck to the coverslip sits as still as a trapped one*
+  and *a bead just trapped is still travelling into the well*. No threshold
+  fixes that; the statistic does not separate the populations.
+
+  What does separate them is **moving the trap and seeing whether the bead
+  comes** — 98.6–99.8 % against 2.9 %, nothing in between. Which is this
+  section's own principle arriving from an unexpected direction: on an
+  instrument with no readback, measuring the result *is* the readback, and here
+  the measurement had to be an **action**. A passive observation of the frames
+  could not answer the question at all. That is a constraint on every rung
+  above, not a detail of this one.
+
+  What exists after that session: full-frame GPU detection at 36 Hz, targeting
+  through a px → trap-µm transform whose orientation and origin are now
+  measured, placement, a speed-limited ramp, and arrival verified by comparing
+  the bead's travel against the trap's. What is still missing is everything
+  that makes it a *run*: it advances on a keypress rather than a criterion, it
+  samples the newest frame and drops the rest, and no per-frame record of the
+  decisions exists → [`kb/decisions/2026-09-04-closed-loop-trapping-measured.md`](kb/decisions/2026-09-04-closed-loop-trapping-measured.md).
 
   **Two halves, and the second is what makes the first trustworthy.**
 
@@ -1263,24 +1346,7 @@ birefringent media, G16c's *trapped* absorption route, the confocal path, the
 dual-camera split, ATPS per-phase reasoning. A gate that has never refused a
 real experiment is a gate nobody has tested.
 
-### 3. A sample-finding method, and a folder for it
-
-Live view plus Titus' method, with its own folder.
-
-> **TODO(human):** describe Titus' method — what it does, what it needs on the
-> stand, and what output it leaves behind. It is not in this repository and I
-> should not guess at it. Once it is written down the folder and the entry
-> point can follow.
-
-Context for whoever writes it: `config/micromanager/live_view.py` exists and
-was used for field-finding on 2026-09-04, but it saves nothing — deliberately
-("no histogram, no LUTs, no overlays, no saving"). Finding a field currently
-leaves no record of *which* field, which matters because
-`kb/decisions/2026-09-03-three-subsystems-first-light.md` §10 records that a
-too-concentrated sample defeated every tracker written that day, and field
-choice is the cheapest lever on that.
-
-### 4. The filter-wheel pass bands
+### 3. The filter-wheel pass bands
 
 EM1/EM2 positions 0–4 are `multi / 405 / 488 / 555 / 647` and all carry
 `registry: null` in `kb/systems/current.md`. The labels are named by
@@ -1302,7 +1368,7 @@ is known to pass red and to block the PFS IR that lens 8 warned about.
 > ex555/em605 channel — it should, if it is a bandpass, because `multi` also
 > opens three bands we do not use.
 
-### 5. Connect the Splitter position to the configuration file
+### 4. Connect the Splitter position to the configuration file
 
 The `Splitter` (dual-camera image splitter, `{0: 100/0 mirror, 1: DM A561LP,
 2: open}`) is **not in the Micro-Manager `.cfg`** — its absence was settled
@@ -1323,7 +1389,7 @@ Either get it into the `.cfg`, or make the acquisition record the operator's
 assertion about it the way `run_wall_diffusion.py` does for the 1064 nm
 emission state.
 
-### 6. The trapping range, and the rest of the px → trap-µm transform
+### 5. The trapping range, and the rest of the px → trap-µm transform
 
 Two numbers stand between the closed-loop trapper and being able to reach any
 particle in the field.
@@ -1431,7 +1497,7 @@ scope. For now this produces offline recommendations only.
 ```console
 $ pip install -r requirements.txt -r requirements-mcp.txt
 $ pytest -q -rs
-896 passed, 3 skipped
+940 passed, 3 skipped
 ```
 
 `pyproject.toml` puts the repository root on `sys.path`, so the bare `pytest`
