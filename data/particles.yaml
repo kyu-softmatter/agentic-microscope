@@ -128,6 +128,41 @@ particles:
     ex_peak_nm: 620
     em_peak_nm: 680
     dye_location: null            # internal vs surface not stated
+    confirmed_on_instrument:
+      date: 2026-09-05
+      conditions: "Aura, 5% power, 30 ms exposure, 4x objective"
+      result: |
+        CYAN  -> ~2000 ADU
+        GREEN -> ~3500 ADU  (maximum)
+        RED   -> no emission observed
+      contradicts_vendor: >
+        ⚠ THIS REVERSES THE VENDOR'S EXCITATION SPEC. A 620 nm excitation peak
+        predicts RED (~635 nm) strongest, GREEN weak, CYAN weaker still. The
+        instrument gives exactly the opposite ordering, with RED producing
+        nothing at all. So 620 nm is not this dye's excitation peak. The
+        observed ordering GREEN > CYAN >> RED fits a dye excited around
+        530-560 nm -- a rhodamine/TRITC-class emitter, the sort a vendor calls
+        "red" for its emission colour. The 680 nm emission figure is now also
+        in doubt: paired with ~550 excitation it would require a ~130 nm Stokes
+        shift, which is unusual; an emission nearer 570-620 is more likely.
+
+        This is the second independent failure of the Abvigen page, after the
+        monoclonal-antibody filing and the product name in the "Particle Size"
+        field. Treat NOTHING on it as load-bearing. The registry entry
+        data/fluorophores.yaml > AbvigenRed680 is built on those two peaks and
+        is now known to be wrong on at least the first -- its name included.
+      headroom_warning: >
+        ⚠ 3500 ADU is 85.5% of the 4095 ceiling of the camera's current
+        Sensitivity 12-bit mode, reached at only 5% power and 30 ms. Headroom is
+        1.18x. Clipping flattens a bead's centroid and destroys photometry, so
+        drop power or exposure, or move to a 16-bit mode, before acquiring.
+      objective_caveat: >
+        Measured at 4x. On the extended-object epi scaling (brightness ~
+        (NA/M)^2) the move to 100x Oil costs ~11.9x per pixel, putting GREEN at
+        ~290 ADU and CYAN at ~160 ADU. Recoverable: at 5% there is 20x of power
+        left, so ~60% power restores today's levels. But it must be re-measured
+        at 100x, not scaled -- this estimate assumes the illuminator fills the
+        field at both magnifications.
     dye_note: >
       Peaks only -- no FWHM, no spectra, no dye identity. So the optics lens has
       nothing to compute crosstalk or blocking wings from and will report
@@ -263,6 +298,24 @@ particles:
     ex_peak_nm: 480
     em_peak_nm: 520
     dye_location: internal
+    confirmed_on_instrument:
+      date: 2026-09-05
+      source: "Aura CYAN"
+      emission_filter: "CSUW1 filter wheel position 2, label \"488\""
+      result: >
+        Seen properly. Operator observation at the microscope -- the first
+        end-to-end confirmation for any particle in this file that a real
+        (source, filter, camera) combination actually produces an image. Note
+        the source is the Aura WIDEFIELD engine, NOT the LUN-F-XL 488 laser
+        line that config/channels/abvigen-bangs-green-red-2color.yaml was
+        written against; that config's `source:` is wrong for this path.
+      caveats: >
+        "Properly excited" bounds the CYAN band -- it must carry real power near
+        this dye's 480 nm peak -- but it does not measure a centre or a width,
+        and data/light_sources.yaml > Aura has no CYAN key at all (see the
+        warning there). Nor does it establish the "488" position's passband. So
+        this confirms the combination WORKS; it does not let the optics gate
+        compute what it does.
     dye_note: >
       The lot's polymer description encodes the dye peaks directly --
       `PS/DVB-COOH-(480,520)` -- which INDEPENDENTLY CORROBORATES the 480/520

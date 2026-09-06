@@ -190,6 +190,36 @@ light_sources:
       "561": { center_nm: 561, fwhm_nm: 20, power_at_sample_mw: {}, note: "fwhm unconfirmed placeholder" }
       "640": { center_nm: 640, fwhm_nm: 20, power_at_sample_mw: {}, note: "fwhm unconfirmed placeholder" }
 
+    # ── Named lines: what the device actually exposes ────────────────────
+    # The device reports UV / CYAN / GREEN / RED / NIR. None can be registered
+    # as a usable line yet, because a line needs a centre and a width and this
+    # chassis has published neither -- so they sit here as OBSERVATIONS ONLY,
+    # deliberately not under `lines:`. A channel config cannot reference them
+    # and the optics gate cannot compute with them until a datasheet for the
+    # "Aura III 5-NII-WA" configuration, or a measured spectrum, supplies
+    # centre + FWHM per named line. Do NOT map a named line onto one of the
+    # numeric keys above by guessing -- CYAN -> "488" is the tempting one, and
+    # it is still a guess.
+    named_lines_observed:
+      CYAN:
+        center_nm: null
+        fwhm_nm: null
+        works_for: >
+          2026-09-05, operator at the microscope: properly excites Dragon Green
+          in Bangs FCDG008 (dye abs peak 480 nm), seen through the CSUW1 filter
+          wheel position 2 (label "488"). So CYAN carries real power near
+          480 nm. That bounds the band; it does not measure it.
+      GREEN:
+        center_nm: null
+        fwhm_nm: null
+        works_for: >
+          2026-09-03: used for 555 ex / red em. Bead peak ~30,100 counts over a
+          208 background at GREEN_Intensity 50/1000 (5%), 33.33 ms, 100x, with
+          no measurable bleaching over 5 s (+2.19% first-15 vs last-15 frames).
+      UV:  { center_nm: null, fwhm_nm: null, works_for: null }
+      RED: { center_nm: null, fwhm_nm: null, works_for: null }
+      NIR: { center_nm: null, fwhm_nm: null, works_for: null }
+
   # ══════════════════════════════════════════════════════════════════════
   # Laser — 2026-08-10 confirmed in NIS-Elements Device Manager. Not registered
   # in the MM .cfg (NIS-Elements-only control). CSU-W1 confocal excitation source.
