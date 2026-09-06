@@ -2,7 +2,7 @@ numpy>=2.0
 pyyaml>=6.0
 pytest>=8.0
 
-# That is everything 896 of the 952 tests need, which is why CI installs this
+# That is everything 1,060 of the 1,116 tests need, which is why CI installs this
 # file alone. The other 56 need live Micro-Manager access -- pymmcore-plus plus
 # a device-adapter install -- and open with `pytest.importorskip`, so they skip
 # rather than fail when it is absent. See requirements-micromanager.txt.

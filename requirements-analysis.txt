@@ -75,5 +75,44 @@ opencv-python>=4.8
 # It is a different algorithm, not a faster Hough -- a box-matched filter has
 # no radius vote, so it rejects aggregates less well (+6 against +3). Fine for
 # choosing a field, and it is never used to measure one.
+#
+# WHERE ELSE CuPy IS WORTH REACHING FOR, AND WHERE IT LOSES
+#
+# One rule, and it is a size rule rather than an operation rule:
+#
+#     GPU only when the array is >~1 MB AND the work is outside a tick.
+#
+# Measured 2026-09-05, RTX A4000, 2400x2400 float32, upload charged to the GPU
+# column (which is the honest accounting when frames arrive in host memory):
+#
+#     median_filter 5x5      CPU  2890 ms   GPU 4.08 ms   708x
+#     gaussian_filter s=3    CPU   174 ms   GPU 4.15 ms    42x
+#     uniform_filter 27      CPU  98.6 ms   GPU 4.39 ms    22x
+#     label() on a mask      CPU  54.7 ms   GPU 7.68 ms   7.1x
+#
+# Those CPU figures are `scipy.ndimage`. Pick a different baseline and the
+# speedup changes by an order of magnitude: `cv2.blur(27)` on the same frame is
+# 17.0 ms, so against OpenCV the same GPU call is only 4.05x -- of which 2.3 ms
+# (55%) is the upload, the kernel alone being 1.9 ms. Quote the baseline or the
+# ratio means nothing.
+#
+# Against that, the closed-loop trapping tracker is a case where the GPU is
+# *slower*, and it is worth writing down so nobody ports it:
+#
+#     refine(), 60 px window, 3 passes    CPU numpy  866 us
+#     the same, CuPy, window only         GPU       1627 us   0.53x
+#
+# Launch overhead and PCIe dominate a 121x121 window. There is also a one-off
+# CuPy JIT of a measured 69 ms on the first kernel call, which a control loop
+# cannot pay inside a tick -- any in-loop GPU use needs an explicit warm-up
+# before the loop starts.
+#
+# (`refine()`'s own cost is not the GPU's problem to solve: np.percentile is
+# 151 us of the ~290 us per pass against 59 us for np.partition. That is a CPU
+# one-liner. See kb/decisions/2026-09-05-runtime-primitives-and-gpu-scope.md.)
+#
+# NOTE: CUDA_PATH is unset on this machine, so CuPy warns
+# "CUDA path could not be detected" on every import. Harmless -- the headers
+# come from this extra's nvidia wheels -- but it clutters logs.
 
 cupy-cuda12x[ctk]>=13

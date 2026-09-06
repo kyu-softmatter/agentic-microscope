@@ -3,7 +3,7 @@ name: tests
 # The badge in README.md reports this workflow, so what it does and does not
 # cover has to be stated rather than implied.
 #
-# It covers 896 of the 952 tests. The other 56 live in three modules that open
+# It covers 1,060 of the 1,116 tests. The other 56 live in three modules that open
 # with `pytest.importorskip("pymmcore_plus")` and so are skipped whole, not
 # collected -- `-rs` prints each one and its reason in every run's log, which is
 # the only reason the count above can be trusted. Those 56 are run by
@@ -22,9 +22,11 @@ name: tests
 # Micro-Manager path needs a vendor device-adapter download.
 #
 # Measured in a clean venv with requirements.txt + requirements-mcp.txt
-# (pytest 9.1.1, Windows, py3.12): 896 passed, 3 skipped in 133 s. Re-measured
-# 2026-09-04; these counts drift with every commit that adds a test, so treat
-# them as a checkpoint with a date, not an invariant.
+# (pytest 9.1.1, Windows, py3.12): 1060 passed, 3 skipped in 134 s. Re-measured
+# 2026-09-05 -- that run held the three modules out with `--ignore` in the local
+# venv rather than building a clean one, so the pass count is measured and the
+# `3 skipped` is the shape CI reports. These counts drift with every commit that
+# adds a test, so treat them as a checkpoint with a date, not an invariant.
 
 on:
   push:

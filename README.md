@@ -81,11 +81,12 @@ design, not a gap.
 | **32 deterministic gates** | G1–G32, each classified `hard` / `bias` / `soft` by what its failure costs → [05 §2](docs/05-consensus-gate.md) |
 | **Provenance on every input** | `measured` vs `assumed`, with a separate `advances` axis that only `measured` can satisfy. Literature values compute but never advance → [`kb/literature/`](kb/literature/) |
 | **2,343 prior acquisitions** | normalized out of Micro-Manager metadata into transferable physical quantities, across two schema generations |
-| **996 tests, 940 on CI** | offline; the instrument is not required to run any of them. The badge covers 940 — the other 56 need a Micro-Manager device-adapter install → [running the tests](#running-the-tests) |
+| **1,116 tests, 1,060 on CI** | offline; the instrument is not required to run any of them. The badge covers 1,060 — the other 56 need a Micro-Manager device-adapter install → [running the tests](#running-the-tests) |
 | **A 28-device instrument** | what Micro-Manager loads from `single_cam_red_noDMD.cfg` — Ti2-E and its 14 sub-devices, one Kinetix, seven CSU-W1 devices, two Lumencor engines, NIDAQ hub + LUN-F blanking, serial manager. Tweezers and piezo sit outside those 28 → [above](#agentic-microscope) |
 | **Hardware drivers** | microscope (pymmcore-plus), optical tweezers (TCP), piezo stage (vendor DLL), trap patterns, piezo waveforms, and a shared-clock orchestrator |
 | **First light on real hardware** | piezo and optical tweezers each driven from this repository, **separately** — 2026-08-27. **All three subsystems together on one clock — 2026-09-03**, with per-frame timestamps; κ = 3.65–4.5 pN/µm from three independent routes |
 | **Live detection driving the trap** | 2026-09-04, operator-gated: GPU detection on the full frame picks an isolated particle, the trap is placed on it and ramped to the field origin. Four beads of five caught and carried 11–26 µm at 98.6–99.8 % follow → [`kb/decisions/2026-09-04-closed-loop-trapping-measured.md`](kb/decisions/2026-09-04-closed-loop-trapping-measured.md) |
+| **Real-time primitives, off the hot path** | [`runtime/`](runtime/) — a one-slot frame ring with a drain-and-keep-newest camera thread, a fixed-period loop clock that cannot drift, and a rate-capped shared-memory channel so a live view runs in a second process instead of competing for the GIL. Ported from the lab's bacteria stack; **not yet run against a camera** → [`kb/decisions/2026-09-05-runtime-primitives-and-gpu-scope.md`](kb/decisions/2026-09-05-runtime-primitives-and-gpu-scope.md) |
 | **A written hazard account** | [`SAFETY.md`](SAFETY.md) — laser classes, the objective/coverslip collision procedure, camera ownership order, and the failure modes that return `0`. **First draft, not yet operator-reviewed** |
 | **An MCP surface over both bespoke paths** | tweezers and piezo as 9 MCP tools in four tiers, the two moving ones refused by default, verified end to end over stdio but **not yet against a device** → [below](#an-mcp-surface-over-the-two-bespoke-paths) |
 | **Refusal paths that hold** | `hardware/lunf_power.py` is complete as transport and refuses to transmit, because the DAC word format is undocumented and a guessed byte goes into a laser driver |
@@ -419,8 +420,8 @@ Lens-by-lens implementation status is in the **Code** table below.
 ## Current status
 
 **Design complete; all eight committee lenses are implemented.** Nine design
-documents, 32 hard gates (G1–G32), 996 tests passing. The badge above reports
-940 of them — the other 56 need a Micro-Manager device-adapter install and run
+documents, 32 hard gates (G1–G32), 1,116 tests passing. The badge above reports
+1,060 of them — the other 56 need a Micro-Manager device-adapter install and run
 in a separate workflow, which is stated at the top of each file in
 [`.github/workflows/`](.github/workflows/) and again under [running the
 tests](#running-the-tests). The six standing
@@ -1497,7 +1498,7 @@ scope. For now this produces offline recommendations only.
 ```console
 $ pip install -r requirements.txt -r requirements-mcp.txt
 $ pytest -q -rs
-940 passed, 3 skipped
+1060 passed, 3 skipped
 ```
 
 `pyproject.toml` puts the repository root on `sys.path`, so the bare `pytest`

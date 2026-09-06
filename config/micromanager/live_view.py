@@ -3,6 +3,8 @@
     python config/micromanager/live_view.py --cfg config/micromanager/single_cam_red_noDMD.cfg
     python config/micromanager/live_view.py --cfg CFG --exposure-ms 5 --line GREEN --intensity 200
     python config/micromanager/live_view.py --cfg CFG --roi 512 --display 700
+    python config/micromanager/live_view.py --cfg CFG --publish kinetix_red
+    python config/micromanager/live_view.py --attach kinetix_red      # no camera
 
 WHY THIS EXISTS RATHER THAN MICRO-MANAGER STUDIO
 ------------------------------------------------
@@ -31,8 +33,8 @@ because it is the only option -- and it is **not** the fast option. Tk needs an
 array. ``--cv2-window`` takes that path instead, and ``--gpu`` implies it,
 because a full-frame tick does not fit otherwise.
 
-THREE THINGS IT CAN DO NOW, AND WHAT EACH IS FOR
-------------------------------------------------
+WHAT IT CAN DO, AND WHAT EACH IS FOR
+------------------------------------
 ``--track``      HoughCircles on the frame the display has already decimated
                  to 8 bits. ~15 ms. Counts beads and how many are isolated.
 ``--gpu``        The same question answered on the FULL sensor frame, via a
@@ -41,11 +43,37 @@ THREE THINGS IT CAN DO NOW, AND WHAT EACH IS FOR
                  and it matters because cropping does not thin a sample: a
                  500 px crop held 1 isolated bead where the full frame held 37.
 ``--cv2-window`` Native window instead of Tk. Implied by ``--gpu``.
+``--publish``    Also copy each frame into a shared-memory segment, so a
+                 second process can watch. Implies ``--cv2-window``.
+``--attach``     The other half: display a segment somebody else is
+                 publishing, opening no camera and touching no light.
 
-All three are for **choosing a field**, never for measuring one. This samples
-the newest frame out of a 30 fps stream and drops the rest by design, so no MSD
-can come out of it; ``config/session/run_wall_diffusion.py`` drains every frame
-with its timestamp for that.
+All of them are for **choosing a field**, never for measuring one. This
+samples the newest frame out of a 30 fps stream and drops the rest by design,
+so no MSD can come out of it; ``config/session/run_wall_diffusion.py`` drains
+every frame with its timestamp for that.
+
+THE TWO HALVES, AND WHY THEY ARE TWO PROCESSES
+----------------------------------------------
+``--publish`` / ``--attach`` exist because of the camera-ownership problem
+above, applied to a run rather than to setup: PVCAM gives a Kinetix to one
+process at a time, so while a trapping or acquisition script owns the camera,
+*nothing else can see it*. Watching a run therefore used to mean not running
+one -- and on this instrument the way to get the camera back is the one move
+worth avoiding, because dropping a trap is expensive.
+
+A publisher in the acquiring process plus a subscriber in a viewer process
+solves it without a second device claim. It is two processes rather than two
+threads for the GIL: this display loop measures its own tick at ~38 ms
+full-frame and all of that is Python plus highgui event pumping, which a
+control loop in the same interpreter would wait behind. The channel itself is
+``runtime/shmview.py``, whose docstring has the measured costs and the
+Windows-specific behaviour.
+
+⚠ The segment is a **display feed**: decimated, 8-bit, and rate-capped at
+10 fps. Nothing read out of it can be measured. That is the same restriction
+this program's own display path has always had, now also applying to whoever
+attaches.
 
 (PGM would be less code and Tk claims to support it, but ``PhotoImage(data=)``
 answers "couldn't recognize image data" for base64 P5 -- Tk's base64 path covers
@@ -127,6 +155,11 @@ _LO_PCT, _HI_PCT = 2.0, 99.8
 
 #: Ti2-E turret shutters, in series -- either closed is a black frame.
 _TURRET_SHUTTERS = ("Turret1Shutter", "Turret2Shutter")
+
+#: How long an attached feed may go without a new frame before it is labelled
+#: stale on screen. Comfortably longer than the publisher's 10 fps cap, so a
+#: merely slow producer is not accused of being dead.
+_ATTACH_STALE_S = 3.0
 
 
 def _png_chunk(tag: bytes, payload: bytes) -> bytes:
@@ -536,7 +569,102 @@ def index_with_rings(frame8: np.ndarray, circles: np.ndarray,
 
 
 
-def cv2_loop(core, camera, tracker, display_px, refresh_ms):
+def attach_loop(segment: str, display_px: int, timeout_s: float = 60.0) -> int:
+    """Watch a shared-memory segment someone else is publishing. No core.
+
+    The other half of ``--publish``, and the reason both exist: PVCAM gives a
+    Kinetix to one process at a time, so during a trapping run the acquiring
+    process is the only one that can see the camera. This attaches to what
+    that process publishes instead of asking for the camera -- so looking at a
+    run never costs a device handoff, and never costs dropping the trap to get
+    the camera back.
+
+    What arrives here has been decimated and cut to 8 bits by the publisher
+    (``runtime.shmview``), so it is for watching only. Nothing measurable
+    comes out of it; the acquiring process writes the frames worth measuring.
+
+    Returns a process exit code: 0 on a clean close, 2 if no publisher ever
+    appeared.
+    """
+    from runtime.shmview import ShmSubscriber  # noqa: PLC0415
+
+    # Find the publisher before demanding cv2: "nobody is publishing" is the
+    # common mistake and it should not be reported as a missing dependency.
+    #
+    # Say that the wait is happening. Attaching before the run starts is the
+    # normal order, so a wait is expected -- but a mistyped name looks exactly
+    # like a hang otherwise, for as long as the timeout.
+    print(f"waiting up to {timeout_s:.0f} s for a publisher on {segment!r}"
+          f" (Ctrl-C to give up)...", flush=True)
+    try:
+        sub = ShmSubscriber(segment, wait=True, timeout=timeout_s)
+    except TimeoutError as exc:
+        print(exc, file=sys.stderr)
+        return 2
+    except KeyboardInterrupt:
+        print("  gave up waiting.", file=sys.stderr)
+        return 2
+
+    import cv2  # noqa: PLC0415  (optional -- only this display path needs it)
+
+    win = f"{segment} - attached"
+    cv2.namedWindow(win, cv2.WINDOW_AUTOSIZE)
+    print(f"attached to {segment!r}. ESC or closing the window stops it. "
+          f"This is a display feed -- decimated and 8-bit, not measurable.")
+    n = 0
+    last = None          # the most recent (frame, ts, meta), redrawn on demand
+    was_stale = False
+    try:
+        while True:
+            got = sub.poll()
+            if got is not None:
+                last = got
+                n += 1
+
+            # Redraw on a new frame, and also when the feed *becomes* stale --
+            # not only on arrival. A publisher that exits stops delivering, so
+            # a warning drawn only inside the arrival branch could never fire:
+            # at the moment a frame lands its age is zero by construction. The
+            # first version had exactly that bug, which meant a dead publisher
+            # left its last frame on screen looking live.
+            stale = sub.age > _ATTACH_STALE_S
+            if last is not None and (got is not None or stale != was_stale):
+                was_stale = stale
+                frame8, ts, meta = last
+                view, step = decimate(frame8, display_px)
+                bgr = cv2.cvtColor(np.ascontiguousarray(view), cv2.COLOR_GRAY2BGR)
+                cv2.putText(
+                    bgr,
+                    f"{meta['full_w']}x{meta['full_h']} sensor  "
+                    f"published 1/{meta['step']}  shown 1/{meta['step'] * step}"
+                    f"  t={ts:.2f}  v={meta['version']}  n={n}",
+                    (6, bgr.shape[0] - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.4,
+                    (255, 255, 255), 1, cv2.LINE_AA)
+                if stale:
+                    # On Windows a subscriber's mapping stays valid after the
+                    # publisher exits, so "gone" and "idle" look identical at
+                    # the poll. Say which it looks like either way.
+                    cv2.putText(bgr, f"STALE {sub.age:.0f}s -- publisher idle "
+                                     f"or gone",
+                                (6, 16), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                                (80, 80, 235), 1, cv2.LINE_AA)
+                cv2.imshow(win, bgr)
+            if cv2.waitKey(20) == 27:
+                break
+            try:
+                if cv2.getWindowProperty(win, cv2.WND_PROP_VISIBLE) < 1:
+                    break
+            except cv2.error:
+                break
+    finally:
+        sub.close()
+        cv2.destroyAllWindows()
+        cv2.waitKey(1)
+    print(f"  {n} frames shown.")
+    return 0
+
+
+def cv2_loop(core, camera, tracker, display_px, refresh_ms, publisher=None):
     """Display through a native cv2 window instead of Tk. Returns on ESC / close.
 
     Tk needs an *encoded* image: ``PhotoImage`` takes base64 PNG, so every tick
@@ -627,6 +755,12 @@ def cv2_loop(core, camera, tracker, display_px, refresh_ms):
                          f"{rate}",
                     (6, bgr.shape[0] - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.4,
                     (255, 255, 255), 1, cv2.LINE_AA)
+        if publisher is not None:
+            # Offered every tick; the publisher's own max_fps cap decides
+            # whether it costs anything, so this loop keeps no timer of its
+            # own. The raw frame goes out, not `bgr` -- a subscriber wants the
+            # sensor's pixels, not this window's overlay.
+            publisher.try_publish(raw, t_tick)
         t_show = time.perf_counter()
         cv2.imshow(win, bgr)
         n_shown += 1
@@ -714,7 +848,12 @@ class Viewer:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--cfg", required=True, type=Path, help="Micro-Manager .cfg")
+    # Not `required=True` any more: --attach opens no camera, so it has no
+    # use for a system configuration. The pairing is checked below instead,
+    # so that omitting both still fails with a message rather than a
+    # traceback from loadSystemConfiguration(None).
+    ap.add_argument("--cfg", default=None, type=Path,
+                    help="Micro-Manager .cfg. Required unless --attach")
     ap.add_argument("--exposure-ms", type=float, default=None,
                     help="camera exposure; unset leaves whatever the device has")
     ap.add_argument("--roi", type=int, default=None, metavar="PX",
@@ -770,6 +909,30 @@ def main() -> int:
                          "disk is ~27 px in radius, so a centroid window big "
                          "enough to hold it cannot exclude a closer neighbour "
                          "(default 12)")
+    ap.add_argument("--publish", default=None, metavar="NAME",
+                    help="also publish each frame to a shared-memory segment "
+                         "under this name, so another process can watch "
+                         "without asking for the camera. PVCAM gives a "
+                         "Kinetix to one process at a time, so this is the "
+                         "only way to look at a run in progress -- and it "
+                         "avoids ever dropping a trap to get the camera "
+                         "back. Costs a capped 10 fps of decimated 8-bit "
+                         "copies (see runtime/shmview.py); DISPLAY ONLY, "
+                         "nothing measurable comes out of the segment. "
+                         "Implies --cv2-window")
+    ap.add_argument("--attach", default=None, metavar="NAME",
+                    help="do not open a camera at all: attach to a segment "
+                         "another process is publishing with --publish (or "
+                         "from a trapping run) and just display it. --cfg is "
+                         "not needed and no light is touched. This is the "
+                         "viewer half; everything else in this program is the "
+                         "acquiring half")
+    ap.add_argument("--attach-timeout-s", type=float, default=60.0,
+                    metavar="S",
+                    help="how long --attach waits for a publisher to appear "
+                         "before giving up (default 60). Attaching before the "
+                         "run starts is the normal order, so this is a wait "
+                         "rather than an error")
     ap.add_argument("--close-turret-shutters", action="store_true",
                     help="shut Turret1/2Shutter on exit. OFF by default: "
                          "Turret2Shutter is the 1064 trap path and closing it "
@@ -779,6 +942,21 @@ def main() -> int:
     if (args.line is None) != (args.intensity is None):
         ap.error("--line and --intensity go together: both, or neither")
 
+    if args.attach is not None:
+        # The viewer half. Return before pymmcore is even imported: the whole
+        # point is that this process makes no claim on any device, so it must
+        # not be able to accidentally load one.
+        for flag in ("cfg", "line", "roi", "binning", "exposure_ms"):
+            if getattr(args, flag) is not None:
+                ap.error(f"--attach opens no camera, so --{flag.replace('_', '-')} "
+                         f"has nothing to act on. Pass those to the process "
+                         f"that acquires.")
+        return attach_loop(args.attach, args.display,
+                           timeout_s=args.attach_timeout_s)
+
+    if args.cfg is None:
+        ap.error("--cfg is required unless --attach is given")
+
     from pymmcore_plus import CMMCorePlus  # noqa: PLC0415  (slow import)
 
     core = CMMCorePlus()
@@ -786,6 +964,7 @@ def main() -> int:
     camera = core.getCameraDevice()
     shutter = core.getShutterDevice()
     lit = False
+    publisher = None
     turret_shutters_before: dict[str, bool] = {}
 
     try:
@@ -848,6 +1027,10 @@ def main() -> int:
         if args.gpu:
             args.track = True
             args.cv2_window = True
+        if args.publish is not None:
+            # Only cv2_loop offers frames to the publisher. Implying the flag
+            # is better than publishing nothing and saying so afterwards.
+            args.cv2_window = True
         if args.refresh_ms is None:
             args.refresh_ms = 100 if args.track else _REFRESH_MS
             if args.track:
@@ -894,7 +1077,23 @@ def main() -> int:
                       f"at {1000 / args.refresh_ms:.0f} Hz out of 30 fps, so "
                       "it drops frames by design and cannot make an MSD.")
         if args.cv2_window:
-            cv2_loop(core, camera, tracker, args.display, args.refresh_ms)
+            if args.publish is not None:
+                from runtime.shmview import ShmPublisher  # noqa: PLC0415
+
+                publisher = ShmPublisher(args.publish)
+                print(f"PUBLISHING to shared memory {args.publish!r} at up to "
+                      f"{publisher.max_fps:g} fps, decimated to "
+                      f"{publisher.max_w} px and 8-bit. Watch it with:\n"
+                      f"  python config/micromanager/live_view.py "
+                      f"--attach {args.publish}\n"
+                      f"  Display feed only -- not measurable.")
+            try:
+                cv2_loop(core, camera, tracker, args.display, args.refresh_ms,
+                         publisher=publisher)
+            finally:
+                if publisher is not None:
+                    print(f"  {publisher.report()}")
+                    publisher.close()
         else:
             Viewer(core, root, args.display, camera, tracker,
                    args.refresh_ms).tick()
