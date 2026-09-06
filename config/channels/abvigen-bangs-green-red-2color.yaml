@@ -1,0 +1,128 @@
+# Dual-camera two-colour configuration for the 2026-09-05 session: the two
+# particles actually in hand, on the two cameras, simultaneously.
+#
+#   python -m optics.cli check config/channels/abvigen-bangs-green-red-2color.yaml
+#
+# Both particles are recorded in data/particles.yaml:
+#
+#   bangs-dragongreen-5um-cooh   FCDG008 lot 14941   4.95 um PS/DVB-COOH
+#                                Dragon Green, 480/520  -> 488 line, Kinetix_blue
+#   abvigen-red-5um-cooh         AFR-0500-COOH       5.0 um PS-COOH
+#                                proprietary,   620/680  -> 640 line, Kinetix_red
+#
+# WHY THIS PAIR. Emission straddles the DM A561LP splitter (520 reflects, 680
+# transmits), so one particle lands on each camera and the acquisition is
+# genuinely simultaneous. The two beads are also matched in everything except
+# the label: 4.95 vs 5.0 um (inside the 7.9% measured CV of the Bangs lot),
+# both carboxyl so neither is electrostatically attracted to the coverslip, and
+# bulk D within 0.7% of each other. The rejected alternatives and the reasons
+# are recorded at the foot of data/particles.yaml — in particular the blue
+# 450 nm bead (ACLB-21-0400) also emits below 561 nm, so it shares a camera
+# with Dragon Green and the splitter cannot separate the two.
+#
+# ── What this file does NOT claim ────────────────────────────────────────
+#
+# ⚠ NO EMISSION BANDPASS. `emission:` carries the splitter and then EM-Open,
+# because EM-Open is the only emission position on record as selectable
+# (config/scopes/current-laser.yaml). Positions 0-4 of EM1/EM2 physically hold
+# multi/405/488/555/647 filters, and the "488" and "647" ones are plausibly
+# right for exactly this pair — but their passbands have never been recorded,
+# so they cannot be registered in data/filters.yaml and cannot be computed
+# with. Positions 5-8 are blocked by a metal plate. Consequence: the only
+# spectral separation in this configuration is the 561 nm splitter edge plus
+# the main dichroic's notches. Reading those part numbers off the wheels is the
+# single change that would most improve this verdict.
+#
+# ⚠ THE RED DYE IS NOT IDENTIFIED. `AbvigenRed680` is a registry entry for an
+# unnamed proprietary bead colourant, holding the two published peaks and
+# ASSUMED 40/45 nm widths (see its note in data/fluorophores.yaml). Crosstalk
+# and blocking are decided in the wings, so any verdict on the red channel is
+# an approximation and the gate is expected to report evidence: assumed at
+# confidence low. That is correct behaviour, not a defect to work around.
+#
+# ⚠ OBJECTIVE IS THE DEFAULT, NOT A DECISION. 100x Oil is entered because it is
+# what the 2026-09-04 trapping and diffusion runs used (0.065 um/px). Nobody has
+# settled that it is right for this experiment. If a longer working distance or
+# water immersion suits better, change this block and re-check — and note
+# kb/expertise/oil-objective-trapping-in-water.md on the oil-into-water penalty,
+# which grows with bead radius and so is at its worst for these 5 um beads.
+#
+# ⚠ CAMERA MODE IS UNSET. detection.setup must name which of the Kinetix22's
+# four modes this runs in; full well swings 75x across them, so G6 (saturation)
+# can pass in DynamicRange and clip in Speed at the identical light level. This
+# file is the optics half only.
+#
+# ── Measured verdict, 2026-09-05 ────────────────────────────────────────
+# `optics.cli check` on this file, AS WRITTEN (splitter + EM-Open only):
+#
+#   both channels  ->  FAIL, feasibility INFEASIBLE
+#   bottleneck     ->  spectral.overlap, margin 0.00
+#   blocking       ->  0.09 OD (green) / 0.11 OD (red), against 7 required
+#   Stokes headroom-> -188 nm (green) / -79 nm (red), i.e. the excitation and
+#                     detection bands OVERLAP
+#
+# So this is not a marginal configuration, it is a dead one: seven orders of
+# magnitude short on blocking. With no bandpass, backscattered 488 and 640 swamp
+# the beads and no exposure or gain setting recovers it. THE EMISSION FILTER IS
+# NOT AN OPTIMISATION HERE, IT IS THE EXPERIMENT.
+#
+# Same file with a plausible bandpass substituted into each arm as a
+# HYPOTHETICAL — EM1-525/36 on the green arm, EM1-705/72 on the red (both are
+# registry entries in data/filters.yaml, but per the 2026-08-11 correction they
+# are NOT known to be in these wheels, so this is a what-if and is deliberately
+# not committed as a config):
+#
+#   both channels  ->  feasibility HARD, bottleneck blocking.insufficient 0.87
+#   blocking       ->  6.09 OD (green) / 6.11 OD (red)
+#   Stokes headroom-> +19 nm (green) / +29 nm (red) — bands now clear
+#   crosstalk      ->  margin 10.00, the scale maximum, on BOTH channels
+#   total collection-> 13.9% (green) / 13.5% (red)
+#
+# Two things follow. First, the 520/680 pairing is spectrally excellent: the
+# crosstalk margin saturates the scale, which is the payoff for straddling the
+# splitter with 160 nm between emission peaks. Second, the residual shortfall is
+# an EVIDENCE penalty, not a physical one — 6.1 OD clears the 5 OD requirement
+# that applies with measured curves, and only fails the 7 OD bar that
+# data/spectra/README.md imposes precisely because the spectra here are
+# parametric approximations. Measured curves plus a real bandpass is a passing
+# configuration; either one alone is not.
+#
+# Critical path, in order: (1) read the EM1/EM2 part numbers off the wheels so a
+# bandpass can be registered at all, (2) get measured curves for the splitter,
+# the dichroic and the two bead dyes into data/spectra/, (3) measure the laser
+# power at the sample. Until (1), this pair cannot be imaged.
+
+channels:
+  - name: "Green-DragonGreen-5um"
+    dye: DragonGreen
+    objective:
+      label: "6-Plan Apo LmbdD0.13 100x Oil"
+      magnification: 100
+      na: 1.45
+      immersion: oil
+      verified_na: true
+    detector: Kinetix22
+    source: [LUN-F-XL, "488"]
+    excitation: []          # laser lines are ~1-2 nm wide; the dichroic notch is the cleanup
+    dichroic: "Di01-T405/488/568/647-13x15x0.5"
+    emission:
+      - {ref: "DM A561LP", side: reflect}    # <561 nm reflected = Kinetix_blue
+      - "EM-Open"                            # EM2 position 9 — no bandpass available
+    port_fraction: 1.0
+
+  - name: "Red-Abvigen-5um"
+    dye: AbvigenRed680     # unnamed proprietary bead colourant — see note above
+    objective:
+      label: "6-Plan Apo LmbdD0.13 100x Oil"
+      magnification: 100
+      na: 1.45
+      immersion: oil
+      verified_na: true
+    detector: Kinetix22
+    source: [LUN-F-XL, "640"]
+    excitation: []
+    dichroic: "Di01-T405/488/568/647-13x15x0.5"
+    emission:
+      - {ref: "DM A561LP", side: transmit}   # >561 nm transmitted = Kinetix_red
+      - "EM-Open"                            # EM1 position 9 — no bandpass available
+    port_fraction: 1.0

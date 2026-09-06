@@ -115,6 +115,45 @@ fluorophores:
       measured curve found — see the FPbase spectrum viewer (automated fetch is
       blocked, check directly in a browser) or fluorophores.tugraz.at/substance/655.
 
+  AbvigenRed680:
+    aliases: ["Abvigen red bead dye", "AFR-0500 dye"]
+    abs_peak_nm: 620
+    em_peak_nm: 680
+    abs_fwhm_nm: 40
+    em_fwhm_nm: 45
+    photostability: unknown
+    verified: false
+    note: >
+      ⚠ NOT A NAMED DYE. This is the unidentified proprietary colourant inside
+      Abvigen's red fluorescent polystyrene beads
+      (data/particles.yaml > abvigen-red-5um-cooh, cat AFR-0500-COOH). It exists
+      as an entry only so that particle's channel can be evaluated at all —
+      registered by the same reasoning as DragonGreen below, which is likewise a
+      proprietary bead colourant with published peaks and nothing else.
+
+      PUBLISHED: the two peaks, 620 nm excitation and 680 nm emission max, and
+      only from the vendor product page — a page that is internally inconsistent
+      (filed as "Monoclonal Antibody", with the product name sitting in its
+      "Particle Size" field), so even the peaks deserve confirmation against a
+      tube label or CoA.
+
+      ⚠ ASSUMED: abs_fwhm_nm and em_fwhm_nm. The vendor publishes no width, no
+      curve, no extinction coefficient, no quantum yield, no lifetime and no
+      photostability. The 40/45 nm widths are generic bead-dye values carried
+      over from the DragonGreen entry purely so a parametric spectrum can be
+      constructed; they are NOT this dye's measured widths. Since crosstalk and
+      blocking verdicts are decided in the wings (data/spectra/README.md), any
+      such verdict for this channel is an approximation the gate will correctly
+      report as evidence: assumed at confidence low. Do not promote it.
+
+      ⚠ Do NOT substitute a 647-class dye (AlexaFluor647 / ATTO647N / Cy5) for
+      this. They are optically close and it would compute, but which colourant
+      is in the bead is a chemical fact and is not ours to assign — the same
+      rule stated at the head of
+      config/channels/particle647-yoyo1-2color.yaml. The 60 nm Stokes shift here
+      is notably wider than any of those, which is itself a hint that it is not
+      one of them.
+
   # ── 488/green series ─────────────────────────────────────────────────────
   AlexaFluor488:
     aliases: [AF488, Alexa488, std488]

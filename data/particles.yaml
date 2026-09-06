@@ -1,0 +1,560 @@
+# Fluorescent-particle registry.
+#
+# The colloids this lab actually disperses -- the probe and tracer beads that go
+# into the trap and into the camera. `data/fluorophores.yaml` describes a DYE;
+# this file describes a PRODUCT you can pick off the shelf, and links to the dye
+# by name instead of copying its numbers.
+#
+# Why this file exists: no particle identity is recorded anywhere else in this
+# repository. `trapping/cli.py` takes `--radius-um` and `--n-bead` as bare flags
+# with defaults (2.5 um, 1.45), `config/tweezers/trap_sequence.py` assumes "a
+# 5 um bead" throughout, and the px->um scale in
+# `config/session/run_wall_diffusion.py` was first written from a bead-diameter
+# eyeball. Each of those is a physical claim about a product nobody wrote down.
+# An entry here is where that claim gets a source.
+#
+# Two top-level keys:
+#   particles:  products, one entry per tube on the shelf
+#   materials:  bulk optical/physical constants, the fallback for when a
+#               datasheet is silent (authorized by the operator, 2026-09-05)
+#
+# ── Schema: particles ─────────────────────────────────────────────────────
+# particles:
+#   <canonical-key>:
+#     product:          manufacturer's product name, as printed on the datasheet
+#     vendor:
+#     catalog_number:
+#     lot:              size CV and dye loading vary lot to lot -- record it
+#     aliases:          [names used in folder names, protocols, order forms]
+#
+#     # ── fluorescence ──────────────────────────────────────────────────────
+#     dye:              key in data/fluorophores.yaml, or `proprietary`
+#     ex_peak_nm:       as quoted for the BEAD where the vendor gives it
+#     ex_range_nm:      [lo, hi] when the vendor quotes a usable RANGE and no
+#                       peak -- do not collapse a range to its midpoint
+#     em_peak_nm:       as quoted for the BEAD where the vendor gives it
+#     dye_location:     internal | surface | core-shell
+#     dye_note:         quenching, leaching, solvent sensitivity
+#
+#     # ── physical ──────────────────────────────────────────────────────────
+#     material:         key in `materials:` below
+#     diameter_um:
+#     diameter_cv_pct:  size CV; this is what sets a tracked radius' spread
+#     density_g_cm3:    sedimentation and density matching (lens 8)
+#     refractive_index:
+#       n_589:          the number datasheets quote (sodium D line)
+#       n_1064:         the one the trap uses
+#       from_material:  true if these came from `materials:` and NOT from this
+#                       product's own datasheet -- keep the fallback and the
+#                       datasheet distinguishable, they are different strengths
+#                       of claim
+#       source:
+#
+#     # ── surface chemistry ─────────────────────────────────────────────────
+#     surface_groups:   [plain, carboxyl, amine, sulfate, streptavidin, PEG, ...]
+#     surface_density:  groups per nm^2 or ueq/g, if the vendor gives it
+#     zeta_mv:          zeta potential, with the buffer it was measured in
+#     sticking:         what this surface does on bare glass in this lab
+#
+#     # ── stock ─────────────────────────────────────────────────────────────
+#     stock_conc:       e.g. "1% w/v solids" or "2e9 particles/mL"
+#     stock_medium:     water / buffer, AND any surfactant or azide present
+#     storage:
+#
+#     # ── provenance ────────────────────────────────────────────────────────
+#     verified:         true only when a datasheet or measurement was read
+#     verified_date:
+#     source:           datasheet | measured | vendor email | material-fallback
+#     in_use:           true if this is on the bench now
+#     note:
+#
+# ── What actually moves the trap number ───────────────────────────────────
+# Measured on this repo's own model, 2026-09-05:
+# `trapping.cli force-curve --dial 50 --n-traps 1 --radius-um 2.5`.
+# Radial stiffness at x=0:
+#
+#   | what changes                                   | kappa, pN/um | effect |
+#   |------------------------------------------------|--------------|--------|
+#   | polystyrene, D-line indices 1.59145 / 1.33335  |     179.4    |   --   |
+#   | polystyrene, 1064 indices   1.57154 / 1.32453  |     173.5    | -3.3%  |
+#   | PS bulk 1.57154 vs microsphere 1.57552         | 173.5 / 175.7|  1.3%  |
+#   | silica across its material range 1.42 -> 1.46  | 76.2 / 104.6 |  +37%  |
+#
+# So, in order:
+#
+# 1. WHICH SILICA YOU HAVE matters ~10x more than the dispersion correction.
+#    Colloidal (Stober) silica is porous and hydrated, its index runs about
+#    1.42-1.46, and that spread alone swings stiffness 37%. If a silica product
+#    does not state its own n, the trap number is uncertain at the tens-of-
+#    percent level and no amount of care about the wavelength recovers it.
+#    Prefer a vendor who quotes n; otherwise record the range, not a midpoint.
+#
+# 2. USE n AT 1064 nm, NOT 589 nm -- worth 3.3% on polystyrene, always in the
+#    same direction (the D-line value overestimates stiffness). Cheap to get
+#    right, since `materials:` below carries both.
+#
+# 3. BULK VS MICROSPHERE SOURCE IS NOISE for polystyrene (1.3%). Either
+#    published value is fine.
+#
+# The medium disperses too: water is 1.3334 at 589 nm but 1.3245 at 1064 nm,
+# and `trapping/cli.py --n-medium` defaults to 1.33. What the ray sum responds
+# to is the RATIO n_bead/n_medium, so both have to be taken at 1064 nm or the
+# correction is only half applied.
+#
+# ── On bead ex/em ─────────────────────────────────────────────────────────
+# An internally dyed bead sits in polymer, not water, so its peaks and wings
+# differ somewhat from the free dye in data/fluorophores.yaml. For DESIGNING an
+# experiment this is not a deciding factor and is not worth chasing measured
+# bead spectra for (operator, 2026-09-05) -- record whatever the vendor quotes,
+# pick the channel, and settle the real separation with a short test
+# acquisition once the sample is on the stage. Revisit it only if that test
+# shows bleed-through you cannot filter out.
+#
+# ── Rule ──────────────────────────────────────────────────────────────────
+# Nothing here is inferred from a product NAME. Material constants may be
+# filled from `materials:` below (flag them `from_material: true`); every other
+# field stays absent until a datasheet, a vendor, or a measurement supplies it.
+
+particles:
+
+  abvigen-red-5um-cooh:
+    product: "Red Fluorescent Particles, 5 um-COOH"
+    vendor: "Abvigen Inc."
+    catalog_number: AFR-0500-COOH
+    lot: null                     # not on the product page -- read it off the tube
+    aliases: ["AFR-0500-COOH", "Abvigen red 5um", "red COOH 5um"]
+
+    dye: proprietary              # no dye name published; not in data/fluorophores.yaml
+    ex_peak_nm: 620
+    em_peak_nm: 680
+    dye_location: null            # internal vs surface not stated
+    dye_note: >
+      Peaks only -- no FWHM, no spectra, no dye identity. So the optics lens has
+      nothing to compute crosstalk or blocking wings from and will report
+      evidence: assumed for this channel. Per the ex/em policy above, that is
+      accepted at design time and settled with a test acquisition instead.
+
+    material: polystyrene
+    diameter_um: 5.0
+    diameter_cv_pct: null         # not stated -- matters for tracked-radius spread
+    density_g_cm3: 1.05
+    refractive_index:
+      n_589: 1.59145
+      n_1064: 1.57154
+      from_material: true         # vendor page states no index
+      source: "materials.polystyrene (Sultanova 2009); vendor gives no n"
+
+    surface_groups: [carboxyl]
+    surface_density: null
+    zeta_mv: null                 # not stated; COOH is negative near neutral pH
+    sticking: >
+      Expected LOW on bare glass. Carboxyl is deprotonated and negative near
+      neutral pH, and so is clean glass, so the two repel. In this product's DI
+      water (0.05% NaN3, ionic strength ~1e-6 M) the Debye length is ~300 nm, so
+      that repulsion is long-ranged and strong -- favourable. Contrast
+      abvigen-blue-4um-nh2, which is the opposite sign.
+
+    stock_conc: "10 mg/ml"
+    stock_conc_derived: >
+      10 mg/mL at rho 1.05 and d 5 um = 1.00% w/v = 1.46e8 particles/mL
+      (computed 2026-09-05, not vendor-stated).
+    stock_medium: "DI water, 0.05% NaN3. No surfactant listed."
+    storage: "4-8 C, away from direct sunlight. Do not freeze. Shipped ambient."
+
+    verified: true
+    verified_date: 2026-09-05
+    source: "vendor product page, abvigen.com, pasted by operator 2026-09-05"
+    in_use: true
+    note: >
+      Pack size 10 mL.
+
+      ⚠ The product page is internally inconsistent and that should temper trust
+      in its numbers: it is filed under Products > Antibody > Primary Antibodies
+      > Monoclonal Antibody and states "Type: Monoclonal Antibody" for what is
+      plainly a polystyrene microsphere, and its "Particle Size:" field contains
+      the product name rather than a size (the 5 um comes from the separate
+      "Diameter:" field). Template errors, not physics -- but confirm ex/em and
+      diameter against the tube label or a CoA before a result rests on them.
+
+      Emission 680 nm is above the 561 nm splitter, so it lands on the transmit
+      side = Kinetix_red, and 620 nm excitation is nearest the LUN-F-XL 640 line.
+
+  abvigen-blue-4um-nh2:
+    product: "4 um cross-linked PS-NH2"
+    vendor: "Abvigen Inc."
+    catalog_number: ACLB-21-0400
+    lot: null
+    aliases: ["ACLB-21-0400", "Abvigen blue 4um", "blue NH2 4um"]
+
+    dye: proprietary
+    ex_peak_nm: null              # a range was quoted, not a peak -- not collapsed
+    ex_range_nm: [360, 435]
+    em_peak_nm: 450
+    dye_location: null
+    dye_note: >
+      A 360-435 / 450 nm bead dye is a UV/violet-excited class (coumarin- or
+      pyrene-like). Those are typically the least photostable dyes in a
+      multicolour set, so expect this channel to bleach first -- lens 5.
+
+    material: polystyrene
+    material_note: >
+      CROSS-LINKED polystyrene (the vendor's own wording), most likely
+      divinylbenzene. Cross-linking makes the bead solvent- and
+      temperature-resistant and nudges the index slightly UP relative to linear
+      PS. By how much is not published and is not guessed here: the entry uses
+      the linear-PS fallback, which therefore very slightly UNDER-estimates n
+      and so under-estimates stiffness.
+    diameter_um: 4.0
+    diameter_cv_pct: null
+    density_g_cm3: 1.05
+    refractive_index:
+      n_589: 1.59145
+      n_1064: 1.57154
+      from_material: true
+      source: >
+        materials.polystyrene (Sultanova 2009); no vendor n, and no
+        cross-linked-PS index found. See material_note.
+
+    surface_groups: [amine]
+    surface_density: null
+    zeta_mv: null
+    sticking: >
+      ⚠ Expected HIGH on bare glass, and this is the operational risk in today's
+      pair. Amine is protonated and POSITIVE near neutral pH while clean glass is
+      negative, so this bead is electrostatically attracted to the coverslip --
+      the opposite sign to abvigen-red-5um-cooh. It also settles the ~100 um to
+      the glass in under 4 minutes (below), so it arrives there quickly.
+      A stuck bead reads as still as a trapped one, which is exactly the failure
+      mode that broke the 2026-09-04 catch test
+      (kb/decisions/2026-09-04-closed-loop-trapping-measured.md §3).
+      Mitigations, none yet tried on this instrument: passivate the glass (BSA,
+      Pluronic F-127, PEG-silane), or add salt to screen the attraction -- 1 mM
+      brings the Debye length from ~300 nm down to ~10 nm, 150 mM to ~0.8 nm.
+      Screening is the cheap test; passivation is the one that lasts.
+
+    stock_conc: null              # not supplied
+    stock_medium: null            # not supplied -- ask, it decides the sticking above
+    storage: null
+
+    verified: false
+    verified_date: 2026-09-05
+    source: >
+      operator, 2026-09-05: "Ex/Em: 360-435 nm/450 nm, 4um cross linked PS-NH2,
+      Abvigen ACLB-21-0400". Not yet cross-checked against a vendor page, hence
+      verified: false -- the six fields given are recorded, the rest are absent.
+    in_use: true
+    note: >
+      Emission 450 nm is below the 561 nm splitter, so it lands on the reflect
+      side = Kinetix_blue, and the 360-435 nm excitation range is served by the
+      LUN-F-XL 405 line (at the range's red edge, so off-peak but inside it).
+      Together with abvigen-red-5um-cooh this puts one particle on each camera
+      with ~230 nm between the two emissions.
+
+      Still needed: stock concentration, suspending medium, size CV, lot.
+
+  bangs-dragongreen-5um-cooh:
+    product: "Fluorescent Carboxyl Polystyrene Microspheres, Dragon Green - 5.0um"
+    vendor: "Bangs Laboratories, Inc."
+    catalog_number: FCDG008
+    lot: "14941"
+    aliases: ["FCDG008", "Bangs Dragon Green 5um", "DG 5um COOH"]
+
+    dye: DragonGreen              # ← data/fluorophores.yaml, a real registry link
+    ex_peak_nm: 480
+    em_peak_nm: 520
+    dye_location: internal
+    dye_note: >
+      The lot's polymer description encodes the dye peaks directly --
+      `PS/DVB-COOH-(480,520)` -- which INDEPENDENTLY CORROBORATES the 480/520
+      already in data/fluorophores.yaml > DragonGreen, an entry that was carrying
+      verified: false because bangslabs.com blocks automated fetching. The peaks
+      are now confirmed from a lot certificate. What is still unpublished for this
+      dye is everything else: extinction coefficient, quantum yield, lifetime,
+      photostability, and any spectral curve. So the peaks are solid and the wings
+      are still unknown.
+
+      `dye_location: internal` is INFERRED, not stated: Bangs' fluorescent
+      carboxyl line is sold for covalent coupling to the surface COOH, which only
+      works if the dye is in the polymer matrix rather than on the surface.
+      Consistent with the product copy, but confirm if it matters.
+
+    material: polystyrene
+    material_note: >
+      `PS/DVB` in the lot description = polystyrene cross-linked with
+      divinylbenzene, same caveat as abvigen-blue-4um-nh2: cross-linking nudges
+      the index slightly up from linear PS by an unpublished amount, so the
+      fallback below very slightly UNDER-estimates n and stiffness.
+    diameter_um: 4.95             # MEASURED lot mean, not a nominal
+    diameter_sd_um: 0.39          # measured lot standard deviation
+    diameter_cv_pct: 7.9          # = 0.39/4.95, computed 2026-09-05
+    spec_range_um: [4.80, 5.20]
+    diameter_note: >
+      ⚠ Read the spec range as a bound on the LOT MEAN, not on individual
+      particles. +-1 sd of this lot spans 4.56-5.34 um, which is wider than the
+      4.80-5.20 spec; if the spec bounded single particles then ~1/3 of them
+      would be out of spec. The lot mean 4.95 sits inside it, which is the
+      consistent reading.
+
+      This is the first particle here with a real CV, and it is not negligible:
+      +-1 sd carries trap stiffness from 190.3 to 162.5 pN/um, +-8% -- more than
+      twice the D-line-vs-1064 correction. Trap stiffness on a single bead is
+      that bead's, not the lot's.
+    density_g_cm3: 1.05
+    refractive_index:
+      n_589: 1.59145
+      n_1064: 1.57154
+      from_material: true
+      source: "materials.polystyrene (Sultanova 2009); Bangs gives no n"
+
+    surface_groups: [carboxyl]
+    surface_titer_ueq_g: 7.7      # lot certificate
+    parking_area_a2: 23.8         # lot certificate, A^2 per COOH group
+    surface_note: >
+      The lot sheet is SELF-CONSISTENT, which is worth recording because the
+      Abvigen pages are not. From titer 7.7 ueq/g and the sphere geometry
+      (specific surface area 6/(rho*d) = 1.1544 m^2/g at d=4.95, rho=1.05) the
+      parking area computes to 24.9 A^2/group against the 23.8 quoted -- 4.6%
+      apart, i.e. agreement to within the rounding on rho and d. Two independently
+      quoted numbers that reproduce each other.
+    zeta_mv: null
+    sticking: >
+      Expected LOW on bare glass, same reasoning as abvigen-red-5um-cooh:
+      carboxyl is negative near neutral pH and so is clean glass. This is the
+      opposite of abvigen-blue-4um-nh2.
+
+    stock_conc: "~1% solids (w/v) aqueous suspension"
+    stock_conc_derived: >
+      1% w/v at rho 1.05 and d 4.95 um = 1.50e8 particles/mL (computed
+      2026-09-05, not vendor-stated).
+    stock_medium: "aqueous suspension; exact buffer/surfactant not stated on the catalogue page"
+    storage: null                 # not on the page
+    pack_sizes: ["1 mL", "5 mL", "10 mL", "100 mL"]
+
+    verified: true
+    verified_date: 2026-09-05
+    source: >
+      Bangs catalogue page (Fluorescent Carboxyl Polystyrene) plus the lot 14941
+      certificate, both pasted by the operator 2026-09-05.
+    in_use: true
+    note: >
+      Emission 520 nm is BELOW the 561 nm splitter, so it reflects to
+      Kinetix_blue -- THE SAME CAMERA as abvigen-blue-4um-nh2 (em 450). The
+      dual-camera splitter cannot separate this particle from that one; see the
+      pairing note at the foot of this file. Excitation 480 nm is served almost
+      exactly by the LUN-F-XL 488 line.
+
+      Sibling products on the same catalogue page, if a different pairing is
+      wanted later: Flash Red and Glacial Blue exist at 5.0 um (FCFR008,
+      FCGB008), Envy Green at 5.0 um (FCEG008), and the Dragon Green series runs
+      0.05-15 um. Only FCDG008 lot 14941 is entered here -- the others are
+      catalogue numbers, not products in hand.
+
+  # ── Sedimentation, all three particles ─────────────────────────────────
+  # Stokes settling at 20 C, rho 1.05 in water, computed 2026-09-05. None is
+  # density-matched, and all reach the coverslip fast enough to matter over an
+  # acquisition:
+  #
+  #   5.00 um red COOH:   v = 0.707 um/s -> 100 um in 2.4 min ; D_bulk = 0.0857 um^2/s
+  #   4.95 um green COOH: v = 0.693 um/s -> 100 um in 2.4 min ; D_bulk = 0.0866 um^2/s
+  #   4.00 um blue NH2:   v = 0.453 um/s -> 100 um in 3.7 min ; D_bulk = 0.1071 um^2/s
+  #
+  # Note how closely the two 5 um COOH beads track each other -- 0.7% apart in
+  # both settling speed and D. As a two-species pair they are hydrodynamically
+  # matched to well inside their own 8% size CV. The 4 um NH2 bead is 35% faster
+  # in D and settles 1.5x slower, so pairing it against either COOH bead means
+  # the two species differ in mobility as well as in label.
+  #
+  # Consequences: (a) the field depletes from the top over minutes, so a long
+  # dual-camera run images a different population at the end than at the start;
+  # (b) everything ends up within a few um of the glass, where mobility is
+  # hindered several-fold below these bulk D values
+  # (kb/expertise/sample-mount-geometry.md §3) -- which is the same wall effect
+  # that explains the 2026-09-04 D measurement; (c) the two species settle at
+  # different rates, so their relative depth distribution drifts during the run.
+  # That last one is a genuine confound for a two-particle comparison.
+  #
+  # Loading, from the 1.46e8 /mL derived for the red stock, in a 78x78 um field
+  # (1200 px ROI at 0.065 um/px):
+  #
+  #   chamber depth   10 um ->  8.9 beads/field    50 um -> 44 beads/field
+  #                   20 um -> 17.7 beads/field   100 um -> 89 beads/field
+  #
+  # trap_sequence.py wants isolated beads at a 12 um cut. For ~4 beads in the
+  # field that is a 4x dilution of the red stock at 20 um depth, or ~22x at
+  # 100 um. The mount is UNSPACED, so the depth is not designed and not known
+  # (kb/expertise/sample-mount-geometry.md §2) -- these are brackets to dilute
+  # against, not a recipe.
+
+
+# ══ Material reference constants ══════════════════════════════════════════
+#
+# Bulk-material fallback for when a product datasheet does not state n or
+# density. All `verified: false`: these are recomputed here from published
+# dispersion formulas, not read off a vendor sheet for the particle in hand.
+# The Sellmeier/Cauchy coefficients were entered from the literature and the
+# two wavelengths evaluated on 2026-09-05; the coefficients themselves are
+# worth one check against refractiveindex.info before a result leans on them.
+
+materials:
+
+  polystyrene:
+    aliases: [PS, "polystyrene latex", PSL]
+    n_589: 1.59145
+    n_1064: 1.57154
+    n_source: >
+      Sultanova, Kasarova & Nikolov, Acta Phys. Pol. A 116 (2009) 585. 1-term
+      Sellmeier, n^2-1 = 1.4435 L^2/(L^2-0.020216), L in um. Fitted over
+      0.4358-1.052 um, so 1.064 um is a marginal extrapolation just past the
+      fitted range -- harmless at this dispersion, but that is why n_1064 is an
+      extrapolation and not a measurement.
+    n_alternative:
+      n_589: 1.58433
+      n_1064: 1.57552
+      source: >
+        Ma, Lu, Brock, Jacobs, Yang & Hu, "Determination of complex refractive
+        index of polystyrene microspheres from 370 to 1610 nm", Phys. Med.
+        Biol. 48 (2003) 4165. Cauchy, n = 1.5725 + 0.0031080/L^2 +
+        0.00034779/L^4. Measured on MICROSPHERES rather than bulk, which is the
+        object class here, and its range covers 1064 nm properly instead of
+        extrapolating to it. It disagrees with Sultanova by 0.004 at 1064 nm,
+        which is 1.3% in stiffness -- below the level at which the choice
+        matters, so either is defensible.
+    density_g_cm3: 1.05
+    density_note: "Vendors quote 1.04-1.06. Denser than water: PS beads sediment."
+    verified: false
+
+  silica:
+    aliases: [SiO2, "colloidal silica", Stober]
+    n_589: 1.45840
+    n_1064: 1.44963
+    n_source: >
+      Malitson, J. Opt. Soc. Am. 55 (1965) 1205. 3-term Sellmeier for FUSED
+      silica, evaluated at both lines here.
+    n_warning: >
+      These are FUSED-silica values and an UPPER BOUND for a colloidal
+      particle. Stober-grown silica is porous and hydrated; its index runs
+      roughly 1.42-1.46 depending on synthesis and drying, and vendors who
+      quote a number usually give 1.43-1.46 rather than 1.458. That range is
+      worth 37% in trap stiffness (table above), which makes this the weakest
+      fallback in this file. Get the vendor's own n if the experiment reads a
+      force.
+    n_range_colloidal: [1.42, 1.46]
+    density_g_cm3: 2.0
+    density_note: >
+      2.0 is the usual vendor figure for colloidal silica; dense fused silica
+      is 2.20. Porosity moves this together with n. About 2x water, so these
+      sediment much faster than polystyrene -- lens 8 territory on any long
+      acquisition.
+    verified: false
+
+  pmma:
+    aliases: [PMMA, "poly(methyl methacrylate)", acrylic]
+    n_589: 1.49054
+    n_1064: 1.48116
+    n_source: >
+      Sultanova, Kasarova & Nikolov, Acta Phys. Pol. A 116 (2009) 585. 1-term
+      Sellmeier, n^2-1 = 1.1819 L^2/(L^2-0.011313).
+    density_g_cm3: 1.18
+    density_note: "1.18-1.19."
+    verified: false
+
+  melamine:
+    aliases: ["melamine resin", "melamine formaldehyde", MF]
+    n_589: 1.68
+    n_1064: null
+    n_source: >
+      Vendor-quoted round figure at the D line (microParticles GmbH and
+      similar). No dispersion model for melamine formaldehyde resin was found,
+      so n_1064 is left NULL rather than extrapolated -- the highest-index
+      material here is where a guessed extrapolation would do the most damage
+      to a stiffness number. Fill it from a vendor sheet if melamine ever goes
+      into the trap.
+    density_g_cm3: 1.51
+    verified: false
+
+  # The medium, kept here so that bead and medium can be taken at the same
+  # wavelength. `trapping/cli.py --n-medium` defaults to 1.33, the D-line
+  # value; at the trap wavelength water is 1.3245.
+  water:
+    n_589: 1.33335
+    n_1064: 1.32453
+    n_source: >
+      Daimon & Masumura, Appl. Opt. 46 (2007) 3811. 4-term Sellmeier, 20 C,
+      evaluated at both lines here.
+    density_g_cm3: 0.998
+    note: >
+      20 C. An ATPS phase or a density-matched buffer is NOT this -- it needs
+      its own measured index, and its own measured viscosity
+      (trapping/dynamics.py says the same about viscosity).
+    verified: false
+
+
+# ── Not yet identified ────────────────────────────────────────────────────
+# The bead used in the 2026-09-04 wall-diffusion and closed-loop trapping runs
+# is NOT entered above, because its product identity was never recorded. What
+# the record actually contains:
+#
+#   - "a 5 um bead", used as the diameter throughout
+#     config/tweezers/trap_sequence.py -- an eyeball, per the note at
+#     config/session/run_wall_diffusion.py:45
+#   - D = 0.0395 um^2/s measured near the coverslip on 2026-09-04
+#     (trap_sequence.py:150). Bulk Stokes-Einstein at 20 C in water would put a
+#     free sphere with that D at ~10.9 um diameter, and would give a true 5 um
+#     bead D = 0.0857 um^2/s -- so the measurement sits a factor 2.2 BELOW the
+#     assumed size. That factor is the expected signature of a bead a few um
+#     from a wall, where the hindered mobility runs several-fold under bulk
+#     (kb/expertise/sample-mount-geometry.md §3), not evidence of a 10.9 um
+#     bead. Either way it is NOT an independent size measurement.
+#   - "silica" appears in kb/systems/current.md only as the Tweez GUI manual's
+#     ~2.5 um calibration bead, which is the manual's recommendation, not a
+#     statement about what was in the chamber.
+#
+# So the size is an eyeball and the material is unknown -- and per the table
+# above, "unknown material" is the expensive gap here, not the wavelength. Add
+# it from the actual tube or the order record.
+#
+# NOTE, 2026-09-05: abvigen-red-5um-cooh is 5 um polystyrene-COOH, and
+# bangs-dragongreen-5um-cooh is 4.95 um PS/DVB-COOH. Either is a candidate for
+# the bead in those runs. If one of them WAS it, then the trapping numbers from
+# 2026-09-04 were computed on the CLI's silica default n=1.45 and are low by
+# ~44% (98.7 vs 175.3 pN/um at this radius). Worth resolving from the order
+# record before any 2026-09-04 force number is reused.
+
+
+# ── Which two can actually be imaged at once ──────────────────────────────
+# The dual-camera splitter is DM A561LP: everything below 561 nm reflects to
+# Kinetix_blue, everything above transmits to Kinetix_red
+# (config/scopes/current-laser.yaml). One particle per camera is the whole point
+# of the dual-cam path, so the pair has to straddle 561 nm.
+#
+#   particle                     em nm   line   camera
+#   abvigen-blue-4um-nh2          450    405    Kinetix_blue
+#   bangs-dragongreen-5um-cooh    520    488    Kinetix_blue
+#   abvigen-red-5um-cooh          680    640    Kinetix_red
+#
+# So of the three pairings:
+#
+#   green + red  -> SEPARATE cameras. Both 5 um, both COOH, PS(/DVB) -- matched
+#                   in size to inside their own CV, matched in surface charge
+#                   (neither sticks), matched in mobility to 0.7%. Differ only
+#                   in the label, which is what a two-species measurement wants.
+#                   Dragon Green sits on the 488 line at its 480 peak, and 520 nm
+#                   emission has the wide dichroic window between the 488 and 568
+#                   notches.
+#
+#   blue + red   -> SEPARATE cameras, but mismatched three ways: 4 vs 5 um,
+#                   NH2 (attracted to glass) vs COOH (repelled), and the 450 nm
+#                   channel has to thread the narrow gap between the dichroic's
+#                   405 and 488 notches -- whose edges are unmeasured
+#                   approximations (data/filters.yaml) -- with a UV-excited dye
+#                   class that bleaches fastest, on the harshest line.
+#
+#   blue + green -> SAME CAMERA. The splitter sends both to Kinetix_blue and
+#                   cannot separate them, so the dual-camera path buys nothing.
+#                   This is not the FITC/YOYO-1 case -- 450 vs 520 emission on
+#                   405 vs 488 excitation is genuinely separable optically -- but
+#                   it has to be done SEQUENTIALLY on one camera with two
+#                   emission filters, which costs simultaneity and needs EM1/EM2
+#                   passbands that are not on record
+#                   (kb/expertise/current-laser-green-band-single-slot.md is the
+#                   related, stricter failure).
