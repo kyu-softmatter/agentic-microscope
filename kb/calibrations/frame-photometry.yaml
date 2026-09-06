@@ -67,7 +67,140 @@
 #   the test frame can perturb what it is measuring (lens 5, docs/06 D2).
 # ─────────────────────────────────────────────────────────────────────────────
 
-frames: []
+frames:
+  # ── The two-colour pair at 100x, both arms, measured 2026-09-06 ──────────
+  # First photometry on this instrument for BOTH channels of the dual-camera
+  # path, taken at the objective and binning the run will use. Supersedes the
+  # 4x entry below as the basis for run settings; that one stays because it is
+  # the frame the EM1 band test came out of.
+  #
+  # Common conditions: 100x Oil (ZDrive 2989.26, PFS In Range), intermediate
+  # 1.0x, binning 2x2 -> 0.130 um/px, full frame 1200x1200 = 156 um, Kinetix22
+  # DynamicRange 16-bit, camera post-processing OFF via the
+  # TwoColour/GreenRed-Widefield preset, LappMainBranch1 mirror_out,
+  # CSUW1-Port blue_red, exposure 10.00 ms, 12-frame average, dark frame at the
+  # same exposure after a discarded warm-up.
+  #
+  # ⚠ THE TWO ARMS ARE NOT INTERCHANGEABLE, AND THE FACTOR IS LARGE.
+  # Per unit of illuminator setting, at identical exposure and binning:
+  #     Dragon Green on CYAN   ~15,400 ADU per per-mille
+  #     Abvigen red on GREEN      ~527 ADU per per-mille
+  # a factor of ~29. Dragon Green saturated the 16-bit ceiling at CYAN 8/1000
+  # in 10 ms, i.e. at 0.8% of the illuminator. Any attempt to run one intensity
+  # for both channels either clips the green arm or starves the red one, so the
+  # per-arm levels below are part of the configuration, not a preference.
+  #
+  # Bead areas are the check that these are beads at all: a 5 um sphere at
+  # 0.130 um/px covers ~1160 px, and the measured medians are 1247 (green) and
+  # 1667 (red). An earlier pass reported "214 beads" from a 2-400 px filter
+  # carried over from 4x, which excluded every real bead and counted debris.
+
+  - sample: bangs-dragongreen-5um-cooh
+    date: 2026-09-06
+    detector: Kinetix22            # Kinetix_blue, Camera-1, reflect side of DM A561LP
+    frame_mode: DynamicRange
+    exposure_ms: 10.0
+    peak_adu: 46105.0              # 70.4% of the 16-bit ceiling -- under the 95% bar
+    background_adu: 188.2
+    offset_adu: 116.1
+    n_pix_spot: 1247               # median bead area; ~1160 px expected for 5 um
+    despeckle_off: true
+    light: "Aura CYAN 3/1000 (= 0.3%), MXR00724-EX 462-486 band"
+    objective: "100x Oil / 1.45, intermediate 1.0x, bin 2x2 -> 0.130 um/px"
+    emission: "FF01-515/30 (EM2 position 2) inside MXR00724-EM -> net 510-530 nm"
+    beads_in_field: 22             # 156 um field; ~4 in the 66.6 um run ROI
+    source: config/session/focus_monitor.py + inline photometry
+    recommended: "DynamicRange at 0.59 ms for SNR 10 at 100 fps (detection.cli from-frame)"
+    note: >
+      Brightness here is the surprise of the session and it runs the opposite
+      way to what was assumed. This channel had never been measured -- Dragon
+      Green was only ever "seen properly" qualitatively (2026-09-05) -- and the
+      working assumption was that it might be the DIM one. It is the bright one
+      by a factor of ~29, bright enough that CYAN at 0.3% of the illuminator
+      puts it at 70% of full scale in 10 ms.
+
+      Consequence for the run: at the 1.39 ms exposure the red arm needs (the
+      larger of the two, so both arms can share one exposure), this arm wants
+      CYAN ~12/1000 to sit near 40% of the ceiling. Scaled from this frame, not
+      measured at 1.39 ms -- confirm before acquiring.
+
+  - sample: abvigen-red-5um-cooh-100x
+    date: 2026-09-06
+    detector: Kinetix22            # Kinetix_red, Camera-2, transmit side of DM A561LP
+    frame_mode: DynamicRange
+    exposure_ms: 10.0
+    peak_adu: 22301.0              # 34.0% of ceiling -- mid-range, the recipe's target
+    background_adu: 146.7
+    offset_adu: 91.2
+    n_pix_spot: 1667
+    despeckle_off: true
+    light: "Aura GREEN 40/1000 (= 4%), MXR00724-EX 544-565 band"
+    objective: "100x Oil / 1.45, intermediate 1.0x, bin 2x2 -> 0.130 um/px"
+    emission: "FF01-595/31 (EM1 position 3) inside MXR00724-EM -> net 589-610 nm"
+    beads_in_field: 33
+    source: config/session/focus_monitor.py + inline photometry
+    recommended: "DynamicRange at 1.39 ms for SNR 10 at 100 fps (detection.cli from-frame)"
+    note: >
+      Linear in illuminator setting across the range measured (20/40/60
+      per-mille -> 17.4/34.0/48.2% of ceiling), so the scaling to other levels
+      is interpolation rather than extrapolation.
+
+      This is the same bead as the 4x entry below, and the two are consistent
+      with the (NA/M)^2 epi scaling to within the precision either supports --
+      which is worth one line because that 11.891x factor was used to plan the
+      whole run before any 100x frame existed, and it was flagged as needing
+      re-measurement rather than trust. It survived.
+
+      For the run: 1.39 ms at GREEN ~340/1000 puts this arm near 40% of the
+      ceiling. Scaled, not measured at that exposure.
+
+  - sample: abvigen-red-5um-cooh
+    date: 2026-09-06
+    detector: Kinetix22            # Kinetix_red, Camera-2, serial A24M723015
+    frame_mode: DynamicRange       # Port "Dynamic Range", 100MHz 16bit, Gain 1-Standard
+    exposure_ms: 33.33
+    peak_adu: 14443.8              # brightest object, above its own local background
+    background_adu: 167.3          # median of the illuminated frame
+    offset_adu: 125.0              # median of a 20-frame dark at the same exposure and mode
+    n_pix_spot: 11                 # 226413 px over ~20800 objects; a 5 um bead at 1.625 um/px
+    despeckle_off: true            # ⚠ it was ON when found -- see below
+    light: "Aura GREEN 50/1000 (= 5%), MXR00724-EX 544-565 band"
+    objective: "4x / 0.20 (nosepiece position 0), intermediate 1.0x, 1.625 um/px"
+    emission: "FF01-595/31 (EM1 position 3) inside MXR00724-EM -> net 589-610 nm"
+    bleaching: "+1.6% over the run (555b/555a = 1.016) -- no measurable bleaching"
+    source: config/session/measure_red_bead_em1.py
+    note: >
+      Taken as the by-product of the EM1 555-vs-647 band test
+      (data/particles.yaml > abvigen-red-5um-cooh > emission_measured), so the
+      filter is the narrow 21 nm red bandpass rather than anything wider -- a
+      LOWER BOUND on what this bead gives on this path.
+
+      ⚠ DESPECKLE WAS ENABLED ON Kinetix_red WHEN THIS WAS TAKEN UP. All four
+      despeckle entries plus LARGE CLUSTER CORRECTION and FRAME AVERAGING read
+      ENABLED = Yes at the start of the session, thresholds 120/130/75/70. That
+      is docs/06 C1 -- previously recorded only for the ARCHIVE Prime95B
+      generation -- observed live on this camera. The script turned all six off
+      before measuring.
+
+      ⚠ CORRECTION, same day: "and left them off" was wrong. A later
+      `loadSystemConfiguration` on the dual-cam config read all six back as
+      ENABLED = Yes on this same body, and on Kinetix_blue too. Turning
+      post-processing off survives only the MMCore session that did it, so it
+      is a PER-ACQUISITION step, not a one-time fix. Consequence is wider than
+      "older data": ANY acquisition whose own script did not explicitly disable
+      it was taken with despeckle on, and such a frame cannot be repaired
+      afterwards. config/session/setup_dualcam_run.py --disable-pp does both
+      bodies.
+
+      ⚠ THE OFFSET IS THE WEAKEST NUMBER HERE. The camera baseline settles
+      downward for several seconds after a mode or post-processing write: the
+      dark median read 124.6 ADU immediately after those writes and 113.8 a few
+      seconds later. A 20-frame warm-up is now discarded before the dark burst,
+      but 125.0 may still sit a few ADU high. Nothing in the band test depends
+      on it -- that comparison is against each frame's own smoothed background,
+      which is offset-free -- but `from-frame` uses the offset directly, so
+      treat the e-/s rates it computes from this entry as ~10% uncertain until
+      a dark frame is taken on a settled baseline.
 # - sample: <name, matching kb/samples/ when that exists>
 #   date: <YYYY-MM-DD>
 #   measured_by: <who>

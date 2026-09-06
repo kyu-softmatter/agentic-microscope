@@ -127,19 +127,27 @@ SAMPLE_Z_WINDOW_UM = (2800.0, 3200.0)
 PFS_IN_RANGE_PROPERTY = "PFS in Range"
 PFS_IN_RANGE_VALUE = "In Range"
 
-#: **The Z sign convention is NOT recorded here, on purpose.**
+#: **Which direction of ``ZDrive`` retracts the objective. MEASURED.**
 #:
-#: Which direction of ``ZDrive`` retracts the objective from the sample is still
-#: unmeasured on this instrument. The available argument is circumstantial: the
-#: 4x -> 100x rotation happened at ``ZDrive = 8288.740`` with the sample plane at
-#: 2959, and if +Z moved the lens *toward* the sample a 0.13 mm working-distance
-#: front element would have ended ~5.2 mm past the coverslip -- which does not
-#: happen quietly. Nothing broke, so +Z is probably the retracted direction.
+#: KH measured it and stated it 2026-09-05: **smaller Z is retracted.** Hence
+#: -1, and the operator's objective-change sequence follows from it directly:
+#: ``Z -> 0`` (retracted), rotate, ``Z -> 2800`` (the near edge of
+#: SAMPLE_Z_WINDOW_UM), then re-focus.
 #:
-#: "Probably" is not good enough to point a 100x Oil objective with, so no guard
-#: below uses it. Both guards are sign-free: one refuses inside the sample
-#: window, the other refuses when PFS can see the coverslip.
-Z_RETRACT_DIRECTION = None  # unmeasured -- do not infer one
+#: ⚠ **This REVERSES the circumstantial guess that stood here until
+#: 2026-09-05.** That guess ran: the 4x -> 100x rotation happened at
+#: ``ZDrive = 8288.740`` with the sample plane at 2959, nothing broke,
+#: therefore +Z must be the retracted direction. The conclusion was backwards,
+#: and its premise is the part worth keeping -- under the measured convention
+#: that rotation drove the incoming lens ~5.3 mm *past* the sample plane, so
+#: "nothing broke" means there was nothing there to hit, not that the lens was
+#: clear. SAFETY.md called it luck; it was more luck than it looked.
+#:
+#: ⚠ The two guards in ``_require_clear_of_sample`` stay **sign-free** and do
+#: not consult this value. A known sign makes a retract-first sequence
+#: writable; it does not make either guard unnecessary, because a sign says
+#: which way is out and neither guard is asking that question.
+Z_RETRACT_DIRECTION = -1  # measured: KH 2026-09-05, smaller Z retracts
 
 #: **The stand does not escape.** Measured 2026-09-03: rotating the Nosepiece
 #: through this adapter from 4x to 100x Oil left ZDrive at 8288.740 um, moving
@@ -617,7 +625,29 @@ class Microscope:
         return resolved
 
     def save_config(self, path: str | Path) -> Path:
-        """Write the core's current configuration out as a ``.cfg``."""
+        """Write the core's current configuration out as a ``.cfg``.
+
+        ⚠ THIS HANGS ON THE LAB'S INSTRUMENT. Measured 2026-09-06 against
+        ``config/micromanager/dualcam_noDMD.cfg``: with a single-setting group
+        defined, ``saveSystemConfiguration`` had not returned after 75 s and
+        was still burning CPU, while ``defineConfigGroup`` and ``defineConfig``
+        immediately before it both returned instantly. Untested on the demo
+        config, so this may be a PVCAM/NikonTi2 adapter interaction rather than
+        an MMCore bug -- either way it is not usable here yet.
+
+        It cost a confusing diagnosis, worth repeating: two ``--apply`` runs
+        that called this looked like *apply* failures, because the apply had
+        already completed and its output was still sitting in a block-buffered
+        pipe when the run was killed. Use ``python -u`` when a script that
+        touches hardware might hang.
+
+        Working alternative, if all you need is a preset written to a file:
+        append ``ConfigGroup,<group>,<preset>,<device>,<property>,<value>``
+        lines to a copy of the parent .cfg as text -- see
+        ``config/session/dualcam_hardware_config.write_preset_cfg``. That is
+        also non-destructive of the parent's comment header, which this call
+        would regenerate away.
+        """
         out = Path(path)
         self.core.saveSystemConfiguration(str(out))
         return out

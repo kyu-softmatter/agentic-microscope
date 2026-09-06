@@ -139,10 +139,14 @@ def test_missing_pfs_falls_through_to_the_z_window():
         scope.set_property("Nosepiece", "State", "5")
 
 
-def test_z_retract_direction_is_deliberately_unrecorded():
-    """If this ever becomes non-None it must be because someone measured it,
-    not because a guard wanted it."""
-    assert mscope.Z_RETRACT_DIRECTION is None
+def test_z_retract_direction_is_measured_and_negative():
+    """It became non-None on 2026-09-05 the only way it was allowed to: KH
+    measured it. Smaller Z is retracted, so the sign is negative.
+
+    The guards must still not depend on it -- the two tests above refuse a
+    rotation on PFS and on the Z window without consulting any sign.
+    """
+    assert mscope.Z_RETRACT_DIRECTION == -1
 
 
 # ---- live demo core ---------------------------------------------------

@@ -1,0 +1,231 @@
+# Dual-camera two-colour configuration on the WIDEFIELD EPI path (Aura III
+# through the MXR00724 cube), for the two particles in hand.
+#
+#   python -m optics.cli check config/channels/aura-widefield-green-red-2color.yaml
+#
+# ── Why this file exists alongside the laser one ──────────────────────────
+#
+# config/channels/abvigen-bangs-green-red-2color.yaml is the SAME PAIR on the
+# LUN-F-XL / CSU-W1 confocal path. Measured on the gate 2026-09-06, with the
+# real FF01 emission filters in both files:
+#
+#   path                     blocking (green/red)   overall
+#   ---------------------------------------------------------------
+#   LUN-F-XL confocal        6.09 / 6.11 OD         FAIL  (need 7)
+#   Aura widefield (this)    15.3  / 17.3 OD        PASS (with changes)
+#
+# The difference is one element: on the widefield path MXR00724-EM is in the
+# emission path and STACKS with the FF01 bandpass, and two blocking filters in
+# series add their ODs. On the confocal path the Ti2 turret is not in the
+# emission path (kb/systems/dualcam-config-corrections-pending.md), so the FF01
+# filter blocks alone and lands ~1 OD short of the 7 OD bar that
+# data/spectra/README.md imposes on parametric spectra.
+#
+# Two further reasons to prefer this path for THIS experiment:
+#
+#   1. It is the only path on which either bead has actually been SEEN. Dragon
+#      Green was confirmed on Aura CYAN (data/particles.yaml, 2026-09-05), and
+#      the Abvigen red bead's excitation was measured on Aura CYAN/GREEN/RED the
+#      same day. Nothing has been imaged on the LUN-F-XL lines yet.
+#   2. The beads are 5 um and sit on the coverslip. A spinning-disk confocal
+#      section is ~0.5-1 um, so it slices one plane out of a 5 um sphere and
+#      throws away most of the photons for an optical sectioning benefit that a
+#      monolayer of sedimented beads does not need.
+#
+# ── Measured verdict, 2026-09-06 (as written) ────────────────────────────
+#
+#   overall: PASS (with changes)      optical lens verdict: HOLD (assumed inputs)
+#
+#   Green-DragonGreen-5um   PASS (with changes)  feasibility TIGHT
+#     bottleneck  collection 1.29 | blocking 15.3 OD | Stokes +24 nm
+#     crosstalk 10.00 (scale maximum) | total collection 6.3%
+#   Red-Abvigen-5um         PASS (with changes)  feasibility HARD
+#     bottleneck  collection.low 0.80 | blocking 17.3 OD | Stokes +24 nm
+#     crosstalk 10.00 (scale maximum) | total collection 3.9%
+#
+# The crosstalk margin saturates the scale on BOTH channels — that is the payoff
+# for straddling the DM A561LP splitter with ~80-160 nm between the emissions,
+# and it is the whole point of the dual-camera path.
+#
+# ✅ THE RED ARM IS MEASURED, 2026-09-06. The filter choice below is no longer a
+# hypothesis. Red beads only on the coverslip, Aura GREEN 50/1000, 33.33 ms,
+# 4x/0.20, despeckle off, all four single-band EM1 positions in the order
+# 555 -> 405 -> 488 -> 647 -> 555 (config/session/measure_red_bead_em1.py):
+#
+#     414-450 nm    0.1 ADU  SNR  0.1   anti-Stokes control
+#     510-530 nm    1.6 ADU  SNR  0.7   anti-Stokes control
+#     589-610 nm  362.1 ADU  SNR 18.6   STRONGEST
+#     677-701 nm   62.3 ADU  SNR 14.0   0.172 of the 589-610 band
+#
+#   time bracket 555b/555a = 1.016;  647/555 = 0.161, 0.165, 0.170, 0.172 across
+#   four runs.
+#
+# FF01-595/31 (position 3) it is, by 5.8x. The vendor's 680 nm emission is wrong,
+# as its 620 nm excitation already was — every spectral number that page
+# published about this dye is now measured to be false, and the registry entry
+# has been renamed AbvigenRed680 -> AbvigenRed with all four spectral fields
+# nulled.
+#
+# THE ANTI-STOKES BANDS ARE WHY THIS IS A MEASUREMENT AND NOT A PREFERENCE.
+# 414-450 and 510-530 sit blueward of the 544-565 excitation, so they cannot
+# carry fluorescence at all — they measure the method's floor, and it is 0.4% of
+# the 555 signal. The 677-701 band at 17.2% is therefore 43x above that floor:
+# REAL emission, the broad red tail of one rhodamine-class emitter rather than a
+# second population. Consequence to keep: that tail will cross-talk into any
+# 647 channel added to this sample later.
+#
+# ⚠ STILL A STAND-IN, AND STILL DELIBERATELY SO. `dye: TRITC` below is not the
+# bead's dye. Four bandpasses BRACKET a band; they do not LOCATE a peak, and
+# 589-610 catches the flank of anything peaking between ~570 and ~610. So the
+# gate's `collection.low 0.80` and `emission.peak_clipped` findings are still
+# properties of the TRITC stand-in — TRITC peaks near 573, blueward of the
+# cube's 589-611 red window — and not of the bead. They will move when a real
+# spectrum arrives, and a spectrometer is the only thing that supplies one.
+#
+# ── What this file does NOT claim ────────────────────────────────────────
+#
+# ⚠ THE AURA LINE KEYS ARE WRONG AND KNOWN TO BE WRONG. `source: [Aura, "488"]`
+# and `[Aura, "561"]` are the numeric keys data/light_sources.yaml carries, but
+# the device reports five NAMED lines — UV/CYAN/GREEN/RED/NIR — with intensity
+# in PER-MILLE (0-1000), not percent. At the instrument: "488" here means CYAN,
+# "561" here means GREEN. The registry keys came from NIS-Elements diagram icons
+# and have never been reconciled with the device
+# (kb/decisions/2026-09-03-three-subsystems-first-light.md §3). Fixing
+# light_sources.yaml from the device is a prerequisite to any power number here.
+#
+# ⚠ config/scopes/current-aura.yaml STILL CARRIES THE SUPERSEDED EMISSION SET
+# ("88000v2-EM", "EM1-455/50", "EM1-525/36", "EM1-605/52", "EM1-705/72"). Those
+# were corrected as a misattribution on 2026-08-11 and replaced in
+# current-laser.yaml on 2026-09-06 with the four real FF01 parts. The Aura
+# profile did not get the same update, so `optics.recommend` on that profile
+# will still propose filters that are not in the wheels. This file names the
+# real parts directly and so is unaffected; the scope profile is not.
+#
+# ⚠ TWO ELEMENTS IN THIS PATH CANNOT BE READ BACK BY SOFTWARE. The Splitter is
+# not in the MM .cfg at all, and its position is what cost the 2026-09-04
+# diagnosis session (kb/systems/current.md > optical_path_nis > Splitter). It
+# MUST be at position 1, "DM A561LP", or one camera receives nothing — position
+# 0 sends everything to Kinetix_blue, position 2 sends everything to
+# Kinetix_red. Set it by hand in NIS, confirm by eye, and record it with the
+# session. FilterTurret2 must simultaneously be at the OT dichroic slot, or the
+# 1064 nm trap does not reach the objective and the 750 SP does not protect the
+# cameras.
+#
+# OBJECTIVE: 100x Oil — OPERATOR DECISION, 2026-09-06. This file recommended
+# the 40x WI and the operator chose the 100x Oil; recorded here with what that
+# choice costs, because the cost is real but small and the gate numbers move.
+#
+#   what it BUYS   Rayleigh 220/241 nm against 255/280, and slightly MORE
+#                  collection (6.8%/4.2% against 6.3%/3.9%) — higher NA gathers
+#                  more solid angle. 0.065 um/px unbinned.
+#   what it COSTS  (a) NA clips 1.45 -> 1.333 by TIR at the coverslip/water
+#                  interface, so the trapping verdict is an UPPER BOUND and
+#                  reports advances: NO rather than advancing
+#                  (kb/expertise/oil-objective-trapping-in-water.md); spherical
+#                  aberration from the same index step is not modelled at all.
+#                  (b) ~11.9x dimmer per pixel than the 4x the photometry was
+#                  measured at, and ~2x dimmer than the 40x WI, on the
+#                  extended-object epi scaling (NA/M)^2. (c) 156 um field
+#                  against 260 um. (d) G17 pins the working depth to
+#                  1.85/|dn| ~ 10 um, and at h ~ 5 um the Faxen wall-drag bias
+#                  on a 5 um bead is +39%.
+#   what it does
+#   NOT cost       trap stiffness. 60x Oil and 100x Oil clip to the SAME
+#                  effective NA, and all three objectives agree within ~3%,
+#                  because a 5 um bead is far larger than the ~260 nm focus.
+#                  The oil note's conclusion stands: this is an imaging choice,
+#                  not a trapping one.
+#
+# The (d) consequence is the one to plan around, not argue with: calibrate the
+# trap IN SITU at the actual working height, where a power-spectrum corner
+# frequency gives kappa and the wall-corrected drag together. G14 requires that
+# calibration anyway.
+#
+# ── Detection, measured then scaled ─────────────────────────────────────
+#
+# The photometry is REAL but was taken at 4x (2026-09-06, red bead, GREEN at
+# 50/1000, 33.33 ms, through FF01-595/31: peak 14,443.8 ADU above local
+# background, kb/calibrations/frame-photometry.yaml). Scaled to 100x by the
+# (NA/M)^2 factor of 11.891x it becomes ~1,215 ADU, and `detection.cli
+# from-frame` then says NO MODE WORKS at SNR 10 — because G8 caps the exposure
+# by DUTY CYCLE (Savin-Doyle MSD bias, <= 30%), which at 100 fps is 3 ms, while
+# SNR 10 over a 4,647 px bead disc needs 137 ms.
+#
+# Two levers fix it, and the second is the important one:
+#
+#   Aura power    5% -> ~50% (50 -> 500 per-mille). 20x of headroom exists.
+#   BINNING 2x2   0.065 um/px oversamples a 241 nm Rayleigh radius by ~3.4x, so
+#                 binning to 0.130 um/px is still ~1.7x Nyquist and costs no
+#                 real resolution. It raises per-pixel signal 4x AND cuts the
+#                 bead disc from 4,647 to 1,162 px, which is where the
+#                 read-noise term lives. It also quarters the data rate.
+#
+#   measured on the gate, 2026-09-06:
+#     bin 1x1, 20x light  ->  DynamicRange 6.87 ms, SNR 10, 30 fps ONLY
+#     bin 2x2, 10x light  ->  DynamicRange 1.80 ms, SNR 10, 30 AND 100 fps  ← use this
+#     bin 2x2, 20x light  ->  peak 97,301 ADU, CLIPS the 16-bit ceiling
+#
+# So: DynamicRange 16-bit, 2x2 binning, ~1.8 ms, Aura GREEN ~500/1000.
+#
+# ⚠ THE GREEN CHANNEL'S EXPOSURE IS NOT KNOWN. Every number above is the RED
+# bead's. Dragon Green has only ever been confirmed qualitatively ("seen
+# properly", Aura CYAN, 2026-09-05) — no ADU, no exposure, no CYAN intensity.
+# The two channels are independent light budgets on independent cameras, so the
+# red arm's settings say nothing about the green arm's. Take a green-only frame
+# and run it through `detection.cli from-frame` before the two-colour run.
+#
+# ⚠ AND RE-MEASURE AT 100x RATHER THAN TRUSTING THE 11.891x. That factor assumes
+# the illuminator fills the field equally at both magnifications, which is
+# exactly the assumption data/particles.yaml flags as untested for this bead.
+#
+# ⚠ CAMERA MODE IS NOT PART OF THIS FILE. This is the optics half only; the
+# risk is CLIPPING, not starvation, and it gets worse by ~2x on the 40x WI.
+
+channels:
+  - name: "Green-DragonGreen-5um"          # FCDG008 lot 14941, 4.95 um PS/DVB-COOH
+    dye: DragonGreen                       # 480/520, peaks corroborated by the lot certificate
+    objective:
+      label: "6-Plan Apo LmbdD0.13 100x Oil"   # position 5, MRD71970. NA clips 1.45 -> 1.333
+      magnification: 100                       # by TIR in water — see the header
+      na: 1.45
+      immersion: oil
+      verified_na: true
+    detector: Kinetix22                    # Kinetix_blue, reflect side of the splitter
+    source: [Aura, "488"]                  # = CYAN at the device. Confirmed to excite this bead.
+    excitation: ["MXR00724-EX"]            # 462-486 band contains the 480 nm peak
+    dichroic: "MXR00724-DM"
+    emission:
+      - "MXR00724-EM"                                             # 510-531 band
+      - {ref: "Di01-T405/488/568/647-13x15x0.5", side: transmit}   # CSU-W1 dichroic, always in path
+      - {ref: "DM A561LP", side: reflect}                          # <561 nm -> Kinetix_blue
+      - "OT-EM-750SP"                                              # blocks scattered 1064 nm trap light
+      - "FF01-515/30"                       # EM2 position 2, label "488" — 500.0-530.0 nm
+                                            # required: with EM-Open here the green channel goes
+                                            # INFEASIBLE (spectral.overlap 0.00, Stokes -66 nm)
+    port_fraction: 1.0
+
+  - name: "Red-Abvigen-5um"                # AFR-0500-COOH, 5.0 um PS-COOH
+    dye: TRITC                             # ⚠ STAND-IN — see the block comment above
+    objective:
+      label: "6-Plan Apo LmbdD0.13 100x Oil"   # position 5, MRD71970. NA clips 1.45 -> 1.333
+      magnification: 100                       # by TIR in water — see the header
+      na: 1.45
+      immersion: oil
+      verified_na: true
+    detector: Kinetix22                    # Kinetix_red, transmit side of the splitter
+    source: [Aura, "561"]                  # = GREEN at the device. Measured brightest for this bead.
+    excitation: ["MXR00724-EX"]            # 544-565 band — 555 dead centre
+    dichroic: "MXR00724-DM"
+    emission:
+      - "MXR00724-EM"                                             # 589-623 band (and 677-711)
+      - {ref: "Di01-T405/488/568/647-13x15x0.5", side: transmit}
+      - {ref: "DM A561LP", side: transmit}                         # >561 nm -> Kinetix_red
+      - "OT-EM-750SP"
+      - "FF01-595/31"                       # EM1 position 3, label "555" — 579.5-610.5 nm
+                                            # ✅ MEASURED at the instrument 2026-09-06: 5.8x the
+                                            # signal of FF01-680/42 on this bead, with anti-Stokes
+                                            # controls at 0.4%. See the header.
+                                            # EM-Open is the alternative if collection matters more
+                                            # than blocking: 4.4% vs 3.9% collection, but 11.3 vs
+                                            # 17.3 OD blocking.
+    port_fraction: 1.0

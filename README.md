@@ -86,6 +86,7 @@ design, not a gap.
 | **Hardware drivers** | microscope (pymmcore-plus), optical tweezers (TCP), piezo stage (vendor DLL), trap patterns, piezo waveforms, and a shared-clock orchestrator |
 | **First light on real hardware** | piezo and optical tweezers each driven from this repository, **separately** — 2026-08-27. **All three subsystems together on one clock — 2026-09-03**, with per-frame timestamps; κ = 3.65–4.5 pN/µm from three independent routes |
 | **Live detection driving the trap** | 2026-09-04, operator-gated: GPU detection on the full frame picks an isolated particle, the trap is placed on it and ramped to the field origin. Four beads of five caught and carried 11–26 µm at 98.6–99.8 % follow → [`kb/decisions/2026-09-04-closed-loop-trapping-measured.md`](kb/decisions/2026-09-04-closed-loop-trapping-measured.md) |
+| **Two-species sorting on both cameras** | 2026-09-05, operator-triggered: one keypress surveys each species under its own line, plans collision-free corridors, and transports up to 9 per species into columns at x = ±18 µm, looping rounds until the candidate pool dries. Five fields, 34 rounds, **47 of 72 beads parked**; best field 13 of 18 slots. Four of the five runs ended out of *candidates*, not out of slots → [`config/session/sort_core.py`](config/session/sort_core.py) |
 | **Real-time primitives, off the hot path** | [`runtime/`](runtime/) — a one-slot frame ring with a drain-and-keep-newest camera thread, a fixed-period loop clock that cannot drift, and a rate-capped shared-memory channel so a live view runs in a second process instead of competing for the GIL. Ported from the lab's bacteria stack; **not yet run against a camera** → [`kb/decisions/2026-09-05-runtime-primitives-and-gpu-scope.md`](kb/decisions/2026-09-05-runtime-primitives-and-gpu-scope.md) |
 | **A written hazard account** | [`SAFETY.md`](SAFETY.md) — laser classes, the objective/coverslip collision procedure, camera ownership order, and the failure modes that return `0`. **First draft, not yet operator-reviewed** |
 | **An MCP surface over both bespoke paths** | tweezers and piezo as 9 MCP tools in four tiers, the two moving ones refused by default, verified end to end over stdio but **not yet against a device** → [below](#an-mcp-surface-over-the-two-bespoke-paths) |
@@ -111,6 +112,20 @@ One correction the 2026-09-03 run forced, kept here rather than quietly
 dropped: `Breakpoints > Enable Bits` is `0000`, so `TRAP_PATT_RELEASE_BP`
 returns `0` while doing nothing. **Every release-round-trip latency figure
 measured before that date is precision on a command with no effect.**
+
+Three more, from the 2026-09-05 sorting session. Each is something this
+repository asserted, and none of them is true. **The Tweez GUI has no
+trap-count ceiling**: 160 named traps were created and deleted cleanly in one
+pass, so the `-20 "requested resource not supported"` that `sort_core.py`
+attributed to running out of trap slots was something else — and that claim had
+already been used in argument against trapping more particles at once.
+**`10012` on a Kinetix is usually a wedge, not contention**: property reads keep
+answering correctly while any acquisition times out, releasing the camera in the
+GUI changes nothing, and one standalone snap on that body clears it. `SAFETY.md`
+§4 frames every camera failure as ownership order, which cost three launches
+before the alternative was tested. And **`sort_two_species.py` does not import
+`sort_core.py`** — it is a standalone copy, so a fix on the keypress path
+reaches one of the two paths, not both.
 
 > The useful measure is not how much of this exists. It is how many places the
 > system refuses to turn a missing number into a confident one.
@@ -1000,6 +1015,38 @@ broken routes around it — which is the failure this whole repository is built
 against. `advances: false` behaves the same way, and the tool descriptions say
 in as many words that it is a valid result.
 
+**The switches, by name, and what they are set to.** `.mcp.json` launches the
+server with the venv interpreter directly — no `uv`, which appears nowhere in
+this repository (to-do item 11) — and its `env` block ships both switches
+**off**:
+
+```json
+"env": {
+  "AGENTIC_MICROSCOPE_ALLOW_MOTION": "0",
+  "AGENTIC_MICROSCOPE_ALLOW_LASER":  "0"
+}
+```
+
+So on a fresh session **every move-tier call answers `refused: true`**. That is
+the configured default, not a broken server and not a bug to route around —
+which is worth stating here because it is the first thing anyone meets, and the
+paragraph above only explains why a refusal is a value, not that it is what you
+will get.
+
+**Two operational surprises, both harmless and both easy to misread as faults.**
+
+- **The running server holds the log file.** It keeps
+  `%LOCALAPPDATA%\pymmcore-plus\pymmcore-plus\logs\pymmcore-plus.log` open, so
+  every *other* script started while it runs prints a `PermissionError`
+  log-rotation traceback at startup. Noise, not a device fault.
+- **Count server instances by parent process, not by process.** Each instance
+  appears as **two** processes: the venv `python.exe` launched by `claude.exe`,
+  plus a base-interpreter child carrying an identical command line and creation
+  timestamp. Measured 2026-09-05: four `mcp_server.server` processes were two
+  instances, both with live `claude.exe` parents and neither orphaned. Counting
+  raw processes double-counts every instance and invents a leak that is not
+  there — and killing them breaks whichever live session owns them.
+
 Two things it does not do. It does not expose the eight committee lenses, which
 is the other half of the job and needs each lens's CLI to hand its parser over
 as the tool schema. And it reaches one of the tweezers' three control surfaces:
@@ -1311,10 +1358,27 @@ knows whether this instrument can reach it.
 
 ## To do
 
-Raised by the operator (KH) at the end of the 2026-09-04 wall-diffusion
-session. Each one is here because something that session needed was missing,
-and the "why it cost something" line is the point — an item without it drifts
-into a wish list.
+**Items 1–5** were raised by the operator (KH) at the end of the 2026-09-04
+wall-diffusion session. Each one is here because something that session needed
+was missing, and the "why it cost something" line is the point — an item without
+it drifts into a wish list.
+
+**Items 6–11** were raised by KH on 2026-09-05. They are a different kind of
+item: not a missing datum but a missing *procedure* — things the operator does
+well by hand, or knows to ignore, that nothing in the repository states in a
+form anyone else could follow.
+
+Their cost lines vary in strength and each says which it is. **9** and **10**
+carry the operator's procedure verbatim and have real costs attached (a
+hand-authorised ±300 µm box that set a published error bar; a triple of
+settings passed as bare flags). **7** turned out to be nearly closed once KH
+supplied the measured Z sign — and closing it revealed that the repository had
+been carrying the *reverse* of the truth in a safety file. **6** and **8** still
+need the operator's numbers before they mean anything.
+
+Item 7 is the argument for keeping this section: the correction came out of one
+sentence from KH, could not have been derived from the code, and the code was
+confidently wrong in the dangerous direction.
 
 ### 1. A particle and dye information sheet
 
@@ -1406,6 +1470,15 @@ over-long reach lands the trap somewhere else with no error on either side.
 isolated bead was 23–29 µm out — and it is a guard against a limit nobody has
 measured.
 
+*What it cost on 2026-09-05:* the stand-in quietly became a design limit. With
+the trapezoid unmeasured, `TRAP_HALF_RANGE_UM = 40.0` is hardcoded in **four
+separate files** (`sort_core.py`, `sort_two_species.py`, `live_dualcam_view.py`,
+`trap_brightest.py`), and every candidate outside ±40 µm is dropped before
+planning. Only the central 80×80 µm of a ~156 µm field is reachable, and at a
+10 µm slot pitch that fixes the two-species sort's destinations at 9 per
+species — 18 beads, against 43–50 detected *per species* per survey. The number
+that caps the sort is a placeholder, in four copies.
+
 **The scale.** The orientation and origin are settled (four catches in four
 quadrants; origin to ±0.7 px), but `um_per_px` is still the nominal 0.065 and
 the ramps cannot measure it: the bead's starting pixel is where the *bead* was,
@@ -1414,9 +1487,339 @@ two (it comes out 12 % anisotropic, which is the contamination, not the
 optics). One 5 µm 1 Hz sine on a bead **already sitting in the trap** closes
 it — `trap_from_tracking.py calibrate` — and takes about ten seconds.
 
+That nominal 0.065 is **the same number as item 8's unmeasured 100× pixel
+size**, not a coincidence of value: `provisional_transform` builds the transform
+out of `um_per_px` directly. The sine measures the trap's end of it; item 8's
+`PixelSize` blocks are the camera's end. Both are needed and neither is
+sufficient alone.
+
 > **TODO(human):** read the trapezoid half-extents off the GUI at 100× and put
 > them in `config/tweezers/*.yaml` `trapping_range`, which has been `null` on
 > purpose since 2026-08-26 for exactly this reason.
+
+### 6. A proper focus sequence
+
+The *instrument* half exists and the *protocol* half does not.
+`config/session/focus_monitor.py` reads `ZDrive` and both cameras a few times a
+second, scores each frame (Tenengrad normalised by the frame's own median, so it
+measures sharpness and not brightness), and reports the Z of peak focus per
+camera — with `beads`/`area`/`%ceil` alongside, because one scalar hides the
+ways focus can lie. **It never writes `ZDrive`**, or anything else in
+`COLLISION_DEVICES`, on purpose: the 100× Oil has 130 µm of working distance,
+the stand runs no escape on a software Z move, and the Z sign convention is
+unmeasured (SAFETY.md §2). The operator turns the knob; the script names the
+peak afterwards.
+
+So what is missing is not the metric — it is the sequence around it:
+
+- **The sweep itself, per objective.** How far either side of the expected
+  plane, and how slowly. A 4× and a 100× Oil do not share a search window, and
+  the peak's resolution is only as good as the sweep was fine. Nothing records
+  what was used.
+- **Where the peak goes afterwards.** `focus_monitor.py` prints a Z; nothing
+  consumes it. Handing it to PFS, or writing it back as the sample plane, is
+  currently the operator retyping a number.
+- **The failure case.** No peak, or two peaks (both cameras disagreeing is
+  meaningful on the dual-cam path — it is a splitter/parfocality signal, not a
+  focus one). The script reports; it does not adjudicate.
+- **The `%ceil` interaction.** Above 95 % the peak is a lower bound rather than
+  a measurement. That bound belongs in the sequence, since it couples focus
+  directly to item 9's light level.
+
+*What it cost:* not yet a loss — the two-person loop has worked every time it
+was run. The cost is that `ZDrive ≈ 2959 µm` (2026-09-03, 100× with a trapped
+bead, PFS `In Range`) is a *single* measured value standing in for "where the
+sample is", and both collision guards in `_require_clear_of_sample` lean on it
+through `SAMPLE_Z_WINDOW_UM`. A written sequence is what would let that number
+be re-established on demand rather than trusted.
+
+> **TODO(human):** the z-range and knob speed you actually sweep at 100× Oil and
+> at 20×, and whether the found peak should be written back into
+> `SAMPLE_Z_WINDOW_UM`'s provenance or left as a per-session note.
+
+### 7. A safe sequence to change the objective lens
+
+**Mostly closed 2026-09-05.** SAFETY.md §2 holds the rule, the measurement
+behind it (rotating 4× → 100× Oil moved `ZDrive` **+0.000 µm** — the incoming
+lens arrives wherever the outgoing one was), two sign-free guards in
+`Microscope._require_clear_of_sample`, and — since KH measured the Z sign — the
+operator's ordered sequence itself.
+
+What remains is narrower: the sequence is **prose in a safety file, not
+something that runs**. Nothing enforces the order, nothing records that the
+post-change tweezers re-verification happened, and the two guards can only
+refuse a bad write — they cannot carry out a good one.
+
+The unresolved pieces, all already named in §2 and worth pulling into one place:
+- ~~**The Z sign convention is UNMEASURED.**~~ **Resolved 2026-09-05: KH
+  measured it — smaller Z is retracted**, so `Z_RETRACT_DIRECTION = -1` and
+  the sequence is writable. It is now in `SAFETY.md` §2:
+  `Z → 0`, rotate, `Z → 2800`, re-focus.
+  ⚠ This **reversed** the guess the repository had been carrying (+Z
+  retracted, inferred from a rotation at `ZDrive = 8288.740` that broke
+  nothing). Under the measured convention that rotation drove the incoming lens
+  ~5.3 mm *past* the sample plane, so nothing broke because nothing was there
+  to hit.
+- **PFS `Out of Range` authorises nothing.** It can veto a rotation, never
+  permit one. Any sequence must not read it as an all-clear.
+- **The change invalidates both GUI tweezers calibrations** — the GUI's px→µm
+  magnification and the AOD field response — and neither is readable over TCP.
+  So the sequence does not end at the nosepiece write; it ends after a known
+  amplitude has been driven and measured (2026-09-03: commanded ±10.000 µm,
+  measured 9.9672 and 10.0852 µm).
+- **But the repository's own OT↔camera transform partly survives, by design.**
+  The 2026-09-04 run measured it (§1 of
+  `kb/decisions/2026-09-04-closed-loop-trapping-measured.md`) and the two
+  surviving halves are surviving on purpose:
+  - *Orientation* — rotation and handedness, `y` flipped because image `y` runs
+    down — was confirmed by four beads in four quadrants, all trapped, all
+    following the ramp home at 98.6–99.8 %. It is a property of the optical
+    layout, not of magnification.
+  - *Origin* — `TRAP_ORIGIN_OFFSET_UM = (-1.013, -1.015)` — is stored in **µm
+    and not pixels** precisely so it "stays right at another magnification or
+    ROI" (`trap_sequence.py:168`).
+  - *Scale* is the half that does not survive, and it enters through
+    `um_per_px` — which is item 8's number. `provisional_transform` builds both
+    `b` and `p0` from it, so the objective-change sequence has to re-supply the
+    pixel size **and** re-measure the trap scale (the ~10 s sine on a bead
+    already in the trap, item 5) before any `TRAP_POSITION` in µm means
+    anything again.
+- It also invalidates the `PixelSize` presets' assumption if the intermediate
+  magnification moved with it — see item 8.
+
+*What it cost:* "**I rotated the nosepiece at Z = 8288.740 µm before being told
+the rule. It did not crash, and that was luck, not clearance**" (SAFETY.md §2).
+The guards exist because of that. The sequence does not yet.
+
+### 8. Finish the pixel → µm information in every `.cfg`
+
+Half done, and the half that is done shows why the rest matters. Three of the
+six Micro-Manager configs now carry a filled `PixelSize` block:
+
+| Config | `PixelSize` block |
+|---|---|
+| `single_cam_red_noDMD.cfg` | filled 2026-09-04 |
+| `dualcam_noDMD.cfg` | filled 2026-09-06 |
+| `dualcam_twocolour.cfg` | filled 2026-09-06 |
+| `DMD_dualcam_LUNF.cfg` | **present and EMPTY** |
+| `single_cam_blue_LUNF.cfg` | **present and EMPTY** |
+| `single_cam_red_LUNF.cfg` | **present and EMPTY** |
+
+*What it cost:* on an empty block `getPixelSizeUm()` answers **0.0** — not an
+error, a plausible-looking zero — so anything asking the instrument for its own
+scale got nothing. Confirmed live 2026-09-06 with the 100× Oil in place.
+And `DMD_dualcam_LUNF.cfg` — one of the empty three — is the **root of the whole
+tree**: it is the declared parent of the other four directly, and of
+`single_cam_red_noDMD.cfg` through `single_cam_red_LUNF.cfg`. Every filled block
+so far is a fix applied *downstream* of a parent that still answers 0.0, so the
+next derived file regenerated from it inherits the gap again.
+
+Two known holes in the blocks that *are* filled, which apply to the remaining
+three as well:
+- **Only the 20× row is measured** (0.32373 vs a nominal 0.325 — a real
+  20.078×). The other five are exactly 6.5/M. See `data/pixel_size.yaml`.
+- **The presets key on the `Nosepiece` alone and assume intermediate 1×**,
+  because `IntermediateMagnification` has no `Label` lines to key on. At 1.5×
+  every value is high by exactly 1.5×, and that property is **read-only over
+  MM** (one property, `Magnification`, no setter) — a manual change at the
+  stand. Close it with `python -m calibration.cli intermediate-mag <file>`.
+
+This is the same general failure as item 4: an element MM cannot read is an
+element whose record drifts. Here it is the intermediate magnification.
+
+**And the trap consumes this number.** `trap_sequence.provisional_transform`
+builds the whole OT↔camera map out of `um_per_px` — the matrix as
+`b = (1/um_per_px) · diag(1, −1)` and the origin as
+`p0 = centre + TRAP_ORIGIN_OFFSET_UM / um_per_px` — so **item 5's "scale still
+nominal 0.065" and this item's unmeasured 100× pixel size are the same number**,
+and a pixel size wrong by *x* % puts every `TRAP_POSITION` in µm wrong by *x* %.
+The 20× row is the reason to expect that is nonzero: measured 0.32373 against a
+nominal 0.325 is a real 20.078×, so the nominal magnifications are *not* exact
+on this stand, and 0.065 has never been checked at all. Measuring it closes a
+gate input and a targeting error at once.
+
+> Fill the three empty blocks with
+> `python config/micromanager/set_pixel_size.py <file> --objective <M> --write`
+> for all six objectives. `DMD_dualcam_LUNF.cfg` is a parent — regenerate its
+> children after, or the derived files diverge further.
+>
+> **TODO(human):** a measured `um_per_px` for the five unmeasured objectives,
+> and the intermediate magnification's actual position when each config is used.
+
+### 9. A selection process for frame rate, exposure time, and light intensity
+
+**The operator's process, stated by KH 2026-09-05.** It is not a formula, and
+the order is the content:
+
+1. **Frame rate first, from the purpose.** Not from the camera's capability and
+   not from what the light will allow — from what the measurement needs to
+   resolve. Everything downstream is bounded by the frame period this fixes.
+2. **Exposure time *and* interval time, from the frame rate.** Two numbers, not
+   one. Exposure is bounded above by the frame period and by the blur allowed at
+   the sample's speed; the interval is the remaining gap, and it is the lever
+   that sets **illumination duty independently of exposure** — the same 10 ms
+   exposure at 100 fps and at 1 fps are two very different doses.
+3. **Light intensity from a setup scan, not from arithmetic.** Sweep the source
+   level and keep the *profile* — a LUT bracketed at both ends: **not so intense
+   that it bleaches, not so dim that the analysis cannot work.** Intensity is
+   the one leg of the triple that is measured on the day, against this sample,
+   rather than derived.
+
+Step 3 is the part with no home yet, and it is the interesting one, because the
+LUT's two bounds **are** the tie-break the committee otherwise has to argue
+about. Raising light for SNR (lenses 1 · 2) and the dose budget (lens 5) pull in
+opposite directions — `01 §4` files this as a cross-lens constraint — and a
+measured window between "too dim to analyse" and "too intense to survive"
+replaces that argument with a lookup. If the window comes back **empty**, that
+is the real result: no light level works, and something upstream has to move
+(frame rate, dye, objective, binning). Step 1 does not get to be revised
+silently.
+
+The order also matches what the code already assumes. `detection.cli` takes
+`--target-fps` as an **input** — its own help says *“desired frame rate, for
+G9”* — never as something it computes, which is step 1 encoded as an argument.
+`calibration/timestamped_capture.py` carries `requested_interval_ms` separately
+from exposure and reports the achieved `Interval_ms` back, which is step 2's two
+numbers already kept apart. So steps 1 and 2 are wired; step 3 is where the
+record stops.
+
+**Two different LUTs, and the difference matters — confirmed KH 2026-09-05.**
+`data/light_sources.yaml` already specifies one of them and holds
+`power_at_sample_mw: {}` — empty for every line — with a 30-minute power-meter
+recipe in its header ("Record mW for each line × each objective × level
+10/25/50/75/100%") and the blunt admission that "not a single measured output
+value exists, so absolute photon-budget calculation is currently impossible."
+
+| | what it measures | why it is needed |
+|---|---|---|
+| **Power LUT** | level % → mW / (W cm⁻²) at the sample plane, per line × objective | makes the setting a *physical quantity*. Metadata keeps only `Spectra-Red_Level: 10`, and a percent means nothing on another instrument (docs/03) |
+| **Working LUT** | level % → usable SNR window for *this* sample and dye | what KH actually scans at setup. Sample-specific, expires when the sample does |
+
+The working LUT is the operator's step 3 and is what gets used on the day. The
+power LUT is what makes it transferable and what unblocks the absolute photon
+budget. **Neither substitutes for the other** — KH confirmed the split rather
+than collapsing it — and only the power one has a written procedure today. So
+the deliverable for step 3 is two artifacts with different lifetimes: the power
+LUT is measured once per objective and survives until the optics change, the
+working LUT is measured per sample and expires with it.
+
+*What it cost:* the triple shows up as hand-passed flags with nothing recording
+the reasoning behind them —
+`measure_red_bead_em1.py --intensity 50 --exposure-ms 33.33`,
+`live_dualcam_view.py --cyan 3 --green 40 --exposure-ms 10`,
+`focus_monitor.py --cyan 50 --green 50`. With the process above unwritten, two
+runs on the same sample can pick different triples and neither is wrong on the
+record. And the dose half cannot close yet regardless: lens 5 returned
+**BLOCKED** on `missing.bleach_photons` on 2026-09-04 (item 1), so the "too
+intense" bound of the working LUT is currently found by eye rather than
+predicted.
+
+> **TODO(human):** the scan you actually run at setup — which levels you step
+> through, what you look at to call the top of the window (visible bleaching
+> over N frames? a drop in tracked count?), and whether the result is worth
+> keeping per sample in `kb/calibrations/` or is genuinely single-use.
+
+### 10. A sample-limit protocol — find the edges, then keep the map
+
+**The operator's protocol, stated by KH 2026-09-05.** Three steps, and step 1
+is a safety step disguised as a convenience:
+
+1. **Load the sample with a LOW-magnification objective in place.** A 4× or 10×
+   has millimetres of working distance, so the front element cannot be reached
+   by the sample or the operator's hand during loading. Contact is simply not a
+   concern at that magnification — which makes **objective choice a load-time
+   safety decision**, not only an imaging one. `SAFETY.md` §2 covers the Z
+   direction of the same risk; this is the other half of it and is written
+   nowhere.
+2. **Then move the motorised stage slowly and find the sample's edges.** Follow
+   the boundary and **save the positions as you go** — around 20 points is
+   enough to describe it.
+3. **Make a map** from those points.
+
+What the map buys is a *measured* answer to "where is the sample", which every
+later XY decision currently guesses at: grid placement, how far a trap may
+reach, tiling, and whether a field near the edge is even usable.
+
+*What it cost:* the number is already in the repository, as an assertion.
+`config/session/run_wall_diffusion_grid.py` reasons its 3×3 grid out to
+**"±300 µm of stage travel authorized by the operator (KH, 2026-09-04)"** — a
+sentence in a docstring. Not a measurement, not a constant, not enforced
+anywhere. And it **set the error bar**: 300 µm spacing is the smallest grid that
+clears the 260 µm field on every pair including diagonals, nine fields put ~25 %
+uncertainty on the standard error, and *"at ±200 µm only 5 positions are
+clean"* — at which point three fields would put 71 % on it and the error bar
+would mean nothing. So an unmeasured sample extent propagated straight into the
+statistical power of the measurement, through a hand-authorised box.
+
+Two things make this the same shape as items 7 and 8:
+
+- **Nothing enforces the box in either direction.** `XYStage` is **not** in
+  `COLLISION_DEVICES`, `Microscope` exposes no stage-motion API, and the grid
+  script moves XY with `core.setXYPosition(...)` on the raw MMCore
+  (`run_wall_diffusion_grid.py:236`). A boundary map is only as good as
+  something that refuses to leave it.
+- **The map expires like the working LUT (item 9).** It belongs to a *mount*,
+  not to the instrument — so it needs the same per-sample lifetime and the same
+  honest expiry, rather than aging silently the way the Splitter position did
+  (item 4).
+
+> **TODO(human):** which low-mag objective you use for loading (4× or 10×),
+> what counts as the "edge" — chamber wall, meniscus, or coverslip edge, since
+> they are different boundaries — the stage speed that is slow enough, and
+> whether the ~20 points should be kept as a polygon or reduced to a bounding
+> box. Also whether it is per sample or per mount geometry.
+
+### 11. Make the Python environment discoverable, and stop rebuilding it
+
+**Raised by KH 2026-09-05: "I don't want to install venv and uv every time."**
+Half of that is a real gap and half is a rumour, and separating them is the
+whole item.
+
+**The rumour first: `uv` is not needed and never was.** It appears **nowhere in
+this repository** — no `.md`, `.toml`, `.txt` or `.json` mentions it. The
+install path in "Running the tests" is plain
+`pip install -r requirements.txt -r requirements-mcp.txt`, and `.mcp.json`
+launches the hardware server with the venv interpreter directly:
+
+```json
+"command": "C:\\Users\\Takatori lab\\venvs\\auto_microscope\\Scripts\\python.exe",
+"args": ["-m", "mcp_server.server"]
+```
+
+No `uv run`, no `uv sync`. `uv` is absent from this machine and the MCP server
+starts anyway — it was running during this session. Any note claiming the server
+needs `uv` is false and should be deleted rather than worked around.
+
+**The real gap: nothing in the repository says which interpreter to use.** The
+venv already exists and persists — `C:\Users\Takatori lab\venvs\auto_microscope`,
+Python 3.12.10, built 2026-08-11, outside the repo so it survives any checkout.
+It does **not** need recreating. But `.mcp.json` is the only file that knows
+where it is, and it knows by hardcoded absolute path; `pyproject.toml` only
+fixes `sys.path`, and the README's install lines name no interpreter at all. So
+every cold start re-derives it.
+
+*What it cost, this session:* `python -m pytest` answered **"No module named
+pytest"** on the system Python, and the venv had to be found by searching the
+filesystem before the suite could run at all (it then passed 1116/1116). That is
+a small tax, paid every single time anyone or anything starts cold — which is
+exactly the shape of cost this section exists to catch.
+
+Two related problems worth fixing in the same pass:
+
+- **The hardcoded path contains a Windows username.** `.mcp.json` breaks
+  silently on any other account or machine, which is the concern `docs/03`
+  raises about everything else on this instrument.
+- **Nothing pins versions.** Four requirement files, no lockfile. "Do not
+  rebuild the venv" is currently a hope rather than a guarantee, because a
+  rebuild would not reproduce the current one.
+
+The fix is mostly free: the `CLAUDE.md` router proposed for this repository
+already carries an `## Environment` section naming the interpreter, which
+removes the rediscovery cost for every future session in one file.
+
+> **TODO(human):** whether the venv should stay outside the repo (it survives
+> clean checkouts, which is a real argument for) or move in beside it, and
+> whether you want the requirement files pinned so a rebuild is reproducible.
 
 ---
 

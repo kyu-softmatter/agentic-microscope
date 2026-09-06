@@ -95,18 +95,44 @@ not crash, and that was luck, not clearance.**
 - **Sample plane: `ZDrive` ≈ 2959 µm** — measured 2026-09-03, focused at 100×
   with a trapped bead, `PFS in Range = In Range`. Inside the operator's stated
   2800–3200 µm window.
-- **The Z sign convention is UNMEASURED.** Which direction of `ZDrive` retracts
-  the objective is not established. The circumstantial argument (a 130 µm WD
-  lens survived being 5.3 mm from the sample plane, so +Z is probably retracted)
-  is **not encoded anywhere**, and `hardware/microscope.Z_RETRACT_DIRECTION` is
-  `None` on purpose. **Do not infer it.**
+- **The Z sign convention is MEASURED — KH, 2026-09-05: smaller Z is
+  retracted.** `hardware/microscope.Z_RETRACT_DIRECTION = -1`.
+
+  ⚠ **This is the reverse of the guess that stood here until 2026-09-05**,
+  which read "+Z is probably retracted" off the fact that a rotation at
+  `ZDrive = 8288.740` broke nothing. Under the measured convention that
+  rotation drove the incoming lens ~5.3 mm *past* the sample plane — so
+  nothing broke because nothing was in the way. **Anyone who had followed the
+  old guess would have driven the objective toward the coverslip believing
+  they were retracting.** If you carry a note or a habit from before this
+  date, this is the line to re-read.
 
 ### Procedure
 
 1. **Change objectives at the stand or in NIS**, where the Ti2's own escape runs
    and you can see the lens. Not from software.
 2. If it must be done from software, **retract clear of the sample first** and
-   confirm `PFS in Range` reads `Out of Range`.
+   confirm `PFS in Range` reads `Out of Range`. The operator's sequence, now
+   that the sign is known (KH 2026-09-05):
+
+   ```
+   ZDrive -> 0        retracted; smaller Z is away from the sample
+   rotate Nosepiece   the stand runs no escape, so this is why step 1 came first
+   ZDrive -> 2800     the near edge of SAMPLE_Z_WINDOW_UM, not the sample plane
+   re-focus           see README to-do item 6
+   ```
+
+   Then **re-verify the tweezers**: an objective change invalidates both GUI
+   calibrations and they are not readable over TCP. Drive a known amplitude
+   and measure it before trusting any `TRAP_POSITION` in µm again.
+
+   ⚠ **Nothing in this repository enforces those Z steps.** `Microscope`
+   exposes no stage-motion API at all — only property writes — so a real Z
+   move goes through `core.setPosition("ZDrive", ...)` on the raw MMCore and
+   never reaches `_require_write`. `ZDrive`'s membership in
+   `COLLISION_DEVICES` therefore guards writes to ZDrive *properties*, not
+   Z motion, and `_require_clear_of_sample` is only called for `Nosepiece`.
+   **This sequence is a human procedure, not a guarded one.**
 3. Two guards now refuse the write, both **sign-free**
    (`Microscope._require_clear_of_sample`):
    - **PFS `In Range` → refuse.** A measurement: PFS bounces IR off the real

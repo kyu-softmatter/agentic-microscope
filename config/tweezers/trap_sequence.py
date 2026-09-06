@@ -224,6 +224,20 @@ def usable_transform(path, frame_shape, objective, um_per_px, camera):
         return provisional_transform(um_per_px, frame_shape, objective,
                                      camera), (
             f"saved transform was taken on {t.objective!r}, now {objective!r}")
+    # frame_shape is a PIXEL COUNT and so cannot distinguish sampling: a
+    # 1200x1200 bin-1 ROI and a 1200x1200 bin-2 full frame are the same shape
+    # and the same objective, but their pixels are 0.065 and 0.130 um. Without
+    # this check a transform saved at one would be reused at the other and
+    # every um would be out by 2x. `pixel_size_um` now refuses binning
+    # outright, so this is the second line of defence -- and it also catches an
+    # intermediate-magnification change, which moves um/px by 1.5x at the same
+    # shape and objective.
+    if not math.isclose(t.nominal_um_per_px, um_per_px, rel_tol=1e-3):
+        return provisional_transform(um_per_px, frame_shape, objective,
+                                     camera), (
+            f"saved transform was taken at {t.nominal_um_per_px:g} um/px, this "
+            f"frame is {um_per_px:g} um/px -- same pixel COUNT, different "
+            f"pixel SIZE (binning or intermediate magnification)")
     if t.problems:
         return provisional_transform(um_per_px, frame_shape, objective,
                                      camera), (

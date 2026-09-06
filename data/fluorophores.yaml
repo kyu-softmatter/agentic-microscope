@@ -115,44 +115,117 @@ fluorophores:
       measured curve found — see the FPbase spectrum viewer (automated fetch is
       blocked, check directly in a browser) or fluorophores.tugraz.at/substance/655.
 
-  AbvigenRed680:
-    aliases: ["Abvigen red bead dye", "AFR-0500 dye"]
-    abs_peak_nm: 620
-    em_peak_nm: 680
-    abs_fwhm_nm: 40
-    em_fwhm_nm: 45
-    photostability: unknown
-    verified: false
-    note: >
-      ⚠ NOT A NAMED DYE. This is the unidentified proprietary colourant inside
-      Abvigen's red fluorescent polystyrene beads
-      (data/particles.yaml > abvigen-red-5um-cooh, cat AFR-0500-COOH). It exists
-      as an entry only so that particle's channel can be evaluated at all —
-      registered by the same reasoning as DragonGreen below, which is likewise a
-      proprietary bead colourant with published peaks and nothing else.
+  # ══ AbvigenRed — DELIBERATELY NOT A REGISTRY ENTRY (2026-09-06) ═══════════
+  #
+  # This dye has NO spectral information left. Both peaks the vendor published
+  # are now measured to be wrong (excitation 2026-09-05, emission 2026-09-06),
+  # the widths were never anything but DragonGreen's values borrowed to make a
+  # curve, and nothing has replaced them.
+  #
+  # It was briefly kept as an entry with all four spectral fields null, on the
+  # reasoning that a channel naming it should fail loudly rather than compute
+  # crosstalk from disproved numbers. That was wrong in ONE respect and it is
+  # worth recording why: `optics.components.fluorophores()` builds EVERY entry
+  # eagerly, so a member with no absorption band raises at registry-load time
+  # and breaks every channel config in the repository, including the ones that
+  # never mention this dye. A registry of spectra cannot hold a member with no
+  # spectrum.
+  #
+  # So the dye is absent here, and the knowledge lives where it belongs:
+  #   data/particles.yaml > abvigen-red-5um-cooh > emission_measured
+  #     -- the four-band measurement, its anti-Stokes controls, and what it
+  #        does and does not establish
+  #   kb/calibrations/frame-photometry.yaml
+  #     -- the frame it came from
+  #
+  # Channels that need a spectrum for this bead name an explicit stand-in
+  # (`dye: TRITC`) so the substitution is visible in the channel file rather
+  # than hidden in this registry. Restore an entry here only when a real
+  # spectrum exists to put in it.
+  #
+  # The original entry follows, commented, for its reasoning.
+  #
+  #AbvigenRed:
+  #  # RENAMED from `AbvigenRed680` on 2026-09-06. The old key asserted an
+  #  # emission peak that has now been measured to be wrong, and a name is not
+  #  # a place to keep a disproved number.
+  #  aliases: ["Abvigen red bead dye", "AFR-0500 dye", "AbvigenRed680"]
+  #  abs_peak_nm: null             # vendor's 620 disproved 2026-09-05; not replaced by a guess
+  #  em_peak_nm: null              # vendor's 680 disproved 2026-09-06; band bracketed, peak not located
+  #  abs_fwhm_nm: null
+  #  em_fwhm_nm: null
+  #  photostability: unknown
+  #  verified: false
+  #  measured_emission_bands:
+  #    date: 2026-09-06
+  #    method: >
+  #      config/session/measure_red_bead_em1.py -- red beads only on the
+  #      coverslip, Aura GREEN at 50/1000 (= 5%), 33.33 ms, 4x/0.20, Kinetix_red
+  #      in DynamicRange 16-bit, camera post-processing OFF. Signal is the mean
+  #      residual after subtracting each frame's own Gaussian-smoothed
+  #      background, over the 226,413 px belonging to ~20,800 compact objects
+  #      detected in BOTH of two 555 passes. Order 555 -> 405 -> 488 -> 647 ->
+  #      555, so the repeat brackets time.
+  #    excitation: "MXR00724-EX 544-565 nm band (Aura GREEN)"
+  #    bands:   # net passband = FF01 filter AND the MXR00724 cube band it sits in
+  #      "414-450": {filter: "FF01-432/36", signal_adu: 0.1,   snr: 0.1,  ratio_to_555: 0.000}
+  #      "510-530": {filter: "FF01-515/30", signal_adu: 1.6,   snr: 0.7,  ratio_to_555: 0.004}
+  #      "589-610": {filter: "FF01-595/31", signal_adu: 362.1, snr: 18.6, ratio_to_555: 1.000}
+  #      "677-701": {filter: "FF01-680/42", signal_adu: 62.3,  snr: 14.0, ratio_to_555: 0.172}
+  #    time_bracket_555b_over_555a: 1.016
+  #    repeats: [0.161, 0.165, 0.170, 0.172]   # 647/555 across four runs
+  #    verdict: >
+  #      THE VENDOR'S 680 nm EMISSION PEAK IS WRONG. 589-610 nm is 5.8x stronger
+  #      than 677-701 nm, and the two anti-Stokes bands -- 414-450 and 510-530,
+  #      both BLUEWARD of the 544-565 excitation and so physically unable to
+  #      carry fluorescence -- read 0.1 and 1.6 ADU at SNR 0.1 and 0.7. Those
+  #      controls are what make the rest quantitative: the method's floor is
+  #      0.4% of the 555 signal, so the 677-701 reading at 17.2% is 43x above
+  #      the floor and is REAL emission, not leakage. One broad rhodamine-class
+  #      emitter with a red tail, not two populations.
 
-      PUBLISHED: the two peaks, 620 nm excitation and 680 nm emission max, and
-      only from the vendor product page — a page that is internally inconsistent
-      (filed as "Monoclonal Antibody", with the product name sitting in its
-      "Particle Size" field), so even the peaks deserve confirmation against a
-      tube label or CoA.
+  #      WHAT THIS DOES NOT ESTABLISH: the peak. Four bandpasses bracket, they
+  #      do not locate, and 589-610 catches the flank of anything peaking
+  #      between ~570 and ~610. So `em_peak_nm` stays null, and channels that
+  #      need a spectrum use an explicit named stand-in (TRITC) rather than a
+  #      number invented here -- see
+  #      config/channels/aura-widefield-green-red-2color.yaml. A real spectrum
+  #      is still the only thing that fills these fields in.
+  #    verified: true
+  #  note: >
+  #    ⚠ NOT A NAMED DYE. This is the unidentified proprietary colourant inside
+  #    Abvigen's red fluorescent polystyrene beads
+  #    (data/particles.yaml > abvigen-red-5um-cooh, cat AFR-0500-COOH). It exists
+  #    as an entry only so that particle's channel can be evaluated at all —
+  #    registered by the same reasoning as DragonGreen below, which is likewise a
+  #    proprietary bead colourant with published peaks and nothing else.
 
-      ⚠ ASSUMED: abs_fwhm_nm and em_fwhm_nm. The vendor publishes no width, no
-      curve, no extinction coefficient, no quantum yield, no lifetime and no
-      photostability. The 40/45 nm widths are generic bead-dye values carried
-      over from the DragonGreen entry purely so a parametric spectrum can be
-      constructed; they are NOT this dye's measured widths. Since crosstalk and
-      blocking verdicts are decided in the wings (data/spectra/README.md), any
-      such verdict for this channel is an approximation the gate will correctly
-      report as evidence: assumed at confidence low. Do not promote it.
+  #    PUBLISHED, AND BOTH NOW DISPROVED: the vendor product page gives 620 nm
+  #    excitation and 680 nm emission. The 2026-09-05 instrument test killed the
+  #    first (observed GREEN > CYAN >> RED, the reverse of a 620 nm peak, with
+  #    RED producing nothing at all) and the 2026-09-06 four-band test above
+  #    killed the second. The page was already internally inconsistent — filed
+  #    as "Monoclonal Antibody", with the product name sitting in its "Particle
+  #    Size" field — so this is its third and fourth independent failure. NOTHING
+  #    on it is load-bearing.
 
-      ⚠ Do NOT substitute a 647-class dye (AlexaFluor647 / ATTO647N / Cy5) for
-      this. They are optically close and it would compute, but which colourant
-      is in the bead is a chemical fact and is not ours to assign — the same
-      rule stated at the head of
-      config/channels/particle647-yoyo1-2color.yaml. The 60 nm Stokes shift here
-      is notably wider than any of those, which is itself a hint that it is not
-      one of them.
+  #    ⚠ THE FOUR SPECTRAL FIELDS ARE NOW null, AND THAT IS AN UPGRADE. They
+  #    previously held 620/680 plus 40/45 nm widths, and the widths were generic
+  #    bead-dye values carried over from the DragonGreen entry purely so a
+  #    parametric spectrum could be constructed — never this dye's measured
+  #    widths. Emptying them costs nothing real and stops the disproved peaks
+  #    propagating: a channel that names this key now fails to build a spectrum
+  #    loudly instead of computing crosstalk from two wrong numbers. The vendor
+  #    publishes no width, no curve, no extinction coefficient, no quantum yield
+  #    and no lifetime, and none of those are measured here either.
+
+  #    ⚠ Do NOT substitute a 647-class dye (AlexaFluor647 / ATTO647N / Cy5) for
+  #    this. They are optically close and it would compute, but which colourant
+  #    is in the bead is a chemical fact and is not ours to assign — the same
+  #    rule stated at the head of
+  #    config/channels/particle647-yoyo1-2color.yaml. The 60 nm Stokes shift here
+  #    is notably wider than any of those, which is itself a hint that it is not
+  #    one of them.
 
   # ── 488/green series ─────────────────────────────────────────────────────
   AlexaFluor488:

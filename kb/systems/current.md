@@ -133,6 +133,58 @@ optical_path_nis:      # confirmed 2026-08-10 via NIS-Elements Device Manager on
       1: {label: "DM A561LP", mirror_nm: [[561, null]], note: "561 nm longpass", registry: "DM A561LP"}
       2: {label: "open (empty slot)", note: "no element in the path. **The red camera is the only one that sees light** (KH 2026-09-04). This is the position for single-camera red imaging: it drops the A561LP's ~5% transmission loss, and the 561 nm rejection it provides is not needed because MXR00724-EM (606/34) already blocks the excitation at 17 OD"}
     current_position: null   # NOT READABLE. See the note below.
+    image_orientation:
+      # Operator observation, 2026-09-06, first time both cameras were viewed
+      # side by side (config/session/live_dualcam_view.py).
+      kinetix_blue: "UPSIDE DOWN relative to Kinetix_red -- needs a vertical flip"
+      verified: true
+      verified_date: 2026-09-06
+      source: user_observation
+      note: >
+        Worth recording as a property of the PATH rather than as a display
+        preference, because it is the expected consequence of which side of
+        this splitter each camera sits on: Kinetix_blue is the REFLECT side,
+        and a reflection reverses handedness. So the flip is physics, not a
+        mounting accident, and it will survive any re-cabling that keeps the
+        same sides.
+
+        The AXIS was not predictable from anything on record -- whether the
+        reversal shows up as up/down or left/right depends on the fold
+        geometry, and that is written down nowhere. It took looking.
+
+        ✅ ALL THREE UNKNOWNS NOW MEASURED, 2026-09-06. The registration target
+        turned out to be a crosstalk defect: under CYAN illumination alone,
+        Dragon Green appears on BOTH cameras (57 objects on Kinetix_red, 27 on
+        Kinetix_blue), because it is bright enough that its emission tail past
+        561 nm gets through the splitter and FF01-595/31. That is a problem for
+        species assignment -- and exactly the "one object visible in both
+        bands" this entry said was needed.
+
+        Fitting blue -> red as a vertical flip plus a translation, on 24 of 27
+        blue objects matched within 8 px (mean residual 4.62 px), at bin 2x2 /
+        0.130 um/px on a 1200x1200 frame:
+
+            handedness   vertical flip                (as stated above)
+            translation  dx = -1.21 +- 2.05 px = -0.158 um
+                         dy = +1.32 +- 1.07 px = +0.172 um
+            scale        red/blue = 0.99932 +- 0.00482, from 276 pair
+                         separations > 50 px
+
+        So the translation is ZERO within its own scatter (~0.27 um), and the
+        scale is 1.000 -- which is what two Kinetix22 bodies with 6.5 um pixels
+        behind one objective should give, now confirmed rather than assumed. A
+        pure flip-plus-translation matching 24/27 to 4.6 px also bounds the
+        rotation near zero, since a real rotation would leave a residual
+        growing with distance from the centre.
+
+        CONSEQUENCE: a particle at (x, y) on Kinetix_red IS at (x, (h-1)-y) on
+        Kinetix_blue, to about 0.3 um. The dual-camera overlay is calibrated,
+        and a "co-located in both channels" claim is now meaningful at that
+        precision.
+
+        ⚠ Taken at bin 2x2. The translation is quoted in um so it transfers,
+        but re-check after any change to ROI or intermediate magnification --
+        an off-centre ROI moves each camera's frame centre independently.
     note: >
       Confirmed by user 2026-08-10: the configuration at that time used both
       cameras (Kinetix_red/Kinetix_blue) simultaneously, and this splitter
@@ -149,6 +201,30 @@ optical_path_nis:      # confirmed 2026-08-10 via NIS-Elements Device Manager on
       still returned a frame statistically identical to a dark frame — zero
       photons, which rules out defocus and bead absence, both of which would
       still add counts. That symptom points at position 0.
+
+      ⚠⚠ **THAT CONCLUSION IS SUPERSEDED — AND THIS SPLITTER WAS NEVER
+      CONVICTED.** The `lapp_branch:` section, measured LATER THE SAME DAY,
+      records that `LappMainBranch1 = mirror_in` BLOCKS the Aura completely,
+      and that the branch had been moved to mirror_in that session precisely
+      because the then-current record said mirror_in was the Aura position.
+      So the "every software-readable element confirmed correct" list above
+      contains the actual cause: the blackout is fully explained by the branch
+      mirror, and the splitter is left as an untested hypothesis rather than a
+      finding. Re-confirmed 2026-09-06 (see the known_gaps bullet).
+
+      This does NOT clear the splitter — it is still unreadable, still has to be
+      set deliberately, and position 0 would still starve Kinetix_red. It means
+      only that no evidence has ever placed it there.
+      `config/session/setup_dualcam_run.py --verify-splitter` settles it by
+      measurement: one excitation line at a time, both cameras, and the four
+      numbers identify the position from a fingerprint the other two positions
+      cannot fake.
+
+      The compounding error is worth naming, because it is the same one twice:
+      a wrong RECORD (mirror_in) was used to clear a device by readback, and
+      the resulting blackout was then attributed to the one device that had no
+      readback at all. The unreadable element is the natural suspect exactly
+      because it cannot defend itself.
 
       **The lesson worth keeping: an element MM cannot read is an element whose
       record drifts, and it will be the last suspect standing precisely because
@@ -319,11 +395,18 @@ light_paths:
       - stage: branch
         device: LappMainBranch1
         note: >
-          Confirmed by user 2026-08-10 (resolved): the geometry is asymmetric —
-          SpectraIII is inline on the main optical axis, Aura is coupled in
-          from the side. mirror_out: SpectraIII passes 100%, Aura is not
-          coupled (0%). mirror_in: a 50/50 plate, so both sides get 50%.
-          See the lapp_branch: section above for the full explanation.
+          ⚠⚠ THE THROUGHPUT CLAIM HERE IS REVERSED FOR THE AURA — superseded by
+          measurement 2026-09-04, re-confirmed 2026-09-06. What it said, and
+          what is wrong: "mirror_out: SpectraIII passes 100%, Aura is not
+          coupled (0%). mirror_in: a 50/50 plate, so both sides get 50%."
+          MEASURED: mirror_out is the position in which the Aura REACHES the
+          sample; mirror_in blocks it. See the `lapp_branch:` section, which
+          holds both measurements and `measured_aura_position: 1`.
+          The asymmetric GEOMETRY (SpectraIII inline, Aura side-coupled) is
+          from the same 2026-08-10 dictation as the reversed throughput, so it
+          is not independently confirmed either — the measurement is equally
+          consistent with the two engines being the other way round.
+          For the widefield Aura path: LappMainBranch1 = mirror_out.
       - {stage: excitation_filter, device: FilterTurret1, registry: "MXR00724-EX"}
       - {stage: dichroic, device: FilterTurret1, registry: "MXR00724-DM"}
       - {stage: sample, device: [Nosepiece, objective, sample]}
@@ -472,11 +555,24 @@ light_paths:
         Widefield and transmitted-light imaging pass through this dichroic
         too — i.e. this lab has no "true white light" imaging path.
       - LappMainBranch1: geometric asymmetry confirmed, SpectraIII (inline) /
-        Aura (side-coupled). mirror_out → SpectraIII 100%, Aura 0%.
-        mirror_in → both 50%.
-        2026-08-11: **purpose** confirmed as well — mirror_in is used to run
-        DMD and widefield at the same time, and the user judges the 50% Aura
-        loss acceptable because widefield does not need a high light level.
+        Aura (side-coupled).
+        ⚠⚠ **THE THROUGHPUT HALF OF THIS BULLET IS WRONG AND IS NOT "Resolved".**
+        It read "mirror_out → SpectraIII 100%, Aura 0%. mirror_in → both 50%",
+        which is REVERSED for the Aura. See the `lapp_branch:` section, where
+        the 2026-09-04 measurement records mirror_out as the position in which
+        the Aura reaches the sample and mirror_in as blocking it completely, and
+        `measured_aura_position: 1`.
+        Re-confirmed independently 2026-09-06 on the dual-cam config, at a
+        different exposure and through the narrow FF01-595/31 rather than the
+        multiband, so the two measurements share no settings but the direction:
+        mirror_out gave a +8.83 ADU median rise and p99.99 698.8 above
+        background, mirror_in gave −0.42 ADU and 14.7 — i.e. nothing.
+        The 2026-08-11 **purpose** note below it may still be right about why
+        mirror_in exists, but its "50% Aura loss" is not a measured number and
+        the measurement says the loss is total.
+        THE LESSON THIS BULLET NOW CARRIES: a claim can sit under "Resolved"
+        for a month, be cross-referenced from three places, and still be
+        backwards. It was dictated, not measured.
       - Existence of a NIR-only dichroic in FilterTurret2 confirmed (no
         excitation or emission filter).
         2026-08-11: slot and configuration confirmed as well (slot 1, two
@@ -896,6 +992,108 @@ devices_not_in_mm_config:   # docs/02 §4 "three-way cross-check table" — sepa
   - name: "optical tweezers (Aresis Tweez 305/310, Tweez 300)"
     control: "separate Python (hardware/optical_tweezers.py, TCP 2070) — write-only; several essentials are GUI-only"
     mm_registered: false
+    px_um_verified:
+      # SAFETY.md §8 step 11 -- "verify the trap's calibration by driving a
+      # known amplitude and MEASURING it, if the objective has changed" -- done
+      # 2026-09-06 after the 4x -> 100x Oil change, as a by-product of the
+      # first successful software-targeted catch on this instrument.
+      date: 2026-09-06
+      objective: "100x Oil"
+      binning: "2x2 (0.130 um/px)"
+      method: >
+        config/session/trap_brightest.py: pick the brightest reachable,
+        isolated, single (area-bounded) bead on Kinetix_red, convert its pixel
+        position to trap um through
+        px = p0 + diag([1,-1])/um_per_px @ um, place the trap there
+        (TRAP_STRENGTH 1.0, then TRAP_OFF -> TRAP_POSITION -> TRAP_ON), confirm
+        the catch, then ramp the trap to (0,0) in 0.5 um steps and see where
+        the bead ends up.
+      result: |
+        target             trap (+36.51, +24.07) um   = 43.7 um from the origin
+        commanded travel   43.7 um, in 0.5 um steps
+        bead arrived       1.243 um from p0
+        left at the start  nothing (nearest bead 20.8 um away)
+        RMS excursion      64.8 nm over 0.64 s (free would be ~225)
+      verdict: >
+        THE SCALE IS GOOD TO ~3%. A commanded 43.7 um of trap travel moved the
+        bead 43.7 um and landed it 1.243 um from the independently measured
+        origin -- 2.8% of the distance travelled. Since the origin needs no
+        calibration (it IS the field centre), arriving there tests origin,
+        handedness and scale simultaneously: a wrong scale would undershoot or
+        overshoot, a flipped axis would send the bead to the wrong quadrant,
+        and a wrong origin would leave it beside p0 rather than at it.
+        Comparable to the 2026-09-03 check (+-10.000 um commanded, 9.967 and
+        10.085 measured).
+      trap_stiffness_in_situ_pn_um: 1.93
+      stiffness_note: >
+        From equipartition, <r^2> = 2kT/kappa, on the 64.8 nm RMS above. Two
+        cautions, in opposite directions, so treat it as order-of-magnitude
+        rather than a calibration: localization noise ADDS to the excursion and
+        so UNDERestimates kappa, while motion blur over the 10 ms exposure
+        averages the motion away and OVERestimates it.
+
+        It is ~90x below the ~175 pN/um `trapping.cli force-curve` models for
+        this bead, and the explanation is laser power, not the model: the GUI's
+        power dial is uncalibrated on this instrument (dial% -> mW deferred
+        2026-08-19) and is not readable from software, so the trap is running at
+        whatever the dial happens to be. It held through a 43.7 um drag at
+        ~4 um/s, which needs only ~0.2 pN and so ~0.1 um of displacement at this
+        stiffness -- consistent.
+
+    trapping_range:
+      # Operator statement, 2026-09-06: "trapping area is always square, the
+      # center of the square is located in the middle of the camera view, and
+      # the unit in OT software is in um. The square size is around
+      # (-40um to 40um) in x and y."
+      shape: square
+      half_width_um: 40.0
+      half_height_um: 40.0
+      centred_on: "camera field centre"
+      objective: "100x Oil"
+      units: "micrometres AT THE SAMPLE"
+      verified: true
+      verified_date: 2026-09-06
+      source: user_statement
+      note: >
+        ⚠ SETTLES AN OPEN QUESTION, AND CONTRADICTS THE PREVIOUS ANSWER.
+        kb/decisions/2026-08-26-tweezers-pattern-vs-direct.md §"To settle on the
+        microscope PC" item 2 reads "the trapping range is a trapezoid, not a
+        rectangle — the GUI draws a 'green trapezoid' set by the AOD
+        calibration", and the 2026-08-27 record lists the ±40 µm rectangle as a
+        known simplification whose real edge is a trapezoid. The operator now
+        says SQUARE. An operator statement about their own instrument outranks a
+        shape read off a GUI drawing — a square drawn in perspective, or with a
+        skewed AOD calibration, looks like a trapezoid — so `fits_within`'s
+        rectangular check is now believed sufficient rather than merely
+        necessary. If a pattern ever deforms while passing the range check, that
+        is the belief to re-examine first.
+
+        **WHY THIS MAKES THE TRAP↔CAMERA TRANSFORM FULLY DETERMINED.** Three
+        facts together leave no fitted parameter:
+
+          origin      square CENTRED on the camera field, so trap (0,0) is the
+                      field centre — which the independently MEASURED
+                      `TRAP_ORIGIN_OFFSET_UM = (-1.013, -1.015)` µm in
+                      config/tweezers/trap_sequence.py confirms to about a
+                      micrometre, over 5 holds.
+          orientation square, so one scale serves both axes; handedness −1
+                      (image y runs down) confirmed by 4 ramps in 4 quadrants
+                      following home at 98.6–99.8%.
+          scale       the OT software commands MICROMETRES AT THE SAMPLE, so
+                      trap µm → image µm is 1:1 and the pixel size is the
+                      entire conversion.
+
+        So `px = p0 + diag([1, −1])/um_per_px @ um`, computable at ANY binning,
+        because binning changes `um_per_px` and nothing else. This retires the
+        "scale is nominal and unmeasured" caveat on `provisional_transform` as a
+        matter of principle — the sine measurement is now a CHECK on the GUI's
+        own magnification calibration rather than the only route to a number.
+
+        ⚠ OBJECTIVE-DEPENDENT, and only the 100x is stated. At lower
+        magnification the same AOD deflection maps to a wider sample field, so
+        the half-extent in µm grows roughly with the magnification ratio.
+        `config/tweezers/active-microrheology-drive.yaml` runs the 40x WI and
+        its `trapping_range` is therefore still null on purpose.
     python_control: partial   # was `confirmed` (2026-08-10); qualified 2026-08-26 after reading the manual end to end
     confirmed_date: 2026-08-26
     note: >

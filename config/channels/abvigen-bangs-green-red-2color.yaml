@@ -21,15 +21,32 @@
 #
 #   (1) The position<->part pairing is INFERRED from the wheel label naming the
 #       EXCITATION line, not stated by the operator. Confirm off the engraving.
-#   (2) WHICH filter belongs in the red arm is now the open question, and it is
-#       a measurement, not a choice. The red bead is entered here at its
-#       published 680 nm emission, but that datasheet is disproved on its
-#       excitation (data/particles.yaml: GREEN > CYAN >> RED, the reverse of a
-#       620 nm peak), and the observed ordering fits a rhodamine/TRITC-class dye
-#       whose emission would land in FF01-595/31 instead. This file computes the
-#       680/42 case because that is the only red emission on record. Run the
-#       red-only control through positions 3 and 4 and compare -- the ratio
-#       brackets the dye's real band and replaces the guess.
+#   (2) WHICH filter belongs in the red arm — ✅ MEASURED 2026-09-06, position 3.
+#       This was the open question and it is now closed. The red-only control
+#       was run through all four single-band positions
+#       (config/session/measure_red_bead_em1.py):
+#
+#         414-450 nm    0.1 ADU  SNR  0.1   anti-Stokes control
+#         510-530 nm    1.6 ADU  SNR  0.7   anti-Stokes control
+#         589-610 nm  362.1 ADU  SNR 18.6   STRONGEST
+#         677-701 nm   62.3 ADU  SNR 14.0   0.172 of the 589-610 band
+#
+#       So FF01-595/31 (position 3), not FF01-680/42. The two anti-Stokes bands
+#       are what make that quantitative rather than a preference: sitting
+#       blueward of the excitation they cannot carry fluorescence, they read
+#       0.4% of the 555 signal, and the 677-701 band at 17.2% is therefore 43x
+#       above that floor — REAL emission, the red tail of one broad
+#       rhodamine-class emitter. Details: data/particles.yaml >
+#       abvigen-red-5um-cooh > emission_measured.
+#
+#       ⚠ THE EXCITATION LINE CHANGED WITH IT. A dye emitting at ~590-610 and
+#       excited near 550 is not served by the 640 line this file used to name.
+#       On this confocal path that means the LUN-F-XL **561** line, which is
+#       what the red channel below now carries.
+#
+#       Still not established: the PEAK. Four bandpasses bracket a band, they do
+#       not locate a peak, so the channel names an explicit TRITC stand-in
+#       rather than a number invented from the bracket.
 #
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -146,7 +163,14 @@ channels:
     port_fraction: 1.0
 
   - name: "Red-Abvigen-5um"
-    dye: AbvigenRed680     # unnamed proprietary bead colourant — see note above
+    dye: TRITC             # ⚠ EXPLICIT STAND-IN. `AbvigenRed` (renamed from
+                           # AbvigenRed680 on 2026-09-06) now has all four
+                           # spectral fields null, because both published peaks
+                           # are measured to be wrong — so it can no longer
+                           # build a spectrum, by design. TRITC is named here
+                           # because the measurement says rhodamine-class, and
+                           # naming it explicitly keeps the substitution visible
+                           # instead of hiding it inside the registry entry.
     objective:
       label: "6-Plan Apo LmbdD0.13 100x Oil"
       magnification: 100
@@ -154,12 +178,12 @@ channels:
       immersion: oil
       verified_na: true
     detector: Kinetix22
-    source: [LUN-F-XL, "640"]
+    source: [LUN-F-XL, "561"]                # was "640" — see the 2026-09-06 note
     excitation: []
     dichroic: "Di01-T405/488/568/647-13x15x0.5"
     emission:
       - {ref: "DM A561LP", side: transmit}   # >561 nm transmitted = Kinetix_red
-      - "FF01-680/42"                        # EM1 position 4, label "647" — 659.0-701.0 nm
-                                             # ⚠ candidate: FF01-595/31 (position 3) if the
-                                             # red dye is TRITC-class — see the 2026-09-06 note
+      - "FF01-595/31"                        # EM1 position 3, label "555" — 579.5-610.5 nm
+                                             # measured 2026-09-06: 5.8x the signal of
+                                             # FF01-680/42 on this bead
     port_fraction: 1.0

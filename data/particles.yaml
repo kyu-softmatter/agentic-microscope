@@ -124,9 +124,10 @@ particles:
     lot: null                     # not on the product page -- read it off the tube
     aliases: ["AFR-0500-COOH", "Abvigen red 5um", "red COOH 5um"]
 
-    dye: proprietary              # no dye name published; not in data/fluorophores.yaml
-    ex_peak_nm: 620
-    em_peak_nm: 680
+    dye: AbvigenRed               # data/fluorophores.yaml; renamed from AbvigenRed680 2026-09-06
+    ex_peak_nm: null              # vendor's 620 disproved 2026-09-05 -- see below
+    em_peak_nm: null              # vendor's 680 disproved 2026-09-06 -- see below
+    em_band_measured_nm: [589, 610]   # strongest of four bandpasses; a bracket, not a peak
     dye_location: null            # internal vs surface not stated
     confirmed_on_instrument:
       date: 2026-09-05
@@ -151,6 +152,12 @@ particles:
         field. Treat NOTHING on it as load-bearing. The registry entry
         data/fluorophores.yaml > AbvigenRed680 is built on those two peaks and
         is now known to be wrong on at least the first -- its name included.
+
+        ⚠ RESOLVED 2026-09-06: "an emission nearer 570-620 is more likely" was
+        the right call, and it is now measured -- see `emission_measured` below.
+        The registry entry has been renamed AbvigenRed680 -> AbvigenRed and all
+        four of its spectral fields set to null, because BOTH published peaks
+        are now disproved rather than just the excitation.
       headroom_warning: >
         ⚠ 3500 ADU is 85.5% of the 4095 ceiling of the camera's current
         Sensitivity 12-bit mode, reached at only 5% power and 30 ms. Headroom is
@@ -163,11 +170,70 @@ particles:
         left, so ~60% power restores today's levels. But it must be re-measured
         at 100x, not scaled -- this estimate assumes the illuminator fills the
         field at both magnifications.
+    emission_measured:
+      date: 2026-09-06
+      conditions: >
+        Red beads ONLY on the coverslip. Aura GREEN 50/1000 (5%), 33.33 ms,
+        4x/0.20, Kinetix_red DynamicRange 16-bit, camera post-processing OFF,
+        CSUW1-Port red_only, splitter left as found. Four EM1 bandpasses in the
+        order 555 -> 405 -> 488 -> 647 -> 555, the repeat bracketing time at
+        1.016. Full method: config/session/measure_red_bead_em1.py, and the
+        frame it doubles as: kb/calibrations/frame-photometry.yaml.
+      splitter_inference: >
+        Worth keeping, because kb/systems/current.md records the Splitter's
+        position as null and NOT READABLE (it is absent from the MM .cfg, and
+        that gap cost the 2026-09-04 diagnosis session). Kinetix_red returned
+        real signal throughout this run, which RULES OUT position 0 -- the
+        100/0 mirror sends everything to Kinetix_blue and would have given a
+        dark frame. So on 2026-09-06 the splitter was at position 1 (DM A561LP)
+        or 2 (open). It still has to be set deliberately and recorded before the
+        two-colour run, since only position 1 feeds both cameras.
+
+        This does not bias the result: both 589-610 and 677-701 sit far above
+        the A561LP's 561 nm edge, where a longpass is flat, so its transmission
+        cannot account for a 5.8x difference either way.
+      not_measured_here: >
+        The camera's own offset. The dark frame's baseline was still settling
+        after the post-processing writes, so it read a few ADU high (125.0
+        against ~113 once settled) -- which is why the 647 band's
+        median-minus-offset came out negative. It does not touch the band
+        comparison, which is made against each frame's own smoothed background
+        and is therefore offset-free, but it does mean the absolute e-/s rates
+        derived from this frame are ~10% uncertain.
+      result: |
+        414-450 nm  ->    0.1 ADU  (SNR  0.1)   anti-Stokes control
+        510-530 nm  ->    1.6 ADU  (SNR  0.7)   anti-Stokes control
+        589-610 nm  ->  362.1 ADU  (SNR 18.6)   STRONGEST
+        677-701 nm  ->   62.3 ADU  (SNR 14.0)   = 0.172 of the 589-610 band
+      contradicts_vendor: >
+        ⚠ THIS REVERSES THE VENDOR'S EMISSION SPEC, completing the reversal the
+        2026-09-05 test began on its excitation. 589-610 nm is 5.8x stronger
+        than 677-701 nm, so 680 nm is not this dye's emission peak. Taken with
+        2026-09-05 (excited near 530-560, nothing on RED), the emitter is
+        rhodamine/TRITC-class throughout: excited ~550, emitting ~590-610.
+        Every number the vendor page published about this dye is now measured
+        to be wrong.
+      why_the_controls_matter: >
+        The 414-450 and 510-530 bands sit BLUEWARD of the 544-565 excitation, so
+        they cannot carry fluorescence at all -- they measure the method's own
+        floor, and it is 0.4% of the 589-610 signal. That is what makes the
+        677-701 reading interpretable: at 17.2% it is 43x the floor, so the red
+        band carries REAL emission. One broad emitter with a red tail, not a
+        second population. Anything imaged in a 647 channel alongside this bead
+        will see that tail as crosstalk.
+      not_established: >
+        THE PEAK. Four bandpasses bracket a band; they do not locate a peak, and
+        589-610 catches the flank of anything peaking between ~570 and ~610. So
+        ex_peak_nm and em_peak_nm stay null and channels use an explicit TRITC
+        stand-in. A spectrometer is still the only thing that fills them in.
     dye_note: >
-      Peaks only -- no FWHM, no spectra, no dye identity. So the optics lens has
-      nothing to compute crosstalk or blocking wings from and will report
-      evidence: assumed for this channel. Per the ex/em policy above, that is
-      accepted at design time and settled with a test acquisition instead.
+      No FWHM, no spectra, no dye identity, and now no trustworthy peaks either
+      -- the two the vendor published are both disproved (above). So the optics
+      lens has nothing to compute crosstalk or blocking wings from and will
+      report evidence: assumed for any channel naming this bead. Per the ex/em
+      policy above that is accepted at design time; what the 2026-09-06 test
+      settled is the coarser question the design actually turned on, namely
+      WHICH EM1 POSITION belongs in the red arm.
 
     material: polystyrene
     diameter_um: 5.0
@@ -188,6 +254,43 @@ particles:
       water (0.05% NaN3, ionic strength ~1e-6 M) the Debye length is ~300 nm, so
       that repulsion is long-ranged and strong -- favourable. Contrast
       abvigen-blue-4um-nh2, which is the opposite sign.
+
+      ⚠⚠ MEASURED 2026-09-06, AND THE EXPECTATION ABOVE IS WRONG FOR THIS
+      SAMPLE. 21 beads on Kinetix_red were tracked over a 0.85 s window at 100x
+      (bin 2x2, 0.130 um/px, 21 ms/frame) and their RMS excursions were:
+
+          p0 6.4   p10 10.5   p25 74.2   p50 114.9   p75 171.8   p90 196.7
+          p100 224.8 nm
+
+      against a free-bead expectation of ~259 nm RMS for that window
+      (sqrt(2*D*t) at the D = 0.0395 um^2/s measured 2026-09-04). 8 of 21 sat
+      below 110 nm and only 1 of 21 above 220. So MOST OF THE POPULATION IS
+      IMMOBILISED ON THE COVERSLIP -- p10 at 10.5 nm is near the localization
+      floor, which is what a bead cemented in place looks like.
+
+      The electrostatic argument above is not wrong about the sign, it is just
+      not sufficient: a COOH bead that has been sitting on glass long enough
+      can adhere anyway, and this sample had been sedimenting for a while.
+
+      TWO CONSEQUENCES, and the second is the expensive one:
+
+      1. Trapping is blocked. A trap cannot lift a bead that is stuck, and the
+         2026-09-06 attempts confirmed it -- three targets, and in each case the
+         bead did not move while the trap was ramped up to 29 um away.
+
+      2. THE STANDARD "IS IT HELD?" TEST GOES BLIND. trap_sequence.py decides
+         held-vs-free from the excursion collapsing (enter 110 nm, leave 220),
+         calibrated on a population that was genuinely diffusing. On THIS sample
+         the median untrapped bead is already at 115 nm, so a stuck bead reads
+         as held and the test cannot distinguish them. Only "does it FOLLOW the
+         trap?" survives. This is the same failure that broke the 2026-09-04
+         catch test, now with the population statistics behind it.
+
+      Mitigations, none tried yet on this instrument -- the same list as
+      abvigen-blue-4um-nh2, which needed them for the opposite reason:
+      passivate the glass (BSA, Pluronic F-127, PEG-silane), or add salt to
+      screen the attraction. A fresh preparation imaged sooner after dispersal
+      is the cheapest test of whether dwell time is the variable.
 
     stock_conc: "10 mg/ml"
     stock_conc_derived: >
@@ -580,10 +683,19 @@ materials:
 # (config/scopes/current-laser.yaml). One particle per camera is the whole point
 # of the dual-cam path, so the pair has to straddle 561 nm.
 #
-#   particle                     em nm   line   camera
-#   abvigen-blue-4um-nh2          450    405    Kinetix_blue
-#   bangs-dragongreen-5um-cooh    520    488    Kinetix_blue
-#   abvigen-red-5um-cooh          680    640    Kinetix_red
+#   particle                     em nm    line   camera
+#   abvigen-blue-4um-nh2          450     405    Kinetix_blue
+#   bangs-dragongreen-5um-cooh    520     488    Kinetix_blue
+#   abvigen-red-5um-cooh         ~590-610 555    Kinetix_red
+#
+# ⚠ The red row was 680/640 until 2026-09-06, when the four-band test measured
+# 589-610 nm as 5.8x stronger than 677-701 (see `emission_measured` above). The
+# CONCLUSION of this section is unchanged -- ~590-610 is still above the 561 nm
+# splitter edge, so the particle still lands on Kinetix_red and green + red is
+# still the pairing that straddles it -- but the EXCITATION LINE changed with
+# it: 555, not 640. On the widefield path that is Aura GREEN through the
+# MXR00724-EX 544-565 band; on the confocal path it is the LUN-F-XL 561 line,
+# not 640. Any file still naming the 640 line for this bead is stale.
 #
 # So of the three pairings:
 #

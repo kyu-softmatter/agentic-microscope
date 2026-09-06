@@ -456,8 +456,47 @@ def objective_label(core):
 
 
 def pixel_size_um(core, mag_label):
-    """Recorded um/px for the objective in place, cross-checked against MM."""
+    """Recorded um/px for the objective in place, cross-checked against MM.
+
+    ⚠ BINNING IS APPLIED HERE, because the table cannot. `data/pixel_size.yaml`
+    is keyed on objective x intermediate magnification and has no binning axis,
+    so it answers 0.065 for the 100x at 1x whatever the camera is doing.
+    MMCore's own `getPixelSizeUm()` already includes binning -- measured
+    2026-09-06 it returns 0.065 / 0.130 / 0.260 at 1x1 / 2x2 / 4x4 -- so the
+    two used to disagree by the bin factor and neither said so. The table value
+    is multiplied by the bin factor below and the binning is named in the
+    provenance string.
+
+    There is no free scale parameter to lose here, which is what makes this
+    safe rather than a guess: the Tweez software commands positions in
+    MICROMETRES AT THE SAMPLE (operator, 2026-09-06), so trap um -> image um is
+    1:1 and the only thing between um and pixels is the pixel size. Binning
+    changes the pixel size and nothing else, so the matrix is fully determined
+    at any binning.
+
+    Non-square binning is still refused: the transform's ``b`` carries one
+    scale for both axes, so anisotropic pixels would silently skew it.
+    """
     from optics import components  # noqa: PLC0415
+
+    cam = core.getCameraDevice()
+    try:
+        binning = str(core.getProperty(cam, "Binning"))
+    except Exception:
+        binning = "1x1"
+    parts = [p for p in binning.replace("X", "x").split("x") if p]
+    try:
+        bin_factors = [int(p) for p in parts] or [1]
+    except ValueError:
+        raise SystemExit(
+            f"REFUSED: cannot parse camera binning {binning!r}, so the pixel "
+            f"size cannot be scaled and every px->um number would be invented.")
+    if len(set(bin_factors)) != 1:
+        raise SystemExit(
+            f"REFUSED: camera {cam} is at non-square binning {binning!r}. The "
+            f"trap transform carries ONE scale for both axes, so anisotropic "
+            f"pixels would skew it silently. Use square binning.")
+    bin_factor = bin_factors[0]
 
     mags = [float(m) for m in ("100", "60", "40") if m in mag_label]
     if not mags:
@@ -477,7 +516,25 @@ def pixel_size_um(core, mag_label):
     if rec is None:
         raise SystemExit(f"REFUSED: no recorded pixel size for "
                          f"{mags[0]:g}x at intermediate {mf:g}x.")
-    return float(rec[0]), str(rec[1]), mf
+    um_per_px = float(rec[0]) * bin_factor
+    provenance = str(rec[1]) if bin_factor == 1 else f"{rec[1]}, x{bin_factor} binned"
+    # Cross-check against MMCore, which reaches the same number by a different
+    # route (its ConfigPixelSize preset, scaled by binning). They are two
+    # independent paths to one quantity, so a disagreement means one of them is
+    # wrong and neither should be trusted silently.
+    try:
+        mm = float(core.getPixelSizeUm())
+    except Exception:
+        mm = 0.0
+    if mm > 0 and not math.isclose(mm, um_per_px, rel_tol=0.02):
+        raise SystemExit(
+            f"REFUSED: pixel size disagrees between the two sources -- the "
+            f"table gives {um_per_px:g} um/px ({provenance}) and MMCore's "
+            f"getPixelSizeUm() gives {mm:g}. They are computed independently, "
+            f"so one is wrong. Check the ConfigPixelSize presets in the .cfg "
+            f"against data/pixel_size.yaml, and the intermediate magnification "
+            f"({mf:g}x) against the turret.")
+    return um_per_px, provenance, mf
 
 
 def track_bead_during(core, ot, name, schedule, seed, um_per_px, log_every=25):

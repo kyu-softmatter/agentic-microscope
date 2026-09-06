@@ -178,9 +178,37 @@ light_sources:
       firmware: "3.14.7"
       line_names: [UV, CYAN, GREEN, RED, NIR]
       intensity_unit: "per-mille (0-1000)"
+    driving_it:   # ⚠ read this before writing a line on this engine
+      properties_per_line: ["<NAME>", "<NAME>_Intensity"]
+      master: "State"
+      warning: >
+        ⚠ THREE PROPERTIES, NOT TWO. Setting `GREEN = 1` and
+        `GREEN_Intensity = 50` is NOT enough -- the engine also has a master
+        `State` (0/1) which is its shutter, and with `State = 0` NOTHING COMES
+        OUT however the line is set. There is no error and no readback that
+        looks wrong; the camera simply returns a frame indistinguishable from a
+        dark frame.
+
+        Measured cost, 2026-09-06: the first run of
+        config/session/measure_red_bead_em1.py set only the two line properties,
+        got a field whose median was 10-24 ADU BELOW the dark frame, and printed
+        a filter ratio computed almost entirely on the camera's own hot pixels
+        (96.9% of its "bright" pixels were also bright in the dark frame). It
+        looked like a result. The guard that now catches it: after enabling
+        light, snap through the widest filter in the wheel and require the
+        median to RISE above the dark frame, else refuse.
+
+        `Core.Shutter` is `LightEngine` (the SpectraIII on COM3), NOT `Aura`, so
+        autoshutter never opens this engine either -- and autoshutter is off by
+        design during a measurement (SAFETY.md §6). Nothing else will open it
+        for you.
     note: >
       2026-08-10 product name confirmed in NIS-Elements Device Manager. No fwhm,
       no measured power.
+      2026-09-06: GREEN at 50/1000 with a 33.33 ms exposure at 4x is confirmed
+      to excite abvigen-red-5um-cooh well (SNR 18.6 through a 21 nm bandpass,
+      no measurable bleaching over the run). The line reaches the sample through
+      the MXR00724-EX 544-565 band on the widefield path.
       ⚠ 2026-09-03: the device reports five NAMED lines (UV/CYAN/GREEN/RED/NIR),
       not the numeric keys below — see the comment block above. Keys unverified.
     lines:

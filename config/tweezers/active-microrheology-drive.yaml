@@ -87,11 +87,55 @@ field_calibration:
   taken: null
 
 trapping_range:
-  # Half-extents of the calibrated AOD field, um. NULL ON PURPOSE: the real
-  # range is a trapezoid set by the GUI calibration and depends on the objective
-  # in use (this channel runs 40x WI, not the 60x the manual's spec table
-  # assumes). Points outside it are silently clipped to the edge and not drawn,
-  # so an unchecked pattern deforms with no error anywhere. While null the plan
-  # reports BLOCKED for the range check rather than passing it.
+  # Half-extents of the calibrated AOD field, um.
+  #
+  # ✅ RECORDED 2026-09-06, and it settles the open question. Operator
+  # statement: "trapping area is always square, the center of the square is
+  # located in the middle of the camera view, the square size is around
+  # (-40um to 40um) in x and y."
+  #
+  # ⚠ THIS CONTRADICTS THE TRAPEZOID CLAIM, and the contradiction is recorded
+  # rather than resolved by preference.
+  #   kb/decisions/2026-08-26-tweezers-pattern-vs-direct.md §"To settle" item 2
+  #   says "the trapping range is a trapezoid, not a rectangle -- the GUI draws
+  #   a 'green trapezoid' set by the AOD calibration", and
+  #   kb/decisions/2026-08-27 lists the rectangle as a known simplification.
+  #   The operator now says square. An operator statement about their own
+  #   instrument outranks a shape read off a GUI drawing -- a square drawn in
+  #   perspective, or with a skewed AOD calibration, looks like a trapezoid --
+  #   so `fits_within`'s rectangular check is now believed SUFFICIENT and not
+  #   merely necessary. If a pattern ever deforms while passing the range
+  #   check, that belief is what to re-examine first.
+  #
+  # SQUARE AND CENTRED IS WHAT MAKES THE TRANSFORM COMPUTABLE. Centred on the
+  # camera field means trap (0,0) is the field centre, which is what the
+  # measured TRAP_ORIGIN_OFFSET_UM = (-1.013, -1.015) um in
+  # config/tweezers/trap_sequence.py independently confirms to about a
+  # micrometre. Square means one scale serves both axes. And because the Tweez
+  # software commands in MICROMETRES AT THE SAMPLE, that scale is 1:1 -- so
+  # px = p0 + diag([1,-1])/um_per_px @ um is fully determined at any binning,
+  # with no free parameter left for a sine to fit.
+  #
+  # Still objective-dependent: this is the 100x figure. This channel runs
+  # 40x WI, where the field is wider and the extent has NOT been stated.
+  # ⚠ STILL null FOR THIS CHANNEL, DELIBERATELY, AND THAT IS NOT AN OVERSIGHT.
+  # The +-40 um above is the 100x Oil figure. THIS channel's
+  # `calibration.objective` is the 40x WI, and the extent at 40x has never been
+  # stated -- the AOD deflection maps to a LARGER sample field at lower
+  # magnification, so the half-extent in um grows, roughly with the
+  # magnification ratio.
+  #
+  # It was briefly filled in with 40/40 on 2026-09-06 and that was wrong: it
+  # put a 100x number under a 40x channel and flipped `range_status` from
+  # BLOCKED to OK on a value that does not apply. Three tests caught it
+  # immediately -- test_range_check_blocked_not_passed_when_unrecorded exists
+  # for exactly this, and its docstring says why: "an unverified extent must
+  # not read as OK -- silently clipped points are the exact failure mode."
+  # Recording a real measurement against the wrong objective is not better than
+  # recording nothing; it is worse, because it reads as verified.
+  #
+  # To close it: ask for the half-extent at 40x WI, or run this channel at 100x
+  # and set calibration.objective to match. The 100x value lives in
+  # kb/systems/current.md > optical_tweezers > trapping_range.
   half_width_um: null
   half_height_um: null
