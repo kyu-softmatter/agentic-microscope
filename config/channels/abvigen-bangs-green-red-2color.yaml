@@ -1,3 +1,38 @@
+# ══ UPDATE 2026-09-06: THE EMISSION FILTERS ARE NOW KNOWN ══════════════════
+#
+# The operator supplied the EM1/EM2 part numbers, which were the single missing
+# input that made every verdict below INFEASIBLE. They are the Semrock
+# BrightLine set matched to the Di01-T405/488/568/647 dichroic already in the
+# path (order codes are Nikon's):
+#
+#   position 1 "405"   FF01-432/36-32   77015975   414.0-450.0 nm  -> blue cam
+#   position 2 "488"   FF01-515/30-32   77015964   500.0-530.0 nm  -> blue cam
+#   position 3 "555"   FF01-595/31-32   77015965   579.5-610.5 nm  -> red cam
+#   position 4 "647"   FF01-680/42-32   77015891   659.0-701.0 nm  -> red cam
+#   position 0 "multi" quad-band, part number NOT supplied
+#
+# `emission:` below now carries the real bandpasses instead of EM-Open. The
+# "hypothetical bandpass" paragraph further down is superseded as a hypothesis
+# and kept only as the record of what was predicted before the parts were known
+# -- note that it guessed EM1-525/36 and EM1-705/72, and the real parts are
+# 515/30 and 680/42, i.e. both narrower and both shifted blue.
+#
+# ⚠ Two things this does NOT settle.
+#
+#   (1) The position<->part pairing is INFERRED from the wheel label naming the
+#       EXCITATION line, not stated by the operator. Confirm off the engraving.
+#   (2) WHICH filter belongs in the red arm is now the open question, and it is
+#       a measurement, not a choice. The red bead is entered here at its
+#       published 680 nm emission, but that datasheet is disproved on its
+#       excitation (data/particles.yaml: GREEN > CYAN >> RED, the reverse of a
+#       620 nm peak), and the observed ordering fits a rhodamine/TRITC-class dye
+#       whose emission would land in FF01-595/31 instead. This file computes the
+#       680/42 case because that is the only red emission on record. Run the
+#       red-only control through positions 3 and 4 and compare -- the ratio
+#       brackets the dye's real band and replaces the guess.
+#
+# ══════════════════════════════════════════════════════════════════════════════
+
 # Dual-camera two-colour configuration for the 2026-09-05 session: the two
 # particles actually in hand, on the two cameras, simultaneously.
 #
@@ -107,7 +142,7 @@ channels:
     dichroic: "Di01-T405/488/568/647-13x15x0.5"
     emission:
       - {ref: "DM A561LP", side: reflect}    # <561 nm reflected = Kinetix_blue
-      - "EM-Open"                            # EM2 position 9 — no bandpass available
+      - "FF01-515/30"                        # EM2 position 2, label "488" — 500.0-530.0 nm
     port_fraction: 1.0
 
   - name: "Red-Abvigen-5um"
@@ -124,5 +159,7 @@ channels:
     dichroic: "Di01-T405/488/568/647-13x15x0.5"
     emission:
       - {ref: "DM A561LP", side: transmit}   # >561 nm transmitted = Kinetix_red
-      - "EM-Open"                            # EM1 position 9 — no bandpass available
+      - "FF01-680/42"                        # EM1 position 4, label "647" — 659.0-701.0 nm
+                                             # ⚠ candidate: FF01-595/31 (position 3) if the
+                                             # red dye is TRITC-class — see the 2026-09-06 note
     port_fraction: 1.0

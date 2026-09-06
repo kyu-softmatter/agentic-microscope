@@ -262,6 +262,184 @@ filters:
       the assignment exactly.
     verified: true
 
+  # ══════════════════════════════════════════════════════════════════════
+  # EM1 / EM2 emission wheels — THE REAL FILTERS, part numbers supplied by
+  # the operator 2026-09-06. This closes the gap that made
+  # config/channels/abvigen-bangs-green-red-2color.yaml INFEASIBLE: positions
+  # 0-4 were known to hold "multi/405/488/555/647" as LABELS, with no passband
+  # behind any of them, so none could be registered or computed with.
+  #
+  # Both wheels are independently confirmed to hold identical configurations
+  # (kb/systems/current.md > optical_path_nis > EM1/EM2, 2026-08-11), EM1 =
+  # Kinetix_red and EM2 = Kinetix_blue.
+  #
+  # These are the Semrock BrightLine set MATCHED to the main dichroic already
+  # in the path, Di01-T405/488/568/647 — each band sits just to the red of one
+  # laser line. That the four parts form exactly that matched set is strong
+  # independent corroboration of the part numbers.
+  #
+  # ✅ POSITION MAPPING CONFIRMED BY THE OPERATOR, 2026-09-06. It was first
+  # inferred here (from each label naming the EXCITATION line its filter is the
+  # emitter for, and from both lists being in ascending order) and the operator
+  # then confirmed the table as written:
+  #
+  #     position 1 "405"  ->  FF01-432/36     414.0 - 450.0 nm
+  #     position 2 "488"  ->  FF01-515/30     500.0 - 530.0 nm
+  #     position 3 "555"  ->  FF01-595/31     579.5 - 610.5 nm
+  #     position 4 "647"  ->  FF01-680/42     659.0 - 701.0 nm
+  #     position 0 "multi"->  quad-band carrying all four of those bands
+  #                           (part number NOT supplied — see EM-Quad-Multiband)
+  #
+  # ✅ ALSO CONFIRMED 2026-09-06: **each camera has its own wheel in front of
+  # it.** EM1 (-> Kinetix_red) and EM2 (-> Kinetix_blue) are independently
+  # selectable, so the two arms can hold different single-band filters at the
+  # same time. That is the premise the whole two-camera plan rests on and it is
+  # now an operator statement rather than an assumption.
+  #
+  # ⚠ peak_transmission and blocking_od are the repo's standing parametric
+  # defaults for a Semrock FF01 (0.93 / OD 6), the same values the other FF01
+  # entries in this file carry. They are NOT read off these parts' datasheets,
+  # and per the schema note above a flat OD 6 floor is optimistic in the far
+  # wings. Drop the vendor curves into data/spectra/ and wire them with
+  # `curve:` to settle a verdict rather than triage one.
+
+  "FF01-432/36":
+    kind: bandpass
+    vendor: Semrock
+    part_number: "FF01-432/36-32"
+    order_code: "77015975"        # Nikon order code, operator 2026-09-06
+    center_nm: 432
+    fwhm_nm: 36
+    peak_transmission: 0.93
+    blocking_od: 6
+    position: emission
+    purpose: "EM1/EM2 position 1 (label \"405\") — 405-excited blue emission. Below the 561 splitter edge, so it lands on Kinetix_blue"
+    verified: true
+
+  "FF01-515/30":
+    kind: bandpass
+    vendor: Semrock
+    part_number: "FF01-515/30-32"
+    order_code: "77015964"        # Nikon order code, operator 2026-09-06
+    center_nm: 515
+    fwhm_nm: 30
+    peak_transmission: 0.93
+    blocking_od: 6
+    position: emission
+    purpose: "EM1/EM2 position 2 (label \"488\") — 488-excited green emission. THE green-arm filter for Dragon Green (em 520, inside 500-530)"
+    note: >
+      500-530 nm lies entirely BELOW the 561 nm splitter edge, so this band
+      reflects to Kinetix_blue in full — no part of it is lost to the transmit
+      side. Dragon Green's 520 nm peak sits 5 nm off centre.
+    verified: true
+
+  "FF01-595/31":
+    kind: bandpass
+    vendor: Semrock
+    part_number: "FF01-595/31-32"
+    order_code: "77015965"        # Nikon order code, operator 2026-09-06
+    center_nm: 595
+    fwhm_nm: 31
+    peak_transmission: 0.93
+    blocking_od: 6
+    position: emission
+    purpose: "EM1/EM2 position 3 (label \"555\") — 555-excited orange-red emission"
+    note: >
+      579.5-610.5 nm lies entirely ABOVE the 561 nm splitter edge, so this band
+      transmits to Kinetix_red in full. Worth stating explicitly because the
+      wheel LABEL is "555", which is below the edge and invites the wrong
+      conclusion that the filter cannot be used in the red arm — the label names
+      the excitation line, not the passband.
+
+      ⚠ This is the candidate red-arm filter for abvigen-red-5um-cooh, whose
+      680 nm emission spec is in doubt after its 620 nm excitation spec was
+      disproved on the instrument (data/particles.yaml). The observed excitation
+      ordering GREEN > CYAN >> RED fits a rhodamine/TRITC-class dye, whose
+      emission would fall in THIS band rather than in FF01-680/42.
+    verified: true
+
+  "FF01-680/42":
+    kind: bandpass
+    vendor: Semrock
+    part_number: "FF01-680/42-32"
+    order_code: "77015891"        # Nikon order code, operator 2026-09-06
+    center_nm: 680
+    fwhm_nm: 42
+    peak_transmission: 0.93
+    blocking_od: 6
+    position: emission
+    purpose: "EM1/EM2 position 4 (label \"647\") — 647-excited far-red emission. Transmits to Kinetix_red"
+    note: >
+      659-701 nm, entirely above the splitter edge. This is the filter the red
+      bead's PUBLISHED 680 nm emission would need — but that spec is in doubt,
+      so which of this and FF01-595/31 belongs in the red arm is an open
+      measurement, not a choice. Running the red-only control through both
+      positions and comparing brackets the dye's real emission band.
+    verified: true
+
+  "EM-Quad-Multiband":
+    kind: multiband
+    vendor: Semrock          # inferred from the four single-band siblings
+    part_number: null        # ⚠ NOT SUPPLIED — read it off the filter
+    bands: [[432, 36], [515, 30], [595, 31], [680, 42]]
+    peak_transmission: 0.93
+    blocking_od: 6
+    position: emission
+    purpose: "EM1/EM2 position 0 (label \"multi\") — quad-band emitter carrying all four single bands. The robust dual-camera starting configuration"
+    note: >
+      ✅ Registered 2026-09-06 on the operator's statement that "pass band of
+      multi band filter are just some of other four", together with the earlier
+      "multiband filter including all of these". Taken together: this part's
+      passbands ARE the four single-band passbands above, all four present.
+
+      That is why `bands:` is written as the union of the four rather than left
+      unknown. This entry was deliberately `kind: unknown` for one revision
+      precisely because a quad emitter's bands are USUALLY chosen separately
+      from its single-band siblings' and commonly shift and widen — so the
+      union would have been a guess. It is now an operator statement instead.
+
+      ⚠ Residual caveat, small but real: band EDGES on a multiband part are
+      still typically a little different from the single-band equivalents even
+      when the nominal centres match, and no part number is on record to check
+      against. Blocking and crosstalk are decided in exactly those edges. Get
+      the part number.
+
+      ── ⚠ DO NOT USE THIS POSITION FOR THE TWO-COLOUR WORK ──────────────
+
+      An earlier revision of this note recommended the quad in BOTH wheels as
+      the robust starting configuration, on the reasoning that the splitter
+      alone would classify while the emitter supplied the blocking, and that the
+      red arm would then catch the red bead in either candidate band. The
+      collection arithmetic for that is real — in the red arm this passes 50.8%
+      of a 680 nm emitter and 46.3% of a 590 nm one, so it is robust to the
+      unknown in a way neither single band is. **But `optics.cli check` refuses
+      it, and it is right to.**
+
+        quad in both arms:  INFEASIBLE, spectral.overlap 0.00,
+                            Stokes headroom −74 nm (green) / −60 nm (red),
+                            blocking 5.49 / 5.51 OD
+        515/30 + 680/42:    HARD, blocking.insufficient 0.87,
+                            Stokes headroom +12 / +19 nm, blocking 6.09 / 6.11 OD
+
+      The reason is structural and applies to any multiband emitter here: **every
+      excitation line this scope has sits with at least one of the quad's four
+      passbands BLUEWARD of it.** Exciting at 488 with 414-450 nm open, or at 640
+      with 579-610 nm open, means the detection path accepts a window on the
+      anti-Stokes side of the line. Nothing legitimate arrives there, but
+      backscatter, Raman and any other laser line that happens to be on do — and
+      the extra open area also costs 0.6 OD of blocking outright.
+
+      A multiband emitter belongs in a path that excites all its bands at once
+      and reads them on ONE detector, sequentially. This path splits at 561 nm
+      and reads two detectors simultaneously, so the split already does what the
+      multiband is for, and the multiband can only add windows nobody wants.
+
+      **Use the single bands.** The robustness that motivated the quad is better
+      had by moving the red wheel between positions 3 and 4 across two
+      acquisitions — a two-second wheel move that also MEASURES which band the
+      red dye is in, instead of papering over not knowing.
+    verified: true
+
   # ⚠ Correction 2026-08-11: the 5 entries below ("88000v2-EM"~"EM1-705/72")
   # were originally recorded as EM1's filters, but the real EM1/EM2 filters were
   # confirmed not to be these (the true values are multi/405/488/555/647 — see

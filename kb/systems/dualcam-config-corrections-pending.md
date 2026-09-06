@@ -266,9 +266,147 @@ This is the live confirmation of the `optics.cli check` verdict on
 **INFEASIBLE**, 0.09 OD of excitation blocking against 7 required, excitation and
 detection bands overlapping. The wheels each carry positions
 `0 multi / 1 405 / 2 488 / 3 555 / 4 647 / 5-8 b1-b4 / 9 open`, so a bandpass
-exists in hardware — position 2 for the green arm, 4 for the red — but no
-passband or part number has ever been recorded for any of them, which is why
-none can be registered in `data/filters.yaml` or computed with.
+exists in hardware — position 2 for the green arm, 4 for the red.
+
+### ✅ RESOLVED 2026-09-06 — the part numbers, and what they change
+
+The operator supplied them. They are the Semrock BrightLine set matched to the
+`Di01-T405/488/568/647` dichroic already in the path (order codes are Nikon's):
+
+| pos | label | part | order code | passband | side of 561 |
+|---|---|---|---|---|---|
+| 1 | `405` | FF01-432/36-32 | 77015975 | 414.0-450.0 | reflect → `Kinetix_blue` |
+| 2 | `488` | FF01-515/30-32 | 77015964 | 500.0-530.0 | reflect → `Kinetix_blue` |
+| 3 | `555` | FF01-595/31-32 | 77015965 | 579.5-610.5 | **transmit → `Kinetix_red`** |
+| 4 | `647` | FF01-680/42-32 | 77015891 | 659.0-701.0 | transmit → `Kinetix_red` |
+| 0 | `multi` | quad-band, part number NOT supplied | — | the same four bands | both |
+
+**Confirmed by the operator 2026-09-06:** the position↔part pairing above (first
+inferred here, then confirmed); that **each camera has its own wheel in front of
+it**, so EM1 (→ `Kinetix_red`) and EM2 (→ `Kinetix_blue`) are independently
+selectable — which is the premise the whole two-camera plan rests on; and that
+the quad-band's passbands "are just some of other four", i.e. it carries those
+same four bands. It is registered on that basis in `data/filters.yaml`.
+
+### ⚠ But do not put the quad-band in either arm — the gate refuses it
+
+Its collection case looks attractive: in the red arm it passes **50.8%** of a
+680 nm emitter and **46.3%** of a 590 nm one, so it is robust to not knowing
+which the red dye is, where neither single band is. Measured against
+`optics.cli check`, though:
+
+| red arm | blue arm | feasibility | Stokes headroom | blocking |
+|---|---|---|---|---|
+| FF01-680/42 | FF01-515/30 | **HARD** | +19 / +12 nm | 6.11 / 6.09 OD |
+| quad | FF01-515/30 | INFEASIBLE | −60 nm | 5.51 OD |
+| quad | quad | INFEASIBLE | −60 / −74 nm | 5.51 / 5.49 OD |
+
+The reason is structural and kills the idea generally: **every excitation line on
+this scope has at least one of the quad's four bands blueward of it.** Exciting
+at 488 with 414-450 open, or at 640 with 579-610 open, means the detection path
+accepts an anti-Stokes window. Nothing legitimate arrives there — but
+backscatter, Raman and any other line that is on do, and the extra open area
+costs 0.6 OD of blocking outright.
+
+A multiband emitter is for exciting every band at once and reading them
+*sequentially on one* detector. This path splits at 561 nm and reads two
+detectors *simultaneously*, so the split already does the multiband's job and
+the multiband can only add windows nobody wants. **Use the single bands**, and
+get the robustness by moving the red wheel between positions 3 and 4 across two
+acquisitions — which also measures the answer instead of papering over it.
+
+⚠ **The label names the EXCITATION line, not the passband, and that misleads.**
+Position 3 reads `555`, which is *below* the 561 nm splitter edge and invites the
+conclusion that the filter is unusable in the red arm. Its actual passband is
+579.5-610.5 nm, entirely *above* the edge — so it is a perfectly good red-arm
+filter, and is in fact the leading candidate for the red bead (see below). That
+error was made once during 2026-09-06 before the part numbers arrived.
+
+⚠ The position↔part pairing is **inferred**, not stated: from each label naming
+its filter's excitation line, and from both lists being in ascending order.
+Confirm off the engravings.
+
+All four are now registered in `data/filters.yaml` and listed as candidates in
+`config/scopes/current-laser.yaml`. Position 0 is deliberately left
+`kind: unknown` — a quad-band's bands are not the union of its single-band
+siblings' bands, so registering them as such would be a guess wearing four real
+part numbers as evidence.
+
+**Re-run verdict, `optics.cli check` with the real bandpasses in place:**
+
+|  | before (EM-Open) | after |
+|---|---|---|
+| excitation blocking | 0.09 / 0.11 OD | **6.09 / 6.11 OD** |
+| Stokes headroom | −188 / −79 nm (bands overlap) | **+12 / +19 nm** |
+| crosstalk margin | — | **10.00, the scale maximum** |
+| feasibility | INFEASIBLE | **HARD** |
+| bottleneck | `spectral.overlap` 0.00 | `blocking.insufficient` 0.87 |
+
+The residual shortfall is an **evidence penalty, not a physical one**: 6.1 OD
+clears the 5 OD bar that applies with measured curves and fails only the 7 OD bar
+`data/spectra/README.md` imposes because these are parametric approximations.
+Loading Semrock's transmission curves into `data/spectra/` is what converts this
+from HOLD to advancing — they are free downloads.
+
+`optics.cli recommend --panel` independently picks the same pairing:
+FF01-515/30 → `Kinetix_blue` for Dragon Green, FF01-680/42 → `Kinetix_red` for the
+red bead, crosstalk margin 10.00.
+
+### Which filter goes in the red arm is now the open measurement
+
+Computed with the repo's own parametric shapes, as the **fraction of each dye's
+total emission that reaches a camera**:
+
+| dye | red arm = FF01-595/31 | red arm = FF01-680/42 |
+|---|---|---|
+| red bead, IF em 680 (published) | 0.002% | **50.8%** |
+| red bead, IF em ~590 (the TRITC-class hypothesis) | **41.5%** | 4.8% |
+| Dragon Green leaking in | 4.2% | **0.002%** |
+
+So the two candidates fail in opposite directions and the choice is decided by
+the red dye's real emission, which is exactly what is not known:
+
+- **680/42** gives a near-perfect classifier — green bleed is 0.004% of green's
+  own channel, i.e. **1 : 25,000**. But if the dye really emits near 590 it
+  collects only 4.8% and the red channel is 10x dimmer than it needs to be.
+- **595/31** collects 41.5% of a 590 nm emitter, but green bleed rises to
+  **10.4% of green's own channel, 1 : 10**. A bright green bead then shows up on
+  the red camera as a ghost at a tenth of its brightness. Still separable by
+  intensity, but it is no longer the free hardware classification the whole
+  sorting approach rests on.
+
+**The measurement:** run the red-only control through positions 3 and 4 and
+compare peak ADU. The ratio brackets the dye's band and settles it in minutes.
+This also makes the FCFR008 (Flash Red) procurement sharper — confirm with Bangs
+that its emission sits inside 659-701 nm, not merely above 561.
+
+### The red-arm filter and the red excitation line are ONE decision, not two
+
+Found 2026-09-06 while gating the candidates: FF01-595/31 cannot be paired with
+the 640 line at all, because 579.5-610.5 nm is **blueward of 640** — that is
+anti-Stokes and no dye does it. The gate separates the two failure modes exactly:
+
+| red channel | verdict | bottleneck | reading |
+|---|---|---|---|
+| 640 + FF01-680/42 | HARD | `blocking.insufficient` 0.87 | the whole path is sound |
+| 640 + FF01-595/31 | INFEASIBLE | `spectral.overlap` 0.00 | the **path** is wrong — anti-Stokes |
+| 561 + FF01-595/31 | INFEASIBLE | `collection.low` 0.00 | the path is sound (+19 nm headroom, **6.39 OD**, the best blocking of any variant); only the **dye assumption** fails, because the registry has this dye at em 680 and 595/31 then collects 0.0% |
+
+So the two hypotheses about the red bead are two *whole configurations*, and
+`config/channels/abvigen-bangs-green-red-2color.yaml` currently encodes only the
+first:
+
+- **A — dye really emits 680 (published):** excite **640**, filter **680/42**.
+  Crosstalk 1 : 25,000. Clean.
+- **B — dye is TRITC-class, ~550 ex / ~590 em (what the instrument showed):**
+  excite **561 or Aura GREEN**, filter **595/31**. +19 nm headroom, 6.39 OD.
+  Crosstalk 1 : 10 — workable, but the hardware classifier is degraded.
+
+The instrument evidence favours **B**: RED produced *nothing* and GREEN was the
+maximum, which a 620/680 dye cannot do. Note the consequence — under B the 640
+line is useless for this bead, so "excite at 640 and filter at 680" is not a
+fallback, it is a different experiment. Settle it with the red-only control
+before committing either configuration.
 
 ### All six post-processing flags are ON, on BOTH cameras
 

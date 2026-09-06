@@ -53,8 +53,8 @@ view.**
 | # | check | correct value | if wrong |
 |---|---|---|---|
 | 1 | `CSUW1-Port` | **`blue_red` / State 1** | **SILENT.** `Kinetix_blue` gets no light. The cfg never sets this — see corrections §2 |
-| 2 | `CSUW1-Filter_Blue` | a real bandpass, **position 2 `488`** | **SILENT.** Position 9 `open` = no emission filter at all |
-| 3 | `CSUW1-Filter_Red` | a real bandpass, **position 4 `647`** | **SILENT.** `multi` passes everything, so the red arm also sees green emission |
+| 2 | `CSUW1-Filter_Blue` | **position 2** = FF01-515/30 | **SILENT.** Position 9 `open` = no emission filter at all |
+| 3 | `CSUW1-Filter_Red` | **position 4** = FF01-680/42, *or* **position 3** = FF01-595/31 — measure which (§5.2) | **SILENT.** `multi` passes everything, so the red arm also sees green emission |
 | 4 | all six `PP` flags, **both** cameras | `No` | data is modified irreversibly; reverts on every config load |
 | 5 | `LappMainBranch1` | **State 1** (ignore the label — it lies) | no light at all, and it looks like a dead dye |
 
@@ -146,6 +146,23 @@ satisfied. GREEN (~550 nm) sits *below* the 561 nm splitter edge, so
 backscattered excitation reflects straight onto `Kinetix_blue` — the same camera
 as Dragon Green's emission.
 
+**UPDATE 2026-09-06: check 2 is now satisfiable, so GREEN is back on the table
+— and it is worth having.** With FF01-515/30 (500.0-530.0 nm) in the blue arm,
+GREEN backscatter at ~550 nm is out of band and blocked, which was the entire
+objection. That matters because the red bead is **brightest under GREEN**
+(~3500 ADU vs ~2000 under CYAN, 2026-09-05 at 4x). So the strongest simultaneous
+arrangement is now **CYAN + GREEN together**: CYAN drives Dragon Green at its 480
+peak, GREEN drives the red bead at its measured maximum, each backscatter is
+rejected by its own arm's bandpass, and both species still land on separate
+cameras. CYAN alone remains the simpler starting point and is still sufficient.
+
+⚠ One thing this cannot compute: **if the red arm ends up on FF01-595/31
+(579.5-610.5 nm), GREEN's own band may leak into it.** `data/light_sources.yaml`
+records the Aura's five lines as names only — no centre, no width — so how far
+GREEN extends to the red is unknown and unmodellable. With FF01-680/42 the
+question does not arise. Check it directly: illuminate a *bead-free* field with
+GREEN and read `Kinetix_red`.
+
 ### Frame rate: full frame is plenty
 
 A sedimented 5 µm bead moves **0.04–0.07 µm per 30 ms frame** (0.3–1.1 px,
@@ -194,17 +211,75 @@ multiple simultaneous traps (the Tweez AOD time-shares them), not faster ramps.
 
 ## 5. What is actually blocking the sort
 
-1. **Emission filters, both arms.** Checks 2 and 3. With the blue arm `open` and
-   the red arm on `multi`, the two cameras do not cleanly separate the species —
-   which destroys the classifier the whole approach rests on. And no passband or
-   part number is on record for **any** wheel position, so nothing can be
-   computed either: `optics.cli check` returns **INFEASIBLE**, 0.09 OD of
-   excitation blocking against 7 required. Getting those part numbers is still
-   the highest-value ten minutes available.
-2. **The red particle's real emission is unknown.** Its 620 nm excitation spec
-   is disproved, so 680 nm emission is also in doubt. If any of its emission
-   falls below 561 nm it bleeds into the green camera and the classifier
-   degrades. Measure it — or sidestep it by buying FCFR008 (§2).
+1. ~~**Emission filters, both arms.**~~ **RESOLVED 2026-09-06.** The operator
+   supplied the part numbers — the Semrock set matched to the
+   `Di01-T405/488/568/647` dichroic already in the path:
+
+   | pos | label | part | passband | camera |
+   |---|---|---|---|---|
+   | 1 | `405` | FF01-432/36-32 | 414.0-450.0 | `Kinetix_blue` |
+   | 2 | `488` | FF01-515/30-32 | 500.0-530.0 | `Kinetix_blue` |
+   | 3 | `555` | FF01-595/31-32 | 579.5-610.5 | **`Kinetix_red`** |
+   | 4 | `647` | FF01-680/42-32 | 659.0-701.0 | `Kinetix_red` |
+   | 0 | `multi` | quad-band, same four bands, part number still missing | — | both |
+
+   All confirmed by the operator 2026-09-06, including that **each camera has its
+   own wheel in front of it** — so the two arms are independently selectable,
+   which is what the two-camera plan requires.
+
+   ⚠ **The label names the excitation line, not the passband.** Position 3 reads
+   `555` and its filter passes 579.5-610.5 nm, i.e. entirely *above* the splitter
+   edge — so it is a red-arm filter despite a label that suggests otherwise.
+
+   ⚠ **Do not use position 0.** The quad passes both candidate red bands, which
+   looks like useful insurance, but every excitation line here has one of its
+   four bands blueward of it, so it opens an anti-Stokes window and costs 0.6 OD:
+   `optics.cli check` returns INFEASIBLE where the single bands return HARD. A
+   multiband emitter is for reading bands sequentially on ONE camera; this path
+   already splits at 561 nm.
+
+   All four are registered in `data/filters.yaml` and are candidates in
+   `config/scopes/current-laser.yaml`. `optics.cli check` on the two-colour
+   channel moves **INFEASIBLE → HARD**: excitation blocking 0.09 → **6.09/6.11
+   OD**, Stokes headroom −188/−79 → **+12/+19 nm**, crosstalk margin **10.00**
+   (scale maximum). `optics.cli recommend --panel` picks the same pairing
+   independently. The residual FAIL is the 7 OD *parametric* bar, not physics —
+   6.1 OD clears the 5 OD bar that applies with measured curves, so the remaining
+   action is loading Semrock's free transmission curves into `data/spectra/`.
+   Full detail and the crosstalk table: `dualcam-config-corrections-pending.md`.
+2. **The red particle's real emission is unknown — and it now decides which
+   filter goes in the red arm.** Its 620 nm excitation spec is disproved, so
+   680 nm emission is also in doubt. With the passbands known, that uncertainty
+   has a price tag (parametric shapes, fraction of each dye's total emission
+   reaching a camera):
+
+   | | red arm = 595/31 | red arm = 680/42 |
+   |---|---|---|
+   | red bead if em 680 | 0.002% | **50.8%** |
+   | red bead if em ~590 | **41.5%** | 4.8% |
+   | Dragon Green leaking in | 4.2% (**1 : 10** vs its own channel) | 0.002% (**1 : 25,000**) |
+
+   So 680/42 is the clean classifier and 595/31 is the sensitive one, and they
+   fail in opposite directions.
+
+   **And the filter choice drags the excitation line with it** — 595/31 cannot be
+   paired with the 640 line at all, since 579.5-610.5 nm is blueward of 640 and
+   that is anti-Stokes. The two hypotheses are two whole configurations:
+
+   - **A — em 680 (published):** excite **640**, filter **680/42**, crosstalk
+     1 : 25,000. Clean. This is what the channel config encodes today.
+   - **B — TRITC-class, ~550 ex / ~590 em (what the instrument showed):** excite
+     **561 or Aura GREEN**, filter **595/31**. +19 nm Stokes headroom and 6.39 OD,
+     the best blocking of any variant — but crosstalk 1 : 10.
+
+   The instrument evidence favours **B** (RED gave nothing, GREEN was the
+   maximum, which a 620/680 dye cannot do). Under B the 640 line is useless for
+   this bead, so A is not a fallback from B — it is a different experiment.
+
+   **The measurement is cheap:** run the red-only control through positions 3 and
+   4 and compare peak ADU. Do this before anything else spectral. It also
+   sharpens the FCFR008 purchase — confirm Flash Red emits inside **659-701 nm**,
+   not merely above 561.
 3. **Two cameras, no `Multi Camera` device — but `runtime/` is the likelier
    answer.** There is no Utilities `Multi Camera`, so Micro-Manager offers no
    single co-timestamped two-channel stream, and `Core-Camera` addresses one

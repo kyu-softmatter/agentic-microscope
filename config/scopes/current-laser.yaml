@@ -36,13 +36,32 @@ scope:
   #
   # 2026-08-11 correction: the actual filters in positions 0-4 are
   # multi/405/488/555/647 (matching the CSUW1-Filter_Red Label in
-  # DMD_dualcam.cfg), but with no fwhm or actual-passband data they cannot yet
-  # be registered in data/filters.yaml (no guessing) — excluded from the
-  # candidates until they are. The 5 that used to sit here ("88000v2-EM",
+  # DMD_dualcam.cfg). The 5 that used to sit here ("88000v2-EM",
   # "EM1-455/50", etc.) were not EM1/EM2's actual filters (corrected as a
   # misattribution — see the comment on those entries in data/filters.yaml)
   # — removed.
+  #
+  # 2026-09-06: RESOLVED. The operator supplied the four part numbers, so the
+  # single-band positions are registered in data/filters.yaml and are now
+  # candidates. The position↔part pairing is INFERRED from the label being the
+  # excitation line — see the block comment on "FF01-432/36" there — and was then
+  # CONFIRMED by the operator. Each camera has its own wheel in front of it
+  # (EM1 → Kinetix_red, EM2 → Kinetix_blue), so the two arms are independently
+  # selectable.
+  #
+  # Position 0 ("multi") is the quad-band. The operator states its passbands are
+  # those same four, so it IS now registered as a real multiband in
+  # data/filters.yaml — but it is deliberately NOT a candidate here. Every
+  # excitation line on this scope has at least one of its four bands blueward of
+  # it, so on this split-at-561 two-detector path it can only open anti-Stokes
+  # windows and cost blocking: `optics.cli check` returns INFEASIBLE
+  # (spectral.overlap 0.00) where the single bands return HARD. Full reasoning in
+  # its note in data/filters.yaml. Its part number is also still missing.
   emission_filters:
+    - "FF01-432/36" # position 1, label "405"  — 414.0-450.0 nm, reflects → Kinetix_blue
+    - "FF01-515/30" # position 2, label "488"  — 500.0-530.0 nm, reflects → Kinetix_blue
+    - "FF01-595/31" # position 3, label "555"  — 579.5-610.5 nm, transmits → Kinetix_red
+    - "FF01-680/42" # position 4, label "647"  — 659.0-701.0 nm, transmits → Kinetix_red
     # position 5-8: Blocked (blocked by a metal plate, not selectable) —
     # excluded from the candidates.
     - "EM-Open" # position 9 — no filter (open), all wavelengths pass. Confirmed 2026-08-11.
