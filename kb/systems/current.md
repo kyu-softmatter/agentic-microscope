@@ -185,6 +185,31 @@ optical_path_nis:      # confirmed 2026-08-10 via NIS-Elements Device Manager on
         ⚠ Taken at bin 2x2. The translation is quoted in um so it transfers,
         but re-check after any change to ROI or intermediate magnification --
         an off-centre ROI moves each camera's frame centre independently.
+
+        ⚠ THE FLIP CANNOT BE MOVED INTO THE `.cfg`. Measured 2026-09-07:
+        `Kinetix_blue` exposes `TransposeMirrorX`, `TransposeMirrorY`,
+        `TransposeXY` and `TransposeCorrection` (all 0/1), and NONE of them
+        touch the pixels. Toggling `TransposeMirrorY` 0 -> 1 -> 0 against a
+        static asymmetric DMD pattern moved the quadrant means by under 1% and
+        never inverted the top/bottom ratio (1.755 / 1.760 / 1.761) -- while
+        the property read back as changed each time. They are display and
+        stage-mapping hints for MMStudio; the Core image path ignores them.
+        So a `Property,Kinetix_blue,TransposeMirrorY,1` line would be WORSE
+        than no line: it would read back as configured while every frame
+        arrived unflipped. Same shape as the `lapp_branch` lesson below -- a
+        readback confirms the device was TOLD, never that anything HAPPENED.
+        The flip stays in software: `live_dualcam_view.py --flip-y` (default
+        True) and `sort_core.BLUE_TO_RED_PX`.
+
+        ✅ The 2026-09-06 by-eye axis call is now a MEASUREMENT, 2026-09-07.
+        A DMD pattern with top-right = 255 and bottom-left = 122 lands
+        bottom-left/top-right on Kinetix_red (180 deg rotation) but
+        top-left/bottom-right on Kinetix_blue (horizontal flip only) -- the two
+        arms differ by exactly one vertical flip, independent of any operator
+        judgement. Same session also puts a number on the crosstalk above:
+        per-line, at intensity 25, CYAN alone gives Kinetix_red p99.9 = 2121
+        against GREEN's 2145, i.e. CYAN drives the red arm as hard as GREEN
+        does. Details: `kb/decisions/2026-09-07-dmd-on-v71-and-blue-flip.md`.
     note: >
       Confirmed by user 2026-08-10: the configuration at that time used both
       cameras (Kinetix_red/Kinetix_blue) simultaneously, and this splitter

@@ -271,6 +271,70 @@ open by skipping the vendor's own shutdown path, which is not a thing to build
 on quietly. The supported way to open the shutter is still a question for Nikon;
 the difference is that we are no longer blocked while we wait.
 
+### ⚠ AMENDMENT 2026-09-07 — the handoff buys laser control and costs the disk
+
+**After a successful handoff, the CSU-W1 pinhole disk was not spinning, and the
+images are pinhole-array patterns rather than confocal images.** Found while
+first driving the confocal path from this repository: the light is real and
+plentiful, so nothing looks wrong until you look at the texture.
+
+Measured at 20x, bin 2x2, 200 ms, `Port = Dynamic Range`, `FilterTurret1`
+State 1, `CSUW1-Bright = Confocal`, `Filter_Blue = 488` / `Filter_Red = 555`.
+Ratio of the peak off-centre power-spectrum term to the median, on a 400 px
+central crop of (laser on − AllOff):
+
+| arm | line | contrast | spectral peak/median |
+|---|---|---|---|
+| Kinetix_blue | 488 | 53.2x | **210 347** |
+| Kinetix_blue | 561 | 1.02x (no signal) | **129** |
+| Kinetix_red | 488 | 5.9x | 32 256 |
+| Kinetix_red | 561 | 5.2x | 25 978 |
+| Kinetix_red | 488+561 | 10.1x | 82 397 |
+
+**The periodicity tracks the light, not the sensor** — the single case with no
+signal sits at 129 while every case with signal is 25 000–210 000. So the grid
+is in the illumination. Period ~46.8 px = **30.3 um at the sample**.
+
+**Why this is invisible from here:** MM exposes **no disk-speed or motor
+device**. The CSU-W1 devices in the `.cfg` are `Hub`, `Filter_Red`,
+`Filter_Blue`, `Dichroic`, `Shutter`, `Bright Field`, `Port` — nothing rotates
+the disk. NIS was the only software holding the CSU-W1 controller, and the
+handoff force-kills it. So the most likely reading is that **the kill stopped
+the disk** (the alternative, that it was never started this session, is not
+excluded — see the test below).
+
+**Consequence for the workflow.** §9 above says the handoff is supported, and
+for *laser* control it is. It is **not** established that it can produce a
+confocal image, and the failure mode is quiet: full brightness, 5–53x contrast,
+and a pinhole grid where the sample should be. Any photometry, detection or
+sorting run on such a frame is meaningless. Do not treat a bright confocal frame
+as a working one without checking the texture.
+
+**The test that separates the two explanations** — the same shape as the shutter
+test that settled §9, and the reason that one is trustworthy:
+
+    1. restart NIS, confirm the disk is spinning (the grid disappears in NIS)
+    2. force-kill NIS
+    3. image immediately, then again at intervals, and watch the periodicity
+
+    grid absent, stays absent   -> the disk survives a kill; today's grid was
+                                   because it had never been started
+    grid returns (at once or
+    after a spin-down)          -> the kill stops the disk, and the handoff
+                                   cannot do confocal at all. Hard limit.
+
+Note the "before" half **cannot be measured through MM**: with NIS up, NIS holds
+the Ti2 and a camera, so MM cannot load. The spinning baseline has to be
+confirmed by eye in NIS. That asymmetry is why the test is written as
+"kill, then watch", not "compare before and after".
+
+Also measured the same session, and relevant to any two-colour confocal plan:
+**488 leaks into the red arm as strongly as 561 does** (5.9x vs 5.2x), the same
+Dragon-Green emission-tail crosstalk `config/session/sort_core.py` documents for
+the CYAN widefield line. The red arm is additive across the two lines
+(3158 + 2758 − 536 = 5380 predicted, 5391 measured), so **species assignment on
+the confocal path must strobe, exactly as it does on the widefield path.**
+
 ## Corrections to the record
 
 - **Mid-session claim: right conclusion, asserted before the evidence.** It was
