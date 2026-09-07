@@ -56,16 +56,19 @@ which is exactly why a shared clock had to be built rather than assumed.
 > calibration, expertise note and device record here is that instrument's,
 > labelled as such. Not a supported product.
 >
-> **Companion projects — three axes of one system.**
+> **Companion projects — four axes of one system.**
 > [`Brownian-Dynamics Agent`](https://github.com/kyu-softmatter/Brownian-Dynamics-Agent)
 > applies the same provenance and validation rules to simulation. It asks what
 > the physical system should do; this asks whether the instrument can measure
-> the difference well enough to decide. A third,
-> [`research-topic`](https://github.com/kyu-softmatter/research-topic),
-> asks which question is worth asking at all, and is meant to hold the knowledge
-> base and the definitions of rigor that both of the others enforce. **It is a
-> sketch — nothing is built there yet**, and neither working repository depends
-> on it. → [below](#toward-a-model-to-experiment-loop)
+> the difference well enough to decide.
+> [`research-topic`](https://github.com/kyu-softmatter/research-topic)
+> asks which question is worth asking at all, and holds the definitions of rigor
+> that the others enforce — **a sketch; nothing is built there yet**.
+> [`librarian-agent`](https://github.com/kyu-softmatter/librarian-agent) keeps
+> the knowledge findable across all of them and reports when it has gone stale:
+> six read tools run over an index of **this** repository, and no knowledge has
+> moved yet. **No working repository depends on either of the two.**
+> → [below](#toward-a-model-to-experiment-loop)
 
 ---
 
@@ -1199,28 +1202,34 @@ coupling two moving targets would be a mistake** — so this is future work, wit
 a stated order of preconditions.
 → [07 Phase 6](docs/07-roadmap.md#phase-6--joining-the-simulation-agent)
 
-### A third axis, and the question neither repo asks
+### Two more axes, and the questions neither working repo asks
 
-Both repositories take the scientific question from a human, and both hand their
-evidence back to one.
-[`research-topic`](https://github.com/kyu-softmatter/research-topic) (sketch
-stage) is meant to sit in both of those places: it proposes the question, and it
-keeps what came back — **including the failures, which is the part that gets
-skipped.**
+Both working repositories take the scientific question from a human, and both
+hand their evidence back to one. Two others are meant to sit in those places —
+one to propose the question, and one to keep what came back **including the
+failures, which is the part that gets skipped.**
 
 | Axis | Repository | Asks | Status |
 |---|---|---|---|
-| **Topic** | [`research-topic`](https://github.com/kyu-softmatter/research-topic) | which question is worth asking, and what the other two should read | sketch only. **Nothing built** |
+| **Topic** | [`research-topic`](https://github.com/kyu-softmatter/research-topic) | which question is worth asking | sketch only. **Nothing built** |
 | **Experiment** | **this repository** | what the instrument can actually record | running |
 | **Simulation** | [`Brownian-Dynamics Agent`](https://github.com/kyu-softmatter/Brownian-Dynamics-Agent) | what the physical system should do | running |
+| **Knowledge** | [`librarian-agent`](https://github.com/kyu-softmatter/librarian-agent) | where the answer already is, and whether it has gone stale | read tools running over an index of this repository. **Nothing migrated** |
 
-Two things it is specifically meant to own, because neither of the working
-repositories can:
+Two things neither working repository can own, and they turned out to belong in
+different places:
 
-**1 · A knowledge base both can read.** This repository has one, and it is
-**bound to the instrument** — `kb/systems/current.md` is which machine this
-microscope actually is, and a simulation cannot use that. The third repository is
-where the domain-neutral half goes.
+**1 · A knowledge base both can read → `librarian-agent`.** This repository has
+one, and it is **bound to the instrument** — `kb/systems/current.md` is which
+machine this microscope actually is, and a simulation cannot use that. The
+domain-neutral half needs somewhere else to live, and custody of it is a job on
+its own: a store that only accumulates goes stale, and this repository already
+carries the symptom. Seven `[[wikilinks]]` in `kb/` point at entries nobody
+wrote, `G2`–`G4` carry a threshold in `docs/04` and appear in no Python file,
+and `kb/expertise/oil-objective-trapping-in-water.md` — the entry
+`research-topic` holds up as the model challenge — carries no falsification
+section where five of the six beside it do. **All four were found by that
+repository's drift report rather than by reading.**
 
 **2 · The definitions of rigor, in one place.** This repository enforces 32
 gates; the simulation side enforces ten rigor axes. They were built independently
@@ -1231,13 +1240,15 @@ third place:** what two projects reached without consulting each other is not
 domain-specific, and keeping one copy of it beats keeping two that drift.
 
 The intended shape is a loop rather than a pipeline, and **that is why the risk is
-worth stating out loud**: three components that feed each other will amplify
-whatever bias they share. The third repository carries that objection as a
-registered conflict, and its answer is that a topic may only enter the loop in a
-form the other two can falsify.
+worth stating out loud**: components that feed each other will amplify whatever
+bias they share. `research-topic` carries that objection as a registered
+conflict, and its answer is that a topic may only enter the loop in a form the
+working repositories can falsify.
 
-**No dependency runs the other way.** Nothing here imports, reads or waits on the
-third repository, and if it is never built, nothing here breaks.
+**No dependency runs the other way.** Nothing here imports, reads or waits on
+either of the two, and if neither is built, nothing here breaks. `librarian-agent`
+reads this repository and writes nothing to it; anything it proposes arrives as a
+pull request.
 
 ### Why joining them is worth doing
 
