@@ -6,21 +6,51 @@ source: operator memo + Device Property Browser readback + cfg inspection
 expert: KH
 date: 2026-09-05
 confidence: high
-scope: "config/micromanager/DMD_dualcam_LUNF.cfg — the only dual-camera config"
+scope: "config/micromanager/DMD_dualcam_LUNF.cfg — the only dual-camera config.
+  ⚠ The 2026-09-06 fixes for items 1 · 2 · 2b went WIDER than this scope, because
+  the same defects were in all six configs and in two of three scope profiles."
 applies_to_systems: [current-laser]
 review_after: 2026-12-05
 supersedes: null
 ---
 
-## Status: NOTHING HERE IS APPLIED YET
+## Status: ITEMS 1 · 2 · 2b APPLIED 2026-09-06. 3 · 4 STILL OPEN
 
-This is a running memo. The operator's instruction on 2026-09-05 was to collect
-the corrections and revise the config file later, all together. **The `.cfg` is
-untouched.** Do not treat any item below as fixed.
+This was a running memo under the operator's 2026-09-05 instruction to collect
+the corrections and revise the config later, all together. That pass has now
+been made, across **all six** configs rather than the one this memo scoped:
+
+| Item | State |
+|---|---|
+| 1 · `LappMainBranch1` label/state inverted | **applied** — labels swapped, and the position pinned by `State`, not by name (see below) |
+| 2 · `CSUW1-Port` never set at load | **applied** — a `System/Startup` group now sets it, except on `single_cam_blue_LUNF.cfg` where the operator has stated no value |
+| 2b · emission-filter correction in one profile only | **applied** — and it was in **two** profiles, not the one named here |
+| 3 · read-only vs changeable properties | answered 2026-09-05, nothing to apply |
+| 4 · state changes between the two readbacks | **still open** |
+
+**What was applied differently from what this memo proposed, and why.** The memo
+asked for the labels to be corrected. They were — but correcting them is not
+what makes the config right, because the *name* is the part that has now moved
+twice while the photometry has not moved at all. So every functional reference
+was converted to the integer:
+
+    ConfigGroup,System,Startup,LappMainBranch1,State,1
+
+State 1 is the measured light-passing position (2026-09-04, re-confirmed
+2026-09-06). Two sites had been written by name and would have silently
+selected the BLOCKING state the moment the labels were fixed — exactly the
+failure this memo's own ⚠ warned about:
+
+  - `config/micromanager/dualcam_twocolour.cfg` — the `TwoColour` preset
+  - `config/session/dualcam_hardware_config.py` — `wanted_state()`, which
+    generates that preset
+
+Both now pin `State`. `Label` lines remain, because Studio needs names to show,
+but nothing selects a position by one.
 
 ---
 
-## 1. `LappMainBranch1` label/state mapping is INVERTED in the cfg
+## 1. `LappMainBranch1` label/state mapping is INVERTED in the cfg — ✅ APPLIED 2026-09-06
 
 **Operator, 2026-09-05:** the physical correspondence is
 
@@ -66,7 +96,7 @@ readback confirms the device went where it was told, never that the *name* it
 reports for that position is correct. A mislabelled enum makes a correct record
 look falsified.
 
-### Correction to apply later
+### Correction — ✅ applied 2026-09-06, in all six configs
 
     Label,LappMainBranch1,1,mirror_in
     Label,LappMainBranch1,0,mirror_out
@@ -75,9 +105,21 @@ look falsified.
 in existing code and notes. Grep for both tokens before changing the cfg, or
 scripts that currently work by name will silently switch to the wrong position.
 
+**That grep was run, and it found exactly two functional sites** — the
+`TwoColour` preset in `dualcam_twocolour.cfg` and `wanted_state()` in
+`config/session/dualcam_hardware_config.py`. Rather than renaming them, both
+were converted to `State,1`, so this class of breakage cannot recur on the next
+renaming. Every other hit was prose.
+
+A fourth standing copy of the *reversed throughput claim* was also found and
+corrected the same day: `kb/systems/current.md`'s `widefield-aura` optical-path
+entry still read "Aura only reaches the sample in the mirror_in (50/50) state".
+Three places carried the retraction and that one did not — the same
+correction-reaches-some-copies shape as item 2b.
+
 ---
 
-## 2. Dual-camera needs `CSUW1-Port`, and the cfg never sets it
+## 2. Dual-camera needs `CSUW1-Port`, and the cfg never sets it — ✅ APPLIED 2026-09-06
 
 **Operator, 2026-09-05:**
 
@@ -96,13 +138,23 @@ the port wherever it physically was. On 2026-09-05 that was `red_only` / State 2
 — single-camera. **The file named "dualcam" does not put the instrument in
 dual-camera mode.** Nothing errors; `Kinetix_blue` simply receives no light.
 
-Fix options, to decide later: add a `Property,CSUW1-Port,...` line so the state
-is set at load, or add a `ConfigGroup` for camera mode (`blue_red` / `red_only`)
-so it is at least selectable as a preset and visible in Studio.
+**Fixed 2026-09-06** by the first option, as a `System/Startup` preset so MMCore
+applies it on `loadSystemConfiguration` rather than leaving it to be remembered:
+
+| Config | `CSUW1-Port` |
+|---|---|
+| `DMD_dualcam_LUNF` · `dualcam_noDMD` · `dualcam_twocolour` | `State,1` (`blue_red`) |
+| `single_cam_red_LUNF` · `single_cam_red_noDMD` | `State,2` (`red_only`) |
+| `single_cam_blue_LUNF` | **not set — no operator statement exists** |
+
+The last row is deliberate. The 2026-09-05 statement covers dual-cam and
+single-cam *red*; `blue_only`/State 0 for a blue-only config is an inference
+from symmetry, and an unstated value written into a `.cfg` reads as verified.
+**TODO(human):** the port this config should load with.
 
 ---
 
-## 2b. The 2026-08-11 emission-filter correction was applied to only one scope profile
+## 2b. The 2026-08-11 emission-filter correction was applied to only one scope profile — ✅ APPLIED 2026-09-06
 
 Found 2026-09-05 while checking the Aura path. `config/scopes/current-laser.yaml`
 removed `88000v2-EM` / `EM1-455/50` / `EM1-525/36` / `EM1-605/52` / `EM1-705/72`

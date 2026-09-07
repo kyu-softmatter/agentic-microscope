@@ -32,15 +32,26 @@ Only property-settable devices. ROI, binning, exposure and the circular buffer
 are NOT device properties and cannot live in a ConfigGroup -- they stay in
 `setup_dualcam_run.match_cameras`.
 
-    LappMainBranch1        mirror_out   ⚠ THE ENTRY MOST WORTH READING. This is
-                           the position in which the Aura REACHES THE SAMPLE.
-                           kb/systems/current.md carried the opposite for a
-                           month, in three places, from a dictation rather than
-                           a measurement; setting the branch from the wrong
-                           record turned the light off and cost the 2026-09-04
-                           session, which then blamed the unreadable splitter.
-                           Measured 2026-09-04 and again 2026-09-06: mirror_out
-                           +8.83 ADU median rise, mirror_in -0.42, i.e. nothing.
+    LappMainBranch1        State 1      ⚠ THE ENTRY MOST WORTH READING, AND THE
+                           ONE PINNED BY INTEGER RATHER THAN BY NAME. State 1
+                           is the position in which the Aura REACHES THE
+                           SAMPLE: measured 2026-09-04 and again 2026-09-06,
+                           +8.83 ADU median rise against -0.42 for State 0,
+                           i.e. nothing. That photometry is settled and does
+                           not depend on any label.
+                           THE LABELS, HOWEVER, MOVED. The .cfg called State 1
+                           `mirror_out` until 2026-09-06; the operator's
+                           2026-09-05 mapping makes it `mirror_in`, which is
+                           also the sensible reading -- a mirror *inserted*
+                           couples the side branch in. So a name here would
+                           have selected the BLOCKING state the day the labels
+                           were corrected. The integer cannot.
+                           (kb/systems/dualcam-config-corrections-pending.md
+                           item 1. The earlier cost: kb/systems/current.md
+                           carried a dictated claim for a month, in three
+                           places; setting the branch from it turned the light
+                           off and cost the 2026-09-04 session, which then
+                           blamed the unreadable splitter.)
     CSUW1-Port             blue_red     both cameras fed; red_only starves blue
     CSUW1-Bright           Bright Field disk bypassed, widefield epi
     CSUW1-Dichroic         on           the Di01-T quad dichroic, in path
@@ -113,7 +124,9 @@ READOUT_PORT = "Dynamic Range"
 def wanted_state(cameras=CAMERAS, port: str = READOUT_PORT) -> list[tuple[str, str, str]]:
     state: list[tuple[str, str, str]] = [
         # Light path first: get photons to the sample and to the right port.
-        ("LappMainBranch1", "Label", "mirror_out"),
+        # By State, not Label -- the names for these two positions were
+        # swapped on 2026-09-06 and the photometry was not. See the docstring.
+        ("LappMainBranch1", "State", "1"),
         ("LightPath", "Label", "4-L100"),
         ("CSUW1-Bright", "BrightFieldPort", "Bright Field"),
         ("CSUW1-Dichroic", "Label", "on"),
@@ -216,10 +229,14 @@ def write_preset_cfg(parent: str | Path, out_path: str | Path, group: str,
         "# the circular-buffer footprint are NOT here -- they are not properties",
         "# and do not survive a config load either. Set those per session.",
         "#",
-        "# The entry most worth understanding is LappMainBranch1 = mirror_out:",
-        "# that is the position in which the Aura reaches the sample. The kb",
-        "# carried the reverse for a month in three places, and setting the branch",
-        "# from that record turned the light off and cost the 2026-09-04 session.",
+        "# The entry most worth understanding is LappMainBranch1 = State 1:",
+        "# that is the position in which the Aura reaches the sample, measured",
+        "# twice and independent of what the position is called. It is pinned by",
+        "# integer because the two names WERE swapped on 2026-09-06 -- State 1 is",
+        "# now `mirror_in` -- so a name here would have flipped to the blocking",
+        "# state on that date. The kb also carried the reverse claim for a month",
+        "# in three places, and setting the branch from that record turned the",
+        "# light off and cost the 2026-09-04 session.",
         "# " + "=" * 70,
     ]
     for device, prop, value in state:

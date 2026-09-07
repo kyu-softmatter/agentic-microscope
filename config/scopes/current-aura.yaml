@@ -21,12 +21,33 @@ scope:
   dichroic: "MXR00724-DM"
   emission_fixed: ["MXR00724-EM"]
 
+  # ⚠ CORRECTED 2026-09-06. This list read
+  #     88000v2-EM / EM1-455/50 / EM1-525/36 / EM1-605/52 / EM1-705/72
+  # which is the set config/scopes/current-laser.yaml RETRACTED on 2026-08-11
+  # as a misattribution -- another element's data had been attached to these
+  # wheels. The retraction reached that one profile and neither of the other
+  # two, so one physical pair of wheels had two contradictory records for
+  # nearly a month (kb/systems/dualcam-config-corrections-pending.md item 2b,
+  # which named current-aura.yaml only -- current-spectra.yaml carried it too).
+  #
+  # EM1/EM2 are the SAME physical wheels whichever source is illuminating, so
+  # all three profiles must carry one list. This is now current-laser.yaml's,
+  # verbatim; see its block comment for the position<->part reasoning and for
+  # why position 0 ("multi") is registered but deliberately not a candidate.
+  #
+  # ⚠ STILL OPEN, and it is not this edit's to close: no wheel part number
+  # exists behind ANY of these. The parts are INFERRED from each position's
+  # label being an EXCITATION line, then operator-confirmed -- not read off
+  # the hardware. README to-do item 3 holds the measurement that would settle
+  # it (centre and FWHM for positions 1-4).
   emission_filters:
-    - "88000v2-EM"
-    - "EM1-455/50"
-    - "EM1-525/36"
-    - "EM1-605/52"
-    - "EM1-705/72"
+    - "FF01-432/36" # position 1, label "405"  — 414.0-450.0 nm, reflects → Kinetix_blue
+    - "FF01-515/30" # position 2, label "488"  — 500.0-530.0 nm, reflects → Kinetix_blue
+    - "FF01-595/31" # position 3, label "555"  — 579.5-610.5 nm, transmits → Kinetix_red
+    - "FF01-680/42" # position 4, label "647"  — 659.0-701.0 nm, transmits → Kinetix_red
+    # position 5-8: Blocked (blocked by a metal plate, not selectable) —
+    # excluded from the candidates.
+    - "EM-Open" # position 9 — no filter (open), all wavelengths pass. Confirmed 2026-08-11.
 
   splitter:
     registry: "DM A561LP"
