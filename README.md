@@ -81,7 +81,7 @@ design, not a gap.
 | | |
 |---|---|
 | **8 review lenses** | optics · detection · compute resources · sample geometry · photo-perturbation · measurement validity · optical tweezers · mechanical & environmental |
-| **32 deterministic gates** | G1–G32, each classified `hard` / `bias` / `soft` by what its failure costs → [05 §2](docs/05-consensus-gate.md) |
+| **32 deterministic gates** | G1–G32, each classified `hard` / `bias` / `soft` by what its failure costs. **29 are implemented** — `G2`–`G4` carry a threshold and a default verdict in [04](docs/04-decision-engine.md) and appear in no Python file → [below](#two-more-axes-and-the-questions-neither-working-repo-asks) → [05 §2](docs/05-consensus-gate.md) |
 | **Provenance on every input** | `measured` vs `assumed`, with a separate `advances` axis that only `measured` can satisfy. Literature values compute but never advance → [`kb/literature/`](kb/literature/) |
 | **2,343 prior acquisitions** | normalized out of Micro-Manager metadata into transferable physical quantities, across two schema generations |
 | **1,116 tests, 1,060 on CI** | offline; the instrument is not required to run any of them. The badge covers 1,060 — the other 56 need a Micro-Manager device-adapter install → [running the tests](#running-the-tests) |
