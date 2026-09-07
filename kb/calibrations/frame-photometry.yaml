@@ -77,7 +77,9 @@ frames:
   # Common conditions: 100x Oil (ZDrive 2989.26, PFS In Range), intermediate
   # 1.0x, binning 2x2 -> 0.130 um/px, full frame 1200x1200 = 156 um, Kinetix22
   # DynamicRange 16-bit, camera post-processing OFF via the
-  # TwoColour/GreenRed-Widefield preset, LappMainBranch1 mirror_out,
+  # TwoColour/GreenRed-Widefield preset, LappMainBranch1 State 1 (named
+  # `mirror_out` by the labels of the day, `mirror_in` by the corrected
+  # ones from 2026-09-06 -- the integer is what this record means),
   # CSUW1-Port blue_red, exposure 10.00 ms, 12-frame average, dark frame at the
   # same exposure after a discarded warm-up.
   #
