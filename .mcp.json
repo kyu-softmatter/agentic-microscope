@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "agentic-microscope-hardware": {
-      "command": "C:\\Users\\Takatori lab\\venvs\\auto_microscope\\Scripts\\python.exe",
-      "args": ["-m", "mcp_server.server"],
+      "command": "python",
+      "args": ["mcp_server/bootstrap.py"],
       "env": {
         "AGENTIC_MICROSCOPE_ALLOW_MOTION": "0",
         "AGENTIC_MICROSCOPE_ALLOW_LASER": "0"
