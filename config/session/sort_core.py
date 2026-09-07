@@ -41,8 +41,20 @@ import numpy as np
 
 REPO = Path(__file__).resolve().parents[2]
 
-TRAP_HALF_RANGE_UM = 40.0
+#: NO MODULE-LEVEL TRAP RANGE. It used to be `TRAP_HALF_RANGE_UM = 40.0` here
+#: and in three other session scripts, and that is the wrong shape: the
+#: addressable half-extent belongs to the AOD calibration AT ONE
+#: MAGNIFICATION, so the 100x figure applied at 40x is a different quantity.
+#: It now comes from `data/trapping_range.yaml` through
+#: `optics.components.trapping_range_um`, keyed on the objective in place, and
+#: `resolve_half_range_um` REFUSES when the extent for that objective has
+#: never been stated -- see its docstring for why a fallback is not allowed.
 LINES = ["UV", "CYAN", "GREEN", "RED", "NIR"]
+#: Blue -> red, after a vertical flip, in px. Measured 2026-09-06 from Dragon
+#: Green visible on both cameras under CYAN: 24 of 27 objects matched within
+#: 8 px, translation -1.21 +- 2.05 and +1.32 +- 1.07 px, scale 0.99932.
+#: Zero within its own scatter, kept as the measured value rather than rounded
+#: to zero so a later re-measurement has something to disagree with.
 BLUE_TO_RED_PX = (-1.21, 1.32)
 
 SPECIES = [
@@ -73,6 +85,10 @@ class SortOpts:
     on_frame: object = field(default=None)  # callable(cam, frame, phase)
     taken: object = field(default=None)     # {species: set(slot y um)} filled
     flip: object = field(default=None)      # None = choose polarity, bool = forced
+    #: Addressable trap half-extent, um. None means "not resolved yet" --
+    #: `sort_once` fills it from the objective in place and refuses if that
+    #: objective's extent is unrecorded. Set it explicitly only to override.
+    half_range_um: float | None = None
 
 
 def _say(opts, msg):
@@ -130,17 +146,23 @@ def blue_to_red(pt, shape, offset=BLUE_TO_RED_PX):
     return (pt[0] + offset[0], (h - 1) - pt[1] + offset[1])
 
 
-def px_to_trap_um(px, p0, um):
-    return ((px[0] - p0[0]) * um, -(px[1] - p0[1]) * um)
+def px_to_trap_um(px, p0, um_per_px):
+    return ((px[0] - p0[0]) * um_per_px, -(px[1] - p0[1]) * um_per_px)
 
 
-def trap_um_to_px(u, p0, um):
-    return (p0[0] + u[0] / um, p0[1] - u[1] / um)
+def trap_um_to_px(um, p0, um_per_px):
+    return (p0[0] + um[0] / um_per_px, p0[1] - um[1] / um_per_px)
 
 
-def path_is_clear(a, b, obstacles, clear_px, ignore_px=6.0):
-    ax, ay = a
-    bx, by = b
+def path_is_clear(a_px, b_px, obstacles, clear_px, ignore_px=6.0):
+    """Is the straight corridor from a to b free of obstacles?
+
+    Point-to-segment distance for every detected object. Objects within
+    `ignore_px` of either endpoint are skipped -- the cargo itself is at one
+    end, and whatever sits at the destination is the caller's business.
+    """
+    ax, ay = a_px
+    bx, by = b_px
     vx, vy = bx - ax, by - ay
     seg2 = vx * vx + vy * vy
     if seg2 <= 0:
@@ -154,7 +176,9 @@ def path_is_clear(a, b, obstacles, clear_px, ignore_px=6.0):
         d = math.hypot(o["x"] - (ax + tt * vx), o["y"] - (ay + tt * vy))
         if worst is None or d < worst:
             worst = d
-    return (True, None) if worst is None else (worst >= clear_px, worst)
+    if worst is None:
+        return True, None
+    return worst >= clear_px, worst
 
 
 def min_separation_during_move(a_from, a_to, b_from, b_to):
@@ -165,22 +189,29 @@ def min_separation_during_move(a_from, a_to, b_from, b_to):
     minimum. Sampled coarsely instead, the dangerous case is missed: two beads
     can start and finish far apart and still pass within a diameter halfway.
     """
+def min_separation_during_move(a_from, a_to, b_from, b_to):
+    """Closest approach of two beads moved in lockstep, and when it happens.
+
+    Both traps advance along their straight lines at the same NORMALISED rate,
+    so at normalised time s in [0, 1] the separation vector is
+    ``d(s) = (a_from - b_from) + s * ((a_to - a_from) - (b_to - b_from))``,
+    i.e. linear in s -- and |d(s)|^2 is a quadratic with a closed-form minimum
+    at ``s* = -(d0 . dv) / (dv . dv)``, clamped to the interval.
+
+    Worth being exact about rather than sampling, because the dangerous case is
+    narrow: two beads can start far apart and finish far apart and still pass
+    within a bead diameter halfway through, and a sampled check with a coarse
+    step walks straight past it.
+    """
     d0 = (a_from[0] - b_from[0], a_from[1] - b_from[1])
     dv = ((a_to[0] - a_from[0]) - (b_to[0] - b_from[0]),
           (a_to[1] - a_from[1]) - (b_to[1] - b_from[1]))
-    den = dv[0] ** 2 + dv[1] ** 2
-    if den <= 1e-12:
+    denom = dv[0] * dv[0] + dv[1] * dv[1]
+    if denom <= 1e-12:                     # parallel, equal-length moves
         return math.hypot(*d0), 0.0
-    s = max(0.0, min(1.0, -(d0[0] * dv[0] + d0[1] * dv[1]) / den))
+    s = -(d0[0] * dv[0] + d0[1] * dv[1]) / denom
+    s = max(0.0, min(1.0, s))
     return math.hypot(d0[0] + s * dv[0], d0[1] + s * dv[1]), s
-
-
-def geometry(core, binning_um=None):
-    """p0, um/px and the bead-area window for the frame as currently set."""
-    _s, _h, origin_off = trap_sequence_consts()
-    um = binning_um if binning_um else core.getPixelSizeUm()
-    w, h = core.getImageWidth(), core.getImageHeight()
-    p0 = (w / 2.0 + origin_off[0] / um, h / 2.0 + origin_off[1] / um)
     return p0, um, (w, h)
 
 
@@ -246,23 +277,89 @@ def survey(core, opts, area_px, shape):
     return found
 
 
+def resolve_half_range_um(core) -> float:
+    """Addressable trap half-extent for the objective currently in place.
+
+    Refuses rather than defaulting, and the asymmetry of the failure is the
+    reason. Points outside the calibrated field are **clipped by the Tweez GUI
+    with no error on either side**, so a range that is too generous does not
+    raise -- it puts the trap somewhere nobody asked for. A range that is too
+    small only discards reachable candidates. Neither is acceptable silently,
+    and only one of them is even detectable afterwards.
+
+    Square is what lets one number stand for both axes: the operator stated
+    2026-09-06 that the field is square and centred on the camera view, which
+    `TRAP_ORIGIN_OFFSET_UM` independently corroborates to about a micrometre.
+    Non-square entries are refused rather than reduced to their minimum.
+    """
+    from hardware.microscope import _objective_mag_from_label
+    from optics import components
+
+    try:
+        label = str(core.getStateLabel("Nosepiece"))
+    except Exception as exc:
+        raise SystemExit(
+            "REFUSED: cannot read the Nosepiece, so the objective is unknown "
+            f"and the trap range with it ({exc}).") from exc
+    mag = _objective_mag_from_label(label)
+    if mag is None:
+        raise SystemExit(
+            f"REFUSED: cannot read one objective magnification out of the "
+            f"Nosepiece label {label!r}, so the addressable trap range is "
+            "unknown and every reachability test below would be invented.")
+    hit = components.trapping_range_um(mag)
+    if hit is None:
+        raise SystemExit(
+            f"REFUSED: no trapping range recorded for the {mag:g}x "
+            f"({label!r}). data/trapping_range.yaml has it for the 100x only "
+            "(operator, 2026-09-06). It is NOT derivable from the 100x figure "
+            "by a magnification ratio -- that would give a plausible number "
+            "with no provenance, which is what the four hardcoded 40.0 "
+            "literals were. Read the half-extent off the GUI's Beam Position "
+            "calibration at this objective and add it to that file, or run at "
+            "100x.")
+    half_w, half_h, evidence = hit
+    if abs(half_w - half_h) > 1e-9:
+        raise SystemExit(
+            f"REFUSED: the recorded range for the {mag:g}x is "
+            f"{half_w:g} x {half_h:g} um, not square. Everything downstream "
+            "carries ONE half-extent for both axes; reducing it to the "
+            "smaller would silently shrink the reachable field on one axis.")
+    if evidence not in ("stated", "measured"):
+        raise SystemExit(
+            f"REFUSED: the range for the {mag:g}x carries evidence "
+            f"{evidence!r}, which is neither `stated` nor `measured`.")
+    return float(half_w)
+
+
 def slot_ys(opts):
     """Slot y positions, centre outward, inside the addressable range.
 
-    A column cannot run past TRAP_HALF_RANGE_UM, so it holds
-    2*floor(range/pitch)+1 slots -- 9 at the 10 um default. That is the ceiling
+    A column cannot run past the addressable half-extent, so it holds
+    2*floor(range/pitch)+1 slots -- 9 at the 10 um default and the 100x's
+    40 um. The range comes from `opts.half_range_um`, which `sort_once` fills
+    from the objective in place, so THIS COUNT MOVES WITH THE OBJECTIVE. That is the ceiling
     on how many of a species can ever be parked, whatever the trap count
     allows: the GUI took 160 traps without complaint (measured 2026-09-05), so
     destinations, not traps, are what runs out. Centre outward keeps the early
     rounds' journeys short.
     """
-    n = int(TRAP_HALF_RANGE_UM // opts.slot_pitch_um)
+    if opts.half_range_um is None:
+        raise ValueError(
+            "slot_ys needs opts.half_range_um. It is filled by sort_once from "
+            "the objective in place -- see resolve_half_range_um.")
+    n = int(opts.half_range_um // opts.slot_pitch_um)
     return sorted((i * opts.slot_pitch_um for i in range(-n, n + 1)),
                   key=lambda y: (abs(y), y))
 
 
 def plan(found, p0, um, opts):
     """Cargo, destinations and routes. Pure geometry -- touches no hardware."""
+    if opts.half_range_um is None:
+        raise ValueError(
+            "plan needs opts.half_range_um. It is filled by sort_once from the "
+            "objective in place -- see resolve_half_range_um.")
+    half_range = float(opts.half_range_um)
     every = found["red"] + found["green"]
     if not every:
         return [], [], every, "nothing detected"
@@ -290,7 +387,7 @@ def plan(found, p0, um, opts):
             if not (lo_a <= d["area"] <= hi_a):
                 continue
             u = px_to_trap_um((d["x"], d["y"]), p0, um)
-            if abs(u[0]) > TRAP_HALF_RANGE_UM or abs(u[1]) > TRAP_HALF_RANGE_UM:
+            if abs(u[0]) > half_range or abs(u[1]) > half_range:
                 continue
             if min((math.hypot(d["x"] - o["x"], d["y"] - o["y"])
                     for o in every if o is not d), default=1e9) < iso_px:
@@ -391,6 +488,8 @@ def plan(found, p0, um, opts):
 def sort_once(core, ot, opts: SortOpts | None = None) -> dict:
     """Survey, plan and transport. Uses an EXISTING core and tweezers link."""
     opts = opts or SortOpts()
+    if opts.half_range_um is None:
+        opts.half_range_um = resolve_half_range_um(core)
     grab_settle, held_nm, _off = trap_sequence_consts()
     p0, um, shape = geometry(core)
     area_px = area_window(um, opts.bead_um)
@@ -428,7 +527,7 @@ def sort_once(core, ot, opts: SortOpts | None = None) -> dict:
         # argue against trapping more particles: on 2026-09-05, 160 named traps
         # were created and deleted cleanly in one go. Whatever produced that
         # -20, it was not running out of trap slots. What actually limits this
-        # sort is destinations -- TRAP_HALF_RANGE_UM with slot_pitch_um gives
+        # sort is destinations -- the addressable range with slot_pitch_um gives
         # slot_ys(), 9 per species -- and in practice the candidate pool runs
         # dry before even those fill.
         for call in (lambda: ot.delete_trap(nm), lambda: ot.create_simple_trap(nm)):
@@ -533,6 +632,10 @@ def sort_until_full(core, ot, opts: SortOpts | None = None,
     leaves its slot open for a later round.
     """
     opts = opts or SortOpts()
+    if opts.half_range_um is None:
+        # Before slot_ys, not after: the slot count IS the addressable range
+        # divided by the pitch, so `cap` below cannot be computed without it.
+        opts.half_range_um = resolve_half_range_um(core)
     cap = len(slot_ys(opts))
     taken = {key: set() for key, *_rest in SPECIES}
     flip, rounds, stalls = None, [], 0

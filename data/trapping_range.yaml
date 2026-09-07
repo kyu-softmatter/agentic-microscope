@@ -1,0 +1,97 @@
+# Half-extents of the addressable optical-trap field at the sample, per objective.
+#
+# Machine-readable mirror of `kb/systems/current.md > optical_tweezers >
+# trapping_range`, the same way data/pixel_size.yaml mirrors that file's
+# `pixel_size_calibration` entry. The dossier stays the record; this file is
+# what code reads.
+#
+# ---------------------------------------------------------------------------
+# WHY THIS FILE EXISTS  (added 2026-09-06)
+# ---------------------------------------------------------------------------
+# The 100x figure was hardcoded as `TRAP_HALF_RANGE_UM = 40.0` in FOUR separate
+# session scripts -- sort_core.py, sort_two_species.py, live_dualcam_view.py and
+# trap_brightest.py -- three of them with no comment saying where the number
+# came from or which objective it belongs to. All four applied it whatever was
+# in the nosepiece.
+#
+# That is the wrong shape twice over. The extent is a property of the AOD
+# calibration AT ONE MAGNIFICATION: the same angular deflection maps to a larger
+# field at lower magnification, so the half-extent in micrometres grows roughly
+# with the magnification ratio. And the failure is silent in the dangerous
+# direction -- `config/tweezers/run_pattern.py` and
+# `hardware/tweezers_drive.py` both record that points outside the calibrated
+# field are CLIPPED BY THE GUI WITH NO ERROR on either side. So a range that is
+# too generous does not raise; it puts the trap somewhere else.
+#
+# `hardware/tweezers_drive.py` already refuses a pattern when `trapping_range`
+# is unrecorded, and tests/test_tweezers_drive.py::
+# test_range_check_blocked_not_passed_when_unrecorded exists to hold that line.
+# The four literals bypassed it. `optics.components.trapping_range_um` is the
+# one reader now, and it returns None -- never a default -- for any objective
+# whose extent nobody has stated.
+#
+# ---------------------------------------------------------------------------
+# EVIDENCE TIERS USED HERE
+# ---------------------------------------------------------------------------
+#   stated     the operator stated it for this objective. Good enough to act
+#              on; not the same as a measurement off the GUI's own calibration.
+#   measured   read off the Beam Position calibration, or derived from trapped
+#              beads at known commanded positions. NOTHING IS THIS YET.
+#
+# There is deliberately no `nominal` tier and no scaling rule. Multiplying the
+# 100x extent by a magnification ratio would produce a plausible number for
+# every objective and provenance for none, which is exactly how the four
+# literals came to cap a sort. If you need 40x, state or measure 40x.
+
+trapping_range:
+  units: micrometres at the sample
+  mirrors: "kb/systems/current.md > optical_tweezers > trapping_range"
+
+  table:
+    # Operator statement, 2026-09-06: "trapping area is always square, the center
+    # of the square is located in the middle of the camera view, and the unit in
+    # OT software is in um. The square size is around (-40um to 40um) in x and y."
+    #
+    # SQUARE AND CENTRED IS WHAT MAKES THE TRANSFORM COMPUTABLE, and it is
+    # independently corroborated: centred on the camera field means trap (0,0) is
+    # the field centre, which the measured TRAP_ORIGIN_OFFSET_UM = (-1.013,
+    # -1.015) um in config/tweezers/trap_sequence.py confirms to about a
+    # micrometre over five holds.
+    #
+    # ⚠ It also CONTRADICTS the trapezoid claim in
+    # kb/decisions/2026-08-26-tweezers-pattern-vs-direct.md, which read the GUI's
+    # "green trapezoid" as the true shape. The contradiction is recorded rather
+    # than resolved by preference: an operator statement about their own
+    # instrument outranks a shape read off a GUI drawing, since a square drawn in
+    # perspective looks like a trapezoid. So the rectangular check is now believed
+    # SUFFICIENT and not merely necessary -- and if a pattern ever deforms while
+    # passing the range check, that belief is the first thing to re-examine.
+    "100":
+      shape: square
+      half_width_um: 40.0
+      half_height_um: 40.0
+      centred_on: camera field centre
+      evidence: stated
+      source: user_statement
+      stated_date: 2026-09-06
+
+    # The remaining five objectives: NOT STATED, and left null on purpose.
+    #
+    # The AOD field is wider at lower magnification, so every one of these is
+    # LARGER than the 100x's 40 um -- which means a caller that fell back to 40
+    # would silently discard reachable particles rather than overreach. That is
+    # the harmless direction, and it is still not a reason to invent the number:
+    # the sort's destination count is computed from this extent, so a wrong value
+    # sets how many particles an experiment can park (at a 10 um slot pitch the
+    # 100x's 40 um gives 9 slots per species, against 43-50 detected per survey).
+    #
+    # TODO(human): the half-extent at each magnification you actually trap at.
+    # Read it off the GUI's Beam Position calibration at that objective, or drive
+    # a known commanded position and see where the bead ends up. 40x WI is the
+    # one that matters next -- config/tweezers/active-microrheology-drive.yaml is
+    # specified at 40x and its `trapping_range` is null for exactly this reason.
+    "4":   {half_width_um: null, half_height_um: null, evidence: null}
+    "10":  {half_width_um: null, half_height_um: null, evidence: null}
+    "20":  {half_width_um: null, half_height_um: null, evidence: null}
+    "40":  {half_width_um: null, half_height_um: null, evidence: null}
+    "60":  {half_width_um: null, half_height_um: null, evidence: null}

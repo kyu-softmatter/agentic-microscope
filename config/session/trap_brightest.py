@@ -124,7 +124,11 @@ if str(REPO) not in sys.path:
 DEFAULT_CFG = REPO / "config" / "micromanager" / "dualcam_twocolour.cfg"
 LINES = ["UV", "CYAN", "GREEN", "RED", "NIR"]
 CAM = "Kinetix_red"          # the camera the trap origin was measured on
-TRAP_HALF_RANGE_UM = 40.0
+#: NO MODULE-LEVEL TRAP RANGE, as of 2026-09-06. `--half-range-um` now
+#: defaults to None and is resolved from the objective in place through
+#: `sort_core.resolve_half_range_um` -> `data/trapping_range.yaml`. The +-40 um
+#: that used to sit here is the **100x** figure and this script does not check
+#: the objective, so at 40x it was silently the wrong quantity.
 
 
 def _trap_sequence():
@@ -314,7 +318,11 @@ def main(argv=None) -> int:
                         "Two 5 um spheres touch at 5 um, so the default leaves a 3 um "
                         "margin for the excursion each keeps inside its own well.")
     p.add_argument("--isolation-um", type=float, default=12.0)
-    p.add_argument("--half-range-um", type=float, default=TRAP_HALF_RANGE_UM)
+    p.add_argument("--half-range-um", type=float, default=None,
+                   help="addressable trap half-extent, um. Default: read for the "
+                        "objective in place from data/trapping_range.yaml, which "
+                        "REFUSES rather than guessing when that objective's extent "
+                        "has never been stated (only the 100x has, so far).")
     p.add_argument("--bead-um", type=float, default=5.0)
     p.add_argument("--green", type=int, default=45)
     p.add_argument("--exposure-ms", type=float, default=10.0)
@@ -358,8 +366,19 @@ def main(argv=None) -> int:
 
     print(f"objective {core.getStateLabel('Nosepiece')}, {um_per_px:.4f} um/px "
           f"at bin {args.binning}, frame {w}x{h}", flush=True)
+    if args.half_range_um is None:
+        import importlib.util as _ilu
+        _spec = _ilu.spec_from_file_location(
+            "_sort_core", str(REPO / "config" / "session" / "sort_core.py"))
+        _core = _ilu.module_from_spec(_spec)
+        sys.modules["_sort_core"] = _core
+        _spec.loader.exec_module(_core)
+        args.half_range_um = _core.resolve_half_range_um(core)
+        source = "data/trapping_range.yaml, for the objective in place"
+    else:
+        source = "--half-range-um, overriding the recorded value"
     print(f"trap (0,0) at pixel ({p0[0]:.1f}, {p0[1]:.1f}); addressable square "
-          f"+-{args.half_range_um:g} um", flush=True)
+          f"+-{args.half_range_um:g} um  [{source}]", flush=True)
 
     def burst(n):
         out = []

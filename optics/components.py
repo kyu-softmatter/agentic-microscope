@@ -469,6 +469,48 @@ def pixel_size_table() -> dict[str, Any]:
     return _load_yaml("pixel_size.yaml").get("pixel_size") or {}
 
 
+@lru_cache(maxsize=1)
+def trapping_range_table() -> dict[str, Any]:
+    """``data/trapping_range.yaml`` -- addressable trap half-extents per objective.
+
+    Mirrors ``kb/systems/current.md > optical_tweezers > trapping_range``.
+    """
+    return _load_yaml("trapping_range.yaml").get("trapping_range") or {}
+
+
+def trapping_range_um(mag_objective: float) -> tuple[float, float, str] | None:
+    """Half-extents of the addressable trap field, with the evidence tier.
+
+    Returns ``(half_width_um, half_height_um, evidence)``, or **``None`` when
+    nobody has stated the extent for this objective** -- which is every
+    objective but the 100x today.
+
+    ``None`` is the whole point of this function and must not be turned into a
+    default by the caller. The extent belongs to the AOD calibration at one
+    magnification: the same deflection covers a larger sample field at lower
+    magnification, so a 100x number used at 40x is simply a different quantity.
+    And the failure is silent in the direction that matters -- points outside
+    the calibrated field are clipped by the Tweez GUI with no error on either
+    side (``config/tweezers/run_pattern.py``), so an over-generous range does
+    not raise, it puts the trap somewhere the caller did not ask for.
+
+    ``hardware.tweezers_drive`` has refused an unrecorded ``trapping_range``
+    since it was written. Until 2026-09-06 four session scripts carried the
+    100x figure as a bare ``TRAP_HALF_RANGE_UM = 40.0`` literal instead and
+    bypassed that refusal; this is the one reader they now share.
+    """
+    table = trapping_range_table().get("table") or {}
+    if not float(mag_objective).is_integer():
+        return None
+    row = table.get(str(int(mag_objective)))
+    if not row:
+        return None
+    half_w, half_h = row.get("half_width_um"), row.get("half_height_um")
+    if half_w is None or half_h is None:
+        return None
+    return float(half_w), float(half_h), str(row.get("evidence") or "unknown")
+
+
 def recorded_pixel_um(
     mag_objective: float, mag_intermediate: float = 1.0, binning: int = 1
 ) -> tuple[float, str] | None:
@@ -591,5 +633,7 @@ def find_line(source: str, line: str) -> LightSourceLine | None:
 
 def reset_registries() -> None:
     """Drop caches after editing the YAML files."""
-    for fn in (fluorophores, filters, light_sources, detectors, objectives, objective_keys):
+    for fn in (fluorophores, filters, light_sources, detectors,
+               objectives, objective_keys, pixel_size_table,
+               trapping_range_table):
         fn.cache_clear()

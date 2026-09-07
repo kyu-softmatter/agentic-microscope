@@ -108,21 +108,48 @@ if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
 DEFAULT_CFG = REPO / "config" / "micromanager" / "dualcam_twocolour.cfg"
-LINES = ["UV", "CYAN", "GREEN", "RED", "NIR"]
-TRAP_HALF_RANGE_UM = 40.0
 
-#: Blue -> red, after a vertical flip, in px. Measured 2026-09-06 from Dragon
-#: Green visible on both cameras under CYAN: 24 of 27 objects matched within
-#: 8 px, translation -1.21 +- 2.05 and +1.32 +- 1.07 px, scale 0.99932.
-#: Zero within its own scatter, kept as the measured value rather than rounded
-#: to zero so a later re-measurement has something to disagree with.
-BLUE_TO_RED_PX = (-1.21, 1.32)
+#: ---------------------------------------------------------------------------
+#: THIS FILE IS THE CLI FRONT END. THE LOGIC LIVES IN sort_core.py.
+#: ---------------------------------------------------------------------------
+#: It used to carry its own copy of every function below, which is what
+#: sort_core.py's own docstring says must not happen ("The logic lives here so
+#: there is one copy"). The copies had already drifted -- not in behaviour, but
+#: in documentation: all six were numerically identical over 20 000 random
+#: cases (`min_separation_during_move` differed by at most 1.1e-13 px, the
+#: last-bit difference between `x**2` and `x*x`), while four of them carried
+#: fuller docstrings HERE than in the shared module. So the drift was already
+#: running in the direction that hides a future real one, and the better
+#: documentation has been moved into sort_core.py rather than deleted.
+#:
+#: One function was NOT moved: `rms_nm`, a bead-excursion statistic, was
+#: defined here and never called. It is also the test the 2026-09-04 session
+#: FALSIFIED -- RMS excursion called four held beads free and one unheld bead
+#: held, five cycles out of five, because a bead stuck to the coverslip sits as
+#: still as a trapped one. It has been deleted rather than left for someone to
+#: pick up. What separates the populations is moving the trap and seeing
+#: whether the bead comes (98.6-99.8 % against 2.9 %).
+def _sort_core():
+    src = REPO / "config" / "session" / "sort_core.py"
+    spec = importlib.util.spec_from_file_location("_sort_core", src)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules["_sort_core"] = mod
+    spec.loader.exec_module(mod)
+    return mod
 
-SPECIES = [
-    # key, camera, line, label, destination sign in x
-    ("red", "Kinetix_red", "GREEN", "abvigen-red", -1.0),
-    ("green", "Kinetix_blue", "CYAN", "bangs-dragongreen", +1.0),
-]
+
+_CORE = _sort_core()
+
+detect = _CORE.detect
+blue_to_red = _CORE.blue_to_red
+px_to_trap_um = _CORE.px_to_trap_um
+trap_um_to_px = _CORE.trap_um_to_px
+path_is_clear = _CORE.path_is_clear
+min_separation_during_move = _CORE.min_separation_during_move
+resolve_half_range_um = _CORE.resolve_half_range_um
+LINES = _CORE.LINES
+SPECIES = _CORE.SPECIES
+BLUE_TO_RED_PX = _CORE.BLUE_TO_RED_PX
 
 
 def _trap_sequence():
@@ -133,97 +160,6 @@ def _trap_sequence():
     spec.loader.exec_module(mod)
     return mod
 
-
-def detect(frame, area_px, n_sigma=8.0):
-    import cv2
-
-    f32 = frame.astype(np.float32)
-    residual = f32 - cv2.GaussianBlur(f32, (0, 0), 15)
-    scale = float(np.median(np.abs(residual - np.median(residual)))) * 1.4826 or 1.0
-    n, labels, stats, cent = cv2.connectedComponentsWithStats(
-        (residual > n_sigma * scale).astype(np.uint8), 8)
-    lo, hi = area_px
-    out = []
-    for i in range(1, n):
-        area = int(stats[i, 4])
-        if not (lo <= area <= hi):
-            continue
-        sel = labels == i
-        out.append({"x": float(cent[i][0]), "y": float(cent[i][1]), "area": area,
-                    "flux": float(residual[sel].sum())})
-    out.sort(key=lambda d: -d["flux"])
-    return out
-
-
-def blue_to_red(pt, shape, offset=BLUE_TO_RED_PX):
-    h, _w = shape
-    return (pt[0] + offset[0], (h - 1) - pt[1] + offset[1])
-
-
-def px_to_trap_um(px, p0, um_per_px):
-    return ((px[0] - p0[0]) * um_per_px, -(px[1] - p0[1]) * um_per_px)
-
-
-def trap_um_to_px(um, p0, um_per_px):
-    return (p0[0] + um[0] / um_per_px, p0[1] - um[1] / um_per_px)
-
-
-def path_is_clear(a_px, b_px, obstacles, clear_px, ignore_px=6.0):
-    """Is the straight corridor from a to b free of obstacles?
-
-    Point-to-segment distance for every detected object. Objects within
-    `ignore_px` of either endpoint are skipped -- the cargo itself is at one
-    end, and whatever sits at the destination is the caller's business.
-    """
-    ax, ay = a_px
-    bx, by = b_px
-    vx, vy = bx - ax, by - ay
-    seg2 = vx * vx + vy * vy
-    if seg2 <= 0:
-        return True, None
-    worst = None
-    for o in obstacles:
-        if (math.hypot(o["x"] - ax, o["y"] - ay) < ignore_px
-                or math.hypot(o["x"] - bx, o["y"] - by) < ignore_px):
-            continue
-        tt = max(0.0, min(1.0, ((o["x"] - ax) * vx + (o["y"] - ay) * vy) / seg2))
-        d = math.hypot(o["x"] - (ax + tt * vx), o["y"] - (ay + tt * vy))
-        if worst is None or d < worst:
-            worst = d
-    if worst is None:
-        return True, None
-    return worst >= clear_px, worst
-
-
-def min_separation_during_move(a_from, a_to, b_from, b_to):
-    """Closest approach of two beads moved in lockstep, and when it happens.
-
-    Both traps advance along their straight lines at the same NORMALISED rate,
-    so at normalised time s in [0, 1] the separation vector is
-    ``d(s) = (a_from - b_from) + s * ((a_to - a_from) - (b_to - b_from))``,
-    i.e. linear in s -- and |d(s)|^2 is a quadratic with a closed-form minimum
-    at ``s* = -(d0 . dv) / (dv . dv)``, clamped to the interval.
-
-    Worth being exact about rather than sampling, because the dangerous case is
-    narrow: two beads can start far apart and finish far apart and still pass
-    within a bead diameter halfway through, and a sampled check with a coarse
-    step walks straight past it.
-    """
-    d0 = (a_from[0] - b_from[0], a_from[1] - b_from[1])
-    dv = ((a_to[0] - a_from[0]) - (b_to[0] - b_from[0]),
-          (a_to[1] - a_from[1]) - (b_to[1] - b_from[1]))
-    denom = dv[0] * dv[0] + dv[1] * dv[1]
-    if denom <= 1e-12:                     # parallel, equal-length moves
-        return math.hypot(*d0), 0.0
-    s = -(d0[0] * dv[0] + d0[1] * dv[1]) / denom
-    s = max(0.0, min(1.0, s))
-    return math.hypot(d0[0] + s * dv[0], d0[1] + s * dv[1]), s
-
-
-def rms_nm(track, um_per_px):
-    a = np.array(track)
-    return float(np.sqrt(((a - a.mean(axis=0)) ** 2).sum(axis=1).mean())
-                 * um_per_px * 1000.0)
 
 
 def main(argv=None) -> int:
@@ -282,8 +218,12 @@ def main(argv=None) -> int:
     area_px = (max(2, int(0.25 * math.pi * r * r)), int(4.0 * math.pi * r * r))
     print(f"objective {core.getStateLabel('Nosepiece')}, {um:.4f} um/px, frame {w}x{h}",
           flush=True)
-    print(f"trap (0,0) at px ({p0[0]:.1f}, {p0[1]:.1f}); square +-{TRAP_HALF_RANGE_UM:g} um",
-          flush=True)
+    # Per-objective, and it REFUSES rather than falling back to the 100x's
+    # 40 um -- see sort_core.resolve_half_range_um. This used to be a module
+    # constant here and in three other scripts.
+    half_range_um = resolve_half_range_um(core)
+    print(f"trap (0,0) at px ({p0[0]:.1f}, {p0[1]:.1f}); "
+          f"square +-{half_range_um:g} um", flush=True)
 
     def light(cyan, green):
         for line in LINES:
@@ -359,7 +299,7 @@ def main(argv=None) -> int:
                 if not (lo_a <= d["area"] <= hi_a):
                     continue
                 u = px_to_trap_um((d["x"], d["y"]), p0, um)
-                if abs(u[0]) > TRAP_HALF_RANGE_UM or abs(u[1]) > TRAP_HALF_RANGE_UM:
+                if abs(u[0]) > half_range_um or abs(u[1]) > half_range_um:
                     continue
                 if min((math.hypot(d["x"] - o["x"], d["y"] - o["y"])
                         for o in every if o is not d), default=1e9) < iso_px:

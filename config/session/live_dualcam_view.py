@@ -286,13 +286,18 @@ def transform(frame: np.ndarray, dx: int, dy: int, flip_x: bool, flip_y: bool) -
     return out
 
 
-#: Half-extent of the addressable AOD square, um, at 100x. Operator statement
-#: 2026-09-06: "trapping area is always square, the center of the square is
-#: located in the middle of the camera view, the square size is around
-#: (-40um to 40um) in x and y." Mirrored into
-#: config/tweezers/active-microrheology-drive.yaml > trapping_range, which
-#: carries the full reasoning and the objective caveat.
-TRAP_HALF_RANGE_UM = 40.0
+#: NO MODULE-LEVEL TRAP RANGE, as of 2026-09-06. The half-extent of the
+#: addressable AOD square belongs to the objective, not to this file: the
+#: operator's ±40 um statement (2026-09-06) is the **100x** figure, and the
+#: same deflection covers a wider sample field at lower magnification. It now
+#: comes from `data/trapping_range.yaml` through
+#: `optics.components.trapping_range_um`, resolved once in `main()` by
+#: `sort_core.resolve_half_range_um(core)` and threaded down as `half_um`.
+#:
+#: `half_um = 0.0` therefore means UNKNOWN and nothing is drawn -- the same
+#: convention `um_per_px = 0.0` already uses here. Drawing a 40 um box at 40x
+#: would put a confident wrong boundary on screen, which is worse than none,
+#: because points outside the real field are clipped by the GUI silently.
 
 
 def px_to_trap_um(px, p0_px, um_per_px) -> tuple[float, float]:
@@ -314,8 +319,31 @@ def px_to_trap_um(px, p0_px, um_per_px) -> tuple[float, float]:
     return ((px[0] - p0_px[0]) * um_per_px, -(px[1] - p0_px[1]) * um_per_px)
 
 
+_SORT_CORE = None
+
+
+def _sort_core_module():
+    """`sort_core.py`, loaded once. The shared implementation, not a copy.
+
+    Used for two things here: `resolve_half_range_um`, which every frame's
+    reachability test needs, and `sort_until_full` on the space bar. It used to
+    be loaded only under `--sort-on-space`, so the range came from a literal
+    when sorting was off and from the same file's constant when it was on.
+    """
+    global _SORT_CORE
+    if _SORT_CORE is None:
+        import importlib.util as _ilu
+        spec = _ilu.spec_from_file_location(
+            "_sort_core", str(REPO / "config" / "session" / "sort_core.py"))
+        mod = _ilu.module_from_spec(spec)
+        sys.modules["_sort_core"] = mod
+        spec.loader.exec_module(mod)
+        _SORT_CORE = mod
+    return _SORT_CORE
+
+
 def draw_trap_range(bgr, p0_px, size: int, frame_w: int, um_per_px: float,
-                    half_um: float = TRAP_HALF_RANGE_UM) -> None:
+                    half_um: float = 0.0) -> None:
     """The square the trap can actually reach, centred on trap (0,0).
 
     Worth drawing rather than merely knowing: a bead outside it cannot be
@@ -356,7 +384,8 @@ def draw_trap_marker(bgr, p0_px, size: int, frame_w: int) -> None:
 
 def draw_panel(gray8: np.ndarray, dets: list[dict], colour, title: str,
                stats_lines: list[str], size: int, saturated: bool,
-               trap_px=None, um_per_px: float = 0.0) -> np.ndarray:
+               trap_px=None, um_per_px: float = 0.0,
+               half_um: float = 0.0) -> np.ndarray:
     import cv2
 
     h, w = gray8.shape
@@ -381,8 +410,8 @@ def draw_panel(gray8: np.ndarray, dets: list[dict], colour, title: str,
         else:
             cv2.circle(bgr, c, r, colour, 1, cv2.LINE_AA)
     if trap_px is not None:
-        if um_per_px:
-            draw_trap_range(bgr, trap_px, size, w, um_per_px)
+        if um_per_px and half_um:
+            draw_trap_range(bgr, trap_px, size, w, um_per_px, half_um)
         draw_trap_marker(bgr, trap_px, size, w)
     cv2.rectangle(bgr, (0, 0), (size - 1, size - 1), colour, 1)
     cv2.putText(bgr, title, (8, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, colour, 1, cv2.LINE_AA)
@@ -399,7 +428,8 @@ def draw_panel(gray8: np.ndarray, dets: list[dict], colour, title: str,
 
 def draw_overlay(red8: np.ndarray, blue8: np.ndarray, matched: list[tuple],
                  size: int, dx: int, dy: int, flip_x: bool, flip_y: bool,
-                 n_amb: int, trap_px=None, um_per_px: float = 0.0) -> np.ndarray:
+                 n_amb: int, trap_px=None, um_per_px: float = 0.0,
+                 half_um: float = 0.0) -> np.ndarray:
     import cv2
 
     h, w = red8.shape
@@ -409,10 +439,10 @@ def draw_overlay(red8: np.ndarray, blue8: np.ndarray, matched: list[tuple],
     for (rx, ry) in matched:
         cv2.circle(bgr, (int(rx), int(ry)), 14, (0, 220, 255), 1, cv2.LINE_AA)
     bgr = cv2.resize(bgr, (size, size), interpolation=cv2.INTER_AREA)
-    if trap_px is not None and um_per_px:
+    if trap_px is not None and um_per_px and half_um:
         # Exact here: panel 3 is composed in RED-camera coordinates, which is
         # the frame the trap origin was measured in.
-        draw_trap_range(bgr, trap_px, size, w, um_per_px)
+        draw_trap_range(bgr, trap_px, size, w, um_per_px, half_um)
         draw_trap_marker(bgr, trap_px, size, w)
     cv2.rectangle(bgr, (0, 0), (size - 1, size - 1), (200, 200, 200), 1)
     cv2.putText(bgr, "3  overlay  red=Abvigen  green=DragonGreen", (8, 20),
@@ -566,6 +596,10 @@ def main(argv: list[str] | None = None) -> int:
     # Pixel size AFTER the binning is set, and not scaled -- see the note at the
     # top of the file. Read the other way round it is right only by accident.
     binned_um = core.getPixelSizeUm()
+    # Per-objective, from data/trapping_range.yaml. Resolved once here rather
+    # than defaulted per call site, and it REFUSES for an objective whose
+    # extent nobody has stated -- see sort_core.resolve_half_range_um.
+    half_range_um = _sort_core_module().resolve_half_range_um(core)
     area_px = bead_area_window(binned_um, args.bead_um)
     print(f"{binned_um:.4f} um/px at bin {args.binning}; a {args.bead_um} um bead is "
           f"{args.bead_um/binned_um:.1f} px across -> area window {area_px[0]}-{area_px[1]} px",
@@ -590,12 +624,7 @@ def main(argv: list[str] | None = None) -> int:
            "dual-cam live  [1/2 CYAN  3/4 GREEN  arrows align  x/y flip  s save  q quit]")
     sorter = None
     if args.sort_on_space:
-        import importlib.util as _ilu
-        _spec = _ilu.spec_from_file_location(
-            "_sort_core", str(REPO / "config" / "session" / "sort_core.py"))
-        sorter = _ilu.module_from_spec(_spec)
-        sys.modules["_sort_core"] = sorter
-        _spec.loader.exec_module(sorter)
+        sorter = _sort_core_module()
         from hardware.optical_tweezers import find_gui_port as _fgp
         _port = _fgp()
         if _port is None:
@@ -686,8 +715,8 @@ def main(argv: list[str] | None = None) -> int:
                 for d in red_d:
                     u = px_to_trap_um((d["x"], d["y"]), trap_px, binned_um)
                     d["trap_um"] = u
-                    d["reachable"] = (abs(u[0]) <= TRAP_HALF_RANGE_UM
-                                      and abs(u[1]) <= TRAP_HALF_RANGE_UM)
+                    d["reachable"] = (abs(u[0]) <= half_range_um
+                                      and abs(u[1]) <= half_range_um)
                     if d["reachable"]:
                         reach.append(d)
                 reach.sort(key=lambda d: -d["flux"])
@@ -712,7 +741,7 @@ def main(argv: list[str] | None = None) -> int:
                                f" {d['trap_um'][1]:+6.1f}) um  flux {d['flux']:.0f}"
                                for d in reach[:3]],
                             size, sat[RED_ARM[0]], trap_px=trap_px,
-                            um_per_px=binned_um)
+                            um_per_px=binned_um, half_um=half_range_um)
             # Panel 2 gets the SAME handedness correction as the overlay, or the
             # two panels show mirror images of each other and the operator has
             # to hold the flip in their head while comparing them.
@@ -725,9 +754,10 @@ def main(argv: list[str] | None = None) -> int:
                              f"median dia {median_dia_um(blue_d, binned_um):.2f} um",
                              "box assumes zero camera offset"],
                             size, sat[BLUE_ARM[0]], trap_px=trap_px_blue,
-                            um_per_px=binned_um)
+                            um_per_px=binned_um, half_um=half_range_um)
             p3 = draw_overlay(red8, blue8, matched, size, dx, dy, flip_x, flip_y,
-                              n_amb, trap_px=trap_px, um_per_px=binned_um)
+                              n_amb, trap_px=trap_px, um_per_px=binned_um,
+                              half_um=half_range_um)
             p4 = draw_timeseries(hist, size, args.window_s)
             composite = np.vstack([np.hstack([p1, p2]), np.hstack([p3, p4])])
 
