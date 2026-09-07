@@ -318,6 +318,16 @@ def main(argv=None) -> int:
                         "Two 5 um spheres touch at 5 um, so the default leaves a 3 um "
                         "margin for the excursion each keeps inside its own well.")
     p.add_argument("--isolation-um", type=float, default=12.0)
+    p.add_argument("--exclude-px", type=float, nargs=2, default=None,
+                   metavar=("X", "Y"),
+                   help="drop any detection within --exclude-radius-um of this "
+                        "pixel before picking -- for skipping a bead already "
+                        "found stuck to the coverslip on a previous run")
+    p.add_argument("--exclude-radius-um", type=float, default=5.0)
+    p.add_argument("--preview-png", default=None, metavar="PATH",
+                   help="drop the newest frame here as a PNG, at most 1 Hz, so "
+                        "a human can watch the run. Off by default; needs "
+                        "pillow, and never fails the run if it cannot write")
     p.add_argument("--half-range-um", type=float, default=None,
                    help="addressable trap half-extent, um. Default: read for the "
                         "objective in place from data/trapping_range.yaml, which "
@@ -351,8 +361,22 @@ def main(argv=None) -> int:
 
     core = CMMCorePlus()
     core.loadSystemConfiguration(args.cfg)
-    core.setConfig("TwoColour", "GreenRed-Widefield")
-    core.waitForConfig("TwoColour", "GreenRed-Widefield")
+    try:
+        core.setConfig("TwoColour", "GreenRed-Widefield")
+        core.waitForConfig("TwoColour", "GreenRed-Widefield")
+    except ValueError:
+        # single_cam_red_noDMD.cfg has no "TwoColour" preset (that lives on
+        # dualcam_twocolour.cfg) -- set the same widefield-epi path by hand,
+        # the same properties measure_red_bead_em1.py's preflight checks for
+        # and fix_path() writes, 2026-09-07.
+        core.setProperty("Turret1Shutter", "State", "1")
+        core.setProperty("Turret2Shutter", "State", "1")
+        core.setProperty("CSUW1-Bright", "BrightFieldPort", "Bright Field")
+        core.setStateLabel("FilterTurret1", "1-MXR00724 -Empty")
+        core.setProperty("Aura", "GREEN_Intensity", str(int(args.green)))
+        core.setProperty("Aura", "GREEN", "1")
+        core.setProperty("Aura", "State", "1")
+        core.waitForDevice("Aura")
     core.setAutoShutter(False)
     core.setCameraDevice(CAM)
     core.setProperty(CAM, "Binning", args.binning)
@@ -380,11 +404,49 @@ def main(argv=None) -> int:
     print(f"trap (0,0) at pixel ({p0[0]:.1f}, {p0[1]:.1f}); addressable square "
           f"+-{args.half_range_um:g} um  [{source}]", flush=True)
 
+    _preview_state = {"last": 0.0}
+
+    def _save_preview(frame):
+        """Drop the newest frame to a PNG so a human can watch a run.
+
+        Rate-limited to 1 Hz: the point is "let someone see this happening",
+        not a recording, and the ramp loop's own cadence is 0.12 s.
+
+        Never allowed to fail the run. A preview is a courtesy, and on Windows
+        the swap below *will* raise PermissionError [WinError 5] whenever a
+        reader holds the target open -- measured 2026-09-07, when exactly that
+        killed a preview loop mid-acquisition.
+        """
+        if args.preview_png is None:
+            return
+        now = time.time()
+        if now - _preview_state["last"] < 1.0:
+            return
+        _preview_state["last"] = now
+        try:
+            from PIL import Image as _Image
+            f = frame.astype(np.float32)
+            lo, hi = np.percentile(f, [1, 99.5])
+            stretched = np.clip((f - lo) / max(hi - lo, 1) * 255, 0, 255).astype(np.uint8)
+            out = Path(args.preview_png)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            tmp = out.with_suffix(".tmp.png")
+            _Image.fromarray(stretched).save(tmp)
+            for _ in range(5):
+                try:
+                    tmp.replace(out)
+                    break
+                except PermissionError:
+                    time.sleep(0.1)
+        except Exception as exc:
+            print(f"  (preview not written: {exc})", flush=True)
+
     def burst(n):
         out = []
         for _ in range(n):
             core.snapImage()
             out.append(np.asarray(core.getImage()))
+        _save_preview(out[-1])
         return out
 
     report = {"utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -402,6 +464,15 @@ def main(argv=None) -> int:
         time.sleep(0.4)
 
         dets = detect(burst(5)[-1], area_px)
+        if args.exclude_px is not None:
+            ex, ey = args.exclude_px
+            r_px = args.exclude_radius_um / um_per_px
+            before = len(dets)
+            dets = [d for d in dets
+                    if math.hypot(d["x"] - ex, d["y"] - ey) > r_px]
+            print(f"  excluded {before - len(dets)} detection(s) within "
+                  f"{args.exclude_radius_um:g} um of ({ex:.1f}, {ey:.1f}) px",
+                  flush=True)
         picks, why = choose_many(dets, p0, um_per_px, args.isolation_um,
                                  args.half_range_um, args.n_traps,
                                  args.collision_um, args.bead_um, args.area_tol)

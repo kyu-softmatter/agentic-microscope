@@ -18,6 +18,12 @@ data/index/*.parquet
 # store. A .tpf kept deliberately as reference belongs in a subdirectory.
 /*.tpf
 
+# MMCore's own log. Every `loadSystemConfiguration` from the repo root drops a
+# CoreLog<timestamp>_pid<n>.txt here, so a session on the microscope PC leaves a
+# pile of them. They are device-init traces, useful while debugging a load and
+# never afterwards — and they are per-run, so they can only ever conflict.
+CoreLogs/
+
 # ── Vendor material — not ours to redistribute ────────────────────────────
 # 19 files (manuals, DLLs, quotes) were removed from the *entire* history on
 # 2026-08-28; see NOTICE.md. That scrub cleaned the past and left nothing

@@ -814,6 +814,78 @@ def mode_calibrate(args):
     return 0
 
 
+def mode_hold(args):
+    """Catch a bead, hold it still, log its pixel trajectory.
+
+    The passive (undriven) recording microrheology's equipartition/PSD kappa
+    needs. Reuses ``track_bead_during`` with a schedule that repeats the same
+    commanded (um[0], um[1]) every tick -- held, not driven, so there is no
+    sine to fit and none is attempted. Output is a plain 2-column pixel .txt
+    (px, py per row), the format ``plot_single_particle.m`` and the
+    ``plugflow_fluctuations_passive_moduli_*.m`` family already read.
+    """
+    t = load_transform(Path(args.calibration))
+    core, camera = open_core(args.cfg, args.exposure_ms)
+    obj = objective_label(core)
+    if obj != t.objective and not args.ignore_objective:
+        raise SystemExit(
+            f"REFUSED: the transform was measured on {t.objective!r} and the "
+            f"Nosepiece now reads {obj!r}.\n"
+            "  Re-run `calibrate`. --ignore-objective exists only for a "
+            "relabelled turret.")
+    um_per_px = t.fitted_um_per_px
+    core.startContinuousSequenceAcquisition(0)
+    ot = None
+    try:
+        time.sleep(0.5)
+        seed, cand, n_iso = find_seed(core, um_per_px, args.at_px,
+                                      args.isolation_um)
+        print(f"{camera} on {obj}: {len(cand)} detections, {n_iso} isolated "
+              f"past {args.isolation_um:g} um")
+        um = t.to_um(seed)
+        print(f"  target ({seed[0]:.1f}, {seed[1]:.1f}) px "
+              f"-> ({um[0]:+.3f}, {um[1]:+.3f}) um in trap coordinates")
+        reach = math.hypot(um[0], um[1])
+        if reach > args.max_offset_um:
+            raise SystemExit(
+                f"REFUSED: that bead is {reach:.2f} um from the trap origin, "
+                f"past --max-offset-um {args.max_offset_um:g}. Move the stage "
+                "instead of raising the limit blind.")
+        ot = connect_trap(args.trap_name, args.create, args.strength,
+                          (float(um[0]), float(um[1])), not args.no_trap_on)
+        n = max(2, int(round(args.seconds * args.rate_hz)))
+        schedule = [(i / args.rate_hz, float(um[0]), float(um[1]))
+                    for i in range(n + 1)]
+        print(f"\nholding {args.seconds:g} s at ({um[0]:+.3f}, {um[1]:+.3f}) "
+              f"um, tracked at up to {args.rate_hz:g} Hz ticks")
+        flown, samples, state = track_bead_during(
+            core, ot, args.trap_name, schedule, seed, um_per_px)
+        print(f"  {len(samples)} frames tracked, {state['dupes']} duplicate "
+              f"reads, {state['lost']} lost")
+        if len(samples) < 20:
+            print(f"  WARNING: only {len(samples)} frames -- too few for a "
+                  "usable PSD/equipartition estimate.")
+        out_path = Path(args.out)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(out_path, "w") as fh:
+            for _, px, py in samples:
+                fh.write(f"{px:.4f}\t{py:.4f}\n")
+        print(f"  wrote {out_path}  ({len(samples)} rows, px  px)")
+        if args.log:
+            write_log(args.log, {
+                "kind": "hold", "trap": args.trap_name,
+                "seconds": args.seconds, "rate_hz": args.rate_hz,
+                "centre_um": [float(um[0]), float(um[1])],
+                "strength": args.strength, "laser_note": args.laser_note,
+                "n_frames": len(samples), "dupes": state["dupes"],
+                "lost": state["lost"], "out": str(out_path)})
+    finally:
+        core.stopSequenceAcquisition()
+        if ot is not None:
+            ot.close()
+    return 0
+
+
 def mode_trap(args):
     """Detect isolated beads and put the trap on one, through the transform."""
     t = load_transform(Path(args.calibration))
@@ -976,6 +1048,21 @@ def build_parser():
     p_trap.add_argument("--confirm-amp-um", type=float, default=2.0)
     p_trap.add_argument("--ignore-objective", action="store_true")
     p_trap.set_defaults(func=mode_trap)
+
+    p_hold = sub.add_parser(
+        "hold", help="catch a bead, hold it still, log its pixel trajectory "
+                     "(the passive/undriven recording)")
+    common(p_hold)
+    p_hold.add_argument("--calibration", default=str(DEFAULT_CAL))
+    p_hold.add_argument("--at-px", type=float, nargs=2, default=None,
+                        metavar=("X", "Y"))
+    p_hold.add_argument("--seconds", type=float, default=20.0)
+    p_hold.add_argument("--out", required=True,
+                        help="2-column pixel .txt; name it to match your "
+                             "MATLAB pipeline's convention, e.g. "
+                             "TAG_passive_<power>_OT<otfactor>_<rep>_5um.txt")
+    p_hold.add_argument("--ignore-objective", action="store_true")
+    p_hold.set_defaults(func=mode_hold)
     return ap
 
 

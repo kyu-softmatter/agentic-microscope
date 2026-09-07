@@ -462,6 +462,11 @@ evidence back into it. `R` marks a read, `W` marks a write.
   |                    verdict advance -- each is a placeholder built |
   |                    to be replaced by a calibration.               |
   |                                                                   |
+  |  kb/sessions/      one file per working day: what was attempted,  |
+  |                    what failed and why, what state the instrument |
+  |                    was left in. README.md indexes them and tracks |
+  |                    where each running project actually stands.    |
+  |                                                                   |
   |  Ingested: 2,343 heterogeneous Micro-Manager acquisitions across  |
   |  two schema generations. Every record carries its source, its     |
   |  trust level, its applicable scope, and the observation that      |
