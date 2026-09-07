@@ -98,3 +98,26 @@ choose, the 40x WI at 1.5x intermediate magnification is the better trade: it is
 index-matched, sampling-identical to 60x Oil at 1.0x (both 108.3 nm/px, both
 347 µm wide at 3200 px), and it can work 50–100 µm deep where the Faxén bias
 falls to 1–2%.
+
+## Falsification conditions
+1. An in-situ calibration at matched power and working height returns κ for
+   60x Oil and 100x Oil differing by more than the few percent claimed above --
+   then the two do not clip to one effective NA in practice, the objective
+   choice is a trapping decision after all, and
+   `trapping.checks.check_effective_na` is describing arithmetic rather than the
+   instrument. Spherical aberration is the first place to look: it is modelled
+   nowhere, and there is no reason two different lens designs should carry the
+   same amount of it
+2. The sample medium's index rises above an objective's design NA -- glycerol,
+   sucrose, or an ATPS phase per [[sample-medium-refractive-index]] -- at which
+   point nothing is clipped and the extra NA does arrive. That does not make
+   this verdict wrong; it puts the experiment outside the scope condition, which
+   is that design NA exceeds the medium's index
+3. A sub-micron particle goes into the trap. "The stiffness is set by the bead's
+   own geometry, not by the focus size" holds for a 4 µm bead against a ~260 nm
+   waist and fails once the two are comparable, so neither the ~3% agreement nor
+   the imaging-decision conclusion transfers to that experiment
+4. Somebody bounds the spherical aberration of an oil objective focusing into
+   water. That is the one input this entry names as missing, and supplying it
+   would let a TIR-clipped configuration report `advances: True` -- which
+   retires the `assumed_inputs` entry rather than the physics
