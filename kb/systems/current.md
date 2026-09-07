@@ -195,7 +195,9 @@ optical_path_nis:      # confirmed 2026-08-10 via NIS-Elements Device Manager on
       2026-08-12), so nothing can read it back and the recorded position ages
       silently. It had said `1` since 2026-08-10 and nothing had verified it
       since. On 2026-09-04, with every software-readable element in the path
-      confirmed correct (LappMainBranch1 = mirror_in, FilterTurret1 = MXR00724,
+      confirmed correct (LappMainBranch1 = State 0 -- reported as `mirror_in`
+      by the labels of the day, `mirror_out` by the corrected ones, and
+      BLOCKING under either; FilterTurret1 = MXR00724,
       LightPath = 3 = the cameras' port, CSUW1-Port = red_only, EM1 = multi,
       both turret shutters open, Aura answering with GREEN = 1), Kinetix_red
       still returned a frame statistically identical to a dark frame — zero
@@ -204,9 +206,11 @@ optical_path_nis:      # confirmed 2026-08-10 via NIS-Elements Device Manager on
 
       ⚠⚠ **THAT CONCLUSION IS SUPERSEDED — AND THIS SPLITTER WAS NEVER
       CONVICTED.** The `lapp_branch:` section, measured LATER THE SAME DAY,
-      records that `LappMainBranch1 = mirror_in` BLOCKS the Aura completely,
-      and that the branch had been moved to mirror_in that session precisely
-      because the then-current record said mirror_in was the Aura position.
+      records that `LappMainBranch1 = State 0` BLOCKS the Aura completely, and
+      that the branch had been moved to State 0 that session precisely because
+      the then-current record named that state the Aura position. (State, not
+      name, throughout: the two names were swapped in the `.cfg` on 2026-09-06
+      and the photometry was not.)
       So the "every software-readable element confirmed correct" list above
       contains the actual cause: the blackout is fully explained by the branch
       mirror, and the splitter is left as an untested hypothesis rather than a
@@ -221,7 +225,8 @@ optical_path_nis:      # confirmed 2026-08-10 via NIS-Elements Device Manager on
       cannot fake.
 
       The compounding error is worth naming, because it is the same one twice:
-      a wrong RECORD (mirror_in) was used to clear a device by readback, and
+      a wrong RECORD (the Aura position, then named `mirror_in`) was used to
+      clear a device by readback, and
       the resulting blackout was then attributed to the one device that had no
       readback at all. The unreadable element is the natural suspect exactly
       because it cannot defend itself.
@@ -395,18 +400,29 @@ light_paths:
       - stage: branch
         device: LappMainBranch1
         note: >
-          ⚠⚠ THE THROUGHPUT CLAIM HERE IS REVERSED FOR THE AURA — superseded by
-          measurement 2026-09-04, re-confirmed 2026-09-06. What it said, and
-          what is wrong: "mirror_out: SpectraIII passes 100%, Aura is not
-          coupled (0%). mirror_in: a 50/50 plate, so both sides get 50%."
-          MEASURED: mirror_out is the position in which the Aura REACHES the
-          sample; mirror_in blocks it. See the `lapp_branch:` section, which
+          ⚠⚠ THE DIRECTION OF THIS CLAIM STANDS; ONLY ITS MAGNITUDE IS WRONG.
+          It was marked REVERSED between 2026-09-04 and 2026-09-06 and that
+          marking has been withdrawn. What was wrong about the claim:
+          nothing, in DIRECTION. The 2026-09-04
+          reading that called it reversed was itself an artefact of two
+          swapped `Label` lines in the `.cfg`, corrected 2026-09-06.
+          MEASURED, and stated as the integer because the names moved:
+          **State 1 is the position in which the Aura REACHES the sample;
+          State 0 blocks it completely.** Under the corrected labels State 1
+          is `mirror_in` -- an inserted mirror coupling the side branch in,
+          which is what the dictated account said all along. What the
+          measurement DOES contradict is the magnitude: the dictation says
+          Aura loses 50 % at that position, and State 0 measures as total
+          extinction. See the `lapp_branch:` section, which
           holds both measurements and `measured_aura_position: 1`.
           The asymmetric GEOMETRY (SpectraIII inline, Aura side-coupled) is
           from the same 2026-08-10 dictation as the reversed throughput, so it
           is not independently confirmed either — the measurement is equally
           consistent with the two engines being the other way round.
-          For the widefield Aura path: LappMainBranch1 = mirror_out.
+          For the widefield Aura path: LappMainBranch1 = **State 1**
+          (`mirror_in` under the 2026-09-06 labels). Pinned as
+          `ConfigGroup,System,Startup,LappMainBranch1,State,1` in all six
+          configs, by integer, so a further renaming cannot flip it.
       - {stage: excitation_filter, device: FilterTurret1, registry: "MXR00724-EX"}
       - {stage: dichroic, device: FilterTurret1, registry: "MXR00724-DM"}
       - {stage: sample, device: [Nosepiece, objective, sample]}
@@ -438,7 +454,17 @@ light_paths:
       - {stage: source, device: Aura, lines_nm_approx: [405, 440, 488, 561, 640]}
       - stage: branch
         device: LappMainBranch1
-        note: "Same as widefield-spectra3 above — see the lapp_branch: section for the full explanation. Aura only reaches the sample in the mirror_in (50/50) state."
+        note: >
+          ⚠ CORRECTED 2026-09-06. This entry read "Aura only reaches the
+          sample in the mirror_in (50/50) state" — which, once the `.cfg`'s
+          swapped `Label` lines were corrected the same day, turns out to have
+          been RIGHT in direction and wrong only in magnitude. MEASURED
+          (2026-09-04, re-confirmed independently 2026-09-06): **the Aura
+          reaches the sample in State 1 -- `mirror_in` under the corrected
+          labels -- and State 0 blocks it completely**, not by 50 %. See the
+          `lapp_branch:` section for both measurements. Setting the branch
+          from the old wording is what turned the light off and cost the
+          2026-09-04 session.
       - {stage: excitation_filter, device: FilterTurret1, registry: "MXR00724-EX"}
       - {stage: dichroic, device: FilterTurret1, registry: "MXR00724-DM"}
       - {stage: sample, device: [Nosepiece, objective, sample]}
@@ -485,6 +511,17 @@ light_paths:
           condenser" discovery above. Which of positions 2-6 correspond to
           each type is still unconfirmed (only that both types physically
           exist and are swappable on this turret).
+          **2026-09-06 user statement**: re-confirmed as one of the bench's
+          hardware items, described as "transmitted-light condenser (dark-field,
+          bright-field)". So the PAIR is settled and the MAPPING is not, which
+          is a state worth naming rather than rounding off: MM will report a
+          position for this device and cannot say which of the two optics is in
+          the light path, so dark-field vs bright-field is not a
+          software-readable fact on this stand. It belongs on the manual-steps
+          checklist with the polarizer and the coverslip micrometer until
+          positions 2-6 are labelled.
+          > TODO(human): which of positions 2-6 is the dark-field ring and
+          > which is the bright-field condenser.
       - {stage: sample, device: [Nosepiece, objective, sample]}
       - {stage: filter_cube, device: FilterTurret1, note: "removable — a fluorescence cube may be left sitting in the transmitted-light path"}
       - {stage: analyzer, device: null, registry: "Analyzer-Linear",
@@ -556,23 +593,39 @@ light_paths:
         too — i.e. this lab has no "true white light" imaging path.
       - LappMainBranch1: geometric asymmetry confirmed, SpectraIII (inline) /
         Aura (side-coupled).
-        ⚠⚠ **THE THROUGHPUT HALF OF THIS BULLET IS WRONG AND IS NOT "Resolved".**
-        It read "mirror_out → SpectraIII 100%, Aura 0%. mirror_in → both 50%",
-        which is REVERSED for the Aura. See the `lapp_branch:` section, where
-        the 2026-09-04 measurement records mirror_out as the position in which
-        the Aura reaches the sample and mirror_in as blocking it completely, and
-        `measured_aura_position: 1`.
+        ⚠⚠ **THE THROUGHPUT HALF IS RIGHT IN DIRECTION AND WRONG IN MAGNITUDE.**
+        It reads "mirror_out → SpectraIII 100%, Aura 0%. mirror_in → both 50%".
+        Between 2026-09-04 and 2026-09-06 this bullet said that was REVERSED
+        for the Aura; **that marking is withdrawn.** The apparent reversal was
+        an artefact of two swapped `Label` lines in the `.cfg`, corrected
+        2026-09-06 (operator mapping, 2026-09-05). See the `lapp_branch:`
+        section, where the measurement records **State 1** as the position in
+        which the Aura reaches the sample and **State 0** as blocking it, and
+        `measured_aura_position: 1` — which under the corrected labels is
+        `mirror_in`, exactly as this bullet says.
         Re-confirmed independently 2026-09-06 on the dual-cam config, at a
         different exposure and through the narrow FF01-595/31 rather than the
         multiband, so the two measurements share no settings but the direction:
-        mirror_out gave a +8.83 ADU median rise and p99.99 698.8 above
-        background, mirror_in gave −0.42 ADU and 14.7 — i.e. nothing.
-        The 2026-08-11 **purpose** note below it may still be right about why
-        mirror_in exists, but its "50% Aura loss" is not a measured number and
-        the measurement says the loss is total.
-        THE LESSON THIS BULLET NOW CARRIES: a claim can sit under "Resolved"
-        for a month, be cross-referenced from three places, and still be
-        backwards. It was dictated, not measured.
+        State 1 gave a +8.83 ADU median rise and p99.99 698.8 above
+        background, State 0 gave −0.42 ADU and 14.7 — i.e. nothing.
+        **What remains wrong is the 50 %.** The 2026-08-11 **purpose** note
+        below is right about why mirror_in exists, but its "50% Aura loss" was
+        dictated, never measured, and State 0 measures as TOTAL extinction —
+        which also undercuts the stated rationale, since a position that
+        blocks the Aura completely cannot be the one used for "DMD pattern and
+        widefield at the same time". That rationale is now unexplained rather
+        than confirmed.
+        THE LESSON THIS BULLET CARRIES, AND IT CHANGED ON 2026-09-06. First
+        reading: a claim can sit under "Resolved" for a month, be
+        cross-referenced from three places, and still be backwards. That was
+        itself wrong. The real lesson is worse, because it applies to the
+        correction as much as to the claim: **a mislabelled enum can make a
+        correct record look falsified, and a measurement look like it settled
+        something it did not.** Two independent photometric runs agreed with
+        each other and were read through the same swapped labels both times,
+        so agreement between them proved nothing about the naming. What
+        finally settled it was the operator stating the physical mapping.
+        Everything functional now pins the integer, not the name.
       - Existence of a NIR-only dichroic in FilterTurret2 confirmed (no
         excitation or emission filter).
         2026-08-11: slot and configuration confirmed as well (slot 1, two
@@ -713,22 +766,65 @@ intermediate_magnification:
 
 lapp_branch:
   device: LappMainBranch1
-  positions: {0: mirror_in, 1: mirror_out}
-  # ⚠⚠ 2026-09-04 MEASURED, AND IT REVERSES THE NOTE BELOW.
+  positions: {0: mirror_out, 1: mirror_in}   # ⚠ SWAPPED 2026-09-06 -- see below
+  # ⚠⚠ 2026-09-06: THE LABELS WERE THE THING THAT WAS WRONG, AND THE NOTE
+  # BELOW WAS RIGHT ALL ALONG. Read this before either the measurement or the
+  # note, because between 2026-09-04 and 2026-09-06 this section said the
+  # opposite of what it says now.
   #
-  # Same sample, same 33.3 ms exposure, same Aura GREEN 20/1000, post-processing
-  # off, one snap per state, offset 102 ADU from a dark frame:
+  # THE PHOTOMETRY, which has never changed and depends on no name at all
+  # (2026-09-04; same sample, same 33.3 ms exposure, same Aura GREEN 20/1000,
+  # post-processing off, one snap per state, offset 102 ADU from a dark frame):
   #
-  #     dark                    p99.9   139    max  1183
-  #     state 0 = mirror_in     p99.9   139    max  1314   <- identical to dark
-  #     state 1 = mirror_out    p99.9 21083    max 25889   <- full signal
+  #     dark        p99.9   139    max  1183
+  #     STATE 0     p99.9   139    max  1314   <- identical to dark, BLOCKED
+  #     STATE 1     p99.9 21083    max 25889   <- full signal, PASSES
   #
-  # **mirror_out (state 1) is the position in which Aura reaches the sample.
-  # mirror_in (state 0) blocks it completely.** The note below says the
-  # opposite. Either the MM labels are swapped relative to the physical states,
-  # or the geometric account is inverted (Aura inline, SpectraIII side-coupled,
-  # rather than the reverse). This measurement does not distinguish those two,
-  # and it does not need to: the operational fact is settled.
+  # Re-confirmed independently 2026-09-06 on the dual-cam config, at a
+  # different exposure and through the narrow FF01-595/31 rather than the
+  # multiband: State 1 gave a +8.83 ADU median rise and p99.99 698.8 above
+  # background, State 0 gave -0.42 and 14.7. Two measurements sharing no
+  # settings but the direction.
+  #
+  # THE NAMES. The `.cfg` declared `1 = mirror_out, 0 = mirror_in` until
+  # 2026-09-06. The operator's 2026-09-05 mapping is the reverse -- physically
+  # `1 = mirror_in, 0 = mirror_out` -- which is also the sensible reading, a
+  # mirror *inserted* being what couples the side branch in. The configs were
+  # corrected accordingly.
+  #
+  # SO THE 2026-09-04 CONCLUSION HAS TO BE WITHDRAWN, NOT KEPT. That session
+  # read the cfg's labels at face value and concluded "mirror_out is the Aura
+  # position, and this section is wrong". With the swap applied, State 1 -- the
+  # state that measurably passes light -- is `mirror_in`, which is exactly what
+  # the dictated note below says. **The note was never falsified. The conflict
+  # was manufactured entirely by two swapped Label lines**, and the geometric
+  # account (SpectraIII inline, Aura side-coupled through an inserted 50/50
+  # plate) stands.
+  #
+  # ⚠ THE ONE CLAIM IN THE NOTE THAT THE MEASUREMENT STILL CONTRADICTS is the
+  # magnitude, not the direction: the note says mirror_in costs Aura 50 %, and
+  # State 0 measures as *total* extinction, not half. The 50 % was dictated,
+  # never measured. Direction: confirmed. Magnitude: unconfirmed.
+  #
+  # HOW THIS COST A SESSION, AND WHAT THE COST ACTUALLY WAS. On 2026-09-04 the
+  # branch was set from State 1 to State 0 because the record named State 0 as
+  # the Aura position, and that turned the light off. The blackout was then
+  # diagnosed by elimination, and this device was eliminated early on the
+  # grounds that "the readback confirms the commanded position, and the record
+  # says that position is the Aura one". Both halves were true and the
+  # conclusion was wrong. Two rules come out of it, and the second was only
+  # visible after the label swap:
+  #   1. **A readback confirms the device went where it was told, never that
+  #      being told to go there was correct.** A device whose correct value
+  #      comes from a record rather than a measurement cannot be cleared by
+  #      reading it back.
+  #   2. **A readback also does not confirm that the NAME it reports for that
+  #      position is right.** A mislabelled enum made a correct record look
+  #      falsified for two days, and would have made every name-based config
+  #      preset select the blocking state the moment the labels were fixed.
+  #      Everything functional now pins the integer:
+  #      `ConfigGroup,System,Startup,LappMainBranch1,State,1` in all six
+  #      configs. See kb/systems/dualcam-config-corrections-pending.md item 1.
   #
   # HOW THIS COST A SESSION. On 2026-09-04 the branch was set from mirror_out
   # to mirror_in *because of the note below*, which turned the light off. The
@@ -739,7 +835,10 @@ lapp_branch:
   # told, never that being told to go there was correct** -- so a device whose
   # correct value comes from a record, not from a measurement, cannot be
   # cleared by reading it back.
-  measured_aura_position: 1   # mirror_out
+  measured_aura_position: 1   # the INTEGER is the fact; under the 2026-09-06
+                              # labels that state is named `mirror_in`. Do not
+                              # re-derive this from a name.
+  aura_position_pinned_in_cfg: "ConfigGroup,System,Startup,LappMainBranch1,State,1"   # all six configs, 2026-09-06
   current_position: null      # a physical turret; read it, do not assume it
   note: >
     Confirmed by user 2026-08-10 (fully resolved). The two light sources are
@@ -762,10 +861,15 @@ lapp_branch:
     widefield imaging usually does not need a high light level. mirror_out is
     for when that combination is not needed (Aura unused, SpectraIII inline
     kept at 100%).
-  # `verified` splits in two, because the two halves now have different status.
-  verified: false             # the geometric account in the note above is CONTRADICTED
-  verified_date: 2026-08-10   # date of that dictation, kept so the claim is traceable
-  source: user_dictation
+  # `verified` splits in three, because the halves have different status and one
+  # of them was restored on 2026-09-06 after two days of being marked false.
+  verified: true              # the geometric account is NO LONGER contradicted -- the
+  verified_date: 2026-09-06   # 2026-09-04 "CONTRADICTED" was an artefact of the cfg's
+  source: user_dictation      # swapped Label lines, not of the dictation being wrong.
+                              # Direction only; see `throughput_magnitude_verified`.
+  throughput_magnitude_verified: false   # the note's "Aura loses 50% at mirror_in" is
+                                         # dictated and the measurement says the loss is
+                                         # TOTAL, not half. Still open.
   aura_position_verified: true
   aura_position_verified_date: 2026-09-04
   aura_position_source: measured   # signal vs dark, one snap per state
@@ -844,6 +948,63 @@ pixel_size_calibration:
     "100x": {"1x": 0.065,   "1.5x": 0.04333}
 
 devices_not_in_mm_config:   # docs/02 §4 "three-way cross-check table" — separately controlled devices absent from the MM .cfg
+  - name: "temperature-controlled stage"
+    # ⚠⚠ STUB, ADDED 2026-09-06. Existence is the only thing established.
+    #
+    # HOW IT GOT HERE, BECAUSE THAT IS THE POINT. The operator listed it on
+    # 2026-09-06 while enumerating hardware. Before that this repository had
+    # **zero** mentions of a temperature stage in any file, and `stability/`
+    # (lens 8, which owns the mechanical/environmental axis) still has no
+    # temperature input of any kind. It was not missed by a bad scan -- nothing
+    # enumerable would have found it, because it is not in any `.cfg`, has no MM
+    # adapter loaded, and no script has ever addressed it.
+    #
+    # ⚠ AND IT CONTROLS THE QUANTITY THAT DOMINATES OUR ONE REAL MEASUREMENT.
+    # The 2026-09-04 wall-diffusion result (D_par = 0.03951 +- 0.00039 um^2/s)
+    # is explicitly NOT a measurement of the wall effect, and the first of the
+    # three reasons is "sample temperature at the coverslip (3-8 %, one-sided,
+    # UNMEASURED)" -- one-sided because the illumination and the room can only
+    # warm it. The companion simulation repository independently calls
+    # `T = 300 K` its most damaging soft spot, worth -4 % to -14 % on every
+    # timescale, since water's viscosity is 2.06 %/K sensitive, and concludes
+    # "a thermometer reading ends that."
+    #
+    # So this stub is worth more than the device: a stage that CONTROLS
+    # temperature is strictly better than a thermometer that reads it, and it
+    # was on the bench for the whole period in which the error budget was
+    # written around not having one. Nothing about the measurement changes until
+    # somebody records what it is and whether it was on.
+    #
+    # DO NOT INFER ANY OF THE FOLLOWING. All unknown:
+    control: null              # make, model, controller, and whether it is software-reachable
+    mm_registered: false       # not in any .cfg checked 2026-09-06
+    python_control: none       # nothing in this repository addresses it
+    setpoint_c: null
+    range_c: null
+    stability_c: null          # the number lens 8 would actually consume
+    sensor_location: null      # a stage-plate reading is NOT the coverslip temperature
+    was_on_during_past_runs: null   # ⚠ unknown for the 2026-09-04 grid, which is
+                                    # what makes that run's 3-8 % irreducible now
+                                    # rather than merely unmeasured
+    verified: false
+    source: user_statement
+    stated_date: 2026-09-06
+    note: >
+      **TODO(human), in this order.** (1) Make and model, so the controller
+      interface can be looked up at all. (2) Whether it was powered and at what
+      setpoint during the 2026-09-04 wall-diffusion grid -- this decides whether
+      that error term can be narrowed retrospectively or is lost. (3) Where the
+      sensor sits: a plate or objective-heater reading is not the temperature at
+      the coverslip, and the 3-8 % term is specifically the coverslip's.
+      (4) Whether it is readable from software; if it is, it belongs in
+      `stability/` as a lens-8 input and in every acquisition record, and if it
+      is not, it belongs on the manual-steps checklist with the polarizer and
+      the coverslip micrometer.
+
+      Until (2) is answered, treat every acquisition before 2026-09-06 as
+      having an unrecorded thermal state. That is not worse than yesterday --
+      it was always true -- but it is now written down.
+
   - name: "piezo stage (Prior/Queensgate NPC-D, Nanobench 6000)"
     control: "separate Python (hardware/piezo_stage.py), COM4 + vendor DLL — driven, with readback"
     mm_registered: false
@@ -1054,6 +1215,15 @@ devices_not_in_mm_config:   # docs/02 §4 "three-way cross-check table" — sepa
       verified: true
       verified_date: 2026-09-06
       source: user_statement
+      # 2026-09-06: mirrored to the machine-readable table code reads, the same
+      # way pixel_size_calibration mirrors to data/pixel_size.yaml. Until then
+      # this figure reached the session scripts as a bare
+      # `TRAP_HALF_RANGE_UM = 40.0` in FOUR of them, applied whatever objective
+      # was in place -- so a 100x number capped a sort that could run at 40x.
+      # optics.components.trapping_range_um is the one reader now, and it
+      # returns None (never a default) for the five objectives below.
+      mirrored_to: data/trapping_range.yaml
+      reachable_from_code: true
       note: >
         ⚠ SETTLES AN OPEN QUESTION, AND CONTRADICTS THE PREVIOUS ANSWER.
         kb/decisions/2026-08-26-tweezers-pattern-vs-direct.md §"To settle on the

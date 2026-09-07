@@ -96,7 +96,18 @@ not crash, and that was luck, not clearance.**
   with a trapped bead, `PFS in Range = In Range`. Inside the operator's stated
   2800–3200 µm window.
 - **The Z sign convention is MEASURED — KH, 2026-09-05: smaller Z is
-  retracted.** `hardware/microscope.Z_RETRACT_DIRECTION = -1`.
+  retracted.** `hardware/microscope.Z_RETRACT_DIRECTION = -1`, and since
+  2026-09-06 **Micro-Manager itself is told the same thing** —
+  `FocusDirection,ZDrive,1` ("increasing Z moves toward the sample") in all six
+  configs, where it had been `0` = *unknown* while this measurement existed
+  only in this file and one Python constant. So the instrument can now answer
+  which way retract is, rather than requiring a reader of this paragraph.
+
+  **`PFSOffset` is still `0` = unknown, and that is not an oversight.** Its
+  sign convention has never been measured, it is in `COLLISION_DEVICES`
+  alongside `ZDrive` and the `Nosepiece`, and an unmeasured direction written
+  into a config would read as verified. It is the one remaining unmeasured
+  direction on a collision device.
 
   ⚠ **This is the reverse of the guess that stood here until 2026-09-05**,
   which read "+Z is probably retracted" off the fact that a rotation at

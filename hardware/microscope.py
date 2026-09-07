@@ -147,6 +147,13 @@ PFS_IN_RANGE_VALUE = "In Range"
 #: not consult this value. A known sign makes a retract-first sequence
 #: writable; it does not make either guard unnecessary, because a sign says
 #: which way is out and neither guard is asking that question.
+#: Since 2026-09-06 the same fact is also declared to Micro-Manager itself, as
+#: ``FocusDirection,ZDrive,1`` ("increasing Z moves toward the sample") in all
+#: six configs -- it had been ``0``/unknown there while the measurement lived
+#: only here and in SAFETY.md prose. **The two must agree**: this constant says
+#: which way retracts (-1 = smaller Z), the `.cfg` says which way approaches
+#: (+1 = larger Z). Same measurement, opposite framing, so a sign flip in one
+#: and not the other is the thing to look for if they ever disagree.
 Z_RETRACT_DIRECTION = -1  # measured: KH 2026-09-05, smaller Z retracts
 
 #: **The stand does not escape.** Measured 2026-09-03: rotating the Nosepiece

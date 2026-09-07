@@ -49,6 +49,40 @@ spinning-disk devices, two Lumencor light engines (`LightEngine`, `Aura`), the
 they are driven outside Micro-Manager, over TCP and a vendor DLL respectively,
 which is exactly why a shared clock had to be built rather than assumed.
 
+**28 is the count that flatters the bench. The number that predicts the work is
+eight — the ways a thing here can be reached.** Those 28 arrive through **six**
+Micro-Manager adapters (`NikonTi2` 15 · `CSUW1` 7 · `NIDAQ` 2 · `Lumencor` 2 ·
+`PVCAM` 1 · `SerialManager` 1) from **eight manufacturers** (Nikon, Yokogawa,
+Lumencor, Photometrics, National Instruments, Aresis, Prior/Queensgate,
+Mightex; FTDI as well if a transport chip counts). But the adapter count is the
+easy half. Sorted by how far a piece of code can actually get:
+
+| How it is reached | What is there | What that costs |
+|---|---|---|
+| **Loads and reads back** through one MM adapter | the 28 | nothing — this is the case everything else is measured against |
+| **Loads; state not interpretable** | `CondenserTurret`. Positions 0/1 are labelled `ND`/`Shutter`; **2–6 are bare** (`"3-"`…`"7-"`). Both bright-field and dark-field condensers exist on it (operator, 2026-08-19) | MM will report a position and cannot say which of the two optics is in the path. Dark-field vs bright-field is not a readable fact |
+| **Outside MM, readable** | piezo stage (Prior/Queensgate NPC-D) — vendor DLL + COM4, commands in picometres, reads back every sample | a second driver and a second clock, but a commanded position can be checked against a measured one |
+| **Outside MM, no readback at all** | optical tweezers (Aresis Tweez 300) — TCP to its GUI, 28 commands | `0` means "the GUI accepted", not "it happened". Six distinct wrong states and a success are the same byte ([SAFETY §0](SAFETY.md)) |
+| **Outside MM, protocol undocumented** | LUN-F-XL confocal laser (Nikon) — FTDI FT4222 SPI. Writable, but the DAC word format is one of nine candidate framings | levels write and are not *commandable*: you cannot ask for 50 %. [`hardware/lunf_power.py`](hardware/lunf_power.py) refuses to transmit |
+| **Present, will not load** | Polygon1000 DMD (Mightex) — vendor package pinned to MM interface **v71** against the v75 core | the one device that does not load through pymmcore-plus, which is what blocks FRAP (item 4.3) |
+| **Physically present, software-invisible** | `Splitter` (no `Device,` line in any `.cfg`), polarizer (angle adjustable, off-ledger), analyzer (angle fixed), the transmitted-path colour filter, the coverslip (a micrometer reading) | these invalidate a run without leaving a trace. The `Splitter`'s unverified position was the last suspect standing in the 2026-09-04 blackout, precisely because it was the one nobody could check |
+| **On the bench, not in the record** | **temperature-controlled stage** — stated by the operator 2026-09-06 and, until then, absent from this repository entirely | see below. This is the tier that cannot be found by enumerating anything |
+
+**The last row is the one worth reading twice, and it is not a device problem.**
+`kb/systems/` had no entry for a temperature stage and `stability/` (lens 8) has
+no temperature input at all — while this README argues in two separate places
+that an unmeasured temperature is a top-tier uncertainty: sample temperature at
+the coverslip is **3–8 %, one-sided** in the error budget of the only real
+measurement here ([below](#current-status)), and on the simulation side `T = 300 K`
+is *"the most damaging soft spot … worth −4 % to −14 % on every timescale it
+computes, because water's viscosity is 2.06 %/K sensitive"* — followed by **"a
+thermometer reading ends that."** A stage that controls the quantity was on the
+bench the whole time. Nothing enumerable would have surfaced it; only the
+operator saying so did, which is what
+[09](docs/09-knowledge-capture.md) is for and why it is called the real purpose
+of this project. → [`kb/systems/current.md`](kb/systems/current.md) now carries
+the stub; the make, range and whether it is software-reachable are `TODO(human)`.
+
 > **Development context.** An independent project, developed primarily during
 > evenings and weekends alongside full-time postdoctoral research at Stanford,
 > begun in early July 2026. It is built on **one** instrument — the microscope
@@ -126,9 +160,18 @@ already been used in argument against trapping more particles at once.
 answering correctly while any acquisition times out, releasing the camera in the
 GUI changes nothing, and one standalone snap on that body clears it. `SAFETY.md`
 §4 frames every camera failure as ownership order, which cost three launches
-before the alternative was tested. And **`sort_two_species.py` does not import
-`sort_core.py`** — it is a standalone copy, so a fix on the keypress path
-reaches one of the two paths, not both.
+before the alternative was tested. And **`sort_two_species.py` did not import
+`sort_core.py`** — it was a standalone copy, so a fix on the keypress path
+reached one of the two paths, not both. ✅ **Consolidated 2026-09-06**, and
+what the copies had actually drifted in is the part worth keeping: all six
+shared functions were numerically identical over 20 000 random cases, while
+four carried *fuller docstrings in the CLI than in the shared module* — so the
+divergence was real and running in documentation, which is the state in which
+the next one goes unnoticed. The better documentation moved into `sort_core.py`
+and [`tests/test_sort_one_copy.py`](tests/test_sort_one_copy.py) now fails if
+either file defines a shared name again. It also deleted `rms_nm`, dead code
+implementing the held-bead test this repository measured wrong five times out
+of five.
 
 > The useful measure is not how much of this exists. It is how many places the
 > system refuses to turn a missing number into a confident one.
@@ -361,6 +404,19 @@ evidence back into it. `R` marks a read, `W` marks a write.
       -- no setting is proposed                           |
                                                           v
   +-------------------------------------------------------------------+
+  |  [ a device-level standard would land HERE, or beside it ]        |
+  |  It replaces the per-vendor half of the drivers below and the     |
+  |  discovery rung above. It does NOT touch the 32 gates, which sit  |
+  |  over any transport, and MCP is the layer above again -- how an   |
+  |  agent reaches tools and context at all.                          |
+  |                                                                   |
+  |  Of the seven non-baseline reachability tiers above, THREE would  |
+  |  collapse into the first (a readable vendor DLL, a self-          |
+  |  describing turret, a version-locked package that adopted it) --  |
+  |  and FOUR would not: no readback, an undocumented protocol, an    |
+  |  analog element, and a device nobody wrote down.                  |
+  |                                             docs/mhs-integration  |
+  +-------------------------------------------------------------------+
   |  hardware/                                      drivers, present  |
   |  microscope.py . optical_tweezers.py . piezo_stage.py .           |
   |  piezo_waveform.py . tweezers_drive.py . orchestrator.py          |
@@ -522,7 +578,7 @@ data, is the return on it:
 
 | Record | What it said | What the instrument said |
 |---|---|---|
-| `lapp_branch` | `mirror_in` couples Aura to the sample | **`mirror_out` does.** Following the record turned the light off and cost a diagnosis session |
+| `lapp_branch` | `mirror_in` couples Aura to the sample | **The record was right; the `.cfg`'s labels were swapped.** Following it turned the light off and cost a diagnosis session, and the branch was booked as falsified for two days before the operator's 2026-09-05 mapping showed the mislabelled enum was the fault. `State 1` is the Aura position and everything now pins the integer |
 | `Splitter` `current_position` | `1` (unverified since 2026-08-10) | Not readable at all — it is not in the `.cfg`. Now `null` |
 | Z retract direction | "+Z is probably the retracted direction" | Backwards. Z → 0 is the safe park (KH) |
 | `IntermediateMagnification` | a state device, per `calibration.cli intermediate-mag` | a **MagnifierDevice**. The tool mismatched it and reported "0 positions" |
@@ -613,7 +669,11 @@ Items 1–3 sit between stages 5d and 5e, and 5 is 5e itself
 > not yet operator-reviewed.
 A note on how this would look under Anthropic's Model Hardware Standard is in
 [`docs/mhs-integration.md`](docs/mhs-integration.md), deliberately off the main
-line.
+line. It is a description of this bench written against that standard's stated
+problems rather than a case for adopting it, and its two most useful entries are
+a failure and an absence: a held-bead test this repository built and then
+falsified in five cycles of five, and a temperature-controlled stage that was on
+the bench for two months while nothing here knew it existed.
 
 - [ ] **0a · Measure the illumination power at the sample.** Outside the 1→5
   chain and ahead of all of it. This is the one blocker in the whole repository
@@ -1019,9 +1079,10 @@ against. `advances: false` behaves the same way, and the tool descriptions say
 in as many words that it is a valid result.
 
 **The switches, by name, and what they are set to.** `.mcp.json` launches the
-server with the venv interpreter directly — no `uv`, which appears nowhere in
-this repository (to-do item 11) — and its `env` block ships both switches
-**off**:
+server through [`mcp_server/bootstrap.py`](mcp_server/bootstrap.py), which
+resolves an interpreter that can actually `import mcp` — no `uv`, which appears
+nowhere in this repository, and since 2026-09-06 no hardcoded path either
+(to-do item 11) — and its `env` block ships both switches **off**:
 
 ```json
 "env": {
@@ -1470,25 +1531,58 @@ emission state.
 Two numbers stand between the closed-loop trapper and being able to reach any
 particle in the field.
 
-**The green trapping trapezoid's half-extents at 100×.** GUI-only, produced by
-the *Beam Position* calibration and not readable over TCP. It decides whether
-targeting covers the whole 78 µm field or only the middle of it.
+**The trapping field's half-extents.** ✅ **Stated for the 100× on 2026-09-06,
+and the shape claim changed with it.** The operator's statement — *"trapping
+area is always square, the center of the square is located in the middle of the
+camera view, the square size is around (−40 µm to 40 µm) in x and y"* — settles
+±40 µm at 100× Oil and **contradicts the trapezoid** this item was named after.
+The contradiction is recorded rather than resolved by preference: an operator's
+statement about their own instrument outranks a shape read off a GUI drawing,
+since a square drawn in perspective looks like a trapezoid. So the rectangular
+range check is now believed *sufficient* and not merely necessary — and if a
+pattern ever deforms while passing it, that belief is the first thing to
+re-examine.
 
-*What it cost on 2026-09-04:* nothing yet, and that is luck. Points outside
+*What it cost on 2026-09-04:* nothing yet, and that was luck. Points outside
 the calibrated field are **clipped silently by the GUI and not drawn**, so an
 over-long reach lands the trap somewhere else with no error on either side.
 `--max-offset-um` is a placeholder — 30 µm was used because the nearest
-isolated bead was 23–29 µm out — and it is a guard against a limit nobody has
+isolated bead was 23–29 µm out — and it is a guard against a limit nobody had
 measured.
 
-*What it cost on 2026-09-05:* the stand-in quietly became a design limit. With
-the trapezoid unmeasured, `TRAP_HALF_RANGE_UM = 40.0` is hardcoded in **four
-separate files** (`sort_core.py`, `sort_two_species.py`, `live_dualcam_view.py`,
-`trap_brightest.py`), and every candidate outside ±40 µm is dropped before
-planning. Only the central 80×80 µm of a ~156 µm field is reachable, and at a
-10 µm slot pitch that fixes the two-species sort's destinations at 9 per
-species — 18 beads, against 43–50 detected *per species* per survey. The number
-that caps the sort is a placeholder, in four copies.
+*What it cost on 2026-09-05, and what remained after the statement:* the
+stand-in had quietly become a design limit. `TRAP_HALF_RANGE_UM = 40.0` was
+hardcoded in **four separate files** (`sort_core.py`, `sort_two_species.py`,
+`live_dualcam_view.py`, `trap_brightest.py`), three of them with no comment
+saying where it came from. Once the operator stated the number, the defect
+stopped being *"a placeholder in four copies"* and became something narrower
+and worse: **a verified 100× value applied whatever objective was in place.**
+The AOD covers a wider sample field at lower magnification, so at 40× it is
+simply a different quantity — and
+[`hardware/tweezers_drive.py`](hardware/tweezers_drive.py) had refused an
+unrecorded `trapping_range` since it was written, with
+`test_range_check_blocked_not_passed_when_unrecorded` holding that line, while
+the four literals bypassed it.
+
+✅ **Fixed 2026-09-06.** [`data/trapping_range.yaml`](data/trapping_range.yaml)
+is the one source, keyed on objective and mirroring
+`kb/systems/current.md > optical_tweezers > trapping_range`;
+`optics.components.trapping_range_um` is the one reader; and
+`sort_core.resolve_half_range_um` resolves it from the nosepiece and **refuses
+for any objective whose extent has never been stated** — which is all five
+others. There is deliberately no scaling rule: deriving 40× from 100× by a
+magnification ratio would produce a plausible number with no provenance, which
+is what the literals were. The slot count now follows the field instead of
+being fixed at 9 → [`tests/test_trapping_range.py`](tests/test_trapping_range.py).
+
+Two things that fix does *not* buy. The 100× figure is `evidence: stated`, not
+`measured` — nobody has read it off the *Beam Position* calibration — and only
+the central 80×80 µm of the ~156 µm field is reachable at 100×, so at a 10 µm
+slot pitch the two-species sort still has 9 destinations per species: 18 beads
+against 43–50 detected *per species* per survey. **That ceiling is now a
+measured property of the instrument rather than an artefact of a literal**,
+which changes what to do about it — widen the field or shrink the pitch, not
+edit a constant.
 
 **The scale.** The orientation and origin are settled (four catches in four
 quadrants; origin to ±0.7 px), but `um_per_px` is still the nominal 0.065 and
@@ -1571,6 +1665,16 @@ The unresolved pieces, all already named in §2 and worth pulling into one place
   nothing). Under the measured convention that rotation drove the incoming lens
   ~5.3 mm *past* the sample plane, so nothing broke because nothing was there
   to hit.
+
+  **And as of 2026-09-06 the instrument carries it too.** All six configs now
+  declare `FocusDirection,ZDrive,1` — increasing Z moves toward the sample —
+  where the field had been `0` = *unknown* for as long as the configs have
+  existed, i.e. the measurement lived in `SAFETY.md` prose and one Python
+  constant and Micro-Manager could not answer the question at all. That is the
+  same failure as items 4 and 8 in a third place: **a value MM cannot answer
+  is a value that has to be remembered.** `PFSOffset` stays `0`, because its
+  sign has never been measured and it is also a collision device — the one
+  remaining unmeasured direction on one.
 - **PFS `Out of Range` authorises nothing.** It can veto a rotation, never
   permit one. Any sequence must not read it as an all-clear.
 - **The change invalidates both GUI tweezers calibrations** — the GUI's px→µm
@@ -1604,29 +1708,35 @@ The guards exist because of that. The sequence does not yet.
 
 ### 8. Finish the pixel → µm information in every `.cfg`
 
-Half done, and the half that is done shows why the rest matters. Three of the
-six Micro-Manager configs now carry a filled `PixelSize` block:
+**Done 2026-09-06 — all six configs now carry a filled `PixelSize` block**, the
+root of the tree first so no regeneration re-inherits the gap. What is *not*
+closed by that is the provenance: five of the six rows are still arithmetic,
+and the two holes below are untouched by filling anything in.
 
 | Config | `PixelSize` block |
 |---|---|
 | `single_cam_red_noDMD.cfg` | filled 2026-09-04 |
 | `dualcam_noDMD.cfg` | filled 2026-09-06 |
 | `dualcam_twocolour.cfg` | filled 2026-09-06 |
-| `DMD_dualcam_LUNF.cfg` | **present and EMPTY** |
-| `single_cam_blue_LUNF.cfg` | **present and EMPTY** |
-| `single_cam_red_LUNF.cfg` | **present and EMPTY** |
+| `DMD_dualcam_LUNF.cfg` | filled 2026-09-06 — **the root parent** |
+| `single_cam_blue_LUNF.cfg` | filled 2026-09-06 |
+| `single_cam_red_LUNF.cfg` | filled 2026-09-06 |
 
-*What it cost:* on an empty block `getPixelSizeUm()` answers **0.0** — not an
-error, a plausible-looking zero — so anything asking the instrument for its own
-scale got nothing. Confirmed live 2026-09-06 with the 100× Oil in place.
-And `DMD_dualcam_LUNF.cfg` — one of the empty three — is the **root of the whole
-tree**: it is the declared parent of the other four directly, and of
-`single_cam_red_noDMD.cfg` through `single_cam_red_LUNF.cfg`. Every filled block
-so far is a fix applied *downstream* of a parent that still answers 0.0, so the
-next derived file regenerated from it inherits the gap again.
+*What it cost, while it was open:* on an empty block `getPixelSizeUm()` answers
+**0.0** — not an error, a plausible-looking zero — so anything asking the
+instrument for its own scale got nothing. Confirmed live 2026-09-06 with the
+100× Oil in place. `DMD_dualcam_LUNF.cfg` was the **root of the whole tree** —
+the declared parent of the other four directly, and of
+`single_cam_red_noDMD.cfg` through `single_cam_red_LUNF.cfg` — so the three
+blocks filled before it were fixes applied *downstream* of a parent that still
+answered 0.0, and the next derived file would have inherited the gap again.
+That is why it was filled first this time.
 
-Two known holes in the blocks that *are* filled, which apply to the remaining
-three as well:
+Two known holes remain in all six, and neither is closed by filling a block —
+which is the point worth keeping: **the `.cfg` now answers, but it answers with
+arithmetic.** Trading a loud-looking 0.0 for a plausible nominal is only an
+improvement because the number is marked, and `set_pixel_size.py --audit`
+prints `(measured)` or `(nominal)` per row:
 - **Only the 20× row is measured** (0.32373 vs a nominal 0.325 — a real
   20.078×). The other five are exactly 6.5/M. See `data/pixel_size.yaml`.
 - **The presets key on the `Nosepiece` alone and assume intermediate 1×**,
@@ -1649,13 +1759,15 @@ nominal 0.325 is a real 20.078×, so the nominal magnifications are *not* exact
 on this stand, and 0.065 has never been checked at all. Measuring it closes a
 gate input and a targeting error at once.
 
-> Fill the three empty blocks with
+> ✅ The three empty blocks were filled 2026-09-06 with
 > `python config/micromanager/set_pixel_size.py <file> --objective <M> --write`
-> for all six objectives. `DMD_dualcam_LUNF.cfg` is a parent — regenerate its
-> children after, or the derived files diverge further.
+> for all six objectives, parent first. `DMD_dualcam_LUNF.cfg` is a parent — if
+> its children are ever regenerated from it, re-audit rather than assume.
 >
 > **TODO(human):** a measured `um_per_px` for the five unmeasured objectives,
 > and the intermediate magnification's actual position when each config is used.
+> **Both are what the filled blocks still do not give you** — the code half is
+> done and the measurement half is not.
 
 ### 9. A selection process for frame rate, exposure time, and light intensity
 
@@ -1789,48 +1901,81 @@ whole item.
 **The rumour first: `uv` is not needed and never was.** It appears **nowhere in
 this repository** — no `.md`, `.toml`, `.txt` or `.json` mentions it. The
 install path in "Running the tests" is plain
-`pip install -r requirements.txt -r requirements-mcp.txt`, and `.mcp.json`
-launches the hardware server with the venv interpreter directly:
+`pip install -r requirements.txt -r requirements-mcp.txt`. `uv` is absent from
+this machine and the MCP server starts anyway. Any note claiming the server
+needs `uv` is false and should be deleted rather than worked around.
+
+**The interpreter half: ✅ fixed 2026-09-06.** `.mcp.json` used to name it
+outright, and that one line was two defects:
 
 ```json
 "command": "C:\\Users\\Takatori lab\\venvs\\auto_microscope\\Scripts\\python.exe",
 "args": ["-m", "mcp_server.server"]
 ```
 
-No `uv run`, no `uv sync`. `uv` is absent from this machine and the MCP server
-starts anyway — it was running during this session. Any note claiming the server
-needs `uv` is false and should be deleted rather than worked around.
+**It carried a Windows account name**, so the server was configured for exactly
+one login. And it was **the only file in the repository that knew where the venv
+lived**, so every cold start re-derived it.
 
-**The real gap: nothing in the repository says which interpreter to use.** The
-venv already exists and persists — `C:\Users\Takatori lab\venvs\auto_microscope`,
-Python 3.12.10, built 2026-08-11, outside the repo so it survives any checkout.
-It does **not** need recreating. But `.mcp.json` is the only file that knows
-where it is, and it knows by hardcoded absolute path; `pyproject.toml` only
-fixes `sys.path`, and the README's install lines name no interpreter at all. So
-every cold start re-derives it.
+*What the first defect cost — and it is not "silently", which is what this
+section said until now.* It failed loudly, in this session, on the macOS machine
+the repository is edited from:
 
-*What it cost, this session:* `python -m pytest` answered **"No module named
-pytest"** on the system Python, and the venv had to be found by searching the
-filesystem before the suite could run at all (it then passed 1116/1116). That is
-a small tax, paid every single time anyone or anything starts cold — which is
-exactly the shape of cost this section exists to catch.
+```text
+ENOENT: Executable not found in $PATH:
+  C:\Users\Takatori lab\venvs\auto_microscope\Scripts\python.exe
+```
 
-Two related problems worth fixing in the same pass:
+The message was clear; what was silent was the *consequence*, because a
+hardware MCP server that never connects looks exactly like one that was never
+configured. **That is the failure mode this repository is otherwise built
+against** — the MCP section above argues at length that a refusal must be a
+value rather than an error, because a model that believes a tool is broken
+routes around it, and an absent server is the strongest form of that.
 
-- **The hardcoded path contains a Windows username.** `.mcp.json` breaks
-  silently on any other account or machine, which is the concern `docs/03`
-  raises about everything else on this instrument.
-- **Nothing pins versions.** Four requirement files, no lockfile. "Do not
-  rebuild the venv" is currently a hope rather than a guarantee, because a
-  rebuild would not reproduce the current one.
+*What the second cost:* `python -m pytest` answered **"No module named pytest"**
+on the system Python, and the venv had to be found by searching the filesystem
+before the suite could run at all. A small tax, paid every time anyone or
+anything starts cold.
 
-The fix is mostly free: the `CLAUDE.md` router proposed for this repository
-already carries an `## Environment` section naming the interpreter, which
-removes the rediscovery cost for every future session in one file.
+Both are closed by [`mcp_server/bootstrap.py`](mcp_server/bootstrap.py), and
+`.mcp.json` is now machine-independent:
 
-> **TODO(human):** whether the venv should stay outside the repo (it survives
-> clean checkouts, which is a real argument for) or move in beside it, and
-> whether you want the requirement files pinned so a rebuild is reproducible.
+```json
+"command": "python",
+"args": ["mcp_server/bootstrap.py"]
+```
+
+The bootstrap is **stdlib-only on purpose** — it is launched by whatever
+`python` is on PATH, which is precisely the interpreter that does *not* have the
+dependencies. It tries `$AGENTIC_MICROSCOPE_PYTHON`, then the interpreter
+running it, then `$VIRTUAL_ENV`, then `.venv/` beside the repo, then
+`~/venvs/auto_microscope` **named without the account**; verifies each can
+actually `import mcp` before choosing it; and **refuses with the install command
+on stderr** rather than handing the client an interpreter that would die inside
+the MCP handshake, where the failure reads as a broken server instead of a
+missing package. Diagnostics go to stderr only — stdout is the JSON-RPC channel,
+and one stray `print` is indistinguishable from the malformed-server failure
+above. → [`tests/test_mcp_bootstrap.py`](tests/test_mcp_bootstrap.py)
+
+Note what was *not* wrong with the old line: the venv living outside the
+repository. `~/venvs/auto_microscope` (Python 3.12.10, built 2026-08-11)
+survives a clean checkout, which is a real argument for keeping it there — so
+the search covers user-home locations as well as repo-local ones instead of
+insisting on a `.venv/`. **It does not need recreating.**
+
+**Still open — versions are not pinned.** Four requirement files, no lockfile.
+"Do not rebuild the venv" is a hope rather than a guarantee, because a rebuild
+would not reproduce the current one. Note the tension with
+[`.gitignore`](.gitignore), which ignores `uv.lock` on the stated grounds that
+the `requirements*.txt` bounds are deliberately loose and a committed lock
+"would quietly become the real specification" — so pinning is a decision to
+make, not an oversight to correct.
+
+> **TODO(human):** whether you want the requirement files pinned so a rebuild is
+> reproducible, against `.gitignore`'s argument that a lockfile would silently
+> become the specification. The venv-location question is settled by the
+> bootstrap: either location now works.
 
 ---
 
@@ -1914,6 +2059,19 @@ $ pip install -r requirements.txt -r requirements-mcp.txt
 $ pytest -q -rs
 1060 passed, 3 skipped
 ```
+
+**Which interpreter?** This is the question that cost a filesystem search on
+every cold start (to-do item 11), and the answer is now printable rather than
+remembered:
+
+```bash
+python mcp_server/bootstrap.py --dry-run
+```
+
+It prints the path of an interpreter that has the dependencies, or exits
+non-zero naming what to install. On this instrument's PC that is the venv at
+`~/venvs/auto_microscope` (Python 3.12.10, outside the repo so it survives a
+clean checkout); it does not need recreating.
 
 `pyproject.toml` puts the repository root on `sys.path`, so the bare `pytest`
 and `python -m pytest` agree — before it, only the second form worked. The three
