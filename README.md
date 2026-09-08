@@ -118,7 +118,7 @@ design, not a gap.
 | **32 deterministic gates** | G1–G32, each classified `hard` / `bias` / `soft` by what its failure costs. **29 are implemented** — `G2`–`G4` carry a threshold and a default verdict in [04](docs/04-decision-engine.md) and appear in no Python file → [below](#two-more-axes-and-the-questions-neither-working-repo-asks) → [05 §2](docs/05-consensus-gate.md) |
 | **Provenance on every input** | `measured` vs `assumed`, with a separate `advances` axis that only `measured` can satisfy. Literature values compute but never advance → [`kb/literature/`](kb/literature/) |
 | **2,343 prior acquisitions** | normalized out of Micro-Manager metadata into transferable physical quantities, across two schema generations |
-| **1,213 tests, 1,150 on CI** | offline; the instrument is not required to run any of them. The badge covers 1,150 — of the rest, 56 need a Micro-Manager device-adapter install and 7 need `opencv-python` → [running the tests](#running-the-tests) |
+| **1,225 tests, 1,162 on CI** | offline; the instrument is not required to run any of them. The badge covers 1,162 — of the rest, 56 need a Micro-Manager device-adapter install and 7 need `opencv-python`, and `PYTEST_CI_EMULATE=ci` reproduces the runner's environment here → [running the tests](#running-the-tests) |
 | **A 28-device instrument** | what Micro-Manager loads from `single_cam_red_noDMD.cfg` — Ti2-E and its 14 sub-devices, one Kinetix, seven CSU-W1 devices, two Lumencor engines, NIDAQ hub + LUN-F blanking, serial manager. Tweezers and piezo sit outside those 28 → [above](#agentic-microscope) |
 | **Hardware drivers** | microscope (pymmcore-plus), optical tweezers (TCP), piezo stage (vendor DLL), trap patterns, piezo waveforms, and a shared-clock orchestrator |
 | **First light on real hardware** | piezo and optical tweezers each driven from this repository, **separately** — 2026-08-27. **All three subsystems together on one clock — 2026-09-03**, with per-frame timestamps; κ = 3.65–4.5 pN/µm from three independent routes |
@@ -500,8 +500,8 @@ Lens-by-lens implementation status is in the **Code** table below.
 ## Current status
 
 **Design complete; all eight committee lenses are implemented.** Nine design
-documents, 32 hard gates (G1–G32), 1,213 tests passing. The badge above reports
-1,150 of them — 56 need a Micro-Manager device-adapter install and run in a
+documents, 32 hard gates (G1–G32), 1,225 tests passing. The badge above reports
+1,162 of them — 56 need a Micro-Manager device-adapter install and run in a
 separate workflow, and 7 need `opencv-python`, which is stated at the top of each file in
 [`.github/workflows/`](.github/workflows/) and again under [running the
 tests](#running-the-tests). The six standing
@@ -2067,8 +2067,13 @@ scope. For now this produces offline recommendations only.
 ```console
 $ pip install -r requirements.txt -r requirements-mcp.txt
 $ pytest -q -rs
-1150 passed, 10 skipped
+1162 passed, 10 skipped
 ```
+
+That count is **Windows**. macOS and Linux report `1161 passed, 11 skipped` —
+one Windows-only segment-lifetime test in
+[`tests/test_runtime_shmview.py`](tests/test_runtime_shmview.py) skips there,
+so the badge's three platforms do not all print the same number.
 
 **Which interpreter?** This is the question that cost a filesystem search on
 every cold start (to-do item 11), and the answer is now printable rather than
@@ -2100,12 +2105,32 @@ $ pip install -r requirements-micromanager.txt && mmcore install
 ```
 
 Four requirement files, and the split is the point: `requirements.txt` is the
-1,120 tests that need nothing but numpy and pyyaml, `requirements-mcp.txt` adds
+1,132 tests that need nothing but numpy and pyyaml, `requirements-mcp.txt` adds
 the 30 that exercise the MCP server and is in CI because it is pure Python,
 `requirements-micromanager.txt` is the 56 that need a vendor device-adapter
 download and is not, and `requirements-analysis.txt` is 7 localisation tests
 that call OpenCV and skip without it. Measured 2026-09-07 by collecting the
 suite with each optional stack hidden, not by adding the numbers up.
+
+**Reproducing the runner's environment locally.** This venv has all four stacks,
+which is why a test that reaches into an uninstalled one passes here and errors
+there — it did, for three commits after `062db16`. So the absences are
+emulatable rather than remembered:
+
+```console
+$ PYTEST_CI_EMULATE=ci pytest -q -rs      # what the badge runs
+1162 passed, 10 skipped
+$ PYTEST_CI_EMULATE=base pytest -q -rs    # requirements.txt alone
+1139 collected
+```
+
+It hides `cv2` and `pymmcore_plus` two ways at once, and both are needed: an
+import hook so a real `import cv2` *fails* — which is what reproduces the
+breakage, rather than merely tolerating it — and `find_spec` answering `None`,
+which is what lets a `requires_cv2` marker choose to skip instead of erroring
+inside its own condition. Inert unless the variable is set, and an unrecognised
+value refuses rather than quietly giving a full run
+→ [`tests/ci_emulate.py`](tests/ci_emulate.py).
 
 ---
 

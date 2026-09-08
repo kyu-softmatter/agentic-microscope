@@ -158,17 +158,31 @@ survives a clean checkout).
 pytest -q -rs
 ```
 
-1150 passed, 10 skipped, of 1,213 (measured 2026-09-07). Two kinds of skip:
-three whole modules behind `pytest.importorskip("pymmcore_plus")` holding 56
-tests that need a Micro-Manager device-adapter install, and seven `requires_cv2`
-tests in `tests/test_objective_offsets.py` that call OpenCV
+1162 passed, 10 skipped on Windows, of 1,225 (measured 2026-09-07; macOS and
+Linux print 1161/11, one Windows-only test). Two kinds of skip: three whole
+modules behind `pytest.importorskip("pymmcore_plus")` holding 56 tests that need
+a Micro-Manager device-adapter install, and seven `requires_cv2` tests in
+`tests/test_objective_offsets.py` that call OpenCV
 (`requirements-analysis.txt`, not in CI). `-rs` keeps all ten named, so the
 count cannot quietly shrink. **The instrument is not required to run any test.**
 
-**If a test calls into a deferred `import cv2`, mark it `requires_cv2`.** Every
-cv2 import in this repo sits inside a function body so the modules load without
-OpenCV; a test that calls one of those functions unmarked turns CI red, which is
-what happened for three commits after `062db16`.
+```bash
+PYTEST_CI_EMULATE=ci pytest -q -rs
+```
+
+**Run this before pushing anything that touches a test.** This venv has all four
+requirement stacks; the runner has two, so a test reaching an uninstalled one
+passes here and errors there — it did, for three commits after `062db16`.
+`ci` hides `cv2` and `pymmcore_plus`; `base` also hides `mcp`
+→ [`tests/ci_emulate.py`](tests/ci_emulate.py),
+[`kb/decisions/2026-09-07-ci-environment-and-timing-bounds.md`](kb/decisions/2026-09-07-ci-environment-and-timing-bounds.md).
+
+Two rules that follow from it: **if a test calls into a deferred `import cv2`,
+mark it `requires_cv2`** — every cv2 import here sits inside a function body, so
+the module loads and only the call fails. And **a timing test may assert what
+the mechanism guarantees, not how well the OS scheduled it**: `sleep_until`'s
+overshoot bound is 20 ms on an owned machine and 250 ms where `CI` is set,
+because a shared runner's scheduler is not a property of this code.
 
 ```bash
 python -m optics.cli check config/channels/proposed-2color.yaml
@@ -203,7 +217,7 @@ give no advice without a source.
 - **Not a package.** No `[build-system]`; `pyproject.toml` exists to put the
   repository root on `sys.path` so bare `pytest` and `python -m pytest` agree.
   Everything runs as `python -m <lens>.cli`.
-- Requirements are split on purpose: `requirements.txt` (numpy + pyyaml, 1,120
+- Requirements are split on purpose: `requirements.txt` (numpy + pyyaml, 1,132
   tests) · `requirements-mcp.txt` (30 tests, pure Python, in CI) ·
   `requirements-micromanager.txt` (56, vendor device-adapter download, not in
   CI) · `requirements-analysis.txt` (7, OpenCV, not in CI).
