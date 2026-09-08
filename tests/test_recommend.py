@@ -17,9 +17,52 @@ from pathlib import Path
 import pytest
 
 from optics.components import find_dye, find_filter
-from optics.recommend import load_scope, recommend_labels, recommend_panel, screen
+from optics.recommend import (
+    Candidate,
+    Panel,
+    load_scope,
+    recommend_labels,
+    recommend_panel,
+    screen,
+)
 
 SCOPE = Path(__file__).resolve().parents[1] / "config" / "scopes" / "current-laser.yaml"
+
+
+# ------------------------------------------------------------------ fixtures --
+# Ten tests below need the same two searches, and those two searches are the
+# expensive thing in the entire suite. One recommend_labels() call is 4 lines x
+# 17 dyes x 5 filters x 2 cameras = 680 screen() calls, each integrating over
+# the 801-point 1 nm grid (optics/spectra.py GRID); recommend_panel() pays that
+# once more before its own crosstalk product. Measured 2026-09-07, clean venv
+# with requirements.txt + requirements-mcp.txt: 17 s per ranking, 36 s per
+# panel, and 227 s of the suite's 262 s spent in this one file -- 87 % of a
+# green CI run, for ten repeats of two identical results.
+#
+# After, same day and same machine: this file 53.8 s (36.0 + 16.8 of it the two
+# fixture setups, i.e. the two searches and almost nothing else), and the
+# CI-equivalent suite 258 s -> 85.9 s at an unchanged 1162 passed, 10 skipped
+# (`CI=1 PYTEST_CI_EMULATE=ci`, Windows).
+#
+# Module-scoped and shared, which is safe *because nothing here mutates a
+# result*: every test reads attributes or calls sort_key(). A test that starts
+# editing a Candidate or a Panel must copy it or make its own call, or it will
+# corrupt the other nine.
+#
+# top=4 is the widest any test needs and the ranking is one sort then a slice,
+# so by_line[line][0] is the same candidate the six top=1 callers each got.
+
+
+@pytest.fixture(scope="module")
+def by_line() -> dict[str, list[Candidate]]:
+    return recommend_labels(SCOPE, top=4)
+
+
+@pytest.fixture(scope="module")
+def panel() -> Panel | None:
+    """candidates_per_line defaults to 4, so this is exactly the search the
+    three panel tests each ran separately."""
+    return recommend_panel(SCOPE)
 
 
 # ---------------------------------------------------------- regression pins --
@@ -49,25 +92,23 @@ def test_stokes_headroom_uses_the_source_line_not_the_whole_shared_dichroic():
 
 
 @pytest.mark.parametrize("line", ["488", "561", "640"])
-def test_top_candidate_per_line_absorbs_near_that_wavelength(line):
+def test_top_candidate_per_line_absorbs_near_that_wavelength(line, by_line):
     """The registry has an obvious right answer for three of the four lines:
     whichever dye's absorption peak sits closest to the line, not whichever
     dye happens to be registered first. Checked by spectral proximity, not a
     hardcoded name, because the dye registry keeps growing (docs/09) and a
     brighter, better-matched dye added later should be free to win."""
-    by_line = recommend_labels(SCOPE, top=1)
     winner = find_dye(by_line[line][0].dye)
     assert abs(winner.absorption.peak_nm() - float(line)) < 20
 
 
-def test_top_candidate_per_line_beats_every_other_dye_at_that_absorption():
+def test_top_candidate_per_line_beats_every_other_dye_at_that_absorption(by_line):
     """Regression: a HARD-check margin sitting just under the (inflated,
     assumed-evidence) blocking bar must not bury a dye that is 10x+ brighter
     just because a dimmer dye happened to clear that bar by chance of which
     filter it was paired with (optics/recommend.py Candidate.hard_ok
     docstring). EGFP-class dyes on the 488 line are the concrete case that
     exposed this."""
-    by_line = recommend_labels(SCOPE, top=1)
     winner = by_line["488"][0]
     assert winner.brightness > 0.05, (
         f"top 488 nm candidate ({winner.dye}) is nearly dark "
@@ -76,11 +117,10 @@ def test_top_candidate_per_line_beats_every_other_dye_at_that_absorption():
     )
 
 
-def test_405_line_has_no_well_matched_dye_in_the_registry():
+def test_405_line_has_no_well_matched_dye_in_the_registry(by_line):
     """Nothing in data/fluorophores.yaml absorbs anywhere near 405 nm — every
     candidate should still come back (never silently drop to an empty list),
     but with excitation efficiency far below the 488/561/640 lines'."""
-    by_line = recommend_labels(SCOPE, top=1)
     assert by_line["405"], "must still report *something*, not go silent"
     assert (
         by_line["405"][0].excitation_efficiency
@@ -88,22 +128,24 @@ def test_405_line_has_no_well_matched_dye_in_the_registry():
     )
 
 
-def test_ranking_is_not_just_registry_order():
+def test_ranking_is_not_just_registry_order(by_line):
     """Regression for the tie-break bug: every filter in this registry shares
     the same un-curved blocking_od=6 default, so the bottleneck margin alone
     ties across nearly every candidate. Without a tie-break on excitation
     efficiency, sorting silently falls back to alphabetical dye order."""
-    by_line = recommend_labels(SCOPE, top=4)
     names_488 = [c.dye for c in by_line["488"]]
     assert names_488 != sorted(names_488), (
         "ranking matches alphabetical order - the tie-break is not doing anything"
     )
 
 
-def test_evidence_is_assumed_for_an_all_parametric_registry():
+def test_evidence_is_assumed_for_an_all_parametric_registry(by_line):
     """Every dye and filter here is peak+FWHM, not a loaded vendor curve, so
-    the honest answer is 'assumed' — this is triage, not a cleared channel."""
-    by_line = recommend_labels(SCOPE, top=1)
+    the honest answer is 'assumed' — this is triage, not a cleared channel.
+
+    Reads the shared top-4 ranking, so this now checks four candidates per
+    line where it used to check one. Strictly more than it claimed before,
+    and free: same registry, same reason."""
     for candidates in by_line.values():
         for c in candidates:
             assert c.evidence == "assumed"
@@ -117,8 +159,7 @@ def test_unknown_dye_name_does_not_crash_the_search():
 # ------------------------------------------------------------------- panel --
 
 
-def test_panel_assigns_four_distinct_well_matched_dyes():
-    panel = recommend_panel(SCOPE)
+def test_panel_assigns_four_distinct_well_matched_dyes(panel):
     assert panel is not None
     dyes = [c.dye for c in panel.choices]
     assert len(set(dyes)) == 4, "a panel must not relabel the same dye twice"
@@ -133,8 +174,7 @@ def test_panel_assigns_four_distinct_well_matched_dyes():
         )
 
 
-def test_panel_crosstalk_margin_is_computed_against_the_other_chosen_channels():
-    panel = recommend_panel(SCOPE)
+def test_panel_crosstalk_margin_is_computed_against_the_other_chosen_channels(panel):
     assert panel is not None
     assert panel.worst_crosstalk_margin > 0
 
@@ -171,8 +211,7 @@ def test_candidates_above_561_land_on_the_transmitted_side_camera():
     assert above.sort_key() > below.sort_key()
 
 
-def test_panel_choices_report_a_camera_for_a_split_scope():
-    panel = recommend_panel(SCOPE)
+def test_panel_choices_report_a_camera_for_a_split_scope(panel):
     assert panel is not None
     assert all(c.camera in {"Kinetix_red", "Kinetix_blue"} for c in panel.choices)
 
