@@ -118,13 +118,14 @@ design, not a gap.
 | **32 deterministic gates** | G1–G32, each classified `hard` / `bias` / `soft` by what its failure costs. **29 are implemented** — `G2`–`G4` carry a threshold and a default verdict in [04](docs/04-decision-engine.md) and appear in no Python file → [below](#two-more-axes-and-the-questions-neither-working-repo-asks) → [05 §2](docs/05-consensus-gate.md) |
 | **Provenance on every input** | `measured` vs `assumed`, with a separate `advances` axis that only `measured` can satisfy. Literature values compute but never advance → [`kb/literature/`](kb/literature/) |
 | **2,343 prior acquisitions** | normalized out of Micro-Manager metadata into transferable physical quantities, across two schema generations |
-| **1,116 tests, 1,060 on CI** | offline; the instrument is not required to run any of them. The badge covers 1,060 — the other 56 need a Micro-Manager device-adapter install → [running the tests](#running-the-tests) |
+| **1,213 tests, 1,157 on CI** | offline; the instrument is not required to run any of them. The badge covers 1,157 — the other 56 need a Micro-Manager device-adapter install → [running the tests](#running-the-tests) |
 | **A 28-device instrument** | what Micro-Manager loads from `single_cam_red_noDMD.cfg` — Ti2-E and its 14 sub-devices, one Kinetix, seven CSU-W1 devices, two Lumencor engines, NIDAQ hub + LUN-F blanking, serial manager. Tweezers and piezo sit outside those 28 → [above](#agentic-microscope) |
 | **Hardware drivers** | microscope (pymmcore-plus), optical tweezers (TCP), piezo stage (vendor DLL), trap patterns, piezo waveforms, and a shared-clock orchestrator |
 | **First light on real hardware** | piezo and optical tweezers each driven from this repository, **separately** — 2026-08-27. **All three subsystems together on one clock — 2026-09-03**, with per-frame timestamps; κ = 3.65–4.5 pN/µm from three independent routes |
 | **Live detection driving the trap** | 2026-09-04, operator-gated: GPU detection on the full frame picks an isolated particle, the trap is placed on it and ramped to the field origin. Four beads of five caught and carried 11–26 µm at 98.6–99.8 % follow → [`kb/decisions/2026-09-04-closed-loop-trapping-measured.md`](kb/decisions/2026-09-04-closed-loop-trapping-measured.md) |
 | **Two-species sorting on both cameras** | 2026-09-05, operator-triggered: one keypress surveys each species under its own line, plans collision-free corridors, and transports up to 9 per species into columns at x = ±18 µm, looping rounds until the candidate pool dries. Five fields, 34 rounds, **47 of 72 beads parked**; best field 13 of 18 slots. Four of the five runs ended out of *candidates*, not out of slots → [`config/session/sort_core.py`](config/session/sort_core.py) |
 | **Real-time primitives, off the hot path** | [`runtime/`](runtime/) — a one-slot frame ring with a drain-and-keep-newest camera thread, a fixed-period loop clock that cannot drift, and a rate-capped shared-memory channel so a live view runs in a second process instead of competing for the GIL. Ported from the lab's bacteria stack; **not yet run against a camera** → [`kb/decisions/2026-09-05-runtime-primitives-and-gpu-scope.md`](kb/decisions/2026-09-05-runtime-primitives-and-gpu-scope.md) |
+| **Guarded stage motion, and the first measured lens offsets** | 2026-09-07. [`hardware/focus.py`](hardware/focus.py) writes `ZDrive` behind four guards — `allow_motion`, PFS must not be servoing, every sweep capped at `min(2800–3200 µm window, centre + 0.4 × free working distance)`, and readback on every move. Autofocus sweeps coarse→fine and takes the peak by parabola. **The dry ladder is measured**: 10x **−36.771**, 20x **−40.144 µm** from 4x on a fluorescent monolayer at 555 ex / 605 em, with a **0.293 µm** loop closure across three rotations. x/y is recorded as *invalid* rather than measured — identical particles mean each lens locks onto a different one → [`kb/calibrations/objective-offsets.yaml`](kb/calibrations/objective-offsets.yaml) |
 | **A written hazard account** | [`SAFETY.md`](SAFETY.md) — laser classes, the objective/coverslip collision procedure, camera ownership order, and the failure modes that return `0`. **First draft, not yet operator-reviewed** |
 | **An MCP surface over both bespoke paths** | tweezers and piezo as 9 MCP tools in four tiers, the two moving ones refused by default, verified end to end over stdio but **not yet against a device** → [below](#an-mcp-surface-over-the-two-bespoke-paths) |
 | **Refusal paths that hold** | `hardware/lunf_power.py` is complete as transport and refuses to transmit, because the DAC word format is undocumented and a guessed byte goes into a laser driver |
@@ -499,8 +500,8 @@ Lens-by-lens implementation status is in the **Code** table below.
 ## Current status
 
 **Design complete; all eight committee lenses are implemented.** Nine design
-documents, 32 hard gates (G1–G32), 1,116 tests passing. The badge above reports
-1,060 of them — the other 56 need a Micro-Manager device-adapter install and run
+documents, 32 hard gates (G1–G32), 1,213 tests passing. The badge above reports
+1,157 of them — the other 56 need a Micro-Manager device-adapter install and run
 in a separate workflow, which is stated at the top of each file in
 [`.github/workflows/`](.github/workflows/) and again under [running the
 tests](#running-the-tests). The six standing
@@ -511,10 +512,14 @@ report it through their committee gate. Lenses 4 · 5 · 6 · 8 additionally car
 the qualitative half of their judgment as LLM subagents in
 [`.claude/agents/`](.claude/agents/), layered on top of their code, because part
 of what they weigh has no closed form. Three things are deliberately left
-ungated and named as such: vibration and stage repeatability (no measurement
+ungated and named as such: vibration (no measurement
 channel exists), local heating at 1064 nm ([06 D6](docs/06-pitfalls.md)), and
 near-wall Faxén drag ([06 D8](docs/06-pitfalls.md)), which is absorbed by
-in-situ trap calibration rather than corrected by formula.
+in-situ trap calibration rather than corrected by formula. **Stage
+repeatability left that list on 2026-09-07**: revisiting 4x after three
+nosepiece rotations closed to **0.293 µm**, so the retract-rotate-return now
+has a measured bound rather than an assumption →
+[`kb/calibrations/objective-offsets.yaml`](kb/calibrations/objective-offsets.yaml).
 
 What is blocking progress is mostly **facts, not code** — the gates run, but
 return `BLOCKED` for want of measured inputs. Illumination power at the sample is
@@ -2062,7 +2067,7 @@ scope. For now this produces offline recommendations only.
 ```console
 $ pip install -r requirements.txt -r requirements-mcp.txt
 $ pytest -q -rs
-1060 passed, 3 skipped
+1157 passed, 3 skipped
 ```
 
 **Which interpreter?** This is the question that cost a filesystem search on
