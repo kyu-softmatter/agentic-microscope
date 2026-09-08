@@ -78,6 +78,23 @@ from pathlib import Path
 
 import numpy as np
 
+# The focus score itself lives in `detection/focus_metric.py` as of 2026-09-07,
+# because `hardware/focus.py` -- the guarded Z sweep -- needs the same metric,
+# and two copies of a score is exactly how the 4x bead-area window survived
+# into a 100x run and counted debris instead of beads.
+#
+# `DEFAULT_CEILING` is imported AS `CEILING` so this script's %ceil numbers stay
+# byte-identical to what it printed before the extraction. That is
+# back-compatibility, not endorsement: 65535 is right only while the camera sits
+# on a 16-bit port, and these Kinetix bodies read 12-bit (ceiling 4095) on their
+# default one. See that module's docstring.
+from detection.focus_metric import (
+    CLIP_FRACTION,
+    DEFAULT_CEILING as CEILING,
+    bead_area_window,
+    score_frame as measure,
+)
+
 # The lab console is cp1252, and this script prints box-drawing and warning
 # glyphs. Without this, the first table row raises UnicodeEncodeError from
 # inside the sampling loop -- which on 2026-09-06 looked like "the loop took no
@@ -118,8 +135,6 @@ ARMS = [
     ("Kinetix_red", "GREEN", "red-Abv"),
 ]
 
-CEILING = 65535.0
-
 
 def light_off(core, engine: str) -> None:
     for prop, value in [("State", "0")] + [(l, "0") for l in LINES] + \
@@ -142,72 +157,6 @@ def light_on(core, engine: str, levels: dict[str, int]) -> None:
         core.setProperty(engine, line, "1")
     core.setProperty(engine, "State", "1")
     core.waitForDevice(engine)
-
-
-#: A pixel this close to the ceiling is already unusable, whether or not it has
-#: reached it. `>= CEILING` exactly is the wrong test and gave 0.000% clipping
-#: on 2026-09-06 while Kinetix_blue's brightest bead sat at 65,235 ADU -- 99.5%
-#: of full scale. kb/calibrations/frame-photometry.yaml puts the usable bar at
-#: 95%: above that a peak is a lower bound rather than a measurement, and
-#: `detection.cli from-frame` refuses it.
-CLIP_FRACTION = 0.95
-
-
-def bead_area_window(pixel_um: float, bead_um: float,
-                     lo_factor: float = 0.25, hi_factor: float = 4.0) -> tuple[int, int]:
-    """Plausible connected-component area, in px, for a bead of `bead_um`.
-
-    Computed rather than hard-coded, because a fixed window silently stops
-    meaning "a bead" the moment the sampling changes. Measured on 2026-09-06:
-    the 2-40 px window that was right at 4x (1.625 um/px, a 5 um bead ~3 px
-    across, ~7 px area) became 2-400 px here by guesswork, while a 5 um bead at
-    0.130 um/px is ~38 px across and ~1160 px in AREA -- so the filter excluded
-    every real bead and counted only small debris and noise. The counts it
-    printed were not bead counts.
-
-    The window is generous on purpose: a defocused bead spreads, a touching
-    pair merges, and the point is to track focus rather than to segment
-    perfectly.
-    """
-    radius_px = 0.5 * bead_um / max(pixel_um, 1e-9)
-    area = np.pi * radius_px * radius_px
-    return max(2, int(lo_factor * area)), int(hi_factor * area)
-
-
-def measure(frame: np.ndarray, area_px: tuple[int, int]) -> dict:
-    """Sharpness, bead count and headroom for one frame."""
-    import cv2
-
-    f32 = frame.astype(np.float32)
-    median = float(np.median(f32))
-
-    # Tenengrad, normalised by the frame's own level so it measures sharpness
-    # rather than brightness.
-    gx = cv2.Sobel(f32, cv2.CV_32F, 1, 0, ksize=3)
-    gy = cv2.Sobel(f32, cv2.CV_32F, 0, 1, ksize=3)
-    sharp = float(np.mean(gx * gx + gy * gy)) / max(median, 1.0) ** 2
-
-    smooth = cv2.GaussianBlur(f32, (0, 0), 15)
-    residual = f32 - smooth
-    scale = float(np.median(np.abs(residual - np.median(residual)))) * 1.4826 or 1.0
-    n, labels, stats, _ = cv2.connectedComponentsWithStats(
-        (residual > 8.0 * scale).astype(np.uint8), 8
-    )
-    areas = stats[1:, 4]
-    lo, hi = area_px
-    keep = (areas >= lo) & (areas <= hi)
-    beads = int(keep.sum())
-
-    return {
-        "sharp": sharp,
-        "beads": beads,
-        "bead_area_med": float(np.median(areas[keep])) if keep.any() else 0.0,
-        "peak": float(residual.max()),
-        "peak_abs": float(frame.max()),
-        "peak_pct_ceiling": 100.0 * float(frame.max()) / CEILING,
-        "median": median,
-        "clip_frac": float((frame >= CLIP_FRACTION * CEILING).mean()),
-    }
 
 
 def main(argv: list[str] | None = None) -> int:

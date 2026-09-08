@@ -1,0 +1,185 @@
+# Parfocal (z) offsets between objectives, MEASURED.
+#
+# Machine-readable record of the first run of
+# `config/session/autofocus.py`, driven one lens at a time per the operator's
+# sequence (user, 2026-09-07): go to low mag, find focus, change objective,
+# re-focus. The guarded Z axis is `hardware/focus.py`; the offsets themselves
+# are differences between absolute ZDrive focus positions.
+#
+# ---------------------------------------------------------------------------
+# READ THE CLOSURE BEFORE READING ANY OFFSET
+# ---------------------------------------------------------------------------
+# Changing an objective safely means retracting clear of the sample first
+# (SAFETY.md §2: Z -> 0, rotate, return, re-focus). So every offset below is a
+# difference between two absolute Z values measured either side of a full
+# retract-and-return cycle, and it is only as good as that cycle repeats.
+#
+# So 4x was measured TWICE, at the start and after three rotations. It
+# disagreed with itself by **-7.792 um**. That is the uncertainty on every
+# number here, and it is why `10x -> 20x` is reported as *parfocal* rather
+# than as -4.084 um: an offset smaller than the closure is not a measurement.
+#
+# The closure is NOT the focus metric's fault, and that is worth recording
+# because it was the obvious suspect. Two 4x sweeps back to back with no
+# rotation between them agreed to 0.73 um (3119.274 vs 3118.548), against a
+# 13.75 um depth of field. The ~7 um enters with the retract-rotate-return
+# cycle, so it is the stage returning, the turret repeating, or drift over the
+# ~5 minutes the pass took -- these three are not yet separated.
+#
+# WHAT WOULD SEPARATE THEM: repeat the closure at 100x Oil, where the depth of
+# field is 0.397 um rather than 13.75 um. If the closure is still ~8 um it is
+# mechanical; if it collapses to well under a micron, the 4x figure was
+# dominated by how broadly 4x defines focus. Cheap, and not yet done.
+
+objective_offsets:
+  measured_utc: "2026-09-07"
+  evidence: measured
+  operator: KH
+  method: >
+    config/session/autofocus.py per lens: coarse sweep then fine sweep, peak by
+    three-point parabola on a Tenengrad score normalised by the frame median
+    (detection/focus_metric.py). Nosepiece rotated under software control
+    through Microscope.set_property, which ran both collision guards each time;
+    Z retracted to 0 before every rotation.
+  quantity: >
+    ZDrive position of peak focus, absolute um. A difference between two rows is
+    the PARFOCAL offset between those objectives. Increasing Z moves TOWARD the
+    sample (Z_RETRACT_DIRECTION = -1), so a negative dz means the incoming lens
+    focuses further RETRACTED.
+
+  # ---- conditions -------------------------------------------------------
+  conditions:
+    config: config/micromanager/single_cam_red_noDMD_nocom10.cfg
+    camera: Kinetix_red
+    binning: 1x1
+    frame_px: [2400, 2400]
+    bit_depth: 16          # ceiling 65535 ADU; NOT the 12-bit default port
+    exposure_ms: 20.0
+    illumination: DiaLamp transmitted brightfield
+    post_processing: disabled  # six PP * ENABLED entries, off on every run
+    note: >
+      Transmitted, not epi: the fiducial is absorbing. DiaLamp Intensity runs
+      0..2100 and its response is steep -- the level had to be raised per
+      objective as the field shrank, and 250 at 20x was already 34% of ceiling
+      while 400 was 58%. A saturated frame scores LOW on Tenengrad because
+      clipping flattens the gradient, so over-illuminating inverts the curve.
+    dialamp_level_by_objective: {4x: 80, 10x: 80, 20x: 250}
+
+  # ---- the fiducial -----------------------------------------------------
+  fiducial:
+    what: "cross drawn with a thin Sharpie, on the FAR (sample-side) surface"
+    substrate: "170 um coverslip"
+    stroke_width_um: [175, 260]   # estimated off the focused 4x frame
+    reach_note: >
+      Because the ink is on the far surface, every objective focuses THROUGH the
+      full glass thickness. On the 170 um coverslip used here that is the design
+      case and all six lenses reach it. On a 1 mm slide the free working
+      distance goes negative for 20x and everything above it
+      (sample/aberration.free_working_distance_um), so the mark would be
+      unreachable at those magnifications -- 20x reaching focus here is what
+      confirmed the glass is thin.
+    field_note: >
+      The stroke is WIDER than the field at 100x (156 um) and comparable to it
+      at 60x (260 um), so the cross intersection cannot be framed at high mag.
+      The operator's answer, and it is the right one: focus on a stroke EDGE.
+      Tenengrad is an edge-gradient score, so a single edge filling the field
+      gives a clean peak.
+
+  # ---- the measurement --------------------------------------------------
+  loop_closure_um: -7.792
+  reference: 4x
+  reference_z_um: 3114.652   # mean of the two 4x visits
+  same_lens_no_rotation_spread_um: 0.73
+
+  visits:
+    - {objective: 4x,  visit: 0, z_focus_um: 3118.548, pass: fine, contrast: 1.02}
+    - {objective: 10x, visit: 1, z_focus_um: 3071.640, pass: fine, contrast: 1.30}
+    - {objective: 20x, visit: 2, z_focus_um: 3067.556, pass: fine, contrast: 1.34}
+    - {objective: 4x,  visit: 3, z_focus_um: 3110.756, pass: fine, contrast: 1.02,
+       is_loop_closure: true}
+
+  offsets_z_um:
+    # dz relative to the 4x reference, +/- the loop closure.
+    4x:  {dz_um: 0.000,   uncertainty_um: 7.792, verdict: reference}
+    10x: {dz_um: -43.012, uncertainty_um: 7.792, verdict: measured}
+    20x: {dz_um: -47.096, uncertainty_um: 7.792, verdict: measured}
+
+  pairwise:
+    10x_to_20x:
+      dz_um: -4.084
+      verdict: >
+        PARFOCAL to the resolution of this measurement. |dz| is smaller than
+        the 7.792 um closure, so -4.084 is not a number to carry forward.
+
+  # ---- not measured -----------------------------------------------------
+  pending:
+    x_y_parcentric: >
+      NOT MEASURED in this run. Only z was taken, because each lens was driven
+      as a separate autofocus rather than through
+      config/session/measure_objective_offsets.py, which is what records the
+      fiducial's image position and computes dx/dy. Those come out in CAMERA um
+      unless --calibrate-xy measures the stage->camera matrix; image y runs down
+      and that rotation has never been measured for this path.
+    objectives_40x: >
+      NOT MEASURED. 40x WI needs water on the coverslip, and once an oiled lens
+      wets the glass the 40x WI (160 um WD) is at cross-contamination risk. The
+      dry ladder was therefore closed first, deliberately, while the glass was
+      still clean. Skipped this session at the operator's decision.
+
+    objectives_60x_100x: >
+      ATTEMPTED AND FAILED, and the failure is diagnostic rather than a dead
+      end -- see `findings.oil_not_bridging` below. 100x was never reached.
+
+  # ---- what the failed 60x attempt established -------------------------
+  findings:
+    high_na_lenses_focus_far_below_20x: >
+      The first 60x sweep was centred on the 20x focus (3067.556) with the full
+      +/-30 um, and its peak came out AT THE LOW END -- "a bound, not a focus".
+      Re-centring at 2990 did the same. So the 60x focus is more than 100 um
+      BELOW the 20x focus, in the direction of the 2959 um plane recorded on
+      2026-09-03, and not within a few um of 20x the way 10x and 20x are of
+      each other.
+
+      **This is a live hazard, not a curiosity.** Centring a high-NA sweep on a
+      low-mag focus put the ceiling ~138 um above the plausible true focus
+      against a 150 um free working distance -- an estimated ~12 um of
+      clearance, with oil on the lens. The WD guard did its job (it bounded the
+      sweep to 0.4 x WD *about the centre*) and it was still nearly not enough,
+      because the CENTRE was wrong by ~108 um and no guard can know that.
+      Corollary: step DOWN the magnification ladder, and re-centre downward into
+      Z already occupied rather than widening the span.
+
+    oil_not_bridging: >
+      With the fiducial confirmed in the field (35% ink coverage, so many
+      high-contrast edges), a 190 um Z profile at 5 um steps gave sharpness
+      0.00707 - 0.00731: **peak/median 1.01, i.e. no focus peak at all.** For
+      comparison the same metric gave 1.84 at 4x, 1.70 at 10x and 1.43 at 20x
+      on the same mark.
+
+      A lens that shows the ink's gross shape but never resolves an edge at any
+      Z is not mis-focused, it is aberrated. An NA 1.42 oil objective with an
+      air gap instead of an oil bridge transmits light normally and has enough
+      spherical aberration that no Z forms a sharp image -- which is exactly
+      this signature. Oil had been applied to the front element, but the lens
+      was rotated in and out several times over ~20 min at Z ~ 0 (3 mm clear of
+      the glass), so the drop had ample opportunity to spread or drain without
+      ever contacting the coverslip.
+
+      TO RESOLVE: confirm physically that oil bridges lens to coverslip -- add
+      oil, and check the bridge forms as Z approaches focus. Cannot be settled
+      from software; the flat curve is the evidence that it is not bridging, not
+      a measurement of why.
+
+    the_fiducial_leaves_the_field_at_high_mag: >
+      At 60x the field is 260 um and the first attempt saw NO ink -- only dust
+      and an illumination gradient. A 5x5 stage grid at 150 um steps found ink
+      at dx=0, dy=-150 um (34.9% coverage) while the centre row read 0.001.
+      So the mark had simply fallen in a clear gap between strokes.
+
+      This is the parcentricity the run set out to measure, and it is circular:
+      the offset cannot be measured until the mark is in the field, and putting
+      it there requires the offset. The way out is a stage grid search (done
+      here) or the measured stage->camera transform (`--calibrate-xy`), not a
+      better guess.
+    closure_at_high_na: >
+      The test that would explain the 7.792 um -- see the header.

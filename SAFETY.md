@@ -137,13 +137,26 @@ not crash, and that was luck, not clearance.**
    calibrations and they are not readable over TCP. Drive a known amplitude
    and measure it before trusting any `TRAP_POSITION` in µm again.
 
-   ⚠ **Nothing in this repository enforces those Z steps.** `Microscope`
-   exposes no stage-motion API at all — only property writes — so a real Z
-   move goes through `core.setPosition("ZDrive", ...)` on the raw MMCore and
-   never reaches `_require_write`. `ZDrive`'s membership in
-   `COLLISION_DEVICES` therefore guards writes to ZDrive *properties*, not
-   Z motion, and `_require_clear_of_sample` is only called for `Nosepiece`.
-   **This sequence is a human procedure, not a guarded one.**
+   ⚠ **`Microscope` still enforces none of those Z steps**, and the reason is
+   unchanged: it exposes no stage-motion API at all — only property writes — so
+   a raw `core.setPosition("ZDrive", ...)` never reaches `_require_write`.
+   `ZDrive`'s membership in `COLLISION_DEVICES` therefore guards writes to
+   ZDrive *properties*, not Z motion, and `_require_clear_of_sample` is only
+   called for `Nosepiece`.
+
+   **Since 2026-09-07 there is one guarded way to move Z:
+   `hardware/focus.py`.** `FocusAxis` requires its own `allow_motion`, refuses
+   to sweep while PFS is servoing, caps every sweep at
+   `min(2800–3200 window, centre + 0.4 × free working distance)` — 52 µm of the
+   100× Oil's 130 µm — approaches the sample only upward and only one step at a
+   time, and refuses to continue when a commanded Z does not read back. The
+   guards are tested in `tests/test_focus.py`; `config/session/autofocus.py`
+   and `config/session/measure_objective_offsets.py` are its two callers.
+
+   **It is opt-in, not a chokepoint.** Any other code can still call
+   `core.setPosition` directly and bypass all of it, so this narrows the hazard
+   to "the guarded path exists and is the one to use" — it does not close it.
+   **The retract–rotate–return sequence above remains a human procedure.**
 3. Two guards now refuse the write, both **sign-free**
    (`Microscope._require_clear_of_sample`):
    - **PFS `In Range` → refuse.** A measurement: PFS bounces IR off the real
