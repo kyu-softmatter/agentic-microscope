@@ -183,3 +183,172 @@ objective_offsets:
       better guess.
     closure_at_high_na: >
       The test that would explain the 7.792 um -- see the header.
+    oil_not_bridging_confirmed_over_174um: >
+      SECOND ATTEMPT, 2026-09-07 later the same day. The operator found 60x
+      focus by hand at ZDrive 2947.920 um; three sweeps were then run from that
+      centre, staged upward, giving 272 points over **2923.9 to 3097.6 um** --
+      173.6 um of Z against a 0.207 um depth of field, and a band that INCLUDES
+      3067-3115 where 4x/10x/20x all focused this same ink.
+
+      Tenengrad ran 0.0106-0.0112 throughout, +/-3%, drifting DOWN with Z in
+      step with the field median ADU (17314 -> 16503). The score was tracking
+      illumination falloff, not focus. No peak anywhere.
+
+      Two candidate explanations were tested and both failed. (a) NOT framing:
+      the blurred stroke boundary is plainly in the frame, so an edge is
+      present. (b) NOT a wrong Z estimate: the parfocal band the other three
+      lenses occupy was swept and is empty. And the operator's hand-found
+      2947.920 scores at exact baseline, so it is not a metric focus either.
+
+      An argument was raised that sharp specks in the frame prove the lens
+      resolves, so the oil must bridge. IT IS VOID: the fine pass held its
+      baseline to 0.12% over 12 um, so those specks are FIXED PATTERN on or
+      near the sensor, sharp whatever the objective does. They also set the
+      gradient floor the metric divides by, which is why the ratios sit near
+      1.0.
+
+      Net: shows the ink's shape, resolves no edge, at any Z, over 174 um.
+      `oil_not_bridging` stands and is now bounded much harder. There is no
+      observed 60x focus, so there is NO measured 60x offset and no basis for
+      an opinion on its sign -- both "60x focuses >100 um below 20x" and "60x
+      is parfocal with the others" are unsupported.
+
+    max_over_median_cannot_tell_a_peak_from_a_spike: >
+      A METHOD BUG worth carrying, found in the same run. The coarse pass
+      reported max/median 1.20 -- exactly MIN_CONTRAST_COARSE -- from a SINGLE
+      point at 2929.92 whose two neighbours sat at baseline; the fine pass
+      reported 1.03 from a single point at 2924.35, likewise. They read as 12.3
+      and 25.7 sigma only because the baseline is so quiet. The fine pass swept
+      THROUGH the coarse spike at 0.207 um sampling and found nothing, which is
+      what proves both were transients.
+
+      A ratio of two order statistics cannot distinguish a peak from a spike.
+      Require the argmax's NEIGHBOURS to be lifted too, or reject a fitted
+      parabola whose width is far below the depth of field. Consequence when
+      not done: `--park` acted on the 1.03 spike and moved the stage 23.6 um
+      off the operator's hand-found focus.
+
+# ===========================================================================
+# SECOND MEASUREMENT, 2026-09-07 evening: fluorescent monolayer, epi 555/605.
+#
+# A DIFFERENT SAMPLE from the ink pass above, so the ABSOLUTE Z values are not
+# comparable across the two. The offsets and the closure are.
+#
+# THE HEADLINE: the loop closure is 0.293 um, not 7.792 um.
+#
+# The header above asks how to separate stage/turret repeatability from 4x's
+# 13.75 um depth of field in that 7.792 um, and proposes repeating the closure
+# at 100x. That question is now ANSWERED, and more cheaply -- same 4x lens,
+# same retract-rotate-return cycle, three rotations between visits, but a
+# target the metric can actually see. The closure collapsed 27-fold.
+#
+# So the 7.792 um was NOT MECHANICAL. This stand's retract-rotate-return
+# repeats to about 0.3 um. The old figure was dominated by how weakly the ink
+# defined focus at 4x (fine-pass contrast 1.02, i.e. barely above noise).
+# ===========================================================================
+objective_offsets_fluorescent:
+  measured_utc: "2026-09-07"
+  evidence: measured
+  operator: KH
+  method: >
+    config/session/measure_objective_offsets.py, one objective per invocation
+    with --no-prompt --no-close-loop, because that script does not rotate the
+    nosepiece -- it prompts the operator and then verifies. The nosepiece was
+    instead rotated in software through Microscope.set_property, which runs both
+    collision guards, with ZDrive retracted to 0 before every rotation. XY was
+    held still for the whole pass. The closure visit re-used visit 0's exact
+    parameters so the difference isolates the cycle, not a settings change.
+  quantity: >
+    ZDrive position of peak focus, absolute um. A difference between two rows
+    is the PARFOCAL offset. Negative dz = the incoming lens focuses further
+    RETRACTED.
+
+  conditions:
+    config: config/micromanager/single_cam_red_noDMD_nocom10.cfg
+    camera: Kinetix_red
+    binning: 1x1
+    frame_px: [2400, 2400]
+    exposure_ms: 33.33
+    illumination: "Aura GREEN epi, 555 ex / 605 em"
+    emission_nm: 605
+    filter_cube: >
+      FilterTurret1 state 0 = MXR00724 LED-DA/FI/TR/Cy5/Cy7, 5-band. Band 3 is
+      the channel used: exciter 544-565, dichroic 580-611, emitter 589-623 nm.
+      605 em sits essentially dead centre of the emitter band. No filter change
+      was needed -- the turret was already in this position. There is NO EM1/EM2
+      device in this config (they are not Ti2 devices), so this cube is the only
+      emission selection available on this path.
+    light_path: "4-L100"
+    post_processing: disabled
+    feature_um: 5
+    aura_level_per_mille_by_objective: {4x: 50, 10x: 5, 20x: 10}
+
+  fiducial:
+    what: "fluorescent particles, ~5 um, coated on a glass substrate, partly chained into clusters"
+    why_better: >
+      Particles cover the whole field at every magnification, so the ink pass's
+      two worst problems both vanish: nothing has to be framed, and there is no
+      magnification at which the feature is wider than the field. Coarse-pass
+      contrast rose with NA -- 2.99 at 4x, 7.01 at 10x, 20.78 at 20x -- against
+      1.84 / 1.70 / 1.43 for the ink on the same lenses.
+
+  # ---- the measurement --------------------------------------------------
+  loop_closure_um: -0.293
+  reference: 4x
+  reference_z_um: 3069.404   # mean of the two 4x visits
+
+  visits:
+    - {objective: 4x,  visit: 0, z_focus_um: 3069.550, coarse_contrast: 2.99, fine_contrast: 1.03}
+    - {objective: 10x, visit: 1, z_focus_um: 3032.633, coarse_contrast: 7.01, fine_contrast: 1.14}
+    - {objective: 20x, visit: 2, z_focus_um: 3029.260, coarse_contrast: 20.78, fine_contrast: 2.28}
+    - {objective: 4x,  visit: 3, z_focus_um: 3069.257, coarse_contrast: 2.98, fine_contrast: 1.03,
+       is_loop_closure: true}
+
+  offsets_z_um:
+    4x:  {dz_um: 0.000,   uncertainty_um: 0.293, verdict: reference}
+    10x: {dz_um: -36.771, uncertainty_um: 0.293, verdict: measured}
+    20x: {dz_um: -40.144, uncertainty_um: 0.293, verdict: measured}
+
+  pairwise:
+    10x_to_20x:
+      dz_um: -3.373
+      uncertainty_um: 0.293
+      verdict: >
+        MEASURED, at 11.5x the closure. The ink pass called this pair
+        "parfocal" only because its own closure (7.792 um) was larger than the
+        separation (4.084 um). The pair was never parfocal -- the measurement
+        was too blunt to see a real 3-4 um gap.
+
+  agreement_with_the_ink_pass: >
+    Different sample, so only the offsets compare. Ink gave 10x -43.012 and 20x
+    -47.096; fluorescence gives -36.771 and -40.144. Each differs by ~6 um,
+    which is inside the ink pass's own +/-7.792 uncertainty, so the two agree.
+    The 10x->20x SPACING agrees far better -- -4.084 vs -3.373, a 0.7 um
+    difference -- which is what you would expect if the ink's error was a
+    common offset from one badly-defined 4x reference rather than per-lens
+    noise.
+
+  # ---- still not measured ----------------------------------------------
+  pending:
+    x_y_parcentric: >
+      ATTEMPTED AND INVALID, for a reason specific to this sample. The script
+      records the position of the BRIGHTEST COMPACT FEATURE
+      (`locate_centroid`), which is only a parcentric offset if it is the SAME
+      feature at every magnification. On a dense monolayer of near-identical
+      particles it is not.
+
+      Proof from the numbers, not a suspicion: the feature 4x locked onto sits
+      1845 um from the field centre, and 10x's half-field is 780 um. 10x could
+      not have seen it. The recorded radii fall 1845 -> 865 -> 79 um as the
+      field shrinks, which is the signature of each lens picking whatever is
+      brightest in ITS OWN field.
+
+      TO FIX: park XY on a unique landmark -- one isolated particle with clear
+      space around it, a scratch, or the edge of the coating -- and for an edge
+      use `--locate correlate`, which is the mode built for it. Or run
+      `--calibrate-xy`, still never run against hardware.
+    objectives_40x_60x_100x: >
+      NOT REACHED. The dry ladder was closed first, deliberately, while the
+      substrate was still clean -- 40x WI needs water and the two oil lenses
+      need oil, and 60x Oil's bridging failure (see findings above) is still
+      unresolved. All three need hands on the instrument.
