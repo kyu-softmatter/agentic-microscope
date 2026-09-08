@@ -118,7 +118,7 @@ design, not a gap.
 | **32 deterministic gates** | G1–G32, each classified `hard` / `bias` / `soft` by what its failure costs. **29 are implemented** — `G2`–`G4` carry a threshold and a default verdict in [04](docs/04-decision-engine.md) and appear in no Python file → [below](#two-more-axes-and-the-questions-neither-working-repo-asks) → [05 §2](docs/05-consensus-gate.md) |
 | **Provenance on every input** | `measured` vs `assumed`, with a separate `advances` axis that only `measured` can satisfy. Literature values compute but never advance → [`kb/literature/`](kb/literature/) |
 | **2,343 prior acquisitions** | normalized out of Micro-Manager metadata into transferable physical quantities, across two schema generations |
-| **1,213 tests, 1,157 on CI** | offline; the instrument is not required to run any of them. The badge covers 1,157 — the other 56 need a Micro-Manager device-adapter install → [running the tests](#running-the-tests) |
+| **1,213 tests, 1,150 on CI** | offline; the instrument is not required to run any of them. The badge covers 1,150 — of the rest, 56 need a Micro-Manager device-adapter install and 7 need `opencv-python` → [running the tests](#running-the-tests) |
 | **A 28-device instrument** | what Micro-Manager loads from `single_cam_red_noDMD.cfg` — Ti2-E and its 14 sub-devices, one Kinetix, seven CSU-W1 devices, two Lumencor engines, NIDAQ hub + LUN-F blanking, serial manager. Tweezers and piezo sit outside those 28 → [above](#agentic-microscope) |
 | **Hardware drivers** | microscope (pymmcore-plus), optical tweezers (TCP), piezo stage (vendor DLL), trap patterns, piezo waveforms, and a shared-clock orchestrator |
 | **First light on real hardware** | piezo and optical tweezers each driven from this repository, **separately** — 2026-08-27. **All three subsystems together on one clock — 2026-09-03**, with per-frame timestamps; κ = 3.65–4.5 pN/µm from three independent routes |
@@ -501,8 +501,8 @@ Lens-by-lens implementation status is in the **Code** table below.
 
 **Design complete; all eight committee lenses are implemented.** Nine design
 documents, 32 hard gates (G1–G32), 1,213 tests passing. The badge above reports
-1,157 of them — the other 56 need a Micro-Manager device-adapter install and run
-in a separate workflow, which is stated at the top of each file in
+1,150 of them — 56 need a Micro-Manager device-adapter install and run in a
+separate workflow, and 7 need `opencv-python`, which is stated at the top of each file in
 [`.github/workflows/`](.github/workflows/) and again under [running the
 tests](#running-the-tests). The six standing
 lenses — optics, detection, compute resources, sample geometry,
@@ -2067,7 +2067,7 @@ scope. For now this produces offline recommendations only.
 ```console
 $ pip install -r requirements.txt -r requirements-mcp.txt
 $ pytest -q -rs
-1157 passed, 3 skipped
+1150 passed, 10 skipped
 ```
 
 **Which interpreter?** This is the question that cost a filesystem search on
@@ -2084,21 +2084,28 @@ non-zero naming what to install. On this instrument's PC that is the venv at
 clean checkout); it does not need recreating.
 
 `pyproject.toml` puts the repository root on `sys.path`, so the bare `pytest`
-and `python -m pytest` agree — before it, only the second form worked. The three
-skips are modules, not tests: they open with
+and `python -m pytest` agree — before it, only the second form worked. The ten
+skips are two different things. **Three are modules, not tests**: they open with
 `pytest.importorskip("pymmcore_plus")` and hold 56 tests that need live
-Micro-Manager access. `-rs` names them and their reason in every run, so the
-count above cannot quietly shrink. To run those too:
+Micro-Manager access. **Seven are individual tests** in
+[`tests/test_objective_offsets.py`](tests/test_objective_offsets.py), the
+localisation half, which calls OpenCV through `locate_centroid` and
+`locate_by_correlation`; the offset arithmetic and loop-closure tests in the
+same file run everywhere, which is the half that can be wrong silently. `-rs`
+names all ten and their reason in every run, so the count above cannot quietly
+shrink. To run those too:
 
 ```console
 $ pip install -r requirements-micromanager.txt && mmcore install
 ```
 
-Three requirement files, and the split is the point: `requirements.txt` is the
-866 tests that need nothing but numpy and pyyaml, `requirements-mcp.txt` adds
-the 30 that exercise the MCP server and is in CI because it is pure Python, and
+Four requirement files, and the split is the point: `requirements.txt` is the
+1,120 tests that need nothing but numpy and pyyaml, `requirements-mcp.txt` adds
+the 30 that exercise the MCP server and is in CI because it is pure Python,
 `requirements-micromanager.txt` is the 56 that need a vendor device-adapter
-download and is not.
+download and is not, and `requirements-analysis.txt` is 7 localisation tests
+that call OpenCV and skip without it. Measured 2026-09-07 by collecting the
+suite with each optional stack hidden, not by adding the numbers up.
 
 ---
 

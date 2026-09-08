@@ -4,8 +4,16 @@
 #
 # The import is deferred into `Tracker.update`, so `live_view.py` runs and
 # `--help` works with this file uninstalled; only `--track` fails, and it fails
-# with a message in the status line rather than a traceback. Nothing the test
-# suite collects imports cv2, so CI does not need this file.
+# with a message in the status line rather than a traceback.
+#
+# ⚠ CI still does not need this file, but the reason changed on 2026-09-07.
+# It used to be that nothing the test suite collected imported cv2. That stopped
+# being true when tests/test_objective_offsets.py landed: seven of its fifteen
+# tests exercise `locate_centroid` / `locate_by_correlation`, which import cv2
+# inside the function body. They now carry a `requires_cv2` skipif, so they skip
+# where OpenCV is absent instead of erroring -- which is what CI was doing for
+# three commits. If a new test calls into a deferred cv2 import without that
+# marker, CI goes red again and this comment is the thing that was wrong.
 #
 # ⚠ `opencv-python`, NOT `opencv-python-headless`.
 #

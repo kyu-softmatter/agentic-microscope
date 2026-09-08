@@ -158,11 +158,17 @@ survives a clean checkout).
 pytest -q -rs
 ```
 
-1060 passed, 3 skipped. The skips are whole modules behind
-`pytest.importorskip("pymmcore_plus")` holding 56 tests that need a
-Micro-Manager device-adapter install; `-rs` keeps them and their reason named in
-every run, so the count cannot quietly shrink. **The instrument is not required
-to run any test.**
+1150 passed, 10 skipped, of 1,213 (measured 2026-09-07). Two kinds of skip:
+three whole modules behind `pytest.importorskip("pymmcore_plus")` holding 56
+tests that need a Micro-Manager device-adapter install, and seven `requires_cv2`
+tests in `tests/test_objective_offsets.py` that call OpenCV
+(`requirements-analysis.txt`, not in CI). `-rs` keeps all ten named, so the
+count cannot quietly shrink. **The instrument is not required to run any test.**
+
+**If a test calls into a deferred `import cv2`, mark it `requires_cv2`.** Every
+cv2 import in this repo sits inside a function body so the modules load without
+OpenCV; a test that calls one of those functions unmarked turns CI red, which is
+what happened for three commits after `062db16`.
 
 ```bash
 python -m optics.cli check config/channels/proposed-2color.yaml
@@ -197,9 +203,10 @@ give no advice without a source.
 - **Not a package.** No `[build-system]`; `pyproject.toml` exists to put the
   repository root on `sys.path` so bare `pytest` and `python -m pytest` agree.
   Everything runs as `python -m <lens>.cli`.
-- Requirements are split on purpose: `requirements.txt` (numpy + pyyaml, 866
-  tests) · `requirements-mcp.txt` (pure Python, in CI) ·
-  `requirements-micromanager.txt` (vendor device-adapter download, not in CI).
+- Requirements are split on purpose: `requirements.txt` (numpy + pyyaml, 1,120
+  tests) · `requirements-mcp.txt` (30 tests, pure Python, in CI) ·
+  `requirements-micromanager.txt` (56, vendor device-adapter download, not in
+  CI) · `requirements-analysis.txt` (7, OpenCV, not in CI).
 - **One definition, one file.** `tests/test_sort_one_copy.py` fails if a shared
   name is defined in both `sort_core.py` and a CLI — a standalone copy already
   drifted once, in its docstrings, which is the state in which the next drift

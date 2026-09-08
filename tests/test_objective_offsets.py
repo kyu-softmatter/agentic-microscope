@@ -41,6 +41,17 @@ def _load(relative: str, name: str):
 
 OFF = _load("config/session/measure_objective_offsets.py", "_measure_objective_offsets")
 
+# `locate_centroid` and `locate_by_correlation` defer `import cv2` into the
+# function body, so the module above loads without OpenCV and only the five
+# localisation tests below need it. cv2 lives in requirements-analysis.txt,
+# which CI does not install -- so those skip there and `-rs` names them, the
+# same shape as the pymmcore_plus modules. The arithmetic and loop-closure
+# tests, which are the ones that can be wrong silently, still run everywhere.
+requires_cv2 = pytest.mark.skipif(
+    importlib.util.find_spec("cv2") is None,
+    reason="needs opencv-python (requirements-analysis.txt), not installed in CI",
+)
+
 
 # ---- the registry the sequence drives from --------------------------------
 
@@ -68,6 +79,7 @@ def _bead_field(u, v, size=256, sigma=3.0, amp=3000.0, seed=0):
     return img.astype(np.uint16)
 
 
+@requires_cv2
 @pytest.mark.parametrize("u,v", [(100.37, 150.62), (64.0, 64.0), (200.9, 33.1)])
 def test_centroid_is_sub_pixel(u, v):
     got_u, got_v, diag = OFF.locate_centroid(_bead_field(u, v))
@@ -76,6 +88,7 @@ def test_centroid_is_sub_pixel(u, v):
     assert got_v == pytest.approx(v, abs=0.05)
 
 
+@requires_cv2
 def test_centroid_refuses_an_empty_field_instead_of_returning_the_centre():
     """A field with nothing in it must REFUSE. Returning the frame centre would
     read as 'the fiducial is perfectly centred' -- a zero offset that is really
@@ -105,6 +118,7 @@ def _texture_field(shift_u=0.0, shift_v=0.0, size=256, seed=7):
     return (1000.0 + 300.0 * shifted).astype(np.float32)
 
 
+@requires_cv2
 def test_correlation_recovers_a_known_shift_on_an_extended_target():
     """0.1 px on a field-filling target. This is what `--locate correlate` is
     for: an edge or a graticule, where there is structure everywhere."""
@@ -117,6 +131,7 @@ def test_correlation_recovers_a_known_shift_on_an_extended_target():
     assert v - h / 2 == pytest.approx(-4.0, abs=0.1)
 
 
+@requires_cv2
 def test_correlation_on_a_single_small_bead_is_much_worse_than_a_centroid():
     """Measured here, and it decides which `--locate` mode to use.
 
@@ -145,6 +160,7 @@ def test_correlation_on_a_single_small_bead_is_much_worse_than_a_centroid():
     assert centroid_err < 0.05
 
 
+@requires_cv2
 def test_correlation_handles_a_magnification_ratio():
     """The reference is rescaled before correlating, which is what lets a 20x
     frame be matched against a 100x one at all."""
