@@ -40,15 +40,28 @@ meta:
 # ---------------------------------------------------------------------------
 checks:
   spot_fits_in_sensor:
-    "4x": null                  # unrecorded
-    "10x": null
-    "20x": null
-    note: >-
-      If the illuminated field overfilled the head at low magnification, those
-      rows are lower bounds. Note the direction: 4x reads HIGHER than 20x here,
-      so an overfill at 4x would mean the true 4x figure is higher still, not
-      that the comparison is reversed. One row on the sheet says "aperture
-      full, size is different" for the LUN-F-XL at 640.
+    "4x": true                  # inferred 2026-09-09, see `inferred_from`
+    "10x": true
+    "20x": true
+    evidence: inferred
+    inferred_from: >-
+      Not recorded at the bench, but the rows answer it themselves and the
+      argument is short. The illuminated field scales as 1/M, so its AREA scales
+      as 1/M^2. Had the beam overfilled the head, the head would have been
+      reading a fixed area out of a beam 25x larger at 4x than at 20x, and
+      P(4x)/P(20x) would be 0.04.
+
+      It is not. Every source and every line reads between 1.01 and 1.24 --
+      near unity, two orders from 0.04. So the beam fitted inside the head at
+      all three objectives, for all three engines.
+
+      TWO CONSEQUENCES. The mW figures are the WHOLE beam and not lower bounds,
+      which reverses the caution this block previously carried. And for the
+      Aura, irradiance is P over the CIRCLE's area, so the circle's diameter is
+      needed after all -- the easy route, P over the sensor area, is closed.
+
+      One row on the sheet still says "aperture full, size is different" for the
+      LUN-F-XL at 640, which is unexplained and not contradicted by the above.
   zero_pct_vs_shutter_closed: null    # unrecorded; every 0 % row read 0 mW
 
 # ---------------------------------------------------------------------------
@@ -265,19 +278,35 @@ illuminated_area_um2:
     "4x": null
     "10x": null
     "20x": null
+    bracket_um: [1099, null]
     needed: >-
-      TODO(human): the circle's diameter at the sample -- OR, if the circle
-      overfilled the meter head, the head's aperture instead.
+      TODO(human): the circle's diameter at the sample. The fork this entry used
+      to carry is resolved -- the beam did NOT overfill the head
+      (`checks.spot_fits_in_sensor`), so the reading is the whole beam and
+      irradiance is P over the circle. There is no shortcut via the sensor area.
 
-      The two cases need different numbers and give different answers. If the
-      circle fits inside the sensor, the reading is the whole beam and
-      irradiance is P / (circle area). If it overfills, the reading is only the
-      part that landed, and irradiance is P / (SENSOR area) -- which is then the
-      easier of the two to obtain, being one number off the S121C's datasheet.
-      "Unrestricted" makes the second case the likely one at low magnification.
+      What is known bounds it uselessly: larger than the camera field, since it
+      was unrestricted and filled the frame (diagonal 1099 um at 20x), and
+      smaller than the head. Between 1.1 mm and a head aperture of order
+      centimetres the irradiance spans about two orders of magnitude, so the
+      bracket decides nothing.
 
-      Until this is settled the Aura rows are a lower bound on power, which the
-      `checks.spot_fits_in_sensor` block already flags as unrecorded.
+      THE FIELD NUMBER WOULD SETTLE IT INSTANTLY. An unrestricted circle is the
+      objective's own field, diameter FN/M, and that ratio to the camera field
+      is magnification-independent -- so one number gives every objective at
+      once. FN is a standard CFI60 spec but it is NOT on the Nikon comparison
+      pages (checked 2026-09-09, `catalogue_url` in data/objectives.yaml) and
+      appears nowhere in this repository. It is not written here from memory.
+
+      Failing that, two measurements, both cheap:
+        · Uniform fluorescent slide, look at the CORNERS. If the circle is only
+          slightly wider than the frame the corners fall off, and the falloff
+          fits to a diameter. The circle-to-frame ratio does not change with
+          objective, so any magnification will do.
+        · Knife-edge with the meter already in hand: translate the head across
+          the beam in known steps on the motorised stage and record power. The
+          spacing of the two 50 % crossings is the diameter, and it gives the
+          profile rather than just the edge.
 
 # ---------------------------------------------------------------------------
 # WHAT THE ROWS SAY -- recompute from the rows; do not cite these figures
