@@ -73,13 +73,30 @@ and `config/tweezers/run_pattern.py` sends no `LASER_ON` for this reason.
 
   ⚠ **The low-magnification objectives pass more, not less.** At level **20 %**
   the 4× delivered **890 mW** and the 10× **1050 mW**, against roughly 253 mW
-  extrapolated for the 20× at that level — three to four times as much. The
-  obvious account is wrong and worth saying so: entrance-pupil diameter
-  `2·NA·f/M` gives 20.0, 18.0 and 16.0 mm for 4×/10×/20×, which predicts 1.56×
-  and 1.27× and puts 4× above 10×, while the measurement puts 10× above 4×.
-  These being visible-corrected lenses, per-objective IR transmission is the
-  likelier cause — but that is a hypothesis, and the 20× at 20 % was
-  extrapolated rather than read.
+  extrapolated for the 20× at that level — three to four times as much.
+
+  **Treat that as measured and unexplained.** Two accounts have been checked and
+  both fail, which is worth recording so neither gets proposed again:
+
+  - *Entrance pupil.* `2·NA·f/M` gives 20.0, 18.0 and 16.0 mm for 4×/10×/20×,
+    so pupil area predicts 1.56× and 1.27× — and puts 4× above 10×, while the
+    measurement puts 10× above 4×.
+  - *Objective IR transmission.* The vendor curves for these lenses run to
+    1000 nm and are flat across the NIR, reading roughly 87 % at 4× against
+    78–84 % at 20× — a ratio near **1.1**, an order of magnitude short of 3.5.
+    Nothing in the last 64 nm to 1064 looks likely to change that.
+
+  A measurement artefact remains open and is the cheapest thing to rule out:
+  the trap beam overfills the back pupil to focus at full NA, so the cone
+  leaving a 20× (NA 0.80) is far wider than one leaving a 4× (NA 0.20), and a
+  detector of finite aperture and acceptance angle placed near the sample plane
+  would under-read the high-NA lens. The widefield lines, whose illumination
+  does not fill the pupil the same way, agree across objectives to within 25 %
+  — which is consistent with that account and is not a test of it.
+
+  **Until it is explained, do not predict the 1064 power at an untested
+  objective from the one you measured**, and take the 20 % readings at face
+  value: those are what reached the meter.
 
   **So an objective change can multiply the power at the sample without the
   dial moving.** → [`kb/calibrations/illumination-power.yaml`](kb/calibrations/illumination-power.yaml)

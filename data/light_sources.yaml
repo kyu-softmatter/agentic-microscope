@@ -234,23 +234,27 @@ light_sources:
       ⚠ 2026-09-03: the device reports five NAMED lines (UV/CYAN/GREEN/RED/NIR),
       not the numeric keys below — see the comment block above. Keys unverified.
     lines:
-      # Power MEASURED 2026-09-09 at the sample plane, mirror IN, per objective
-      # at level 100%. The bench labels were 488 / 555 / 647; KH confirmed those
-      # are these keys' 488 / 561 / 640 (2026-09-09).
-      # ⚠ The KEYS THEMSELVES are still unverified — see the warning above. A
-      # measured power filed against an unverified key is a measured number in a
-      # slot that may belong to another line.
+      # ⚠ POWER WAS MEASURED FOR THIS ENGINE ON 2026-09-09 AND IS DELIBERATELY
+      # NOT FILED HERE. The readings are in
+      # kb/calibrations/illumination-power.yaml and are good; what is not
+      # settled is WHICH KEY THEY BELONG TO.
+      #
+      # The device reports FIVE NAMED lines (UV/CYAN/GREEN/RED/NIR) and these
+      # numeric keys are unverified — the warning above and the comment block
+      # before it both say so, and `named_lines:` below carries the real ones
+      # with `center_nm: null`. The bench labels were 488 / 555 / 647, and the
+      # dossier already records GREEN as the line used for 555 ex / red em.
+      #
+      # So filing 46.5 mW under "561" would assert both that this engine has a
+      # 561 line and that this power is its — neither of which is established.
+      # Held out at the operator's instruction (KH, 2026-09-09) until the
+      # control that was actually driven is confirmed. A measured number in the
+      # wrong slot is worse than an empty slot, because it reads as settled.
       "405": { center_nm: 405, fwhm_nm: 20, power_at_sample_mw: {}, note: "fwhm unconfirmed placeholder" }
       "440": { center_nm: 440, fwhm_nm: 20, power_at_sample_mw: {}, note: "fwhm unconfirmed placeholder" }
-      "488": { center_nm: 488, fwhm_nm: 20, power_at_sample_mw: {"4x": 47, "10x": 45, "20x": 46},
-               linear_in_level: false,
-               note: "fwhm unconfirmed placeholder. Measured 2026-09-09, mirror in. OVER-delivers below ~10%: 1.30 of linear at 5%, 1.09 at 10%. → kb/calibrations/illumination-power.yaml" }
-      "561": { center_nm: 561, fwhm_nm: 20, power_at_sample_mw: {"4x": 48.3, "10x": 47.5, "20x": 46.5},
-               linear_in_level: true,
-               note: "fwhm unconfirmed placeholder. Measured 2026-09-09, mirror in; bench label 555. Linear 5-100% (0.97-1.01). → kb/calibrations/illumination-power.yaml" }
-      "640": { center_nm: 640, fwhm_nm: 20, power_at_sample_mw: {"4x": 16.5, "10x": 16.1, "20x": 15.9},
-               linear_in_level: true,
-               note: "fwhm unconfirmed placeholder. Measured 2026-09-09, mirror in; bench label 647. Linear 5-100% (0.94-1.01), and ~3x dimmer than 488/561. → kb/calibrations/illumination-power.yaml" }
+      "488": { center_nm: 488, fwhm_nm: 20, power_at_sample_mw: {}, note: "fwhm unconfirmed placeholder" }
+      "561": { center_nm: 561, fwhm_nm: 20, power_at_sample_mw: {}, note: "fwhm unconfirmed placeholder" }
+      "640": { center_nm: 640, fwhm_nm: 20, power_at_sample_mw: {}, note: "fwhm unconfirmed placeholder" }
 
     # ── Named lines: what the device actually exposes ────────────────────
     # The device reports UV / CYAN / GREEN / RED / NIR. None can be registered
@@ -300,9 +304,21 @@ light_sources:
       computed.
     lines:
       # Power MEASURED 2026-09-09 at the sample plane, per objective at 100%.
-      # ⚠ TAKEN WITH THE MULTIBAND FILTER OUT, which is the only configuration
-      # this path was measured in. The schema has no slot for the path, so these
-      # are not comparable with the Aura and Spectra rows above (mirror in).
+      #
+      # Taken with the multiband filter OUT, and that is **not a configuration
+      # choice — it is the only one this engine has.** The LUN-F-XL cannot be
+      # used with the multiband in (KH, 2026-09-09), and the mechanism was
+      # already measured: FilterTurret1 position 0 holds the MXR00724 multiband
+      # cube, which BLOCKS the confocal path — state 0 gave 1.00x contrast
+      # against 5.16/5.15/5.13x for the empty states 1/2/3 (2026-09-07, recorded
+      # in config/lunf/disk_survives_kill.py's --turret1-state help).
+      #
+      # So no path caveat attaches to these numbers: they are this engine's
+      # power in its only operating state, and comparing them with the Aura and
+      # Spectra compares each engine as it is actually run.
+      #
+      # A channel proposing this engine WITH the multiband is not a dim channel,
+      # it is an impossible one. Nothing gates that today.
       # ⚠ This is by far the dimmest of the three engines — 6.5-9.9 mW at 20x
       # against the Aura's 15.9-46.5 — and it is UNUSABLE BELOW ~30% level: 5%
       # and 10% did not read at all, and 30% delivers 0.31-0.63 of linear.

@@ -267,11 +267,21 @@ open_questions:
     One further reading would remove an extrapolation from a safety number: the
     20x at 20 %. Without it, the statement that 4x and 10x pass 3.5x and 4.1x
     more than the 20x rests on extrapolating the 20x from its 30 % reading.
-    Note that the obvious explanation is wrong -- entrance-pupil diameter
-    2*NA*f/M gives 20.0, 18.0 and 16.0 mm for 4x, 10x and 20x, so pupil area
-    predicts 1.56x and 1.27x and puts 4x above 10x, while the measurement puts
-    10x above 4x. Objective IR transmission is the likelier cause, these being
-    visible-corrected lenses, but that is a hypothesis and not a measurement.
+    Two explanations have been checked and BOTH FAIL; recorded so that neither
+    is proposed again. (a) Entrance pupil: 2*NA*f/M gives 20.0, 18.0 and 16.0 mm
+    for 4x/10x/20x, so pupil area predicts 1.56x and 1.27x, and puts 4x above
+    10x where the measurement puts 10x above 4x. (b) Objective IR transmission:
+    the vendor curves for these lenses run to 1000 nm and are flat across the
+    NIR at roughly 87 % for the 4x against 78-84 % for the 20x -- a ratio near
+    1.1, an order of magnitude short of 3.5.
+
+    Still open, and the cheapest to rule out: a measurement artefact. The trap
+    beam overfills the back pupil to focus at full NA, so the cone leaving a 20x
+    (NA 0.80) is far wider than one leaving a 4x (NA 0.20), and a detector of
+    finite aperture and acceptance angle at the sample plane would under-read
+    the high-NA lens. The widefield lines agree across objectives to within
+    25 %, which is consistent with that -- their illumination does not fill the
+    pupil the same way -- but consistency is not a test.
   ot_100pct: >-
     ANSWERED (KH, 2026-09-09): 100 % over-ranged the meter, which is why 80 % is
     the top row. Recorded on the row itself, with the linear extrapolation to
