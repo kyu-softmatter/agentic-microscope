@@ -35,7 +35,7 @@ filters:
     kind: unknown          # ← unknown on purpose, so the gate returns BLOCKED.
     position: shared
     removable: false
-    purpose: "The only cube in FilterTurret1 position 1"
+    purpose: "The only cube in FilterTurret1 — position 0"
     note: >
       ⚠ All 2,312 metadata records carry this label. The name points at a
       DAPI/FITC/TRITC 3-band set, but 764 frames were actually shot on 647-Cy5.
@@ -160,6 +160,23 @@ filters:
   # only until the vendor curve has been cross-checked.
   # ══════════════════════════════════════════════════════════════════════
 
+  # ⚠ POSITION CORRECTED 2026-09-09: these three read "position 1" until now.
+  # The cube is in FilterTurret1 position **0**, and 1/2/3 are empty slots.
+  # Confirmed by KH the same day -- the turret numbering starts at 0, so 0 is
+  # the first slot and holds the cube. Three records already said so and this
+  # file was the last holdout:
+  #   · kb/systems/current.md, 2026-08-10 -- 'the old MM .cfg label
+  #     "1-MXR00724 -Empty" was misleading — position 0 actually holds a
+  #     physical 5-band cube, and "Empty" was a display-format artifact'
+  #   · the purchase record, which matches "FilterTurret1 pos0 cube (MXR00724)"
+  #   · measured 2026-09-07 -- state 0 gave 1.00x contrast against 5.16/5.15/
+  #     5.13x for states 1/2/3, i.e. 0 blocks the confocal path and the rest
+  #     are empty (config/lunf/disk_survives_kill.py)
+  #
+  # The MM label is what caused it, and it is still there: "1-MXR00724 -Empty"
+  # reads as position 1 and is not. Setting FilterTurret1 to 1 puts an EMPTY
+  # slot in the path, which is the opposite of inserting this cube — and on the
+  # confocal path it is the difference between blocked and clear.
   "MXR00724-EX":
     kind: multiband
     vendor: Nikon
@@ -167,7 +184,7 @@ filters:
     bands: [[378, 50], [474, 24], [554.5, 21], [635, 16], [735, 26]]
     position: excitation
     removable: true
-    purpose: "exciter of the 5-band cube (DAPI/FITC/TRITC/Cy5/Cy7) — Ti2 FilterTurret1 position 1"
+    purpose: "exciter of the 5-band cube (DAPI/FITC/TRITC/Cy5/Cy7) — Ti2 FilterTurret1 position 0"
     note: >
       NIS-Elements 'Excitation' readout: 353-403, 462-486, 544-565, 627-643,
       722-748 nm. ⚠ 2026-08-10: unlike the dichroic, exciter/emitter are
@@ -183,7 +200,7 @@ filters:
     bands: [[432, 36], [514.5, 31], [595.5, 31], [681, 40], [808.5, 81]]
     position: shared
     removable: false
-    purpose: "dichroic of the 5-band cube (DAPI/FITC/TRITC/Cy5/Cy7) — Ti2 FilterTurret1 position 1"
+    purpose: "dichroic of the 5-band cube (DAPI/FITC/TRITC/Cy5/Cy7) — Ti2 FilterTurret1 position 0"
     note: >
       NIS-Elements 'Mirror' readout: 414-450, 499-530, 580-611, 661-701,
       768-849 nm. Reflection band vs passband unconfirmed — needs a cross-check
@@ -197,7 +214,7 @@ filters:
     bands: [[440, 40], [520.5, 21], [606, 34], [694, 34], [808.5, 81]]
     position: emission
     removable: true
-    purpose: "emitter of the 5-band cube (DAPI/FITC/TRITC/Cy5/Cy7) — Ti2 FilterTurret1 position 1"
+    purpose: "emitter of the 5-band cube (DAPI/FITC/TRITC/Cy5/Cy7) — Ti2 FilterTurret1 position 0"
     note: >
       NIS-Elements 'Emission' readout: 420-460, 510-531, 589-623, 677-711,
       768-849 nm. ⚠ 2026-08-10: unlike the dichroic, exciter/emitter are
