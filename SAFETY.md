@@ -94,9 +94,37 @@ and `config/tweezers/run_pattern.py` sends no `LASER_ON` for this reason.
   does not fill the pupil the same way, agree across objectives to within 25 %
   — which is consistent with that account and is not a test of it.
 
-  **Until it is explained, do not predict the 1064 power at an untested
-  objective from the one you measured**, and take the 20 % readings at face
-  value: those are what reached the meter.
+  **The objective dependence is estimated from the transmittance curves**
+  (KH, 2026-09-09), with the 4× and 10× to be re-measured. From the measured
+  20× times the curve ratio at 1000 nm — `estimated`, never `measured`, since
+  the curves were read off rendered plots and stop 64 nm short:
+
+  | objective | vs 20× | mW at 80 % |
+  |---|---|---|
+  | 4× | 1.05–1.12 | 1070–1140 |
+  | **20×** | **1.00 — measured** | **1020** |
+  | 40× WI | 0.71–0.76 | 725–772 |
+  | 60× Oil | 0.86–0.91 | 875–930 |
+  | 100× Oil | 0.92–0.97 | 935–995 |
+
+  **The 40× WI passes the least NIR of the set**, and its curve is still falling
+  where the plots end — so 1064 is likely below even 0.71. It is also the
+  index-matched choice for aqueous samples, so the lens most attractive for
+  trapping in water delivers the least trap power.
+
+  ⚠ **This estimate and the meter disagree by 3×, in the unsafe direction.** At
+  level 20 % the curve predicts 267–284 mW through the 4× and **the meter read
+  890**. Carried to 80 % that is ~1.1 W estimated against **~3.6 W measured**.
+  Which is right is unresolved. So the two numbers have two uses and must not
+  be merged:
+
+  - **planning a photon budget** → the curve estimate above
+  - **protecting against a Class-4 exposure** → **the larger figure.** You do
+    not choose the smaller of two disagreeing numbers when the larger is
+    3.6 W of 1064 at the sample plane.
+
+  Until the re-measurement settles it, **do not treat a low-magnification
+  objective as the safe one.**
 
   **So an objective change can multiply the power at the sample without the
   dial moving.** → [`kb/calibrations/illumination-power.yaml`](kb/calibrations/illumination-power.yaml)

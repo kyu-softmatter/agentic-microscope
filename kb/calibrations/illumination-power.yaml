@@ -281,6 +281,37 @@ open_questions:
     CONFIRMED (KH, 2026-09-09): the bench label "488" is the Spectra's Cyan at
     470 nm. That line's own note in data/light_sources.yaml already said it is
     the one used for the 488-GFP channel, so the two agree independently.
+  ot_objective_method: >-
+    DECIDED (KH, 2026-09-09): estimate the trap laser's objective dependence
+    from the vendor transmittance curves, and re-measure the 4x and 10x later.
+    The 890 mW / 1050 mW readings at level 20 % are set aside pending that
+    re-measurement, not deleted -- they remain in the row above.
+
+    From the measured 20x (1020 mW at 80 %) times the curve ratio at 1000 nm,
+    both candidate 20x plots spanning the range:
+
+      4x    1.05-1.12 x   ->  1070-1140 mW at 80 %
+      40x   0.71-0.76 x   ->   725- 772 mW
+      60x   0.86-0.91 x   ->   875- 930 mW
+      100x  0.92-0.97 x   ->   935- 995 mW
+
+    All `estimated`, never `measured`: the transmittances were read off rendered
+    plots by eye, the plots stop at 1000 nm, and 1064 is past them.
+
+    ⚠ THE 40x WI PASSES THE LEAST NIR BY A CLEAR MARGIN, and its curve is still
+    falling steeply where the plots end, so 1064 is likely below even 0.71. That
+    matters because the 40x WI is the index-matched choice for aqueous samples
+    (data/objectives.yaml), so the lens most attractive for trapping in water is
+    also the one that delivers the least trap power. Nothing gates that today.
+
+    ⚠ AND THE ESTIMATE DISAGREES WITH THE METER IN THE UNSAFE DIRECTION. At
+    level 20 % the curve predicts 267-284 mW through the 4x and the meter read
+    890 -- the measurement is 3.1x HIGHER. Carried forward to 80 % that is
+    ~1.1 W estimated against ~3.6 W measured. Which is right is unresolved, so
+    the two numbers have two different uses and must not be merged: the curve
+    estimate is for planning a photon budget, and **the larger figure is what a
+    Class-4 exposure is protected against** until the re-measurement settles it.
+    See SAFETY.md §1.
   ot_20x_at_20pct: >-
     One further reading would remove an extrapolation from a safety number: the
     20x at 20 %. Without it, the statement that 4x and 10x pass 3.5x and 4.1x
