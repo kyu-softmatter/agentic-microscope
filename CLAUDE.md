@@ -167,11 +167,13 @@ the disk's write bandwidth (G12a). And underneath all of it, **`unevaluated` ≠
 
 ### Exceptions
 
-- **E1 · Lens 5's `BLOCKED` is the standing state, not a deadlock.** The
-  illuminated area is unmeasured and `bleach_photons` is empty (§3), so lens 5
-  blocks **by design**. It must not trigger the three-round re-proposal loop or
-  the deadlock handoff — that is a missing measurement, not a conflict. Power
-  itself stopped being the blocker on 2026-09-09.
+- **E1 · Lens 5 no longer blocks wholesale — only G10 does** (§3, 2026-09-09).
+  A `BLOCKED` from G10 is the standing state, not a deadlock: `bleach_photons`
+  is empty for every dye. It must not trigger the three-round re-proposal loop
+  or the deadlock handoff. **But the rest of the lens now returns real verdicts,
+  so an ordinary failure from G20/G21/G22 is a genuine one and must be treated
+  as such** — that was the reason this exception existed, and it no longer
+  covers them.
 - **E2 · Lens 6 runs alone and last.** See the ⚠ above.
 - **E3 · Lens 7 silent on heating ≠ heating cleared.** Trap heating is ungated
   by decision ([05 §5](docs/05-consensus-gate.md), [06 D6](docs/06-pitfalls.md)).
@@ -203,14 +205,16 @@ the disk's write bandwidth (G12a). And underneath all of it, **`unevaluated` ≠
   becomes a wrong one. A margin of 10.00 against a threshold nobody supplied
   still does not advance.
 - **Lens 6 (`validity/`) reviews the other lenses' verdicts, so call it last.**
-- **Lens 5 still returns `BLOCKED` on this instrument — but as of 2026-09-09
-  for a smaller reason, and the fix instruction changed with it.**
-  `power_at_sample_mw` is measured for nine lines at three objectives
-  ([`kb/calibrations/illumination-power.yaml`](kb/calibrations/illumination-power.yaml)).
-  Two blockers remain: the **illuminated area** is unmeasured, and `P` is not
-  `I = P/A` — that one is a field measurement, not another power meter — and
-  `bleach_photons` is empty for every dye, which only G10 needs and which no
-  power meter can supply. Every dose number is still relative.
+- **Lens 5 computes at 20× as of 2026-09-09. It blocks on G10 and nowhere
+  else.** Power and illuminated area both exist
+  ([`kb/calibrations/illumination-power.yaml`](kb/calibrations/illumination-power.yaml)),
+  so there is irradiance — all three engines put about the camera field on the
+  sample, 603,654 µm² at 20×, giving 1.1–7.7 W/cm² depending on line. **G20,
+  G21 and G22 run.** G10 still needs `bleach_photons`, which is per dye, empty
+  for every dye, and not something a power meter supplies. Two limits: **20×
+  only** — it is the one row in `data/pixel_size.yaml` marked `measured`, and
+  the rest are `nominal` — and the areas are `computed`, since "about the camera
+  field" was not quantified.
 
 ## 4. Hardware, when it is in the loop
 

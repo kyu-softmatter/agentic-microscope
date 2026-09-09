@@ -4,20 +4,19 @@ Mirrors optics.gate's Phase 0 / Phase 1 / Phase 2 structure and full
 ``Verdict`` schema, as compute.gate, detection.gate and sample.gate do.
 
 Phase 0 here is unusually load-bearing. Every gate in this lens needs
-**irradiance** at the sample plane, and this lens still BLOCKS on the real
-instrument -- but as of 2026-09-09 for a smaller reason than before, and the
-difference is the fix instruction.
+**irradiance** at the sample plane, and as of 2026-09-09 the instrument has it:
+power for nine lines at three objectives, and an illuminated area for all three
+engines, which all put about the camera field on the sample
+(kb/calibrations/illumination-power.yaml). So G20, G21 and G22 compute.
 
-`power_at_sample_mw` is no longer empty: nine lines across the Aura, the
-Spectra and the LUN-F-XL were measured at three objectives
-(kb/calibrations/illumination-power.yaml). What is still missing is the
-**illuminated area**, and `P` alone is not `I = P/A`. So the blocker moved from
-"nobody has measured the power" to "nobody has measured the field", and G10
-carries a second one of its own: `bleach_photons` is empty for every dye, and a
-power meter cannot supply it.
+**G10 does not, and is now the only thing this lens blocks on.** It needs
+`bleach_photons`, which is per dye, empty for every dye, and not something a
+power meter supplies. docs/04 §9 marks it BLOCKED for exactly that.
 
-A percent setting in the metadata is still not a physical quantity, and
-docs/04 §9 marks G10 BLOCKED for that reason as well.
+Two limits on the rest. The area holds **at 20x only** -- it rests on the one
+row of data/pixel_size.yaml carrying `evidence: measured`, and every other
+objective's pixel size is `nominal`. And a percent setting in the metadata is
+still not a physical quantity: what transfers is the mW, or the W/cm^2.
 
 Two axes, and the difference matters. A missing *number* blocks (Phase 0). A
 missing *answer* -- has anyone checked whether this sample responds to the
@@ -115,14 +114,17 @@ def _missing_inputs(setup: IlluminationSetup) -> list[Finding]:
                 "this lens is undefined. The metadata's percent setting is not "
                 "a physical quantity and does not transfer between "
                 "instruments.",
-                action="Supply a measured mW for this evaluation, or accept "
-                "that every dose number stays relative. Sample-plane power was "
-                "measured on 2026-09-09 for nine lines at three objectives and "
-                "is in data/light_sources.yaml > power_at_sample_mw "
-                "(kb/calibrations/illumination-power.yaml), so the remaining "
-                "gap is usually not the power but the ILLUMINATED AREA, which "
-                "is unmeasured -- and P without A is not I. Neither can be "
-                "computed; both can only be measured.",
+                action="Supply power_mw_at_sample and illuminated_area_um2 for "
+                "this evaluation. Both exist on this instrument as of "
+                "2026-09-09 and neither is filled in automatically: power for "
+                "nine lines at three objectives in data/light_sources.yaml, and "
+                "603654 um^2 at 20x for all three engines, which put about the "
+                "camera field on the sample. Together they give 1.1-7.7 W/cm^2 "
+                "at 100 % level -- see kb/calibrations/illumination-power.yaml, "
+                "which also carries the per-line level linearity, since below "
+                "about 30 % the percent setting is not proportional to power. "
+                "The area is 20x only; other objectives rest on a `nominal` "
+                "pixel size.",
             )
         )
 

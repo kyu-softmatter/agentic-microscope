@@ -24,15 +24,16 @@ lens 1 computes silently set to 1.
 Gates: G10 photobleaching (specified in docs/04 §6, previously unimplemented),
 G20 saturation / triplet shelving, G21 light-driving, G22 total dose.
 
-**This lens still BLOCKS on the real instrument**, and that is the right
-answer — but since 2026-09-09 for a smaller reason, and the fix instruction has
-changed with it. `power_at_sample_mw` is populated for nine lines across the
-Aura, Spectra and LUN-F-XL at three objectives
-(kb/calibrations/illumination-power.yaml). What is missing now is the
-**illuminated area**: `P` is not `I = P/A`. G10 additionally needs
-`bleach_photons`, which no dye in data/fluorophores.yaml has and which a power
-meter cannot supply. A percent setting in the metadata is not a physical
-quantity.
+**This lens computes at 20x as of 2026-09-09, and blocks on G10 alone.**
+Power is populated for nine lines across the Aura, Spectra and LUN-F-XL at three
+objectives, and all three engines put about the camera field on the sample, so
+irradiance exists -- 1.1 to 7.7 W/cm^2 by line at 20x, 100 % level
+(kb/calibrations/illumination-power.yaml). G20, G21 and G22 run on it.
+
+G10 needs `bleach_photons`, which no dye in data/fluorophores.yaml has and which
+a power meter cannot supply, so it stays BLOCKED. And the area holds at 20x
+only: it rests on the single pixel size marked `measured`, the rest being
+`nominal`. A percent setting in the metadata is still not a physical quantity.
 
 The excitation chain (`P -> I -> phi -> sigma phi`) belongs to lens 1 --
 ``optics.path.Channel.excitation_rate_per_s`` and ``emitted_photons_per_s``.

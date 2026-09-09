@@ -8,15 +8,26 @@
 # ---------------------------------------------------------------------------
 # WHAT THIS UNBLOCKS, AND WHAT IT DOES NOT
 # ---------------------------------------------------------------------------
-#   UNBLOCKED:        G21 (light-driving) · G22 (total dose) -- once the
-#                     illuminated area is measured, which it is not yet.
+#   UNBLOCKED at 20x: G20 (saturation / triplet) · G21 (light-driving) ·
+#                     G22 (total dose). Irradiance now exists -- see below.
 #   STILL BLOCKED:    G10 (photobleaching). It needs `bleach_photons`, which is
 #                     per dye and empty for every dye. A power meter cannot
-#                     supply it.
+#                     supply it, and nothing here changes that.
 #
-# ⚠ IRRADIANCE IS NOT AVAILABLE YET. `optics.path.excitation_rate_per_s` needs
-#   BOTH power and `illuminated_area_um2`, and the area is unmeasured (below).
-#   Everything here is total power at the sample plane, in mW.
+# IRRADIANCE EXISTS, at 20x. `optics.path.excitation_rate_per_s` needs BOTH
+# power and `illuminated_area_um2`, and as of 2026-09-09 it has both for all
+# three engines: every one of them puts about the camera field on the sample,
+# 603,654 um^2 at 20x. W/cm^2 at 100 % level:
+#
+#     Aura      7.62 / 7.70 / 2.63    CYAN  / GREEN / RED
+#     Spectra   2.20 / 2.53 / 1.64    Cyan  / Green / Red
+#     LUN-F-XL  1.14 / 1.08 / 1.64    488   / 561   / 640
+#
+# ⚠ AT 20x ONLY, and `computed` rather than measured. The area rests on the one
+#   pixel size in data/pixel_size.yaml carrying `evidence: measured`, which is
+#   the 20x row; every other objective's pixel size is `nominal`, so an area
+#   built on it inherits that. And "about the camera field" was not quantified
+#   for any of the three.
 
 meta:
   date: 2026-09-09
@@ -274,39 +285,24 @@ illuminated_area_um2:
     irradiance_w_cm2_at_100pct_20x: {Cyan: 2.20, Green: 2.53, Red: 1.64}
 
   Aura:
-    shape: "circular, and unrestricted -- no field stop was in play"
+    shape: "circular"
+    evidence: computed
+    basis: >-
+      Checked with the field diaphragm (KH, 2026-09-09): the illuminated area is
+      close to the camera field, so the same 603,654 um^2 applies. This revises
+      the earlier report of an unrestricted circle -- unrestricted it is, and it
+      lands at about the field anyway, so the illumination optics rather than a
+      stop are what bound it.
+    "20x": 603654
     "4x": null
     "10x": null
-    "20x": null
-    bracket_um: [1099, null]
-    needed: >-
-      TODO(human): the circle's diameter at the sample. The fork this entry used
-      to carry is resolved -- the beam did NOT overfill the head
-      (`checks.spot_fits_in_sensor`), so the reading is the whole beam and
-      irradiance is P over the circle. There is no shortcut via the sensor area.
-
-      What is known bounds it uselessly: larger than the camera field, since it
-      was unrestricted and filled the frame (diagonal 1099 um at 20x), and
-      smaller than the head. Between 1.1 mm and a head aperture of order
-      centimetres the irradiance spans about two orders of magnitude, so the
-      bracket decides nothing.
-
-      THE FIELD NUMBER WOULD SETTLE IT INSTANTLY. An unrestricted circle is the
-      objective's own field, diameter FN/M, and that ratio to the camera field
-      is magnification-independent -- so one number gives every objective at
-      once. FN is a standard CFI60 spec but it is NOT on the Nikon comparison
-      pages (checked 2026-09-09, `catalogue_url` in data/objectives.yaml) and
-      appears nowhere in this repository. It is not written here from memory.
-
-      Failing that, two measurements, both cheap:
-        · Uniform fluorescent slide, look at the CORNERS. If the circle is only
-          slightly wider than the frame the corners fall off, and the falloff
-          fits to a diameter. The circle-to-frame ratio does not change with
-          objective, so any magnification will do.
-        · Knife-edge with the meter already in hand: translate the head across
-          the beam in known steps on the motorised stage and record power. The
-          spacing of the two 50 % crossings is the diameter, and it gives the
-          profile rather than just the edge.
+    irradiance_w_cm2_at_100pct_20x: {CYAN: 7.62, GREEN: 7.70, RED: 2.63}
+    caveat: >-
+      ⚠ The power rows were taken with nothing stopped down and the area was
+      established afterwards with the diaphragm. Both describe the same beam
+      only if closing the diaphragm to the field changed no power -- which
+      follows if the beam was already about that size, and does not if it was
+      not. Unquantified either way, like "close to the camera field" itself.
 
 # ---------------------------------------------------------------------------
 # WHAT THE ROWS SAY -- recompute from the rows; do not cite these figures
