@@ -159,9 +159,16 @@ objectives:
 # HYPOTHESIS. The trap laser delivers 3.5-4x more power through the 4x and 10x
 # than through the 20x (kb/calibrations/illumination-power.yaml), and objective
 # IR transmission was the proposed cause. At 1000 nm the curves read roughly
-# 87 % for the 4x against 78-84 % for the 20x -- a ratio near 1.1 against a
+# 87 % for the 4x against 80 % for the 20x -- a ratio near 1.1 against a
 # measured 3.5. Ruling something out across an order of magnitude survives a
 # rough reading; quoting a value off the same curve does not, and the 40x in
-# particular is still falling steeply at 1000 nm.
+# particular is still falling steeply at 1000 nm. (The 3.5x reading was
+# subsequently RETRACTED as a measurement error -- see SAFETY.md §1. The
+# refutation was right about the data before the data was withdrawn.)
+#
+# Two plots arrived labelled "20x" and both are 20x (KH, 2026-09-09); their
+# average is what the estimates in kb/calibrations/illumination-power.yaml use.
+# There is therefore NO 10x curve, and no second validation point: the method
+# is tested against the 4x alone.
 #
 # All five plots stop at 1000 nm. Nothing here measures 1064.

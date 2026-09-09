@@ -66,7 +66,8 @@ checks:
 # (KH, 2026-09-09), so the planned all-elements-out cross-check was not taken.
 #
 # THE "MIRROR" IS `LappMainBranch1`, the Ti2's Lapp branch mirror, and it is a
-# 50/50 (KH, 2026-09-09). The .cfg labels its two states literally: State 1 is
+# 50/50 -- stated by KH, 2026-09-09, not inferred here. The .cfg corroborates
+# it by labelling the two states literally: State 1 is
 # `mirror_in` and State 0 is `mirror_out`, and every config sets State 1 at
 # Startup -- so `all_in` is the instrument's DEFAULT state and the mirror_out
 # rows are the deliberate excursion, not the other way round.
@@ -248,13 +249,16 @@ illuminated_area_um2:
 
   Spectra:
     shape: "rectangular -- the beam arrives through the DMD"
+    evidence: computed
+    basis: >-
+      Shape is a rectangle set by the DMD, but its AREA is comparable to the
+      camera field (KH, 2026-09-09), so the same 603,654 um^2 is used. Only the
+      area enters the irradiance; the aspect ratio does not. "Comparable" was
+      not quantified, which is the limit on this number.
+    "20x": 603654
     "4x": null
     "10x": null
-    "20x": null
-    needed: >-
-      TODO(human): the rectangle's size at the sample. It is set by the DMD's
-      active area imaged through the objective, so it is neither the camera
-      field nor a circle, and nothing in the repository records it.
+    irradiance_w_cm2_at_100pct_20x: {Cyan: 2.20, Green: 2.53, Red: 1.64}
 
   Aura:
     shape: "circular, and unrestricted -- no field stop was in play"
@@ -366,12 +370,12 @@ open_questions:
     those objectives rather than a tie-break.
 
     From the measured 20x (1020 mW at 80 %) times the curve ratio at 1000 nm,
-    both candidate 20x plots spanning the range:
+    with the two 20x plots averaged (KH, 2026-09-09):
 
-      4x    1.05-1.12 x   ->  1070-1140 mW at 80 %
-      40x   0.71-0.76 x   ->   725- 772 mW
-      60x   0.86-0.91 x   ->   875- 930 mW
-      100x  0.92-0.97 x   ->   935- 995 mW
+      4x    1.08 x   ->  1106 mW at 80 %
+      40x   0.74 x   ->   750 mW
+      60x   0.88 x   ->   902 mW
+      100x  0.95 x   ->   966 mW
 
     All `estimated`, never `measured`: the transmittances were read off rendered
     plots by eye, the plots stop at 1000 nm, and 1064 is past them.
@@ -432,8 +436,9 @@ open_questions:
 # ESTIMATED visible power at 40x / 60x / 100x -- NOT MEASURED
 # ---------------------------------------------------------------------------
 # mW at 100 % level, from the MEASURED 20x times the vendor transmittance ratio
-# at that line's wavelength. Both plots that arrived labelled "20x" were used,
-# and the spread between them is inside the rounding below.
+# at that line's wavelength. Two plots arrived labelled "20x"; KH judged them
+# near-identical and directed that their AVERAGE be used, so these are single
+# values rather than the range an earlier revision carried.
 #
 # HOW FAR THIS WAS TESTED. The same method was run backwards against the 4x,
 # where a measurement exists: the curve predicts the measured 4x/20x ratio to
@@ -454,18 +459,22 @@ estimated_visible_mw:
   basis: "measured 20x x vendor transmittance ratio, 2026-09-09"
   uncertainty: {Aura: "+-10 %", LUN-F-XL: "+-10 %", Spectra: "+-25 %"}
   at_100pct_level:
-    Aura:      {CYAN:  {"40x": 46, "60x": 42, "100x": 41},
-                GREEN: {"40x": 45, "60x": 44, "100x": 44},
-                RED:   {"40x": 15, "60x": 15, "100x": 15}}
-    Spectra:   {Cyan:  {"40x": 13, "60x": 12, "100x": 12},
-                Green: {"40x": 15, "60x": 14, "100x": 15},
-                Red:   {"40x": 9.4, "60x": 9.2, "100x": 9.5}}
-    LUN-F-XL:  {"488": {"40x": 6.9, "60x": 6.3, "100x": 6.3},
+    Aura:      {CYAN:  {"40x": 45.7, "60x": 42.0, "100x": 41.5},
+                GREEN: {"40x": 45.1, "60x": 43.6, "100x": 44.1},
+                RED:   {"40x": 15.0, "60x": 14.8, "100x": 15.3}}
+    Spectra:   {Cyan:  {"40x": 13.2, "60x": 12.1, "100x": 12.0},
+                Green: {"40x": 14.8, "60x": 14.3, "100x": 14.5},
+                Red:   {"40x": 9.3, "60x": 9.2, "100x": 9.5}}
+    LUN-F-XL:  {"488": {"40x": 6.9, "60x": 6.3, "100x": 6.2},
                 "561": {"40x": 6.3, "60x": 6.1, "100x": 6.2},
-                "640": {"40x": 9.4, "60x": 9.2, "100x": 9.5}}
+                "640": {"40x": 9.3, "60x": 9.2, "100x": 9.5}}
   not_estimated:
     "10x": >-
-      No 10x transmittance plot was supplied -- two of the five arrived labelled
-      "20x" and they differ. If one of them is the 10x, its measured power
-      (45 / 47.5 / 16.1 mW) becomes a second independent test of this method,
-      which currently rests on the 4x alone.
+      No 10x transmittance plot exists: both of the two labelled "20x" are 20x
+      (KH, 2026-09-09), and are averaged above.
+
+      ⚠ SO THIS METHOD HAS ONE TEST AND NOT TWO. It is validated against the 4x
+      alone, which is also where the Spectra's 12-20 % discrepancy shows up --
+      so there is no way to tell from the data here whether that is the Spectra
+      path or the method. A 10x curve would separate them, because the 10x
+      power is measured (45 / 47.5 / 16.1 mW) and would be an independent point.

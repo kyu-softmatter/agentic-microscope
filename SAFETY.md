@@ -92,11 +92,11 @@ and `config/tweezers/run_pattern.py` sends no `LASER_ON` for this reason.
 
   | objective | vs 20× | mW at 80 % |
   |---|---|---|
-  | 4× | 1.05–1.12 | 1070–1140 |
+  | 4× | 1.08 | ~1110 |
   | **20×** | **1.00 — measured** | **1020** |
-  | 40× WI | 0.71–0.76 | 725–772 |
-  | 60× Oil | 0.86–0.91 | 875–930 |
-  | 100× Oil | 0.92–0.97 | 935–995 |
+  | 40× WI | 0.74 | ~750 |
+  | 60× Oil | 0.88 | ~900 |
+  | 100× Oil | 0.95 | ~965 |
 
   **The 40× WI passes the least NIR of the set**, and its curve is still falling
   where the plots end — so 1064 is likely below even 0.71. It is also the
