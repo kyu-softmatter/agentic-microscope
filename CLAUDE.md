@@ -238,8 +238,8 @@ survives a clean checkout).
 pytest -q -rs
 ```
 
-1186 passed, 10 skipped on Windows, of 1,249 (measured 2026-09-09; macOS and
-Linux print 1185/11 — the 2026-09-07 figure plus the 24 added since, not
+1214 passed, 10 skipped on Windows, of 1,277 (measured 2026-09-09; macOS and
+Linux print 1213/11 — the 2026-09-07 figure plus the 52 added since, not
 re-measured there — one Windows-only test). Two kinds of skip: three whole
 modules behind `pytest.importorskip("pymmcore_plus")` holding 56 tests that need
 a Micro-Manager device-adapter install, and seven `requires_cv2` tests in
@@ -292,6 +292,15 @@ It is **pointers only, never a citation** — open the entry and cite that
 `tests/test_kb_index.py` fails if you don't, and also on a file with no
 frontmatter or a supersession link that resolves to nothing.
 
+```bash
+python -m knowledge.cli plan-check
+```
+
+Refuses a `kb/plans/` entry whose shape a hardware skill would misread — a
+missing section, an unknown subsystem, a committee verdict silent on what was
+**not** evaluated, or a sequence step confirming on a return code. That last one
+is [SAFETY §0](SAFETY.md) held at the plan instead of at the instrument.
+
 ## 6. Writing anything down
 
 Do not duplicate what the repo already records. Pick the right home:
@@ -300,6 +309,7 @@ Do not duplicate what the repo already records. Pick the right home:
 |---|---|
 | `data/*.yaml`, `kb/calibrations/` | a measured constant |
 | `kb/decisions/YYYY-MM-DD-<slug>.md` | a design choice or a scope decision, dated |
+| `kb/plans/YYYY-MM-DD-<slug>.md` | one hardware run, **before** it happens. Copy `_template.md`; `plan-check` refuses a shape a skill would misread. Graduates into `kb/decisions/` once run → [05 §6](docs/05-consensus-gate.md) |
 | `kb/expertise/<id>.md` | durable expert judgment. `Why` and `Falsifying condition` are **mandatory** ([09 §2](docs/09-knowledge-capture.md)) |
 | `kb/sessions/YYYY-MM-DD.md` | the day's narrative. **A failed session gets a *longer* entry, not a shorter one.** Numbers, not adjectives |
 

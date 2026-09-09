@@ -1896,11 +1896,37 @@ Two things make this the same shape as items 7 and 8:
   honest expiry, rather than aging silently the way the Splitter position did
   (item 4).
 
-> **TODO(human):** which low-mag objective you use for loading (4× or 10×),
-> what counts as the "edge" — chamber wall, meniscus, or coverslip edge, since
-> they are different boundaries — the stage speed that is slow enough, and
-> whether the ~20 points should be kept as a polygon or reduced to a bounding
-> box. Also whether it is per sample or per mount geometry.
+**Answered 2026-09-09 (KH)**, all five in the order they were asked:
+
+| | Answer |
+|---|---|
+| **Loading objective** | **4×.** `data/objectives.yaml` gives it 20 mm of working distance at nosepiece position 0 — the front element cannot be reached during loading, and it is already the resting position |
+| **What counts as the edge** | **Both, declared per map.** A real chamber part is used in separate experiments; the standing mount is unspaced, where the boundary is the drop's own contact line ([`sample-mount-geometry.md`](kb/expertise/sample-mount-geometry.md), whose scope already anticipated this). So a map carries an `edge_kind`, and the detection criterion differs by it: a glass wall is a step, a contact line is a meniscus gradient |
+| **Stage speed** | **Per magnification** — so derived, not stated. Consecutive frames have to overlap or the edge is skipped between them, which fixes `v_max ≈ field × (1 − overlap) / frame period`. The field comes from the pixel size, and at 4× that is `evidence: nominal`; only 20× is measured (`data/pixel_size.yaml`) |
+| **Polygon or box** | **Polygon.** The ~20 points are the measurement and the box is computable from them, so keeping only the box discards the shape. Storage does not decide it — the difference is under a kilobyte |
+| **Per sample or per mount** | **Per load.** Remeasured every time a sample goes on, whatever the `edge_kind` |
+
+**What "per load" costs, and it is not small.** The property to check stops being
+"is there a map" and becomes "is this map the one for what is on the stage right
+now" — and **nothing in the stack can see a sample change.** MM reports the same
+coordinates before and after a swap, so this is the failure of items 4 and 8
+again: a value MM cannot answer is a value that has to be remembered. The map
+therefore needs a load token the operator sets when they load, and travel is
+refused without one. There is no way to infer it.
+
+**And one prerequisite is not measured.** The protocol measures at 4× and images
+at 100×, but the same stage coordinate does not put the same point of the sample
+at the camera centre under two objectives — that difference is the parcentric
+offset, and [`kb/calibrations/objective-offsets.yaml`](kb/calibrations/objective-offsets.yaml)
+records it as **`NOT MEASURED`**: only z was taken, and the note adds that "image
+y runs down and that rotation has never been measured for this path". The fix has
+a name and is already written —
+`config/session/measure_objective_offsets.py --calibrate-xy` — it has simply not
+been run.
+
+> **TODO(human):** the frame overlap fraction the sweep should hold, and what
+> the load token is in practice — a number typed at load time, a sample id, or
+> something read off the chamber.
 
 ### 11. Make the Python environment discoverable, and stop rebuilding it
 

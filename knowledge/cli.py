@@ -1,8 +1,9 @@
 """Command-line front end for the knowledge-base index.
 
-    python -m knowledge.cli check     # what would change, and what cannot be indexed
-    python -m knowledge.cli write     # regenerate kb/INDEX.md
-    python -m knowledge.cli problems  # only the files the index cannot describe
+    python -m knowledge.cli check       # what would change, and what cannot be indexed
+    python -m knowledge.cli write       # regenerate kb/INDEX.md
+    python -m knowledge.cli problems    # only the files the index cannot describe
+    python -m knowledge.cli plan-check  # refuse a kb/plans/ entry a skill would misread
 
 `check` is what CI runs through `tests/test_kb_index.py`. It exits non-zero when
 the committed index differs from what the frontmatter says, or when any file in
@@ -19,6 +20,7 @@ import sys
 from pathlib import Path
 
 from .index import INDEX_PATH, KB_ROOT, collect, render
+from .plans import check_all
 
 
 def _report_problems(problems: list) -> None:
@@ -71,6 +73,20 @@ def cmd_problems(args: argparse.Namespace) -> int:
     return 1
 
 
+def cmd_plan_check(args: argparse.Namespace) -> int:
+    """Refuse a hardware plan a skill would misread. See knowledge/plans.py."""
+    plans_dir = Path(args.kb) / "plans"
+    problems = check_all(plans_dir)
+    if not problems:
+        count = len([p for p in plans_dir.glob("*.md") if not p.name.startswith("_")])
+        print(f"{count} plan(s) in {plans_dir}, all usable")
+        return 0
+    print(f"{len(problems)} problem(s):", file=sys.stderr)
+    for problem in problems:
+        print(f"  {problem}", file=sys.stderr)
+    return 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m knowledge.cli", description=__doc__.splitlines()[0]
@@ -88,6 +104,9 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("write", help="regenerate the index").set_defaults(func=cmd_write)
     sub.add_parser("problems", help="list unindexable files").set_defaults(
         func=cmd_problems
+    )
+    sub.add_parser("plan-check", help="validate kb/plans/ entries").set_defaults(
+        func=cmd_plan_check
     )
     return parser
 
