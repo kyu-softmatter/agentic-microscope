@@ -71,28 +71,19 @@ and `config/tweezers/run_pattern.py` sends no `LASER_ON` for this reason.
   over-ranged the meter and was not driven; 1275 mW is `assumed`, not
   `measured`, and a diode driver's last 20 % is where a knee would sit.
 
-  ⚠ **The low-magnification objectives pass more, not less.** At level **20 %**
-  the 4× delivered **890 mW** and the 10× **1050 mW**, against roughly 253 mW
-  extrapolated for the 20× at that level — three to four times as much.
+  ~~**The low-magnification objectives pass more, not less** — 890 mW at 4× and
+  1050 mW at 10×, both at level 20 %.~~ **RETRACTED 2026-09-09 (KH): those two
+  readings were a measurement error.** They are struck here rather than deleted
+  because they were briefly load-bearing, and because a reader who saw them
+  needs to find the retraction in the same place.
 
-  **Treat that as measured and unexplained.** Two accounts have been checked and
-  both fail, which is worth recording so neither gets proposed again:
-
-  - *Entrance pupil.* `2·NA·f/M` gives 20.0, 18.0 and 16.0 mm for 4×/10×/20×,
-    so pupil area predicts 1.56× and 1.27× — and puts 4× above 10×, while the
-    measurement puts 10× above 4×.
-  - *Objective IR transmission.* The vendor curves for these lenses run to
-    1000 nm and are flat across the NIR, reading roughly 87 % at 4× against
-    78–84 % at 20× — a ratio near **1.1**, an order of magnitude short of 3.5.
-    Nothing in the last 64 nm to 1064 looks likely to change that.
-
-  A measurement artefact remains open and is the cheapest thing to rule out:
-  the trap beam overfills the back pupil to focus at full NA, so the cone
-  leaving a 20× (NA 0.80) is far wider than one leaving a 4× (NA 0.20), and a
-  detector of finite aperture and acceptance angle placed near the sample plane
-  would under-read the high-NA lens. The widefield lines, whose illumination
-  does not fill the pupil the same way, agree across objectives to within 25 %
-  — which is consistent with that account and is not a test of it.
+  There was never a 3.5× objective effect at 1064 to explain, and the effort
+  spent explaining one is the lesson: two mechanisms were proposed and both were
+  refuted — entrance-pupil area predicts 1.56× and gets the 4×/10× ordering
+  backwards, and the vendor transmittance curves give a ratio near 1.1. **Both
+  refutations were right, and pointed at the data rather than at the physics
+  well before the data was withdrawn.** When a proposed mechanism misses by an
+  order of magnitude, suspect the reading.
 
   **The objective dependence is estimated from the transmittance curves**
   (KH, 2026-09-09), with the 4× and 10× to be re-measured. From the measured
@@ -112,19 +103,13 @@ and `config/tweezers/run_pattern.py` sends no `LASER_ON` for this reason.
   index-matched choice for aqueous samples, so the lens most attractive for
   trapping in water delivers the least trap power.
 
-  ⚠ **This estimate and the meter disagree by 3×, in the unsafe direction.** At
-  level 20 % the curve predicts 267–284 mW through the 4× and **the meter read
-  890**. Carried to 80 % that is ~1.1 W estimated against **~3.6 W measured**.
-  Which is right is unresolved. So the two numbers have two uses and must not
-  be merged:
-
-  - **planning a photon budget** → the curve estimate above
-  - **protecting against a Class-4 exposure** → **the larger figure.** You do
-    not choose the smaller of two disagreeing numbers when the larger is
-    3.6 W of 1064 at the sample plane.
-
-  Until the re-measurement settles it, **do not treat a low-magnification
-  objective as the safe one.**
+  ⚠ **These are the only 1064 figures for five of the six objectives, and none
+  of them was measured.** The 20× row is; everything else in that table is one
+  measurement multiplied by a ratio read off a plot that stops 64 nm short. Good
+  enough to plan a photon budget with. **Not a substitute for a power meter
+  before an exposure decision** — and the retraction above is what that warning
+  is made of, since the last set of 1064 numbers taken at another objective was
+  wrong by 3×.
 
   **So an objective change can multiply the power at the sample without the
   dial moving.** → [`kb/calibrations/illumination-power.yaml`](kb/calibrations/illumination-power.yaml)

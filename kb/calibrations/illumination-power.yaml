@@ -175,10 +175,27 @@ measurements:
     path: all_in
     by_level_20x: {0: 0, 5: 64, 10: 126, 30: 380, 50: 633, 80: 1020}
     top_level_pct: 80
-    at_20pct: {"4x": 890, "10x": 1050}
+    at_20pct_RETRACTED: {"4x": 890, "10x": 1050}
+    at_20pct_evidence: retracted
+    at_20pct_retraction: >-
+      RETRACTED 2026-09-09 by KH: these two readings were a measurement error.
+      Kept rather than deleted because they were briefly load-bearing -- they
+      reached SAFETY.md and two commits reasoned from them -- and a reader who
+      saw them has to find the retraction next to them.
+
+      TODO(human): what the error was. A correction is dense knowledge (09 §7)
+      and this one is worth its line: knowing whether it was the level actually
+      set, the head placement, stray IR, or something else is what stops the
+      re-measurement repeating it. One candidate that fits arithmetically and is
+      NOT offered as an answer: if the 4x row had really been taken near level
+      70 rather than 20, 890 mW would sit within 1 % of the 20x's own linear
+      curve.
     at_100pct_extrapolated_mw: 1275
     at_100pct_evidence: assumed
     note: >-
+      The 20x by-level row below stands; only the two objective readings were
+      retracted. Nothing else in this block depends on them.
+
       100 % WAS NOT MEASURED: it over-ranged the meter (KH, 2026-09-09), which
       is why 80 % is the top row. 1275 mW is 1020 x 100/80 and is `assumed`,
       not `measured` -- CLAUDE.md §3, so it may be computed with and may not
@@ -233,7 +250,10 @@ illuminated_area_um2:
 #
 # ⚠ 1064 AT THE SAMPLE PLANE: 1020 mW at 80 %, through the 20x. Over one watt
 # of Class-4 1064. SAFETY.md §1 said this dial was uncalibrated; it is not any
-# more. The 4x and 10x pass 890 and 1050 mW at only 20 %.
+# more. The 4x and 10x readings that once sat here were RETRACTED as a
+# measurement error (KH, 2026-09-09) -- see the row's own retraction note. Every
+# 1064 figure for an objective other than the 20x is now an estimate off a
+# transmittance plot, not a reading.
 #
 # THE HEAD WAS NOT SATURATING, and the data shows it rather than assuming it:
 # 64 mW at 5 % extrapolates linearly to 1024 mW at 80 %, and 1020 was measured.
@@ -284,8 +304,12 @@ open_questions:
   ot_objective_method: >-
     DECIDED (KH, 2026-09-09): estimate the trap laser's objective dependence
     from the vendor transmittance curves, and re-measure the 4x and 10x later.
-    The 890 mW / 1050 mW readings at level 20 % are set aside pending that
-    re-measurement, not deleted -- they remain in the row above.
+    SUPERSEDED THE SAME DAY on its premise: KH then established that the
+    890 mW / 1050 mW readings were not merely suspect but WRONG -- a measurement
+    error. So this is no longer "prefer the curve while two candidates
+    disagree"; there is one candidate. The readings stay struck in the row
+    above, and the re-measurement is now the only route to a measured value at
+    those objectives rather than a tie-break.
 
     From the measured 20x (1020 mW at 80 %) times the curve ratio at 1000 nm,
     both candidate 20x plots spanning the range:
@@ -304,14 +328,12 @@ open_questions:
     (data/objectives.yaml), so the lens most attractive for trapping in water is
     also the one that delivers the least trap power. Nothing gates that today.
 
-    ⚠ AND THE ESTIMATE DISAGREES WITH THE METER IN THE UNSAFE DIRECTION. At
-    level 20 % the curve predicts 267-284 mW through the 4x and the meter read
-    890 -- the measurement is 3.1x HIGHER. Carried forward to 80 % that is
-    ~1.1 W estimated against ~3.6 W measured. Which is right is unresolved, so
-    the two numbers have two different uses and must not be merged: the curve
-    estimate is for planning a photon budget, and **the larger figure is what a
-    Class-4 exposure is protected against** until the re-measurement settles it.
-    See SAFETY.md §1.
+    ⚠ FIVE OF THE SIX OBJECTIVES NOW HAVE A 1064 FIGURE AND NONE OF THEM WAS
+    MEASURED. Only the 20x row is a reading; the rest are that one reading times
+    a ratio taken off a plot that stops 64 nm short. Adequate for a photon
+    budget, not a substitute for a meter before an exposure decision -- and the
+    retraction is what that caution is made of, the last 1064 numbers at another
+    objective having been wrong by 3x. See SAFETY.md §1.
   ot_20x_at_20pct: >-
     One further reading would remove an extrapolation from a safety number: the
     20x at 20 %. Without it, the statement that 4x and 10x pass 3.5x and 4.1x
@@ -341,3 +363,55 @@ open_questions:
     The mirror will not serve as that attenuator: its 0.44 was measured at
     470/555/640 and using it at 1064 would trade one extrapolation for a worse
     one, across wavelength rather than along a line that has been shown linear.
+  oil_objectives_visible: >-
+    DECIDED (KH, 2026-09-09): the visible power through the 100x Oil will NOT be
+    measured. It would need immersion oil against the meter window, and reading
+    it dry gives a number without the coupling the lens is designed for. No plan
+    to do it. The 60x Oil is in the same position and was not measured either.
+
+    So `estimated_visible_mw` below is not a stopgap -- it is the standing
+    answer for the objective this instrument actually images with (CLAUDE.md §1:
+    100x Oil at 1x1 is the standing choice). Anything downstream that wants
+    sample-plane power at 100x gets an estimate, permanently, and should say so.
+
+# ---------------------------------------------------------------------------
+# ESTIMATED visible power at 40x / 60x / 100x -- NOT MEASURED
+# ---------------------------------------------------------------------------
+# mW at 100 % level, from the MEASURED 20x times the vendor transmittance ratio
+# at that line's wavelength. Both plots that arrived labelled "20x" were used,
+# and the spread between them is inside the rounding below.
+#
+# HOW FAR THIS WAS TESTED. The same method was run backwards against the 4x,
+# where a measurement exists: the curve predicts the measured 4x/20x ratio to
+# within 5 % for the Aura and the LUN-F-XL, and MISSES BY 14-22 % for the
+# Spectra -- systematically, across all three of its lines and both candidate
+# plots. That is a property of the Spectra path or of how its rows were taken,
+# not of the objectives, and it sets the uncertainty per source below.
+#
+# The transmittances were read off rendered plots by eye (+-2-3 %), which is
+# adequate for a ratio and is not a source for a value -- see
+# data/objectives.yaml on why `transmission` is still empty there.
+#
+# The headline is that magnification costs almost nothing in TOTAL power:
+# every ratio to the 20x falls between 0.90 and 1.00. What magnification does
+# cost is irradiance, through the area term, which is still unmeasured.
+estimated_visible_mw:
+  evidence: estimated
+  basis: "measured 20x x vendor transmittance ratio, 2026-09-09"
+  uncertainty: {Aura: "+-10 %", LUN-F-XL: "+-10 %", Spectra: "+-25 %"}
+  at_100pct_level:
+    Aura:      {CYAN:  {"40x": 46, "60x": 42, "100x": 41},
+                GREEN: {"40x": 45, "60x": 44, "100x": 44},
+                RED:   {"40x": 15, "60x": 15, "100x": 15}}
+    Spectra:   {Cyan:  {"40x": 13, "60x": 12, "100x": 12},
+                Green: {"40x": 15, "60x": 14, "100x": 15},
+                Red:   {"40x": 9.4, "60x": 9.2, "100x": 9.5}}
+    LUN-F-XL:  {"488": {"40x": 6.9, "60x": 6.3, "100x": 6.3},
+                "561": {"40x": 6.3, "60x": 6.1, "100x": 6.2},
+                "640": {"40x": 9.4, "60x": 9.2, "100x": 9.5}}
+  not_estimated:
+    "10x": >-
+      No 10x transmittance plot was supplied -- two of the five arrived labelled
+      "20x" and they differ. If one of them is the 10x, its measured power
+      (45 / 47.5 / 16.1 mW) becomes a second independent test of this method,
+      which currently rests on the 4x alone.
