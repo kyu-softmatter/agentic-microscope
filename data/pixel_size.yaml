@@ -21,20 +21,35 @@
 # `nominal`, and they return exactly what detection.photometry.effective_pixel_nm
 # already computes from data/detectors.yaml. Using them changes no verdict.
 #
-# **The 20x row is the exception, and it is the only row that carries
-# information.** 6.5/20 = 0.325 against a table value of 0.32373, and
-# 6.5/30 = 0.216667 against 0.21582 -- both low by 0.39 %, consistently, which
-# is what a real objective whose magnification is 20.078x rather than 20.000x
-# looks like. That one row is marked `measured`.
+# ---------------------------------------------------------------------------
+# AND THE TWELFTH IS NOT THE EXCEPTION EITHER  (revised 2026-09-09)
+# ---------------------------------------------------------------------------
+# The 20x row was marked `measured` from 2026-09-04, on the reasoning that
+# 6.5/20 = 0.325 against a table 0.32373, and 6.5/30 = 0.216667 against 0.21582
+# -- both low by 0.39 %, consistently -- which is what a real 20.078x objective
+# would look like.
 #
-# The distinction is not pedantry here: lens 6 owns pixel calibration (G23-G27)
-# and the whole provenance axis is `measured` vs `assumed`. Importing eleven
-# quotients as measurements would put an `advances: YES` under a number nobody
-# measured, which is the exact failure this repository exists to prevent.
+# **KH judges 0.39 % to be agreement, not a departure (2026-09-09).** On that
+# reading the row is the arithmetic too, the internal consistency is just the
+# same formula twice, and 20.078x is a story fitted to rounding.
 #
-# What would settle it: image a stage micrometer at each objective and record
-# the result with `evidence: measured`. Until then the 20x entry is the only one
-# that beats the formula, and it is worth having for exactly that reason.
+# So NO ROW IN THIS TABLE IS MEASURED. The whole thing reproduces
+# p_sensor / (M_obj * M_int), and the file's own title -- a "conversion factor"
+# table -- promises something it does not contain.
+#
+# The distinction is not pedantry here: lens 6 owns pixel calibration (G24) and
+# the whole provenance axis is `measured` vs `assumed`. G24 takes
+# `pixel_size_measured` as a claim the caller makes, so nothing in code breaks
+# when this goes to `nominal` -- but any caller that set it True on the strength
+# of the 20x row was wrong, and now provably.
+#
+# What would settle any row: image a stage micrometer AT THAT OBJECTIVE and
+# record the result with `evidence: measured`. Nothing else promotes a cell.
+#
+# ⚠ OPEN, and it is the same kind of judgement: the 100x row carries a 0.7 %
+# cross-check (below). If 0.39 % is agreement, is 0.7 %? The two differ by less
+# than a factor of two, and treating one as noise and the other as a real
+# discrepancy needs a threshold somebody states. None is stated here.
 
 pixel_size:
   camera: Kinetix
@@ -80,14 +95,16 @@ pixel_size:
       evidence: nominal
       values: {"1x": 0.65, "1.5x": 0.43333}
     "20":
-      evidence: measured
+      evidence: nominal
       values: {"1x": 0.32373, "1.5x": 0.21582}
-      effective_magnification: 20.078   # 6.5 / 0.32373
       note: >
-        The one row that departs from the nominal quotient, and it departs
-        consistently: -0.39 % at both intermediate magnifications. Read as a
-        real objective magnification of 20.078x rather than the label's 20.000x.
-        Nominal would give 0.325 and 0.216667.
+        Was `measured` from 2026-09-04 to 2026-09-09. It is the only row whose
+        digits differ from the quotient -- 0.32373 against 6.5/20 = 0.325, and
+        0.21582 against 0.216667, both low by 0.39 % -- and that was read as a
+        real 20.078x objective. KH judges 0.39 % to be agreement (2026-09-09),
+        so it is arithmetic like the other eleven and the consistency between
+        the two intermediate magnifications is just the same formula twice.
+        The VALUES are unchanged; only the tier moved.
     "40":
       evidence: nominal
       values: {"1x": 0.1625, "1.5x": 0.10833}

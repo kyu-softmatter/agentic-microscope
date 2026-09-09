@@ -960,14 +960,22 @@ pixel_size_calibration:
     significant figures is not what a measurement looks like, so those eleven
     are carried as `evidence: nominal` and change no verdict.
 
-    **The 20x is the exception and the only row that carries information:**
-    0.32373 against a nominal 0.325, and 0.21582 against 0.216667 -- both low by
-    0.39 %, consistently, which reads as a real magnification of 20.078x. That
-    row alone is `evidence: measured`.
+    **The 20x was carried as the exception until 2026-09-09.** Its digits do
+    differ -- 0.32373 against a nominal 0.325, and 0.21582 against 0.216667,
+    both low by 0.39 % -- and that was read as a real magnification of 20.078x,
+    so the row alone was `evidence: measured`.
 
-    So the roadmap Phase 0 item "measured pixel-size calibration" is **not**
-    closed by this file. What would close it: a stage micrometer at each
-    objective. Until then the 20x entry is the whole of what was gained.
+    **KH judges 0.39 % to be agreement (2026-09-09), so it is `nominal` too.**
+    On that reading the internal consistency between the two intermediate
+    settings is the same formula twice rather than corroboration, and 20.078x
+    is a story fitted to rounding. The values are unchanged; only the tier is.
+
+    So **no row in this table is measured**, and the roadmap Phase 0 item
+    "measured pixel-size calibration" is not closed by this file at all --
+    where before it was closed for one objective. What would close it: a stage
+    micrometer at each objective. `tests/test_pixel_size.py::test_no_row_is_measured`
+    is the guard, since G24 takes `pixel_size_measured` as a caller's claim and
+    nothing in code would otherwise stop a promotion.
   table:
     "4x":   {"1x": 1.625,   "1.5x": 1.0833}
     "10x":  {"1x": 0.65,    "1.5x": 0.43333}

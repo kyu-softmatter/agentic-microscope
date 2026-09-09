@@ -28,9 +28,12 @@
 # the frame (diameter = the field diagonal), 948,218 um^2 against 603,654.
 #
 # ⚠ AT 20x ONLY, and `computed` rather than measured. The area rests on the one
-#   pixel size in data/pixel_size.yaml carrying `evidence: measured`, which is
-#   the 20x row; every other objective's pixel size is `nominal`, so an area
-#   built on it inherits that. And "about the camera field" was not quantified
+#   pixel size in data/pixel_size.yaml that once carried `evidence: measured`,
+#   the 20x row -- and on 2026-09-09 that row went to `nominal` too, KH having
+#   judged its 0.39 % departure to be agreement. So NO pixel size on this
+#   instrument is measured and every area here inherits `nominal`. The 0.39 %
+#   moves the area by 0.8 %, which is nothing for this purpose; what changes is
+#   the tier, not the number. And "about the camera field" was not quantified
 #   for any of the three.
 
 meta:
@@ -266,10 +269,11 @@ illuminated_area_um2:
     shape: "approximately the camera field"
     evidence: computed
     basis: >-
-      2400 x 2400 px at the MEASURED 20x pixel size 0.32373 um/px
-      (data/pixel_size.yaml, 1x intermediate) = 777.0 x 777.0 um. Computed, not
-      measured: the field was reported as matching the camera field closely, and
-      "closely" was not quantified.
+      2400 x 2400 px at the 20x pixel size 0.32373 um/px (data/pixel_size.yaml,
+      1x intermediate) = 777.0 x 777.0 um. Computed, not measured, twice over:
+      the field was reported as matching the camera field "closely" and that was
+      not quantified, and as of 2026-09-09 the pixel size itself is `nominal`
+      rather than measured.
     "20x": 603654
     "4x": null      # 4x and 10x pixel sizes are `nominal`, so an area from them
     "10x": null     # would inherit that; not computed here for that reason

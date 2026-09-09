@@ -201,21 +201,24 @@ the disk's write bandwidth (G12a). And underneath all of it, **`unevaluated` ≠
   lives. A `BLOCKED` with no fix instruction is a bug.
 - **[`data/pixel_size.yaml`](data/pixel_size.yaml) is a worked example of the
   rule above, and the one most likely to be misread.** It is titled a measured
-  calibration table and **only the 20× row is measured.** Eleven of its twelve
+  conversion-factor table and **no row in it is measured.** Eleven of its twelve
   cells are exactly `6.5 / (M_obj × M_int)` to every digit — arithmetic, not a
-  micrometer — so they return what `detection.photometry.effective_pixel_nm`
-  already computes and using them changes no verdict. Only 20× departs
-  (0.32373 against 0.325, a real 20.078× objective).
-  - **Never re-tier the other eleven as `measured`.** Lens 6 owns pixel
-    calibration (G24) and the whole `advances` axis rides on it, so that one
-    edit would put `advances: YES` under a number nobody measured.
+  micrometer — and the twelfth, 20×, is low by 0.39 %, which KH judges to be
+  agreement (2026-09-09). So the table reproduces what
+  `detection.photometry.effective_pixel_nm` already computes, and using it
+  changes no verdict.
+  - **Never re-tier a row as `measured`.** Lens 6 owns pixel calibration (G24),
+    which takes `pixel_size_measured` as a claim the *caller* makes — so
+    nothing in code stops you, and the whole `advances` axis rides on it.
   - ⚠ **100× carries an unadopted cross-check.** Two independent 10 µm rulers
     on 2026-09-03 came back long by the same sign — piezo +0.61 %, AOD trap
     +0.85 % — giving **~0.0645 µm/px against the 0.065 in the table.** It is
     recorded beside the row and deliberately not adopted, because two
     displacement rulers are not a stage micrometer. **`κ ∝ 1/pixel size`, so
     that 0.7 % is already inside every trap stiffness computed to date**, and
-    100× is §1's standing objective.
+    100× is §1's standing objective. ⚠ Open, and the same kind of judgement as
+    the 20× row above: **if 0.39 % is agreement, is 0.7 %?** Nobody has stated
+    the threshold that separates them.
   - What settles any row: image a stage micrometer **at that objective**.
     Nothing else promotes a cell.
 - **`unevaluated` ≠ `cleared`.** Collapsing them is how a plausible number

@@ -4,9 +4,13 @@ The table exists because the lab's Micro-Manager ``.cfg`` carries an empty
 ``PixelSize settings`` block, so ``getPixelSizeUm()`` answers 0.0 and the value
 measured in 2025-04 was unreachable from code. These tests hold two things: the
 numbers match ``kb/systems/current.md > pixel_size_calibration``, and the
-provenance stays honest -- eleven of the twelve cells are the nominal quotient
-and are labelled as such, so nothing downstream can mistake arithmetic for a
-measurement.
+provenance stays honest -- every cell is the nominal quotient and is labelled
+as such, so nothing downstream can mistake arithmetic for a measurement.
+
+The 20x row was `measured` from 2026-09-04 to 2026-09-09, on the strength of a
+0.39 % departure read as a real 20.078x objective. KH judges that to be
+agreement, so it went to `nominal` with the other eleven and NO ROW IS
+MEASURED. The values did not change; only the tier did.
 """
 
 from __future__ import annotations
@@ -62,24 +66,36 @@ def test_nominal_rows_are_the_quotient_and_say_so(mag, inter):
 
 
 @pytest.mark.parametrize("inter,nominal_um", [(1.0, 0.325), (1.5, 0.2166667)])
-def test_the_20x_is_the_one_row_that_departs(inter, nominal_um):
-    """0.39 % low at both intermediate settings -- a real 20.078x objective."""
+def test_the_20x_digits_still_differ_even_though_the_tier_does_not(inter, nominal_um):
+    """0.39 % low at both intermediate settings, and `nominal` regardless.
+
+    The digits are kept under test because they are what a stage micrometer
+    would be compared against, and because the reason this row is `nominal` is
+    a judgement about 0.39 % rather than an absence of departure. If someone
+    later measures 20x and gets 0.39 % low again, this is the number that says
+    the spreadsheet had it right by accident or otherwise.
+    """
     um, evidence = recorded_pixel_um(20, inter)
-    assert evidence == "measured"
+    assert evidence == "nominal"
     assert um != pytest.approx(nominal_um, rel=1e-4)
     assert um / nominal_um == pytest.approx(0.9961, abs=5e-4)
 
 
-def test_exactly_one_row_is_measured():
+def test_no_row_is_measured():
     """A regression guard on provenance, not on physics.
 
-    If a later edit promotes the nominal rows to ``measured``, an
-    ``advances: YES`` appears under numbers nobody measured -- which is the
-    failure mode lens 6 (G23-G27) exists to catch.
+    If a later edit promotes any row to ``measured``, an ``advances: YES``
+    appears under a number nobody measured -- the failure mode lens 6
+    (G23-G27) exists to catch. G24 takes ``pixel_size_measured`` as a claim the
+    caller makes, so nothing in code stops that; this test is what does.
+
+    The way to make a row measured is to image a stage micrometer at that
+    objective and record the result. Then this assertion changes, with the
+    measurement cited beside it.
     """
     table = pixel_size_table()["table"]
     measured = [k for k, row in table.items() if row.get("evidence") == "measured"]
-    assert measured == ["20"]
+    assert measured == []
 
 
 def test_binning_scales_linearly():
