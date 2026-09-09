@@ -27,7 +27,7 @@ hardest; rank 4 is the free variable that moves first.
 
 | Rank | Axis | What it is, concretely on this bench | Owned by | Settings |
 |:---:|---|---|---|---|
-| **1** | **Spatial resolution** | Pixel size at the sample and the NA that feeds it. Standing choice: `100x-Oil` at **1×1 binning, 0.065 µm/px** — that figure is `nominal` and ~0.7 % high against a 2026-09-03 cross-check (§3) | lens 4 (objective, immersion) · lens 2 (binning, ROI) | objective, intermediate mag, binning |
+| **1** | **Spatial resolution** | Pixel size at the sample and the NA that feeds it. Standing choice: `100x-Oil` at **1×1 binning, 0.06453 µm/px** — measured 2026-09-03, and the only measured pixel size on this instrument (§3). It was 0.065 until 2026-09-09 | lens 4 (objective, immersion) · lens 2 (binning, ROI) | objective, intermediate mag, binning |
 | **2** | **Image quality** | SNR and localisation precision — whether a particle can be found and centred, not whether the picture is pretty | lens 2 (photon budget, SNR) · lens 1 (throughput) | exposure, gain, readout mode, filters |
 | **3** | **Time resolution** | Achieved frame period. Standing choice: **20.0 ms exposure ⇒ ~50 fps** (this camera takes the exposure as the period) | lens 2 (frame interval) · lens 3 (frame-rate arithmetic) | exposure, interval, ROI, data rate |
 | **4** | **Light source intensity** | Source level at the sample. Standing choice: Aura **GREEN ~80/1000** | lens 5 (light level, duty, dose) · lens 1 | level %, illumination duty |
@@ -201,26 +201,35 @@ the disk's write bandwidth (G12a). And underneath all of it, **`unevaluated` ≠
   lives. A `BLOCKED` with no fix instruction is a bug.
 - **[`data/pixel_size.yaml`](data/pixel_size.yaml) is a worked example of the
   rule above, and the one most likely to be misread.** It is titled a measured
-  conversion-factor table and **no row in it is measured.** Eleven of its twelve
-  cells are exactly `6.5 / (M_obj × M_int)` to every digit — arithmetic, not a
-  micrometer — and the twelfth, 20×, is low by 0.39 %, which KH judges to be
-  agreement (2026-09-09). So the table reproduces what
-  `detection.photometry.effective_pixel_nm` already computes, and using it
-  changes no verdict.
+  conversion-factor table and **not one of its twelve cells is a measurement.**
+  Eleven are exactly `6.5 / (M_obj × M_int)` to every digit — arithmetic — and
+  the twelfth, 20×, is low by 0.39 %, which KH judges to be agreement
+  (2026-09-09). So the spreadsheet reproduces what
+  `detection.photometry.effective_pixel_nm` already computes.
+
+  **The 100× 1× cell is the exception and does not come from the spreadsheet.**
+  On 2026-09-03 two independent length standards were driven 10 µm at 100× and
+  read off the camera — the closed-loop piezo gave 0.06460 µm/px and the AOD
+  trap 0.06445, agreeing to 0.24 % with each other and to 0.73 % with the
+  nominal. **0.06453 is recorded as `measured`, and it is the only measured
+  pixel size this instrument has.** A length standard is a length standard; an
+  earlier note here demanded a stage micrometer specifically and that was
+  wrong.
   - **Never re-tier a row as `measured`.** Lens 6 owns pixel calibration (G24),
     which takes `pixel_size_measured` as a claim the *caller* makes — so
     nothing in code stops you, and the whole `advances` axis rides on it.
-  - ⚠ **100× carries an unadopted cross-check.** Two independent 10 µm rulers
-    on 2026-09-03 came back long by the same sign — piezo +0.61 %, AOD trap
-    +0.85 % — giving **~0.0645 µm/px against the 0.065 in the table.** It is
-    recorded beside the row and deliberately not adopted, because two
-    displacement rulers are not a stage micrometer. **`κ ∝ 1/pixel size`, so
-    that 0.7 % is already inside every trap stiffness computed to date**, and
-    100× is §1's standing objective. ⚠ Open, and the same kind of judgement as
-    the 20× row above: **if 0.39 % is agreement, is 0.7 %?** Nobody has stated
-    the threshold that separates them.
-  - What settles any row: image a stage micrometer **at that objective**.
-    Nothing else promotes a cell.
+  - **The seven `.cfg` files were resynced** on 2026-09-09, so
+    `getPixelSizeUm()` and this table agree. `config/micromanager/set_pixel_size.py`
+    **refuses to overwrite** a differing preset — "one of the two is wrong and
+    this tool cannot tell which" — so that edit is a decision, never a run of
+    the script. `tests/test_pixel_size.py::test_the_cfg_presets_match_the_recorded_table`
+    is what catches the drift.
+  - **`κ ∝ 1/pixel size`**, so every trap stiffness computed before this is
+    0.73 % low against the measured value. Inside the agreement KH stated, so
+    no correction is called for — but the direction is now known.
+  - What promotes another row: **drive a known length at that objective** and
+    read the displacement off the camera. Micrometer, piezo or trap — the
+    instrument, not the spreadsheet.
 - **`unevaluated` ≠ `cleared`.** Collapsing them is how a plausible number
   becomes a wrong one. A margin of 10.00 against a threshold nobody supplied
   still does not advance.

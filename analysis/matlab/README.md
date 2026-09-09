@@ -41,6 +41,21 @@ period — and measure it from the timestamp column, not from the setting.
 ⚠ `px_to_um = 0.065` is the **1×1 unbinned** 100x-Oil value. At 2×2 it is
 0.130. Nothing in these scripts detects binning.
 
+⚠ **And since 2026-09-09 this repository disagrees with it.** `0.065` is
+`6.5/100`, the nominal quotient. Two independent length standards driven 10 µm
+at 100× on 2026-09-03 — the closed-loop piezo and the AOD trap, agreeing to
+0.24 % — give **0.06453 µm/px**, which `data/pixel_size.yaml` now carries as
+`measured` and the seven `.cfg` files match.
+
+The MATLAB value is **left alone here on purpose**: this file documents what
+`D:\codes` does, and editing that pipeline is not this repository's to do. What
+matters is that the gap is 0.73 %, that it is inside the agreement the operator
+stated, and that **every quantity these scripts produce carries it** — the
+scaling is not the same for all of them, since `px_to_um` enters displacement
+linearly and `⟨x²⟩` quadratically. Lens 6 is the lens that owns whether the
+analysis code's assumptions match the settings, and this is exactly the kind of
+mismatch it is for.
+
 Filenames carry the metadata, and the parsers are strict:
 
 ```

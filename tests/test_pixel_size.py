@@ -32,7 +32,7 @@ KB_TABLE = {
     20: {"1x": 0.32373, "1.5x": 0.21582},
     40: {"1x": 0.1625, "1.5x": 0.10833},
     60: {"1x": 0.10833, "1.5x": 0.07222},
-    100: {"1x": 0.065, "1.5x": 0.04333},
+    100: {"1x": 0.06453, "1.5x": 0.04333},   # 1x measured 2026-09-03
 }
 
 SENSOR_UM = 6.5  # Kinetix, data/detectors.yaml
@@ -54,7 +54,7 @@ def test_sensor_pixel_agrees_with_the_detector_registry():
     assert detectors()[camera.lower()].pixel_um == pytest.approx(SENSOR_UM)
 
 
-@pytest.mark.parametrize("mag", [4, 10, 40, 60, 100])
+@pytest.mark.parametrize("mag", [4, 10, 40, 60])
 @pytest.mark.parametrize("inter", [1.0, 1.5])
 def test_nominal_rows_are_the_quotient_and_say_so(mag, inter):
     """The eleven cells that carry no information, and must not claim to."""
@@ -81,25 +81,46 @@ def test_the_20x_digits_still_differ_even_though_the_tier_does_not(inter, nomina
     assert um / nominal_um == pytest.approx(0.9961, abs=5e-4)
 
 
-def test_no_row_is_measured():
+def test_only_100x_is_measured():
     """A regression guard on provenance, not on physics.
 
-    If a later edit promotes any row to ``measured``, an ``advances: YES``
-    appears under a number nobody measured -- the failure mode lens 6
-    (G23-G27) exists to catch. G24 takes ``pixel_size_measured`` as a claim the
-    caller makes, so nothing in code stops that; this test is what does.
+    If a later edit promotes another row, an ``advances: YES`` appears under a
+    number nobody measured -- the failure mode lens 6 (G23-G27) exists to
+    catch. G24 takes ``pixel_size_measured`` as a claim the caller makes, so
+    nothing in code stops that; this test is what does.
 
-    The way to make a row measured is to image a stage micrometer at that
-    objective and record the result. Then this assertion changes, with the
-    measurement cited beside it.
+    100x earned it on 2026-09-03: two independent length standards driven 10 um
+    and read off the camera, agreeing to 0.24 %. The way to promote another row
+    is the same -- drive a known length AT that objective. The instrument, not
+    the spreadsheet.
     """
     table = pixel_size_table()["table"]
     measured = [k for k, row in table.items() if row.get("evidence") == "measured"]
-    assert measured == []
+    assert measured == ["100"]
+
+
+def test_the_measured_100x_is_not_the_quotient():
+    """0.06453 against 6.5/100 = 0.065. They agree to 0.73 %, which KH judges
+    to be agreement -- but the recorded digits are the measurement's, not the
+    formula's, which is the whole point of the tier."""
+    um, evidence = recorded_pixel_um(100, 1.0)
+    assert evidence == "measured"
+    assert um == pytest.approx(0.06453)
+    assert um != pytest.approx(0.065, rel=1e-4)
+    assert um / 0.065 == pytest.approx(0.9927, abs=5e-4)
+
+
+def test_the_100x_1_5x_cell_stays_nominal():
+    """Only 1x was driven. Dividing the measured 1x by 1.5 would be a derived
+    number wearing a measured tier."""
+    um, _ = recorded_pixel_um(100, 1.5)
+    assert um == pytest.approx(effective_pixel_nm(SENSOR_UM, 1, 100, 1.5) / 1000.0, rel=1e-4)
 
 
 def test_binning_scales_linearly():
-    assert recorded_pixel_um(100, 1.0, 2)[0] == pytest.approx(0.13)
+    """0.12906 rather than 0.130 since 2026-09-09 -- 100x carries the measured
+    0.06453, not 6.5/100. The scaling is what is under test, not the value."""
+    assert recorded_pixel_um(100, 1.0, 2)[0] == pytest.approx(2 * 0.06453)
 
 
 def test_absent_combinations_return_none_rather_than_guessing():

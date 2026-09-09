@@ -33,9 +33,29 @@
 # reading the row is the arithmetic too, the internal consistency is just the
 # same formula twice, and 20.078x is a story fitted to rounding.
 #
-# So NO ROW IN THIS TABLE IS MEASURED. The whole thing reproduces
-# p_sensor / (M_obj * M_int), and the file's own title -- a "conversion factor"
+# So NONE OF THE SPREADSHEET'S TWELVE CELLS IS A MEASUREMENT. The whole table
+# reproduces p_sensor / (M_obj * M_int), and its title -- a "conversion factor"
 # table -- promises something it does not contain.
+#
+# ---------------------------------------------------------------------------
+# 100x IS MEASURED, AND NOT FROM THE SPREADSHEET  (2026-09-09)
+# ---------------------------------------------------------------------------
+# A separate measurement exists and had never been filed here. On 2026-09-03
+# two independent length standards were driven over 10 um at 100x and the
+# displacement read off the camera:
+#
+#     piezo stage (closed-loop, chamber-stuck particle)  ->  0.06460 um/px
+#     AOD trap    (trapped bead, y)                      ->  0.06445 um/px
+#     mean                                                   0.06453 um/px
+#
+# The two agree with each other to 0.24 %, and with the nominal 0.065 to 0.73 %
+# -- which KH judges to be agreement (2026-09-09), so this CONFIRMS the formula
+# at the standing objective rather than contradicting it.
+#
+# It is `measured` because a length standard is a length standard: the earlier
+# note in this file demanded a stage micrometer specifically, and that was
+# wrong (KH, 2026-09-09). A calibrated closed-loop piezo driven a known
+# distance measures scale. What is recorded is the value that came out of it.
 #
 # The distinction is not pedantry here: lens 6 owns pixel calibration (G24) and
 # the whole provenance axis is `measured` vs `assumed`. G24 takes
@@ -43,13 +63,15 @@
 # when this goes to `nominal` -- but any caller that set it True on the strength
 # of the 20x row was wrong, and now provably.
 #
-# What would settle any row: image a stage micrometer AT THAT OBJECTIVE and
-# record the result with `evidence: measured`. Nothing else promotes a cell.
+# What would promote any other row: drive a known length at THAT objective and
+# read the displacement off the camera -- a stage micrometer, the piezo, or the
+# trap. Nothing promotes a cell except a length actually traversed at it.
 #
-# ⚠ OPEN, and it is the same kind of judgement: the 100x row carries a 0.7 %
-# cross-check (below). If 0.39 % is agreement, is 0.7 %? The two differ by less
-# than a factor of two, and treating one as noise and the other as a real
-# discrepancy needs a threshold somebody states. None is stated here.
+# 0.7 % IS AGREEMENT TOO (KH, 2026-09-09), which settles the 100x row the other
+# way round from how it was first written. Two independent 10 um rulers at 100x
+# agree with the nominal 0.065 inside that tolerance -- so the cross-check
+# PASSED. There is no lurking 0.7 % error in kappa; the arithmetic was checked
+# against hardware at the standing objective and held.
 
 pixel_size:
   camera: Kinetix
@@ -112,24 +134,30 @@ pixel_size:
       evidence: nominal
       values: {"1x": 0.10833, "1.5x": 0.07222}
     "100":
-      evidence: nominal
-      values: {"1x": 0.065, "1.5x": 0.04333}
-      # ⚠ A MEASUREMENT EXISTS AND IS NOT IN THIS VALUE (added 2026-09-09).
-      # kb/decisions/2026-09-03-three-subsystems-first-light.md §9 drove two
-      # independent 10 um rulers at 100x, on different hardware, and both came
-      # back long by the same sign:
-      #     piezo stage, chamber-stuck particle   10.000 commanded -> 10.0612  (+0.61 %)
-      #     AOD trap, trapped bead in y           10.000 commanded -> 10.0852  (+0.85 %)
-      # so ~0.0645 um/px rather than 0.0650, about 0.7 % smaller.
-      #
-      # The value above is LEFT AT 0.065 deliberately. That record judged its
-      # own numbers "the first measured cross-check" rather than a replacement,
-      # and this file's own standard for `measured` is a stage micrometer at
-      # that objective. Two displacement rulers agreeing on a sign is not that.
-      #
-      # It is written here because 100x is the standing objective (CLAUDE.md §1)
-      # and because kappa scales as 1/pixel size, so a 0.7 % error propagates
-      # into every trap stiffness. Whoever images that micrometer settles it.
-      measured_cross_check_um_per_px: 0.0645
-      measured_cross_check_note: "2026-09-03, two 10 um rulers; not adopted -- see the comment above"
+      evidence: measured
+      values: {"1x": 0.06453, "1.5x": 0.04333}
+      measured_1x_um_per_px: 0.06453
+      measured_date: 2026-09-03
+      measured_by: >-
+        Two independent length standards over 10 um, read off the camera:
+        the closed-loop piezo stage on a chamber-stuck particle gave
+        0.06460 um/px, and the AOD trap on a held bead in y gave 0.06445.
+        They agree to 0.24 %. Source:
+        kb/decisions/2026-09-03-three-subsystems-first-light.md §9.
+      note: >
+        ⚠ THE 1.5x CELL IS STILL NOMINAL. Only 1x was driven. 0.04333 is
+        6.5/150; dividing the measured 1x by 1.5 would give 0.04302, and that
+        would be a derived number wearing a measured tier. Left alone.
+
+        ⚠ THIS VALUE NOW DISAGREES WITH THE .cfg. All six Micro-Manager configs
+        carry `PixelSize_um,100x-1x,0.065`, so `getPixelSizeUm()` answers the
+        nominal while this file answers the measurement -- 0.73 % apart, which
+        is inside the agreement KH stated but is still two sources with
+        different digits. `config/micromanager/set_pixel_size.py` is the tool
+        that would reconcile them; whether to is not decided here.
+
+        kappa scales as 1/pixel size, so every trap stiffness computed from
+        0.065 is 0.73 % low against this. Inside the stated tolerance, so no
+        correction is called for -- recorded because the direction is now known
+        rather than unknown.
 

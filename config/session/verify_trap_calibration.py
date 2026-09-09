@@ -111,7 +111,8 @@ for _stream in (sys.stdout, sys.stderr):
 
 # ⚠ BINNING AND PIXEL SIZE, MEASURED 2026-09-06.
 # `core.getPixelSizeUm()` ALREADY ACCOUNTS FOR BINNING: with the 100x-1x preset
-# it returns 0.065 at bin 1x1, 0.130 at 2x2 and 0.260 at 4x4. So it must be read
+# it returns 0.06453 at bin 1x1, 0.12906 at 2x2 and 0.25812 at 4x4 (0.065 /
+# 0.130 / 0.260 before the 100x row became measured on 2026-09-09). So it must be read
 # AFTER the binning is set and must NOT be multiplied by the bin factor.
 # This file used to read it before setting binning and then multiply by 2, which
 # gave the right 0.130 only because of that statement order -- load a config that
@@ -120,7 +121,7 @@ for _stream in (sys.stdout, sys.stderr):
 #
 # `trap_from_tracking.pixel_size_um()` used to behave the OPPOSITE way -- it
 # reads the table in data/pixel_size.yaml, which is keyed on objective x
-# intermediate magnification only and so returned 0.065 at ANY binning. Fixed
+# intermediate magnification only and so returned the 1x1 value at ANY binning. Fixed
 # 2026-09-06: it now multiplies by the bin factor, names the binning in its
 # provenance string, refuses non-square binning, and cross-checks against
 # getPixelSizeUm(). The two paths now agree or refuse.

@@ -253,8 +253,10 @@ def write_run_record(args, result, timeline, clock, piezo_report, *,
             # Recorded, never checked -- neither Tweez calibration is readable
             # over TCP. See the module docstring.
             "tweezers_gui_objective": args.objective,
-            "pixel_size_um": 0.065,
-            "pixel_size_provenance": "nominal 6.5/100, NOT a graticule measurement",
+            "pixel_size_um": 0.06453,
+            "pixel_size_provenance": "measured 2026-09-03 -- piezo and AOD "
+            "rulers over 10 um, agreeing to 0.24 %; was the nominal 6.5/100 "
+            "until 2026-09-09",
         },
         "clock": {
             "wall_at_perf0": wall0,
@@ -697,7 +699,7 @@ def main() -> int:
 
         if result is not None:
             paths = result.write(args.out)
-            paths.update(result.write_ome_tiff(args.out, pixel_size_um=0.065))
+            paths.update(result.write_ome_tiff(args.out, pixel_size_um=0.06453))
             paths["run"] = write_run_record(
                 args, result, timeline, clock, piezo_report,
                 piezo_t0=piezo_t0, release_rt_s=release_rt_s,

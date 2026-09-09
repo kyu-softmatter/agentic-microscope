@@ -970,19 +970,32 @@ pixel_size_calibration:
     settings is the same formula twice rather than corroboration, and 20.078x
     is a story fitted to rounding. The values are unchanged; only the tier is.
 
-    So **no row in this table is measured**, and the roadmap Phase 0 item
-    "measured pixel-size calibration" is not closed by this file at all --
-    where before it was closed for one objective. What would close it: a stage
-    micrometer at each objective. `tests/test_pixel_size.py::test_no_row_is_measured`
-    is the guard, since G24 takes `pixel_size_measured` as a caller's claim and
-    nothing in code would otherwise stop a promotion.
+    So **no cell of the spreadsheet is a measurement**. But the 100x 1x cell no
+    longer comes from the spreadsheet: on 2026-09-03 two independent length
+    standards were driven 10 um at 100x and read off the camera -- the
+    closed-loop piezo gave 0.06460 um/px and the AOD trap 0.06445, agreeing to
+    0.24 % with each other and to 0.73 % with the nominal. That value, 0.06453,
+    is recorded as `measured` (2026-09-09).
+
+    An earlier note here demanded a stage micrometer specifically. That was
+    wrong (KH, 2026-09-09): a length standard is a length standard, and a
+    calibrated closed-loop piezo driven a known distance measures scale.
+
+    The roadmap Phase 0 item "measured pixel-size calibration" is therefore
+    closed for 100x -- the standing objective -- and open for the other five.
+    `tests/test_pixel_size.py::test_only_100x_is_measured` is the guard, since
+    G24 takes `pixel_size_measured` as a caller's claim and nothing in code
+    would otherwise stop a promotion.
+
+    ⚠ The six MM `.cfg` files still carry `PixelSize_um,100x-1x,0.065`, so
+    `getPixelSizeUm()` and this table now differ by 0.73 %.
   table:
     "4x":   {"1x": 1.625,   "1.5x": 1.0833}
     "10x":  {"1x": 0.65,    "1.5x": 0.43333}
     "20x":  {"1x": 0.32373, "1.5x": 0.21582}
     "40x":  {"1x": 0.1625,  "1.5x": 0.10833}
     "60x":  {"1x": 0.10833, "1.5x": 0.07222}
-    "100x": {"1x": 0.065,   "1.5x": 0.04333}
+    "100x": {"1x": 0.06453, "1.5x": 0.04333}   # 1x MEASURED 2026-09-03; 1.5x still nominal
 
 devices_not_in_mm_config:   # docs/02 §4 "three-way cross-check table" — separately controlled devices absent from the MM .cfg
   - name: "temperature-controlled stage"
