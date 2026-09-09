@@ -160,6 +160,39 @@ filters:
   # only until the vendor curve has been cross-checked.
   # ══════════════════════════════════════════════════════════════════════
 
+  # ---------------------------------------------------------------------
+  # THE CONFOCAL TAKES AN UNUSUAL PATH THROUGH THIS CUBE (KH, 2026-09-09)
+  # ---------------------------------------------------------------------
+  # The LUN-F-XL does NOT enter at the excitation port and reflect off the
+  # dichroic, which is what a cube is normally for. It enters at the EMISSION
+  # side and is TRANSMITTED. So on that path the laser meets `-EM` and then
+  # `-DM` in transmission, and never meets `-EX` at all.
+  #
+  # That is why position 0 blocks the confocal, and the mechanism is SPECTRAL
+  # rather than a lens cap. Every LUN-F-XL line falls in a GAP between the
+  # emitter's passbands, which is what an emitter is built to do to the
+  # excitation it is paired with:
+  #
+  #     -EM passes  420-460  510-531  589-623  677-711  768-849
+  #     -DM passes  414-450  499-530  580-611  661-701  768-849
+  #     LUN-F-XL       405      488      561      640
+  #                     ^        ^        ^        ^   all four in the gaps
+  #
+  # It matches the measurement: state 0 gave 1.00x contrast against 5.16/5.15/
+  # 5.13x for the empty states (2026-09-07, config/lunf/disk_survives_kill.py),
+  # which recorded the effect without the reason.
+  #
+  # NO EXTRA GATE IS NEEDED for "LUN-F-XL with the multiband in". Modelled on
+  # the real path -- `excitation: ["MXR00724-EM", "MXR00724-DM"]` -- G1 returns
+  # `excitation.none` at margin 0.00 and 0.0 % coupling, which is hard, so the
+  # committee already refuses it.
+  #
+  # ⚠ But only when the channel describes the real path. Written the ordinary
+  # way -- `-EX` plus a reflection off `-DM` -- the same combination scores 70-78 %
+  # coupling and comes back PASS (with changes), because that describes a light
+  # path this instrument does not have. The refusal is earned by the model being
+  # right, not by the gate recognising the device.
+  #
   # ⚠ POSITION CORRECTED 2026-09-09: these three read "position 1" until now.
   # The cube is in FilterTurret1 position **0**, and 1/2/3 are empty slots.
   # Confirmed by KH the same day -- the turret numbering starts at 0, so 0 is
