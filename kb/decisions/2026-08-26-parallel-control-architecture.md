@@ -1,3 +1,15 @@
+---
+# frontmatter added 2026-09-09 for kb/INDEX.md. `question` restates this
+# file's own title and Request/Context; the link fields read its own
+# supersession notes. A retrieval aid, not evidence -- see knowledge/index.py.
+id: 2026-08-26-parallel-control-architecture
+question: "Can the microscope, the tweezers and the piezo be driven from one program at once, and what is each operation actually able to do?"
+date: 2026-08-26
+status: superseded-in-part
+superseded_by: [2026-08-27-optional-subsystems-one-timeline]
+corrected_by: [2026-08-27-tweezers-first-light-measured-limits]
+---
+
 # 2026-08-26 · Running the three control surfaces in parallel
 
 > Third entry from this session, after `2026-08-26-microscope-config-control.md`

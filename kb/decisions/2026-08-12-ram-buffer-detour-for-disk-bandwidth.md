@@ -1,3 +1,13 @@
+---
+# frontmatter added 2026-09-09 for kb/INDEX.md. `question` restates this
+# file's own title and Request/Context; the link fields read its own
+# supersession notes. A retrieval aid, not evidence -- see knowledge/index.py.
+id: 2026-08-12-ram-buffer-detour-for-disk-bandwidth
+question: "Can a dual-Kinetix acquisition that exceeds the disk write bandwidth be rescued by acquiring to RAM first and flushing afterwards?"
+date: 2026-08-12
+status: proposed-not-run
+---
+
 # 2026-08-12 · Disk bandwidth detour — acquire to RAM first, then flush
 
 > The decision-log format in `docs/02 §9` is meant for **results of experiments

@@ -1,3 +1,14 @@
+---
+# frontmatter added 2026-09-09 for kb/INDEX.md. `question` restates this
+# file's own title and Request/Context; the link fields read its own
+# supersession notes. A retrieval aid, not evidence -- see knowledge/index.py.
+id: literature-index
+question: "What published values are filed here, and what may a literature value be used for that a measurement may not?"
+date: 2026-08-28
+living: true
+status: index
+---
+
 # kb/literature/
 
 Published values that a gate needs and nobody here has measured — filed so they

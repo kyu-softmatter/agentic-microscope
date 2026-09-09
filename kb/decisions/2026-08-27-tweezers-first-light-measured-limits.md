@@ -1,3 +1,13 @@
+---
+# frontmatter added 2026-09-09 for kb/INDEX.md. `question` restates this
+# file's own title and Request/Context; the link fields read its own
+# supersession notes. A retrieval aid, not evidence -- see knowledge/index.py.
+id: 2026-08-27-tweezers-first-light-measured-limits
+question: "What can each tweezers control surface actually do, measured against the live Tweez 300 GUI rather than read out of the manual?"
+date: 2026-08-27
+corrects: [2026-08-26-tweezers-pattern-vs-direct, 2026-08-26-parallel-control-architecture]
+---
+
 # 2026-08-27 · Tweezers first light: the measured boundary of each control surface
 
 > First session run **against the real instrument** rather than the manual or a

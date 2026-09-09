@@ -1,3 +1,12 @@
+---
+# frontmatter added 2026-09-09 for kb/INDEX.md. `question` restates this
+# file's own title and Request/Context; the link fields read its own
+# supersession notes. A retrieval aid, not evidence -- see knowledge/index.py.
+id: 2026-09-07-ci-environment-and-timing-bounds
+question: "Why did CI go red on three commits that did not cause it, and what may a timing test assert?"
+date: 2026-09-07
+---
+
 # 2026-09-07 · The runner's environment is not this venv, and two tests were measuring the runner
 
 > Three commits of red CI, one stale assertion, and a timing bound that had

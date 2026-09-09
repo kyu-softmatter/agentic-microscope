@@ -1,3 +1,14 @@
+---
+# frontmatter added 2026-09-09 for kb/INDEX.md. `question` restates this
+# file's own title and Request/Context; the link fields read its own
+# supersession notes. A retrieval aid, not evidence -- see knowledge/index.py.
+id: 2026-08-26-tweezers-pattern-vs-direct
+question: "Should the traps be driven by direct TCP commands or by generated `.tpf` pattern files?"
+date: 2026-08-26
+status: superseded-in-part
+superseded_by: [2026-08-27-tweezers-first-light-measured-limits]
+---
+
 # 2026-08-26 · Tweezers: direct TCP vs generated patterns
 
 > **Decided the same day: `.tpf` patterns** (user, "tpf로 하자" — let's go with

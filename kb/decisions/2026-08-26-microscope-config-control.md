@@ -1,3 +1,12 @@
+---
+# frontmatter added 2026-09-09 for kb/INDEX.md. `question` restates this
+# file's own title and Request/Context; the link fields read its own
+# supersession notes. A retrieval aid, not evidence -- see knowledge/index.py.
+id: 2026-08-26-microscope-config-control
+question: "How does this repository read and write Micro-Manager device state safely, and what did building that surface find wrong in the configs?"
+date: 2026-08-26
+---
+
 # 2026-08-26 · Microscope configuration control (Phase 5a–5d)
 
 > Same bent format as `2026-08-10-labeling-and-laser-recommend.md`: this session

@@ -1,3 +1,13 @@
+---
+# frontmatter added 2026-09-09 for kb/INDEX.md. `question` restates this
+# file's own title and Request/Context; the link fields read its own
+# supersession notes. A retrieval aid, not evidence -- see knowledge/index.py.
+id: piezo-superuser-RUN-FIRST
+question: "How do you get the NPC-D piezo to report its whole command set at super-user level, in one session at the microscope PC?"
+date: 2026-08-27
+status: runbook
+---
+
 # RUN FIRST — NPC-D piezo: ask it for its whole command set, at super-user
 
 > **Written 2026-08-27 for the session at the microscope PC on 2026-08-28.**

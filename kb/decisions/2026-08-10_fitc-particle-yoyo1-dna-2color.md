@@ -1,3 +1,12 @@
+---
+# frontmatter added 2026-09-09 for kb/INDEX.md. `question` restates this
+# file's own title and Request/Context; the link fields read its own
+# supersession notes. A retrieval aid, not evidence -- see knowledge/index.py.
+id: 2026-08-10_fitc-particle-yoyo1-dna-2color
+question: "Can FITC-coated particles and YOYO-1-labelled DNA be imaged as two distinguishable channels in one frame on the current-laser scope?"
+date: 2026-08-10
+---
+
 # 2026-08-10 · FITC particle + YOYO-1 DNA simultaneous 2-color design
 
 ## Request

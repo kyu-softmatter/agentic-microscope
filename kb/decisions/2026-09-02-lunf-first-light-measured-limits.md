@@ -1,3 +1,12 @@
+---
+# frontmatter added 2026-09-09 for kb/INDEX.md. `question` restates this
+# file's own title and Request/Context; the link fields read its own
+# supersession notes. A retrieval aid, not evidence -- see knowledge/index.py.
+id: 2026-09-02-lunf-first-light-measured-limits
+question: "What did the LUN-F combiner answer when driven from this repository, and why is the analogue-output route dead?"
+date: 2026-09-02
+---
+
 # 2026-09-02 · LUN-F first light: the DAC answers, and the AO route is dead
 
 > First session in which the LUN-F was **driven** from this repo rather than read

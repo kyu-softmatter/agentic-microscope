@@ -1,5 +1,9 @@
 ---
 id: current
+# question/living added 2026-09-09 for kb/INDEX.md. The dossier is revised on
+# every trip to the instrument, so it carries no single date at which it was true.
+question: "What devices, objectives, filters, cameras and calibrations does this instrument actually have, and which of those are measured?"
+living: true
 status: current
 fingerprint: null  # TODO: hash of device label set + camera serials. Left empty until the automatic indexer is wired up.
 sources:

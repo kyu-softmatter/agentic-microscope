@@ -158,8 +158,9 @@ survives a clean checkout).
 pytest -q -rs
 ```
 
-1162 passed, 10 skipped on Windows, of 1,225 (measured 2026-09-07; macOS and
-Linux print 1161/11, one Windows-only test). Two kinds of skip: three whole
+1186 passed, 10 skipped on Windows, of 1,249 (measured 2026-09-09; macOS and
+Linux print 1185/11 — the 2026-09-07 figure plus the 24 added since, not
+re-measured there — one Windows-only test). Two kinds of skip: three whole
 modules behind `pytest.importorskip("pymmcore_plus")` holding 56 tests that need
 a Micro-Manager device-adapter install, and seven `requires_cv2` tests in
 `tests/test_objective_offsets.py` that call OpenCV
@@ -193,6 +194,23 @@ Every lens has the same shape — `optics` · `detection` · `compute` · `sampl
 `gate.py` · `setup.py` · `cli.py`. The formulas behind all 32 gates are
 collected in [04](docs/04-decision-engine.md); 29 are implemented, and `G2`–`G4`
 exist only as a threshold and a default verdict in that document.
+
+```bash
+python -m knowledge.cli write
+```
+
+Rebuilds [`kb/INDEX.md`](kb/INDEX.md) from the `id` · `question` · `date`
+frontmatter each entry carries. **Start there, not with a grep** — `kb/` is 48
+files and ~710 KB, and `kb/systems/current.md` alone is 1,634 lines. The index
+also carries `superseded_by` / `corrected_by`, which is the part that matters:
+three entries — all three from 2026-08-26 — were corrected by a first-light
+session the next day, and reading one of them without that link is the failure
+mode this exists to stop.
+
+It is **pointers only, never a citation** — open the entry and cite that
+([09 §7](docs/09-knowledge-capture.md)). Run it after adding anything to `kb/`;
+`tests/test_kb_index.py` fails if you don't, and also on a file with no
+frontmatter or a supersession link that resolves to nothing.
 
 ## 5. Writing anything down
 

@@ -1,3 +1,14 @@
+---
+# frontmatter added 2026-09-09 for kb/INDEX.md. `question` restates this
+# file's own title and Request/Context; the link fields read its own
+# supersession notes. A retrieval aid, not evidence -- see knowledge/index.py.
+id: sessions-index
+question: "What happened on each working day, and where does each running thread stand?"
+date: 2026-09-07
+living: true
+status: index
+---
+
 # Session log — daily learnings and project progress
 
 One file per working day, `YYYY-MM-DD.md`. This index is the thing to read

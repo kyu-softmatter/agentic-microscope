@@ -14,6 +14,11 @@ value" stays traceable.
 
 ```
 kb\
+├── INDEX.md                    generated. One line per entry: id, date, the
+│                               question it answers, and what has superseded or
+│                               corrected it. Pointers only — never a value, so
+│                               a line here is not a citation
+│
 ├── systems\                    one microscope = one file
 │   ├── legacy-nikon-prime95b.md      old setup (for reading the archive)
 │   ├── current.md                    current system dossier
@@ -36,6 +41,10 @@ kb\
 │
 ├── expertise\                  expertise captured from conversation → 09
 │
+├── sessions\                   one file per working day. A failed session gets
+│   ├── README.md               a *longer* entry, not a shorter one → 09
+│   └── 2026-09-07.md
+│
 ├── literature\                 published values a gate needs and nobody here has
 │   ├── README.md               measured. Always `evidence: assumed`, so they let a
 │   └── _template.md            gate compute instead of BLOCK but never let a
@@ -50,6 +59,20 @@ kb\
 "why was this precedent selected," and it cannot trace back the cause of a bad
 recommendation. Precedent search runs on explicit SQL conditions (dye ·
 objective · timescale · sample system).
+
+**`INDEX.md` is generated, not maintained** (2026-09-09). Every entry carries
+`id`, `question` and `date` in its own frontmatter — the shape `kb/expertise/`
+already used — and `python -m knowledge.cli write` renders the list from those.
+`tests/test_kb_index.py` regenerates it and fails on any difference, so it
+cannot drift the way a hand-kept list does; it also fails on a file with no
+frontmatter, which is invisible to anyone who starts from the index, and on a
+`superseded_by` that resolves to nothing, which reads exactly like an entry
+nobody has had to correct.
+
+Why it holds no content: an index that repeats a value is a second place that
+value lives, and the whole `measured`/`assumed` discipline depends on there
+being one. So the index gets a reader to the right file and stops. **Cite the
+entry, never the index line** → [09 §7](09-knowledge-capture.md).
 
 ---
 

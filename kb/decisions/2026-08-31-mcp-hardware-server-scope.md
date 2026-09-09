@@ -1,3 +1,12 @@
+---
+# frontmatter added 2026-09-09 for kb/INDEX.md. `question` restates this
+# file's own title and Request/Context; the link fields read its own
+# supersession notes. A retrieval aid, not evidence -- see knowledge/index.py.
+id: 2026-08-31-mcp-hardware-server-scope
+question: "What does the MCP server expose, and why the two hardware paths rather than the eight committee lenses?"
+date: 2026-08-31
+---
+
 # 2026-08-31 · An MCP server over the hardware paths, and what it deliberately does not expose
 
 > **Decided by the user**: hardware first, tweezers and piezo only — *"두개가

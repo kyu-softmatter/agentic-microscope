@@ -1,3 +1,12 @@
+---
+# frontmatter added 2026-09-09 for kb/INDEX.md. `question` restates this
+# file's own title and Request/Context; the link fields read its own
+# supersession notes. A retrieval aid, not evidence -- see knowledge/index.py.
+id: 2026-08-10-labeling-and-laser-recommend
+question: "How should a dye-and-laser recommendation loop be built for this instrument, and what did implementing it find wrong in the filter and light-source records?"
+date: 2026-08-10
+---
+
 # 2026-08-10 · Filter- and laser-based labeling/laser recommendation loop
 
 > The decision-log format in `docs/02 §9` (request/proposal/actual result) is meant

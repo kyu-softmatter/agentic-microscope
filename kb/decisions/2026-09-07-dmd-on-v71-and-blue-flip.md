@@ -1,3 +1,12 @@
+---
+# frontmatter added 2026-09-09 for kb/INDEX.md. `question` restates this
+# file's own title and Request/Context; the link fields read its own
+# supersession notes. A retrieval aid, not evidence -- see knowledge/index.py.
+id: 2026-09-07-dmd-on-v71-and-blue-flip
+question: "Does the DMD load from this repository, and why can the blue camera image flip not live in the `.cfg`?"
+date: 2026-09-07
+---
+
 # 2026-09-07 · The DMD does load, on a v71 core — and the blue flip cannot live in the `.cfg`
 
 > Measured on the microscope PC. `3-Plan Apo LmbdD0.8 20x` at 1× intermediate,

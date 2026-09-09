@@ -1,3 +1,13 @@
+---
+# frontmatter added 2026-09-09 for kb/INDEX.md. `question` restates this
+# file's own title and Request/Context; the link fields read its own
+# supersession notes. A retrieval aid, not evidence -- see knowledge/index.py.
+id: 2026-08-27-optional-subsystems-one-timeline
+question: "How does one timeline stay correct when not every subsystem is switched on, and how are three clocks anchored to it?"
+date: 2026-08-27
+supersedes: [2026-08-26-parallel-control-architecture]
+---
+
 # 2026-08-27 · Optional subsystems, one timeline
 
 > Fourth entry from this day, after the two first-light notes. Those established

@@ -1,3 +1,12 @@
+---
+# frontmatter added 2026-09-09 for kb/INDEX.md. `question` restates this
+# file's own title and Request/Context; the link fields read its own
+# supersession notes. A retrieval aid, not evidence -- see knowledge/index.py.
+id: 2026-09-04-closed-loop-trapping-measured
+question: "What can a live tracker hand the optical trap, and how well does a detected particle end up where it was commanded?"
+date: 2026-09-04
+---
+
 # 2026-09-04 · Closed-loop trapping: what the live tracker can hand the trap
 
 > Second session against the real instrument, and the first to close the loop

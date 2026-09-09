@@ -1,3 +1,12 @@
+---
+# frontmatter added 2026-09-09 for kb/INDEX.md. `question` restates this
+# file's own title and Request/Context; the link fields read its own
+# supersession notes. A retrieval aid, not evidence -- see knowledge/index.py.
+id: 2026-08-19-lens-5-hardening
+question: "What question was lens 5 not asking, and where does its excitation rate k_ex come from?"
+date: 2026-08-19
+---
+
 # 2026-08-19 · Lens 5 hardening — the unasked question, and where k_ex comes from
 
 > Not an experiment log. Same shape as

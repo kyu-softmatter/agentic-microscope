@@ -1,3 +1,14 @@
+---
+# frontmatter added 2026-09-09 for kb/INDEX.md. `question` restates this
+# file's own title and Request/Context; the link fields read its own
+# supersession notes. A retrieval aid, not evidence -- see knowledge/index.py.
+id: 2026-08-26-piezo-waveform-generator
+question: "Does the NPC-D piezo have a hardware waveform generator, and can this repository drive the stage from it?"
+date: 2026-08-26
+status: superseded-in-part
+superseded_by: [2026-08-27-piezo-first-light-measured-limits]
+---
+
 # 2026-08-26 · The piezo has a hardware waveform generator
 
 > Fourth and last entry from 2026-08-26, after `microscope-config-control`,

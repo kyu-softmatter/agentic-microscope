@@ -1,3 +1,13 @@
+---
+# frontmatter added 2026-09-09 for kb/INDEX.md. `question` restates this
+# file's own title and Request/Context; the link fields read its own
+# supersession notes. A retrieval aid, not evidence -- see knowledge/index.py.
+id: 2026-09-07-realtime-tracking-gui-scope
+question: "What would a real-time particle-tracking GUI show, and why can the display and the measurement not be the same stream?"
+date: 2026-09-07
+status: scoped-not-built
+---
+
 # 2026-09-07 · Real-time particle-tracking GUI — scope
 
 **Goal (user, 2026-09-07):** a real-time GUI for particle tracking that shows

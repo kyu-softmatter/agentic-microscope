@@ -1,3 +1,12 @@
+---
+# frontmatter added 2026-09-09 for kb/INDEX.md. `question` restates this
+# file's own title and Request/Context; the link fields read its own
+# supersession notes. A retrieval aid, not evidence -- see knowledge/index.py.
+id: 2026-09-05-runtime-primitives-and-gpu-scope
+question: "Which real-time primitives were brought in from the bacteria stack, and where should GPU work run?"
+date: 2026-09-05
+---
+
 # 2026-09-05 · Real-time primitives ported in, and the GPU/WSL2 question settled
 
 > Two unrelated things in one session, joined only by both being about where

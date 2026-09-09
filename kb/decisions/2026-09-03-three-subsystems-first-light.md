@@ -1,3 +1,12 @@
+---
+# frontmatter added 2026-09-09 for kb/INDEX.md. `question` restates this
+# file's own title and Request/Context; the link fields read its own
+# supersession notes. A retrieval aid, not evidence -- see knowledge/index.py.
+id: 2026-09-03-three-subsystems-first-light
+question: "What did the instrument say back when trap, piezo and camera were driven on one timeline for the first time?"
+date: 2026-09-03
+---
+
 # 2026-09-03 — three subsystems together, and what the instrument said back
 
 **Status:** measured on the microscope PC. Every number below was read off the

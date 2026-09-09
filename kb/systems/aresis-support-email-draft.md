@@ -1,3 +1,13 @@
+---
+# frontmatter added 2026-09-09 for kb/INDEX.md. `question` restates this
+# file's own title and Request/Context; the link fields read its own
+# supersession notes. A retrieval aid, not evidence -- see knowledge/index.py.
+id: aresis-support-email-draft
+question: "What would this project ask Aresis support for, about the embedded-Python node API?"
+date: 2026-08-27
+status: draft
+---
+
 # DRAFT — Aresis support: embedded-Python (node API) documentation request
 
 > **Status: draft, not sent.** Written 2026-08-27 as a parallel track to

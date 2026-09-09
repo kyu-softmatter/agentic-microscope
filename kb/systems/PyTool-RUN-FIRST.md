@@ -1,3 +1,13 @@
+---
+# frontmatter added 2026-09-09 for kb/INDEX.md. `question` restates this
+# file's own title and Request/Context; the link fields read its own
+# supersession notes. A retrieval aid, not evidence -- see knowledge/index.py.
+id: PyTool-RUN-FIRST
+question: "How do you ask the Tweez 300 embedded Python what its API is, in one session at the microscope PC?"
+date: 2026-08-27
+status: runbook
+---
+
 # RUN FIRST — Tweez 300 embedded Python: ask it what its API is
 
 > **Written 2026-08-27 for the next session at the microscope PC.** Self-contained:

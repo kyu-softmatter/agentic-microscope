@@ -1,3 +1,13 @@
+---
+# frontmatter added 2026-09-09 for kb/INDEX.md. `question` restates this
+# file's own title and Request/Context; the link fields read its own
+# supersession notes. A retrieval aid, not evidence -- see knowledge/index.py.
+id: 2026-08-27-piezo-first-light-measured-limits
+question: "What did the NPC-D piezo do when it was driven from this repository for the first time, and what did the record have wrong?"
+date: 2026-08-27
+corrects: [2026-08-26-piezo-waveform-generator]
+---
+
 # 2026-08-27 · Piezo first light: the stage moved, and what the record had wrong
 
 > First session in which the NPC-D piezo was **driven** from this repo rather than

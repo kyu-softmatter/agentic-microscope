@@ -1,3 +1,12 @@
+---
+# frontmatter added 2026-09-09 for kb/INDEX.md. `question` restates this
+# file's own title and Request/Context; the link fields read its own
+# supersession notes. A retrieval aid, not evidence -- see knowledge/index.py.
+id: 2026-08-19-lens-3-hardening
+question: "What does lens 3 hold fixed after hardening -- one stream per camera -- and where does the frame rate it budgets against come from?"
+date: 2026-08-19
+---
+
 # 2026-08-19 · Lens 3 hardening — one stream per camera, and where the frame rate comes from
 
 > Not an experiment log. Same shape as

@@ -1,3 +1,12 @@
+---
+# frontmatter added 2026-09-09 for kb/INDEX.md. `question` restates this
+# file's own title and Request/Context; the link fields read its own
+# supersession notes. A retrieval aid, not evidence -- see knowledge/index.py.
+id: 2026-08-29-device-discovery-scope
+question: "What may a device fact be learned from, and which discovery routes are ruled in or out?"
+date: 2026-08-29
+---
+
 # 2026-08-29 · Device discovery scope — what a device may be learned from
 
 > Not an experiment log. A boundary, in the same sense as the lens-scope entries
