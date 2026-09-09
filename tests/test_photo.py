@@ -4,14 +4,11 @@ docs/04-decision-engine.md §5-§6.
 
 from __future__ import annotations
 
-import math
 
 import pytest
 
 from photo.dose import (
-    bleached_fraction,
     duty_cycle,
-    emitted_photons_per_molecule,
     excited_state_fraction,
     irradiance_w_cm2,
     photon_flux_per_cm2_s,
@@ -74,31 +71,6 @@ def test_duty_cycle_cannot_exceed_one():
 
 def test_duty_cycle_is_none_without_an_interval():
     assert duty_cycle(50.0, None) is None
-
-
-# -------------------------------------------------------- bleaching --------
-
-
-def test_emitted_photons_is_rate_times_illuminated_time():
-    assert emitted_photons_per_molecule(1e3, 50.0, 1000) == pytest.approx(5e4)
-
-
-def test_bleached_fraction_follows_the_exponential():
-    """N_emitted == N_bleach leaves 1/e unbleached."""
-    assert bleached_fraction(1e4, 1e4) == pytest.approx(1 - math.exp(-1))
-
-
-def test_bleaching_is_negligible_far_below_the_budget():
-    assert bleached_fraction(1e2, 1e6) < 0.001
-
-
-def test_bleaching_saturates_toward_one():
-    assert bleached_fraction(1e8, 1e4) == pytest.approx(1.0)
-
-
-def test_bleached_fraction_rejects_nonpositive_budget():
-    with pytest.raises(ValueError):
-        bleached_fraction(1e4, 0.0)
 
 
 # ------------------------------------------------------- saturation --------

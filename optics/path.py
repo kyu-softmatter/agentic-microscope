@@ -237,8 +237,9 @@ class Channel:
     ) -> float | None:
         """Photons emitted per second per molecule — ``k_em`` in docs/04 §6.
 
-        The input to the photobleaching budget (G10), which counts emitted
-        photons against the dye's ``bleach_photons``, not detected ones.
+        Emitted photons, not detected ones. Fed the photobleaching budget
+        (G10) until that gate was removed on 2026-09-09; lens 5's dose gates
+        (G22) still consume it.
         """
         rate = self.excitation_rate_per_s(
             power_mw_at_sample=power_mw_at_sample,

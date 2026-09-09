@@ -9,13 +9,13 @@ import pytest
 from photo.gate import evaluate
 from photo.setup import IlluminationSetup
 
-# FITC's real registry values (data/fluorophores.yaml), with a bleach_photons
-# and a sample-plane power supplied -- neither exists on the instrument yet.
+# FITC's real registry values (data/fluorophores.yaml). Sample-plane power and
+# illuminated area are measured as of 2026-09-09 but are supplied per evaluation
+# rather than looked up, so the defaults below still carry them.
 FITC = dict(
     ext_coeff_m1cm1=75000,
     quantum_yield=0.92,
     lifetime_ns=4.1,
-    bleach_photons=3.0e4,
 )
 
 
@@ -55,13 +55,6 @@ def test_blocked_without_an_illuminated_area():
     assert any(f.code == "missing.power_at_sample" for f in v.findings)
 
 
-def test_blocked_without_bleach_photons():
-    """docs/04 §6: the qualitative photostability grade is not a substitute."""
-    v = evaluate(_setup(bleach_photons=None))
-    assert v.status == "BLOCKED"
-    assert any(f.code == "missing.bleach_photons" for f in v.findings)
-
-
 def test_blocked_without_a_lifetime():
     v = evaluate(_setup(lifetime_ns=None))
     assert v.status == "BLOCKED"
@@ -84,41 +77,6 @@ def test_photoresponsive_sample_without_a_threshold_blocks():
 def test_photoresponsive_sample_with_a_threshold_is_judgeable():
     v = evaluate(_setup(photoresponsive=True, light_driving_threshold_w_cm2=100.0))
     assert v.status != "BLOCKED"
-
-
-# ------------------------------------------------- G10 photobleaching -----
-
-
-def test_gentle_illumination_keeps_bleaching_under_the_limit():
-    v = evaluate(_setup())
-    assert v.margins["perturbation.photobleaching"] >= 1.0
-
-
-def test_long_movie_bleaches_past_the_limit():
-    v = evaluate(_setup(n_frames=100000))
-    assert any(
-        f.code == "perturbation.photobleaching" and f.severity == "warn"
-        for f in v.findings
-    )
-    assert v.margins["perturbation.photobleaching"] < 1.0
-
-
-def test_bleaching_scales_with_frame_count():
-    few = evaluate(_setup(n_frames=100))
-    many = evaluate(_setup(n_frames=1000))
-    assert (
-        many.metrics["perturbation.photobleaching"]["bleached_fraction"]
-        > few.metrics["perturbation.photobleaching"]["bleached_fraction"]
-    )
-
-
-def test_bleaching_message_states_it_is_a_lower_bound():
-    """docs/04 §6: superlinear triplet pathways are not modelled."""
-    v = evaluate(_setup(n_frames=100000))
-    msg = next(
-        f.message for f in v.findings if f.code == "perturbation.photobleaching"
-    )
-    assert "lower bound" in msg
 
 
 # --------------------------------------------------- G20 saturation -------
@@ -187,11 +145,10 @@ def test_unasked_photoresponsiveness_costs_the_verdict_advances():
 
 
 def test_unasked_photoresponsiveness_does_not_block_the_whole_lens():
-    """It is a missing answer, not a missing number: bleaching and saturation
+    """It is a missing answer, not a missing number: saturation
     can still be judged, so the lens reports rather than refusing."""
     v = evaluate(_setup(photoresponsive=None))
     assert v.status == "PASS_WITH_CHANGES"
-    assert "perturbation.photobleaching" in v.margins
     assert "perturbation.saturation" in v.margins
 
 
@@ -301,15 +258,24 @@ def test_supplying_the_coupling_restores_advances():
     assert v.advances is True
 
 
-def test_coupling_scales_k_ex_and_so_relaxes_the_bleaching_margin():
-    """Assuming perfect overlap overstates k_ex, which overstates bleaching:
-    the gate comes out stricter than the instrument warrants, not laxer."""
+def test_coupling_scales_k_ex_and_so_every_gate_downstream():
+    """Assuming perfect overlap overstates k_ex, so the gates that consume it
+    come out stricter than the instrument warrants, not laxer.
+
+    Asserted on k_ex itself. Until 2026-09-09 this went through G10's margin,
+    and after that gate was removed the obvious substitute -- G20's margin --
+    turned out to be vacuous here: this setup sits far enough from saturation
+    that both margins clip at MAX_MARGIN and the excited fraction rounds to
+    0.0. The property was never G10's; it belongs to k_ex."""
     assumed_perfect = evaluate(_setup(excitation_coupling=1.0))
     real = evaluate(_setup(excitation_coupling=0.5))
-    assert (
-        real.margins["perturbation.photobleaching"]
-        > assumed_perfect.margins["perturbation.photobleaching"]
-    )
+
+    k_real = real.metrics["perturbation.saturation"]["excitation_rate_per_s"]
+    k_perfect = assumed_perfect.metrics["perturbation.saturation"][
+        "excitation_rate_per_s"
+    ]
+    assert k_real < k_perfect
+    assert k_perfect == pytest.approx(2 * k_real)
 
 
 def test_rates_from_lens_one_need_no_coupling():

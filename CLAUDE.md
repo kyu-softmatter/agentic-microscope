@@ -167,13 +167,11 @@ the disk's write bandwidth (G12a). And underneath all of it, **`unevaluated` ≠
 
 ### Exceptions
 
-- **E1 · Lens 5 no longer blocks wholesale — only G10 does** (§3, 2026-09-09).
-  A `BLOCKED` from G10 is the standing state, not a deadlock: `bleach_photons`
-  is empty for every dye. It must not trigger the three-round re-proposal loop
-  or the deadlock handoff. **But the rest of the lens now returns real verdicts,
-  so an ordinary failure from G20/G21/G22 is a genuine one and must be treated
-  as such** — that was the reason this exception existed, and it no longer
-  covers them.
+- **E1 · Lens 5's standing `BLOCKED` is over** (§3, 2026-09-09). It computes,
+  so **a failure from G20/G21/G22 is a genuine one** and nothing here excuses
+  it. G10, the gate this exception existed for, was removed the same day. The
+  entry is kept as a marker: if a lens ever blocks by design again, it needs its
+  own line here rather than the benefit of this one.
 - **E2 · Lens 6 runs alone and last.** See the ⚠ above.
 - **E3 · Lens 7 silent on heating ≠ heating cleared.** Trap heating is ungated
   by decision ([05 §5](docs/05-consensus-gate.md), [06 D6](docs/06-pitfalls.md)).
@@ -205,16 +203,16 @@ the disk's write bandwidth (G12a). And underneath all of it, **`unevaluated` ≠
   becomes a wrong one. A margin of 10.00 against a threshold nobody supplied
   still does not advance.
 - **Lens 6 (`validity/`) reviews the other lenses' verdicts, so call it last.**
-- **Lens 5 computes at 20× as of 2026-09-09. It blocks on G10 and nowhere
-  else.** Power and illuminated area both exist
+- **Lens 5 computes as of 2026-09-09**, for the first time. Power and
+  illuminated area both exist
   ([`kb/calibrations/illumination-power.yaml`](kb/calibrations/illumination-power.yaml)),
   so there is irradiance — all three engines put about the camera field on the
   sample, 603,654 µm² at 20×, giving 1.1–7.7 W/cm² depending on line. **G20,
-  G21 and G22 run.** G10 still needs `bleach_photons`, which is per dye, empty
-  for every dye, and not something a power meter supplies. Two limits: **20×
-  only** — it is the one row in `data/pixel_size.yaml` marked `measured`, and
-  the rest are `nominal` — and the areas are `computed`, since "about the camera
-  field" was not quantified.
+  G21 and G22 run**; G10 was removed the same day
+  ([04 §6](docs/04-decision-engine.md)). Two limits: **20× only** — it is the
+  one row in `data/pixel_size.yaml` marked `measured`, and the rest are
+  `nominal` — and the areas are `computed`, since "about the camera field" was
+  not quantified.
 
 ## 4. Hardware, when it is in the loop
 
@@ -247,8 +245,8 @@ survives a clean checkout).
 pytest -q -rs
 ```
 
-1214 passed, 10 skipped on Windows, of 1,277 (measured 2026-09-09; macOS and
-Linux print 1213/11 — the 2026-09-07 figure plus the 52 added since, not
+1204 passed, 10 skipped on Windows, of 1,267 (measured 2026-09-09; macOS and
+Linux print 1203/11 — the 2026-09-07 figure plus the 42 net added since, not
 re-measured there — one Windows-only test). Two kinds of skip: three whole
 modules behind `pytest.importorskip("pymmcore_plus")` holding 56 tests that need
 a Micro-Manager device-adapter install, and seven `requires_cv2` tests in
@@ -280,9 +278,10 @@ python -m optics.cli check config/channels/proposed-2color.yaml
 
 Every lens has the same shape — `optics` · `detection` · `compute` · `sample` ·
 `photo` · `validity` · `stability` · `trapping`, each with `checks.py` ·
-`gate.py` · `setup.py` · `cli.py`. The formulas behind all 32 gates are
-collected in [04](docs/04-decision-engine.md); 29 are implemented, and `G2`–`G4`
-exist only as a threshold and a default verdict in that document.
+`gate.py` · `setup.py` · `cli.py`. The formulas behind all 31 gates are
+collected in [04](docs/04-decision-engine.md); 28 are implemented, and `G2`–`G4`
+exist only as a threshold and a default verdict in that document. **`G10` is
+vacant** — removed 2026-09-09, and the number is not reused.
 
 ```bash
 python -m knowledge.cli write

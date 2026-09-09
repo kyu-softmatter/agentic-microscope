@@ -440,7 +440,7 @@ Switching to 16-bit improves it ×3.4." → [05](05-consensus-gate.md)
 
 ### E5. An improvement has to pass the gates again 🟡
 
-- 2× light → SNR ×1.4, **2× bleaching dose** (recheck G10)
+- 2× light → SNR ×1.4, **2× bleaching dose** (ungated — G10 removed 2026-09-09)
 - 2×2 binning → SNR ×2, **effective pixel 110→220 nm** (destroys G5 if tracking)
 - switch to 16-bit → noise ×0.29, **max fps drops** (recheck G9)
 

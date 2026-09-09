@@ -52,7 +52,6 @@ conditions on the same arithmetic the hard rows gate.
 | G7 SNR | soft | Merely noisy |
 | G8 Motion blur | **bias** | MSD underestimated. Correction formula exists |
 | G9 Frame-rate realizability | hard | Does not run as requested |
-| G10 Photobleaching | bias | Intensity decay → correction needed |
 | G11 Statistical power | soft | Error bars merely widen |
 | G12a Data rate | hard | **Silent frame drops** |
 | G12b Frame-rate provenance | bias | Every lens-3 number scales with a rate nobody observed |
@@ -139,7 +138,7 @@ tier 0 (free)
   200MHz 12bit → 100MHz 16bit        ×3.4   effective noise 4.65→1.35 e-
                                             but check max fps (revisit G9)
   2× light level                      ×1.4   √2 (shot-noise limited)
-                                            ⚠ 2× bleaching dose → recheck G10
+                                            ⚠ 2× bleaching dose (ungated since 2026-09-09)
   2x2 binning                         ×2.0   but effective pixel 110→220 nm
                                             ⚠ G5 bias if tracking → not advised
 
@@ -341,7 +340,7 @@ class LensVerdict:
 ### Lens 5 · Photo-perturbation — implemented
 
 - **Owns**: light level, illumination duty, total dose, wavelength choice
-- **Gates**: G10 (photobleaching) G20 (saturation · triplet shelving)
+- **Gates**: G20 (saturation · triplet shelving)
   G21 (light-driving) G22 (total dose)
 - **Key questions**
   - Photobleaching: what fraction disappears over the whole movie
@@ -372,7 +371,7 @@ class LensVerdict:
   `k_em` from `optics.path.Channel`, where `σφ` is weighted by how well the
   delivered spectrum overlaps the absorption band. The bare-field path has no
   spectra, so without an explicit `excitation_coupling` it sets that overlap to
-  1 and reports `k_ex` as assumed. The bias is toward stricter G10/G20 verdicts
+  1 and reports `k_ex` as assumed. The bias is toward stricter G20 verdicts
   — false alarms rather than false clears, but a false alarm here is still a
   wrong instruction to cut the light
 - **⚠ G20 also invalidates other lenses' numbers.** Past saturation, emission

@@ -31,11 +31,6 @@ class IlluminationSetup:
     ext_coeff_m1cm1: float | None = None
     quantum_yield: float | None = None
     lifetime_ns: float | None = None
-    #: Mean photons emitted before bleaching. Empty for every dye in the
-    #: registry (docs/04 §6), so G10 blocks until one is supplied. The
-    #: qualitative `photostability` grade is explicitly not a substitute.
-    bleach_photons: float | None = None
-
     #: Rates from lens 1, if already computed. Supplying these skips the
     #: chain here; lens 1 owns it (optics.path.Channel).
     excitation_rate_per_s: float | None = None
@@ -95,7 +90,6 @@ class IlluminationSetup:
             ext_coeff_m1cm1=dye.ext_coeff,
             quantum_yield=dye.quantum_yield,
             lifetime_ns=dye.lifetime_ns,
-            bleach_photons=dye.bleach_photons,
             excitation_rate_per_s=channel.excitation_rate_per_s(
                 power_mw_at_sample=power_mw_at_sample,
                 illuminated_area_um2=illuminated_area_um2,
@@ -152,7 +146,7 @@ class IlluminationSetup:
 
         The bias direction is worth stating, because it is not the dangerous
         one. Too large a k_ex inflates both the excited-state fraction (G20)
-        and the emitted-photon count (G10), so both gates come out *stricter*
+        and the emitted-photon count, so the gates come out *stricter*
         than the instrument warrants -- false alarms, not false clears. The
         cost is a wrong instruction ("cut the light") rather than a missed
         perturbation. Either way the number is not this instrument's, so the

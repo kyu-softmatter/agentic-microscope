@@ -9,11 +9,12 @@ power for nine lines at three objectives, and an illuminated area for all three
 engines, which all put about the camera field on the sample
 (kb/calibrations/illumination-power.yaml). So G20, G21 and G22 compute.
 
-**G10 does not, and is now the only thing this lens blocks on.** It needs
-`bleach_photons`, which is per dye, empty for every dye, and not something a
-power meter supplies. docs/04 §9 marks it BLOCKED for exactly that.
+G10 (photobleaching) was removed on 2026-09-09 -- it had never returned
+anything but BLOCKED, its one lever the operator could not use was the dye, and
+the intensity decay it guarded is measurable in the acquisition rather than
+predictable from a dye constant. kb/decisions/2026-09-09-g10-photobleaching-removed.md.
 
-Two limits on the rest. The area holds **at 20x only** -- it rests on the one
+Two limits on what remains. The area holds **at 20x only** -- it rests on the one
 row of data/pixel_size.yaml carrying `evidence: measured`, and every other
 objective's pixel size is `nominal`. And a percent setting in the metadata is
 still not a physical quantity: what transfers is the mW, or the W/cm^2.
@@ -134,24 +135,8 @@ def _missing_inputs(setup: IlluminationSetup) -> list[Finding]:
                 "fail",
                 "missing.exposure_plan",
                 "No exposure and/or frame count on record. Total dose (G22) "
-                "and the bleaching budget (G10) both scale with them.",
+                "scales with both.",
                 action="Supply exposure_ms and n_frames.",
-            )
-        )
-
-    if setup.bleach_photons is None:
-        out.append(
-            Finding(
-                "fail",
-                "missing.bleach_photons",
-                "The dye has no `bleach_photons` on record, so the "
-                "photobleaching budget (G10) has nothing to count against. "
-                "docs/04 §6: the qualitative `photostability` grade is "
-                "explicitly not a substitute.",
-                action="Add bleach_photons (mean photons emitted before "
-                "bleaching) to the dye's entry in data/fluorophores.yaml, from "
-                "the literature or a measured decay curve. It is empty for "
-                "every dye in the registry today.",
             )
         )
 
@@ -208,7 +193,7 @@ def _assumed_inputs(setup: IlluminationSetup) -> list[str]:
         out.append(
             "spectral overlap coupling (no channel supplied, so k_ex assumes "
             "the line sits on the absorption peak -- an upper bound, which "
-            "makes G10 and G20 stricter than the instrument warrants)"
+            "makes G20 stricter than the instrument warrants)"
         )
     return sorted(set(out))
 

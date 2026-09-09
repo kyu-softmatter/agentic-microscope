@@ -10,7 +10,7 @@ docs/06-pitfalls.md D2.
         power_mw_at_sample=2.0, illuminated_area_um2=10000.0,
         wavelength_nm=488.0, exposure_ms=50.0, n_frames=1000,
         ext_coeff_m1cm1=75000, quantum_yield=0.92, lifetime_ns=4.1,
-        bleach_photons=3.0e4, photoresponsive=False,
+        photoresponsive=False,
     ))
     print(v.status, v.bottleneck)
 
@@ -21,19 +21,19 @@ question. ``IlluminationSetup.from_channel`` is the preferred constructor: the
 bare fields make k_ex from epsilon and flux alone, with the spectral overlap
 lens 1 computes silently set to 1.
 
-Gates: G10 photobleaching (specified in docs/04 §6, previously unimplemented),
-G20 saturation / triplet shelving, G21 light-driving, G22 total dose.
+Gates: G20 saturation / triplet shelving, G21 light-driving, G22 total dose.
 
-**This lens computes at 20x as of 2026-09-09, and blocks on G10 alone.**
-Power is populated for nine lines across the Aura, Spectra and LUN-F-XL at three
-objectives, and all three engines put about the camera field on the sample, so
-irradiance exists -- 1.1 to 7.7 W/cm^2 by line at 20x, 100 % level
-(kb/calibrations/illumination-power.yaml). G20, G21 and G22 run on it.
+**This lens computes as of 2026-09-09**, for the first time. Power is populated
+for nine lines across the Aura, Spectra and LUN-F-XL at three objectives, and
+all three engines put about the camera field on the sample, so irradiance
+exists -- 1.1 to 7.7 W/cm^2 by line at 20x, 100 % level
+(kb/calibrations/illumination-power.yaml).
 
-G10 needs `bleach_photons`, which no dye in data/fluorophores.yaml has and which
-a power meter cannot supply, so it stays BLOCKED. And the area holds at 20x
-only: it rests on the single pixel size marked `measured`, the rest being
-`nominal`. A percent setting in the metadata is still not a physical quantity.
+G10 (photobleaching) was removed the same day, having never returned anything
+but BLOCKED: kb/decisions/2026-09-09-g10-photobleaching-removed.md. The area
+holds at 20x only -- it rests on the single pixel size marked `measured`, the
+rest being `nominal`. A percent setting in the metadata is still not a physical
+quantity.
 
 The excitation chain (`P -> I -> phi -> sigma phi`) belongs to lens 1 --
 ``optics.path.Channel.excitation_rate_per_s`` and ``emitted_photons_per_s``.
@@ -48,9 +48,7 @@ from __future__ import annotations
 
 from .checks import CHECKS, GRADE_NOTES, LIMITS, CheckResult, grade
 from .dose import (
-    bleached_fraction,
     duty_cycle,
-    emitted_photons_per_molecule,
     excited_state_fraction,
     irradiance_w_cm2,
     photon_flux_per_cm2_s,
@@ -69,9 +67,7 @@ __all__ = [
     "Finding",
     "IlluminationSetup",
     "Verdict",
-    "bleached_fraction",
     "duty_cycle",
-    "emitted_photons_per_molecule",
     "evaluate",
     "excited_state_fraction",
     "grade",

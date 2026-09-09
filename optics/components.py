@@ -183,7 +183,6 @@ class Fluorophore:
     quantum_yield: float | None = None
     lifetime_ns: float | None = None
     photostability: str | None = None  # low | medium | high
-    bleach_photons: float | None = None  # mean photons emitted before bleaching
     aliases: list[str] = field(default_factory=list)
     note: str | None = None
 
@@ -232,7 +231,6 @@ class Fluorophore:
             quantum_yield=spec.get("quantum_yield"),
             lifetime_ns=spec.get("lifetime_ns"),
             photostability=spec.get("photostability"),
-            bleach_photons=spec.get("bleach_photons"),
             aliases=spec.get("aliases") or [],
             note=spec.get("note"),
         )

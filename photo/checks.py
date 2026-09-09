@@ -1,9 +1,10 @@
-"""Individual photo-perturbation checks -- G10 (photobleaching), G20
-(saturation / triplet shelving), G21 (light-driving), G22 (total dose).
-docs/04-decision-engine.md §5-§6; docs/05-consensus-gate.md "Lens 5";
+"""Individual photo-perturbation checks -- G20 (saturation / triplet
+shelving), G21 (light-driving), G22 (total dose).
+docs/04-decision-engine.md §5; docs/05-consensus-gate.md "Lens 5";
 docs/06-pitfalls.md D2, D3.
 
-G10 was specified in the docs and never implemented. G20-G22 are new numbers:
+G10 (photobleaching) was here and was REMOVED on 2026-09-09 -- see
+kb/decisions/2026-09-09-g10-photobleaching-removed.md. G20-G22 are new numbers:
 G1-G19 were taken by lenses 1/2/3/4/6/7.
 
 Mirrors optics.checks / detection.checks / compute.checks / trapping.checks /
@@ -18,9 +19,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from .dose import (
-    bleached_fraction,
     duty_cycle,
-    emitted_photons_per_molecule,
     excited_state_fraction,
     saturation_irradiance_w_cm2,
     total_dose_j_cm2,
@@ -38,9 +37,6 @@ INFO = "info"
 MAX_MARGIN = 10.0
 
 LIMITS = {
-    #: G10: fraction of molecules bleached over the whole movie.
-    #: docs/04 §6 -- above this an intensity-decay correction must be possible.
-    "bleached_fraction_max": 0.2,
     #: G20: steady-state excited-state fraction above which the linear
     #: photon-budget assumption that lenses 1 and 2 rely on stops holding.
     #: 0.1 keeps emission within ~10% of linear in power. Triplet shelving is
@@ -96,8 +92,6 @@ def available_facts(setup: "IlluminationSetup") -> set[str]:
         facts.add("excitation_rate")
     if setup.exposure_ms is not None and setup.n_frames is not None:
         facts.add("exposure_plan")
-    if setup.bleach_photons is not None:
-        facts.add("bleach_photons")
     if setup.lifetime_ns is not None:
         facts.add("lifetime")
     return facts
@@ -106,57 +100,6 @@ def available_facts(setup: "IlluminationSetup") -> set[str]:
 # --------------------------------------------------------------------------
 # The checks
 # --------------------------------------------------------------------------
-
-
-def check_photobleaching(setup: "IlluminationSetup") -> CheckResult:
-    """G10: less than 20% of the label bleached over the movie. docs/04 §6."""
-    emitted_rate = setup.resolved_emitted_per_s
-    n_emitted = emitted_photons_per_molecule(
-        emitted_rate, setup.exposure_ms, setup.n_frames
-    )
-    frac = bleached_fraction(n_emitted, setup.bleach_photons)
-    limit = LIMITS["bleached_fraction_max"]
-    margin = limit / frac if frac > 0 else MAX_MARGIN
-
-    numbers = {
-        "emitted_per_s": emitted_rate,
-        "n_emitted_per_molecule": n_emitted,
-        "bleach_photons": setup.bleach_photons,
-        "bleached_fraction": round(frac, 4),
-        "limit": limit,
-        "illuminated_time_s": round(
-            total_illuminated_time_s(setup.exposure_ms, setup.n_frames), 4
-        ),
-    }
-
-    if margin >= 1.0:
-        return _ok(
-            "perturbation.photobleaching",
-            BIAS,
-            margin,
-            f"About {frac * 100:.1f}% of the label bleaches over "
-            f"{setup.n_frames} frames, within the "
-            f"{limit * 100:.0f}% limit. Superlinear triplet pathways are not "
-            "modelled, so treat this as a lower bound.",
-            **numbers,
-        )
-
-    return CheckResult(
-        "perturbation.photobleaching",
-        BIAS,
-        margin,
-        "warn",
-        f"About {frac * 100:.1f}% of the label bleaches over "
-        f"{setup.n_frames} frames, past the {limit * 100:.0f}% limit. "
-        "Intensity decays through the movie, so anything derived from "
-        "brightness drifts with it. This is a **lower bound** -- bleaching is "
-        "often superlinear in intensity (triplet pathways).",
-        action="Cut the light level or the exposure, shorten the movie, reduce "
-        "the illumination duty cycle, add an antifade, or switch to a more "
-        "photostable dye. If none of those, an intensity-decay correction must "
-        "be demonstrably possible before the data means anything.",
-        numbers=numbers,
-    )
 
 
 def check_saturation(setup: "IlluminationSetup") -> CheckResult:
@@ -416,12 +359,6 @@ def check_trap_heating_ownership(setup: "IlluminationSetup") -> CheckResult:
 
 
 CHECKS: list[Check] = [
-    Check(
-        "photobleaching",
-        BIAS,
-        ("emitted_rate", "exposure_plan", "bleach_photons"),
-        check_photobleaching,
-    ),
     Check("saturation", BIAS, ("excitation_rate", "lifetime"), check_saturation),
     Check("light_driving", BIAS, ("irradiance",), check_light_driving),
     Check("total_dose", INFO, (), check_total_dose),

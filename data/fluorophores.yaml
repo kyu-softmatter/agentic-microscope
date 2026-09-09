@@ -12,7 +12,6 @@
 #     quantum_yield:    fluorescence quantum yield Φ
 #     lifetime_ns:      fluorescence lifetime
 #     photostability:   low | medium | high
-#     bleach_photons:   mean photons emitted before bleaching (if present, the photon budget gate uses it)
 #     curves:                       ← if present, this always takes priority
 #       absorption: <file under data/spectra/>
 #       emission:   <file under data/spectra/>

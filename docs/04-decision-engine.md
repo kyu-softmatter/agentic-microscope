@@ -311,7 +311,11 @@ lag.
 
 ---
 
-## 6. Photobleaching budget
+## 6. Photobleaching budget — REMOVED 2026-09-09
+
+**G10 is gone.** The formulas below are kept because they are correct and
+because the quantity is real; what was removed is the *gate*, not the physics.
+→ [`kb/decisions/2026-09-09-g10-photobleaching-removed.md`](../kb/decisions/2026-09-09-g10-photobleaching-removed.md)
 
 Total photons emitted per molecule:
 
@@ -321,14 +325,26 @@ Given the dye's `bleach_photons` (mean photons emitted before bleaching):
 
 $$f_{\text{bleached}} = 1 - \exp\!\left(-\frac{N_{\text{emitted}}}{N_{\text{bleach}}}\right)$$
 
-**Gate**: `f_bleached < 0.2` over the whole movie, otherwise an intensity-decay
-correction must be possible.
+The gate was `f_bleached < 0.2` over the whole movie. It never returned anything
+but `BLOCKED`, because `bleach_photons` is a dye constant nobody here has and no
+instrument measurement supplies.
 
-`bleach_photons` is still empty in
-[data/fluorophores.yaml](../data/fluorophores.yaml). Without it this gate is
-`BLOCKED`, and the qualitative `photostability` grade is not a substitute.
-Implemented as `photo.checks.check_photobleaching`, which returns exactly that
-`BLOCKED` today with an action naming the missing value.
+**Why removing it was the operator's call rather than a loss.** Of the three
+levers the gate could name — acquisition length, light level, dye — the first
+two are already governed by G20 and G22, and the third is usually not free: the
+sample dictates the label (KH, 2026-09-09).
+
+**What it cost, recorded so it is not discovered by surprise.** G10 was a `bias`
+gate, so photobleaching has left lens 6's bias ledger. The code
+`perturbation.photobleaching` is still registered in `validity/setup.py`
+(`CORRECTIONS`, `BIAS_SCOPE`) and nothing emits it. A run whose intensity
+decayed will now get a clean ledger.
+
+**The route back, if it is wanted.** The observable is the decay itself, which
+is measurable in the acquisition and needs no dye identity — the instrument has
+already produced one such measurement (+2.19 % first-15 vs last-15 frames over
+5 s, `kb/systems/current.md`). That is a lens 6 check on data, not a lens 5
+prediction from a constant, which is why it is not this section.
 
 > Photobleaching is often **superlinear** in illumination intensity (triplet
 > pathways). The expression above is a lower bound.
@@ -495,7 +511,6 @@ All decided in code. If even one fails, the proposal is void.
 | G7 | SNR | at or above target | measured light level, measured background | BLOCKED |
 | G8 | Motion blur | `t_exp < 0.3 τ_min` | D or τ_c | ask |
 | G9 | Frame-rate realizability | `f ≤ 1/max(t_exp, t_readout)` | row time, ROI | computable |
-| G10 | Photobleaching | `< 20%` over the whole movie | `bleach_photons`, photon budget | BLOCKED |
 | G11 | Statistical power | target error met | particle concentration, target precision | ask |
 | G12 | Data rate | a `< 0.7 ×` disk bandwidth · b `f` is achieved not requested · c container width is the one MM writes | measured disk bandwidth, achieved fps, confirmed bytes/px | measurement required |
 | G13 | Buffer · capacity · CPU · RAM | a `≥ 5 seconds' worth` · b fits free disk · c CPU/frame `< 1/f_total` · d RAM burst `≤` budget | RAM, frame size, duration, free disk | computable |
@@ -523,7 +538,7 @@ All decided in code. If even one fails, the proposal is void.
 
 G15–G19 are lens 4's, G20–G22 lens 5's, G23–G27 lens 6's, G28–G32 lens 8's; the
 numbers are new. This table previously stopped at G14 because lenses 4 and 8 had
-no gate IDs at all, lens 5 had only G10 and lens 6 only G11.
+no gate IDs at all, lens 5 had only G10 (removed 2026-09-09) and lens 6 only G11.
 
 G23–G27 read **other lenses' verdicts** rather than hardware facts, which is
 why lens 6 has to run last.
@@ -569,7 +584,7 @@ next step, but the action differs: FAIL means change the setting, BLOCKED means
 | §2 sampling gate (G5) | task-dependent branch, `detection.gate.evaluate` | ✅ covered by tests (2026-08-11) |
 | §4 SNR · saturation (G6, G7) | `detection.gate.evaluate` | ✅ covered by tests (2026-08-11) |
 | §5 timing · blur (G8, G9) | `detection.gate.evaluate` | ✅ covered by tests (2026-08-11) |
-| §6 bleaching (G10) | `photo.gate.evaluate` | ✅ covered by tests (2026-08-12) — BLOCKED on the real instrument until `power_at_sample_mw` and `bleach_photons` exist |
+| §6 bleaching (G10) | — | **Removed 2026-09-09.** The gate, its tests and its plumbing are gone; §6 keeps the formulas and says why |
 | §5 dose · saturation · light-driving (G20–G22) | `photo.gate.evaluate` | ✅ covered by tests (2026-08-12) |
 | §7 statistical power (G11) | `validity.gate.evaluate` | ✅ covered by tests (2026-08-12) |
 | bias ledger · calibrations · post-processing (G23–G27) | `validity.gate.evaluate` | ✅ covered by tests (2026-08-12); bias scoping + correction registry + per-quantity verdicts added 2026-08-20 |

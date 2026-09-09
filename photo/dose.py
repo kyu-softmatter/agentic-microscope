@@ -1,4 +1,4 @@
-"""Photo-perturbation physics: dose, bleaching, saturation.
+"""Photo-perturbation physics: dose and saturation.
 
 Pure functions, no gate logic -- mirrors compute/resources.py,
 trapping/dynamics.py, sample/aberration.py. docs/04-decision-engine.md §5-§6;
@@ -47,25 +47,6 @@ def duty_cycle(exposure_ms: float, frame_interval_ms: float) -> float | None:
     if frame_interval_ms is None or frame_interval_ms <= 0:
         return None
     return min(exposure_ms / frame_interval_ms, 1.0)
-
-
-def emitted_photons_per_molecule(
-    emitted_per_s: float, exposure_ms: float, n_frames: int
-) -> float:
-    """``N_emitted = k_em t_exp N_frames`` -- docs/04 §6."""
-    return emitted_per_s * total_illuminated_time_s(exposure_ms, n_frames)
-
-
-def bleached_fraction(n_emitted: float, bleach_photons: float) -> float:
-    """``f = 1 - exp(-N_emitted / N_bleach)`` -- docs/04 §6.
-
-    docs/04 §6 flags this as a **lower bound**: bleaching is often superlinear
-    in intensity because of triplet pathways, which this single-exponential
-    form does not capture.
-    """
-    if bleach_photons <= 0:
-        raise ValueError("bleach_photons must be positive")
-    return 1.0 - math.exp(-n_emitted / bleach_photons)
 
 
 def excited_state_fraction(excitation_rate_per_s: float, lifetime_ns: float) -> float:

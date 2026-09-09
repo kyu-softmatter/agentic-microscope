@@ -2,31 +2,31 @@
 
     python -m photo.cli check --channel config/channels/proposed-2color.yaml \\
         --channel-name 488-FITC --power-mw 2.0 --area-um2 10000 \\
-        --exposure-ms 50 --n-frames 1000 --bleach-photons 3e4 \\
+        --exposure-ms 50 --n-frames 1000 \\
         --not-photoresponsive
 
     python -m photo.cli check --dye FITC --power-mw 2.0 --area-um2 10000 \\
         --wavelength-nm 488 --exposure-ms 50 --n-frames 1000 \\
-        --bleach-photons 3e4 --not-photoresponsive
+        --not-photoresponsive
 
-``check`` runs the committee-lens gate (photo.gate.evaluate): photobleaching
-(G10), saturation / triplet shelving (G20), light-driving (G21), total dose
-(G22), plus the unowned trap-heating notice.
+``check`` runs the committee-lens gate (photo.gate.evaluate): saturation /
+triplet shelving (G20), light-driving (G21), total dose (G22), plus the unowned
+trap-heating notice. G10 (photobleaching) was removed 2026-09-09 --
+kb/decisions/2026-09-09-g10-photobleaching-removed.md.
 
 **Prefer ``--channel``.** It takes k_ex and k_em from lens 1
 (``optics.path.Channel``), which weights the absorption cross-section by how
 well the delivered spectrum actually overlaps the dye's absorption band. The
 ``--dye`` path has no spectra and so assumes that overlap is perfect unless
-``--excitation-coupling`` says otherwise, which overstates k_ex and makes G10
-and G20 stricter than the instrument warrants. Either way the verdict says
+``--excitation-coupling`` says otherwise, which overstates k_ex and makes G20
+stricter than the instrument warrants. Either way the verdict says
 which path it took, under ``assumed``.
 
 ``--dye`` pulls epsilon, quantum yield and lifetime from
-data/fluorophores.yaml. Note that no dye in that registry has bleach_photons,
-so G10 blocks until --bleach-photons is supplied -- and no source line has a
-measured sample-plane power, so --power-mw has to be supplied too. Both gaps
-are real, not CLI limitations: see docs/07-roadmap.md Phase 0 (where laser
-power measurement is deferred by decision as of 2026-08-19).
+data/fluorophores.yaml. Sample-plane power and illuminated area are measured
+as of 2026-09-09 (kb/calibrations/illumination-power.yaml) but are not wired
+into the registry lookup, so --power-mw and --area-um2 still have to be
+supplied.
 """
 
 from __future__ import annotations
@@ -100,15 +100,12 @@ def _from_channel(args: argparse.Namespace) -> tuple[IlluminationSetup, str] | N
         dose_limit_j_cm2=args.dose_limit,
         trap_on=args.trap_on,
     )
-    # These two stay overridable: no dye in the registry has bleach_photons and
-    # only some have a lifetime, and neither feeds the rates lens 1 already
-    # computed, so supplying them here leaves nothing inconsistent.
+    # Overridable: only some dyes have a lifetime, and it does not feed the
+    # rates lens 1 already computed, so supplying it here leaves nothing
+    # inconsistent.
     overrides = {
         key: value
-        for key, value in (
-            ("bleach_photons", args.bleach_photons),
-            ("lifetime_ns", args.lifetime_ns),
-        )
+        for key, value in (("lifetime_ns", args.lifetime_ns),)
         if value is not None
     }
     if overrides:
@@ -121,7 +118,6 @@ def _from_flags(args: argparse.Namespace) -> tuple[IlluminationSetup, str] | Non
     ext_coeff = args.ext_coeff
     quantum_yield = args.quantum_yield
     lifetime_ns = args.lifetime_ns
-    bleach_photons = args.bleach_photons
     label = args.dye or "dye"
 
     if args.dye:
@@ -133,9 +129,6 @@ def _from_flags(args: argparse.Namespace) -> tuple[IlluminationSetup, str] | Non
         ext_coeff = ext_coeff if ext_coeff is not None else dye.ext_coeff
         quantum_yield = quantum_yield if quantum_yield is not None else dye.quantum_yield
         lifetime_ns = lifetime_ns if lifetime_ns is not None else dye.lifetime_ns
-        bleach_photons = (
-            bleach_photons if bleach_photons is not None else dye.bleach_photons
-        )
 
     return (
         IlluminationSetup(
@@ -148,7 +141,6 @@ def _from_flags(args: argparse.Namespace) -> tuple[IlluminationSetup, str] | Non
             ext_coeff_m1cm1=ext_coeff,
             quantum_yield=quantum_yield,
             lifetime_ns=lifetime_ns,
-            bleach_photons=bleach_photons,
             excitation_coupling=args.excitation_coupling,
             photoresponsive=args.photoresponsive,
             light_driving_threshold_w_cm2=args.light_driving_threshold,
@@ -208,7 +200,7 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="photo", description=__doc__)
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    c = sub.add_parser("check", help="run the committee-lens gate (G10, G20-G22)")
+    c = sub.add_parser("check", help="run the committee-lens gate (G20-G22)")
     c.add_argument(
         "--channel", default=None, metavar="CONFIG",
         help="channel YAML (config/channels/*.yaml). Takes k_ex and k_em from "
@@ -233,8 +225,6 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--quantum-yield", type=float, default=None)
     c.add_argument("--lifetime-ns", type=float, default=None)
     c.add_argument(
-        "--bleach-photons", type=float, default=None,
-        help="mean photons emitted before bleaching; no dye in the registry has one",
     )
     c.add_argument(
         "--excitation-coupling", type=float, default=None,
