@@ -97,3 +97,22 @@ pixel_size:
     "100":
       evidence: nominal
       values: {"1x": 0.065, "1.5x": 0.04333}
+      # ⚠ A MEASUREMENT EXISTS AND IS NOT IN THIS VALUE (added 2026-09-09).
+      # kb/decisions/2026-09-03-three-subsystems-first-light.md §9 drove two
+      # independent 10 um rulers at 100x, on different hardware, and both came
+      # back long by the same sign:
+      #     piezo stage, chamber-stuck particle   10.000 commanded -> 10.0612  (+0.61 %)
+      #     AOD trap, trapped bead in y           10.000 commanded -> 10.0852  (+0.85 %)
+      # so ~0.0645 um/px rather than 0.0650, about 0.7 % smaller.
+      #
+      # The value above is LEFT AT 0.065 deliberately. That record judged its
+      # own numbers "the first measured cross-check" rather than a replacement,
+      # and this file's own standard for `measured` is a stage micrometer at
+      # that objective. Two displacement rulers agreeing on a sign is not that.
+      #
+      # It is written here because 100x is the standing objective (CLAUDE.md §1)
+      # and because kappa scales as 1/pixel size, so a 0.7 % error propagates
+      # into every trap stiffness. Whoever images that micrometer settles it.
+      measured_cross_check_um_per_px: 0.0645
+      measured_cross_check_note: "2026-09-03, two 10 um rulers; not adopted -- see the comment above"
+

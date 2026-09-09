@@ -16,12 +16,16 @@
 #
 # IRRADIANCE EXISTS, at 20x. `optics.path.excitation_rate_per_s` needs BOTH
 # power and `illuminated_area_um2`, and as of 2026-09-09 it has both for all
-# three engines: every one of them puts about the camera field on the sample,
-# 603,654 um^2 at 20x. W/cm^2 at 100 % level:
+# three engines. The Spectra and the LUN-F-XL put about the camera field on the
+# sample, 603,654 um^2 at 20x; the Aura puts a circle around it. W/cm^2 at
+# 100 % level:
 #
-#     Aura      7.62 / 7.70 / 2.63    CYAN  / GREEN / RED
+#     Aura      4.85 / 4.90 / 1.68    CYAN  / GREEN / RED
 #     Spectra   2.20 / 2.53 / 1.64    Cyan  / Green / Red
 #     LUN-F-XL  1.14 / 1.08 / 1.64    488   / 561   / 640
+#
+# The Aura is over a LARGER area than the other two: its circle circumscribes
+# the frame (diameter = the field diagonal), 948,218 um^2 against 603,654.
 #
 # ⚠ AT 20x ONLY, and `computed` rather than measured. The area rests on the one
 #   pixel size in data/pixel_size.yaml carrying `evidence: measured`, which is
@@ -285,24 +289,34 @@ illuminated_area_um2:
     irradiance_w_cm2_at_100pct_20x: {Cyan: 2.20, Green: 2.53, Red: 1.64}
 
   Aura:
-    shape: "circular"
+    shape: "circular, circumscribing the camera field"
     evidence: computed
     basis: >-
       Checked with the field diaphragm (KH, 2026-09-09): the illuminated area is
-      close to the camera field, so the same 603,654 um^2 applies. This revises
-      the earlier report of an unrestricted circle -- unrestricted it is, and it
-      lands at about the field anyway, so the illumination optics rather than a
-      stop are what bound it.
-    "20x": 603654
+      close to the camera field, and where a sharper figure is wanted, take the
+      circle's DIAMETER as the field's DIAGONAL (KH, same day). At 20x that is
+      777.0 x sqrt(2) = 1099 um, so the disc is 948,218 um^2 -- 1.57x the square
+      the other two engines get, because a circle that covers the square must
+      overhang it. The corners of the frame are lit, which is what "no dark
+      corners" means, and the extra light outside the frame is real power the
+      meter collected.
+    "20x": 948218
     "4x": null
     "10x": null
-    irradiance_w_cm2_at_100pct_20x: {CYAN: 7.62, GREEN: 7.70, RED: 2.63}
+    irradiance_w_cm2_at_100pct_20x: {CYAN: 4.85, GREEN: 4.90, RED: 1.68}
+    note: >-
+      ⚠ This is the one engine whose area is NOT the camera field, and the
+      difference is a factor 1.57 in irradiance -- 4.85 rather than 7.62 W/cm^2
+      at CYAN. Anything comparing the three engines has to use each one's own
+      area; using the square for all three overstates the Aura by that factor.
     caveat: >-
-      ⚠ The power rows were taken with nothing stopped down and the area was
+      The power rows were taken with nothing stopped down and the extent was
       established afterwards with the diaphragm. Both describe the same beam
-      only if closing the diaphragm to the field changed no power -- which
-      follows if the beam was already about that size, and does not if it was
-      not. Unquantified either way, like "close to the camera field" itself.
+      only if closing to the field changed no power -- which follows if the beam
+      was already about that size, and does not if it was not. Unquantified,
+      like "close to the camera field" itself. The operator's judgement is that
+      this is accurate enough for the purpose, which is approximate gate
+      arithmetic and not photometry (KH, 2026-09-09).
 
 # ---------------------------------------------------------------------------
 # WHAT THE ROWS SAY -- recompute from the rows; do not cite these figures

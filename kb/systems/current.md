@@ -1380,10 +1380,16 @@ devices_not_in_mm_config:   # docs/02 §4 "three-way cross-check table" — sepa
       with nothing on either side reporting it. microscope.COLLISION_DEVICES
       records this as the second, independent reason that gate exists.
 
-      A free cross-check available today: pixel_size_calibration above already
-      carries a measured 0.1625 um/px for 40x at 1x intermediate magnification,
-      so the GUI Magnification value should agree with it if the Tweez GUI is
-      reading a Kinetix through the same tube optics.
+      A free cross-check available today: pixel_size_calibration above carries
+      0.1625 um/px for 40x at 1x intermediate magnification, so the GUI
+      Magnification value should agree with it if the Tweez GUI is reading a
+      Kinetix through the same tube optics.
+      ⚠ Corrected 2026-09-09: this said "a measured 0.1625". It is not measured.
+      0.1625 is exactly 6.5/40, the nominal quotient -- data/pixel_size.yaml's
+      2026-09-04 analysis found eleven of the spreadsheet's twelve cells are the
+      arithmetic to every digit, and marks all but the 20x row `nominal`. The
+      cross-check is still worth doing; it just compares the GUI against a
+      formula rather than against a measurement.
   - name: "Kinetix cameras — shared with the optical-tweezers GUI"
     control: "pymmcore-plus, but not exclusively owned"
     mm_registered: true
