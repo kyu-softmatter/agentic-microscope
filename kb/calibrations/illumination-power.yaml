@@ -66,6 +66,13 @@ checks:
 # (KH, 2026-09-09), so the planned all-elements-out cross-check was not taken.
 #
 # mW at the sample plane, by level %. A `null` was below the meter's reading.
+#
+# ⚠ WHAT "%" MEANS DIFFERS BY ENGINE, and getting it wrong is a factor of ten.
+# On the AURA the intensity control runs 0-1000, so the percentages below are
+# percentages OF 1000 -- "5%" is `<NAME>_Intensity = 50` (KH, 2026-09-09), and
+# typing 5 delivers 0.5%. CLAUDE.md §1's standing "GREEN ~80/1000" is 8% on
+# this scale. The Spectra, LUN-F-XL and trap-laser rows are percentages of
+# their own full scale.
 
 units: mW at the sample plane
 
@@ -255,14 +262,25 @@ open_questions:
     is not affected: the 1064 linearity (a single scale factor cancels in
     measured/expected) and every ratio taken at one wavelength -- the mirror
     transmission and the objective comparisons.
-  aura_555: >-
-    TODO(human): the Aura has no 555 key in data/light_sources.yaml -- its
-    numeric lines are 405/440/488/561/640, and 561 is the nearest. Which line
-    was driven? Until this is answered the row cannot be written into the
-    registry, though the reading itself stands.
+  aura_line_identity: >-
+    CLOSED as far as it can be (KH, 2026-09-09). The operator drove the NAMED
+    lines, and "488 / 555 / 647" are this lab's convention for CYAN / GREEN /
+    RED -- not device labels and not measured centres. So the power is filed
+    under `named_lines_observed` in data/light_sources.yaml and NOT against the
+    numeric keys, which that file has warned since 2026-09-03 are unverified
+    and contradicted by the device. Its instruction is explicit: "Do NOT map a
+    named line onto one of the numeric keys above by guessing." Knowing the
+    lab's name for a line is not knowing its wavelength.
+
+    STILL OPEN, and unchanged by this measurement: these three lines cannot
+    feed a gate, because a photon budget needs both how many photons and at
+    what wavelength, and only the first half now exists. A datasheet for the
+    "Aura III 5-NII-WA" configuration, or a measured spectrum, supplies the
+    other half -- and then the three rows move up into `lines:` intact.
   spectra_488: >-
-    The Spectra's numeric keys are 395/440/470/508/555/585/640, so the bench
-    label "488" is recorded against "470" as the nearest. Confirm or correct.
+    CONFIRMED (KH, 2026-09-09): the bench label "488" is the Spectra's Cyan at
+    470 nm. That line's own note in data/light_sources.yaml already said it is
+    the one used for the 488-GFP channel, so the two agree independently.
   ot_20x_at_20pct: >-
     One further reading would remove an extrapolation from a safety number: the
     20x at 20 %. Without it, the statement that 4x and 10x pass 3.5x and 4.1x

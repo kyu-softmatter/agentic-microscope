@@ -266,10 +266,24 @@ light_sources:
     # centre + FWHM per named line. Do NOT map a named line onto one of the
     # numeric keys above by guessing -- CYAN -> "488" is the tempting one, and
     # it is still a guess.
+    # POWER IS RECORDED HERE and not under `lines:` above, which is the whole
+    # point of this block. Measured 2026-09-09 at the sample plane, mirror IN,
+    # per objective, at full scale. The operator drove the NAMED lines, and the
+    # bench labels "488 / 555 / 647" are THIS LAB'S CONVENTION for them
+    # (KH, 2026-09-09) -- not device labels, not measured centres. So the
+    # warning above still holds in full: these numbers say what CYAN delivers,
+    # and say nothing about where CYAN sits.
+    #
+    # ⚠ LEVEL SCALE IS 0-1000, NOT 0-100. The percentages below are of 1000, so
+    # "5%" is `<NAME>_Intensity = 50` (KH, 2026-09-09). Typing 5 gives 0.5%.
     named_lines_observed:
       CYAN:
         center_nm: null
         fwhm_nm: null
+        lab_label: "488"
+        power_at_sample_mw: {"4x": 47, "10x": 45, "20x": 46}
+        linear_in_level: false
+        linearity: "1.30 of linear at 5%, 1.09 at 10%, 1.01 at 30% -- over-delivers below ~10%"
         works_for: >
           2026-09-05, operator at the microscope: properly excites Dragon Green
           in Bangs FCDG008 (dye abs peak 480 nm), seen through the CSUW1 filter
@@ -278,13 +292,33 @@ light_sources:
       GREEN:
         center_nm: null
         fwhm_nm: null
+        lab_label: "555"
+        power_at_sample_mw: {"4x": 48.3, "10x": 47.5, "20x": 46.5}
+        linear_in_level: true
+        linearity: "0.97-1.01 across 5-100% -- linear"
         works_for: >
           2026-09-03: used for 555 ex / red em. Bead peak ~30,100 counts over a
           208 background at GREEN_Intensity 50/1000 (5%), 33.33 ms, 100x, with
           no measurable bleaching over 5 s (+2.19% first-15 vs last-15 frames).
+      RED:
+        center_nm: null
+        fwhm_nm: null
+        lab_label: "647"
+        power_at_sample_mw: {"4x": 16.5, "10x": 16.1, "20x": 15.9}
+        linear_in_level: true
+        linearity: "0.94-1.01 across 5-100% -- linear"
+        works_for: >
+          Not otherwise exercised on record. Note it is about 3x dimmer at the
+          sample than CYAN or GREEN, which is a budget fact independent of where
+          the band sits.
       UV:  { center_nm: null, fwhm_nm: null, works_for: null }
-      RED: { center_nm: null, fwhm_nm: null, works_for: null }
       NIR: { center_nm: null, fwhm_nm: null, works_for: null }
+
+    # None of the above can feed a gate yet: `optics` reads `lines:`, and these
+    # have no centre or width to compute an overlap with. That is unchanged by
+    # having their power -- a photon budget needs BOTH how many photons and at
+    # what wavelength. What the datasheet or a measured spectrum would supply is
+    # the second half, and then these three rows move up into `lines:` intact.
 
   # ══════════════════════════════════════════════════════════════════════
   # Laser — 2026-08-10 confirmed in NIS-Elements Device Manager. Not registered

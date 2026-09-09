@@ -13,6 +13,25 @@
 # catalogue quote working distance in mm. Vendor WD is measured to the
 # specimen-facing surface of the design coverslip, so the design thickness is
 # already inside the spec -- see sample/aberration.py free_working_distance_um.
+#
+# ---------------------------------------------------------------------------
+# CATALOGUE PAGES, RE-READ 2026-09-09
+# ---------------------------------------------------------------------------
+# `catalogue_url` is the page for that part number. kb/systems/current.md has
+# carried the six comparison IDs since 2026-08-10, but as one unlabelled
+# bracket -- which of the six belonged to which lens was nowhere. They are
+# attached per lens here, at the point of use.
+#
+# The re-read CHANGED NOTHING. Product name, part number, magnification, NA,
+# working distance, immersion and cover-glass thickness agree with every entry
+# below, including the 40x WI's 0.2-0.16 mm range and its being the one lens on
+# this nosepiece with a real correction collar. Recorded because a
+# cross-check that confirms is worth as much as one that corrects, and costs
+# the next reader nothing to skip.
+#
+# NOT taken from these pages: `transmission`. Each page carries a transmittance
+# GRAPH and no numeric table, and reading values off a rendered curve is not a
+# source (docs/09 §7). See the note on `transmission` below.
 
 objectives:
 
@@ -20,6 +39,7 @@ objectives:
     label: "1-Plan Apo LmbdD20 4x"
     product: "CFI Plan Apo Lambda D 4X"
     part_number: MRD70040
+    catalogue_url: "https://www.microscope.healthcare.nikon.com/products/optics/selector/comparison/-179794"
     position: 0
     magnification: 4
     na: 0.20
@@ -37,6 +57,7 @@ objectives:
     label: "2-Plan Apo LmbdD4 10x"
     product: "CFI Plan Apo Lambda D 10X"
     part_number: MRD70170
+    catalogue_url: "https://www.microscope.healthcare.nikon.com/products/optics/selector/comparison/-179798"
     position: 1
     magnification: 10
     na: 0.45
@@ -51,6 +72,7 @@ objectives:
     label: "3-Plan Apo LmbdD0.8 20x"
     product: "CFI Plan Apo Lambda D 20X"
     part_number: MRD70270
+    catalogue_url: "https://www.microscope.healthcare.nikon.com/products/optics/selector/comparison/-179802"
     position: 2
     magnification: 20
     na: 0.80
@@ -65,6 +87,7 @@ objectives:
     label: "4-Apo LmbdS 40x WI"
     product: "CFI Apo Lambda S 40XC WI"
     part_number: MRD77400
+    catalogue_url: "https://www.microscope.healthcare.nikon.com/products/optics/selector/comparison/-1923"
     position: 3
     magnification: 40
     na: 1.25
@@ -90,6 +113,7 @@ objectives:
     label: "5-Plan Apo LmbdD0.15 60x Oil"
     product: "CFI Plan Apo Lambda D 60X Oil"
     part_number: MRD71670
+    catalogue_url: "https://www.microscope.healthcare.nikon.com/products/optics/selector/comparison/-179808"
     position: 4
     magnification: 60
     na: 1.42
@@ -105,6 +129,7 @@ objectives:
     label: "6-Plan Apo LmbdD0.13 100x Oil"
     product: "CFI Plan Apo Lambda D 100X Oil"
     part_number: MRD71970
+    catalogue_url: "https://www.microscope.healthcare.nikon.com/products/optics/selector/comparison/-179810"
     position: 5
     magnification: 100
     na: 1.45
@@ -114,3 +139,29 @@ objectives:
     correction_collar: false
     verified_na: true
     verified_date: 2026-08-10
+
+# ---------------------------------------------------------------------------
+# `transmission` -- EMPTY FOR EVERY LENS, AND WHY
+# ---------------------------------------------------------------------------
+# `optics/build.py` accepts a `transmission` key per objective, flat or as a
+# spectrum, and `optics/gate.py` lists "<lens> transmission" among a channel's
+# assumed inputs whenever it is absent -- which is currently always.
+#
+# Curves EXIST. The operator supplied vendor transmittance plots for the 4x,
+# 20x, 40x, 60x and 100x on 2026-09-09, and each catalogue page carries the
+# same plot. They are not entered here because they arrived as rendered images
+# with no numeric table behind them, and a table produced by reading pixels off
+# a curve is this agent's inference rather than a source (docs/09 §7). Supply
+# the numbers and they go straight into data/spectra/ in the two-column form
+# the dye spectra already use.
+#
+# What the curves were nonetheless good enough to do, on 2026-09-09, is KILL A
+# HYPOTHESIS. The trap laser delivers 3.5-4x more power through the 4x and 10x
+# than through the 20x (kb/calibrations/illumination-power.yaml), and objective
+# IR transmission was the proposed cause. At 1000 nm the curves read roughly
+# 87 % for the 4x against 78-84 % for the 20x -- a ratio near 1.1 against a
+# measured 3.5. Ruling something out across an order of magnitude survives a
+# rough reading; quoting a value off the same curve does not, and the 40x in
+# particular is still falling steeply at 1000 nm.
+#
+# All five plots stop at 1000 nm. Nothing here measures 1064.
