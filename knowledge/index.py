@@ -2,7 +2,7 @@
 
 The index is **pointers only** -- id, date, the one-line question the file
 answers, and which other entries supersede or correct it. No measured value, no
-conclusion and no quotation goes in it, because CLAUDE.md §5 says not to
+conclusion and no quotation goes in it, because CLAUDE.md §6 says not to
 duplicate what the repository already records, and an index that carries
 content is a fourth place a fact lives.
 
@@ -56,6 +56,7 @@ SECTIONS: tuple[tuple[str, str], ...] = (
     ("systems", "What this instrument is, as measured"),
     ("expertise", "Durable expert judgment. Each carries a `Why` and a falsifier"),
     ("decisions", "Dated design and scope choices, in the order they were made"),
+    ("plans", "One hardware run each, before it happens — 05 §6 stage 5"),
     ("literature", "Published values nobody here has measured"),
     ("sessions", "The day's narrative"),
 )

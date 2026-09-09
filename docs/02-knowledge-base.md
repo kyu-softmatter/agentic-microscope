@@ -33,6 +33,10 @@ kb\
 ├── decisions\                  recommendation → execution → outcome log (learning loop)
 │   └── 2026-08-08-atps-647-tracking.md
 │
+├── plans\                      one hardware run each, written *before* it
+│                               happens. The first two sections of §9's format;
+│                               graduates into decisions\ once run → 05 §6
+│
 ├── calibrations\               measured values. date and measurer mandatory
 │   ├── camera-readout.yaml     ✅ measured 2026-08-12
 │   ├── disk-bandwidth.yaml     ✅ measured 2026-08-12

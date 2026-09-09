@@ -536,16 +536,37 @@ class LensVerdict:
 
 ---
 
-## 6. Orchestration
+## 6. Orchestration — goal to instrument
+
+**The chain is KH's, stated 2026-09-09.** Seven stages, and the committee of
+§5 is only the third of them. What each stage *is* comes from that statement;
+where the artefacts live and how the stages are split between code, subagent
+and skill is this repository's proposal on top of it — the two are separated in
+"Stated vs proposed" at the end.
+
+| | Stage | Runs as | Exists? |
+|---:|---|---|---|
+| 1 | **Question** — a research goal, in the operator's words | conversation | not formalised |
+| 2 | **Interpretation** — goal → a concrete setting proposal | main agent | not formalised |
+| 3 | **Verification** — the eight lenses | code + subagents | ✅ code for all 8; agent files for 5 |
+| 4 | **Decision** — difficulty grade, interventions, or a deadlock handed up | main agent | ✅ §3 · §4 · below |
+| 5 | **Hardware plan** — one `kb/plans/` entry per run | main agent writes it | ✗ designed 2026-09-09, not built |
+| 6 | **Skill dispatch** — one skill per subsystem, each reading that plan | `.claude/skills/` | ✗ the directory does not exist |
+| 7 | **Actuation** — the skill calls the instrument | MCP | ⚠ **half.** See below |
+
+### Stage 3, corrected
 
 ```
-generate proposal
+proposal
    │
-   ├─ computational lenses (1·2·3·7) in parallel   ← code. deterministic. fast
+   ├─ 1 · 2 · 3 (+7 if trapping)   code, in parallel   deterministic, fast
    │      any hard gate m<1 → stop immediately, return a revision
    │
-   ├─ judgment lenses (4·5·6·8) in parallel        ← LLM subagents
-   │      receive the computational lens results as input
+   ├─ 4 · 5 (+8 if >30 min)        subagents, parallel
+   │      receive the computed results as input
+   │
+   ├─ 6                            subagent, alone, last
+   │      reviews the verdicts of every lens above
    │
    ├─ synthesis
    │      difficulty grade = worst soft/bias gate
@@ -560,6 +581,77 @@ generate proposal
 deliberating over a physically impossible proposal. And the LLM lenses must
 receive the computed results **as input** — they must not generate the numbers
 themselves.
+
+**Lens 6 is not in the parallel block, and used to be.** It reviews what the
+other lenses returned, so it cannot run beside them. The precedence this sits
+under — the gate's *kind* outranking the lens, and the nine exceptions — is
+[`CLAUDE.md §2`](../CLAUDE.md).
+
+Three lenses have no agent file: 1, 2 and 7 are code only. That is not an
+oversight — their verdicts have a closed form — but it does mean **there is no
+qualitative half to ask** when one of them returns something surprising.
+
+### Stage 5 · the hardware plan
+
+One markdown file per run, in `kb/plans/YYYY-MM-DD-<slug>.md`. It is deliberately
+the **first two sections of the decision-log format** in
+[02 §9](02-knowledge-base.md) — `Request` and `Proposed setting + rationale` —
+so that when the run happens, the same entry gains `Setting actually used`,
+`Outcome` and `What was learned`, and graduates into `kb/decisions/`. A plan
+that was never run stays visible as one, because the index renders its `status`.
+
+It exists so that stage 6 has something to read that is **not the conversation**.
+A skill that reconstructs the intent from chat history is a skill that will one
+day reconstruct it wrong.
+
+### Stage 6 · one skill per subsystem
+
+Each skill reads the plan, takes only the part addressed to its own subsystem,
+and supplies the context that subsystem needs — which flags are required, which
+calibrations the last objective change invalidated, what the driver's refusals
+mean. Nothing here decides anything the committee did not already decide.
+
+### Stage 7 · what can actually be reached
+
+⚠ **Half of the instrument has no tool surface.** [`mcp_server/`](../mcp_server/)
+is the tweezers and the piezo — nine tools. **The Micro-Manager path is absent
+entirely**: no objective, no `ZDrive`, no `XYStage`, no camera. So stages 6–7 can
+be written today for two subsystems out of the set the committee reasons about.
+
+⚠ And **no MCP tool has reached a device** ([07 Phase 5](07-roadmap.md)). On
+2026-09-09 the server did not start at all in one session — `CONNECTION_CLOSED`.
+
+### The knowledge base, at every stage
+
+Any stage may need something out of `kb/`, and the route depends on the shape of
+the answer, not on the stage:
+
+| Need | Route | Why |
+|---|---|---|
+| Which entry answers this | [`kb/INDEX.md`](../kb/INDEX.md) | 40 lines. Read it before grepping 710 KB |
+| A specific value, with provenance | the entry itself | **Cite the entry, never the index line** ([09 §7](09-knowledge-capture.md)) |
+| A lens's own record | the lens's subagent reads it directly | `2026-08-19-lens-*.md` are 5–17 KB and named after the lens. A round trip through the main agent buys nothing |
+| The same answer for several lenses | main agent fetches once, hands it down | One read, N recipients |
+| Digest a large entry | a subagent | `kb/systems/current.md` is 1,634 lines. A subagent burns that in its own window and returns a summary — at the cost that a summary is not a citation |
+| **Write** anything to `kb/` | a **skill**, on the main agent | [09 §7](09-knowledge-capture.md) requires asking the operator for the `Why` and the falsifier, **and a subagent cannot ask a human anything.** It runs to completion and reports |
+
+The read side is a candidate for MCP tools over
+[`knowledge/index.py`](../knowledge/index.py), which would make the citation
+shape structural rather than instructed — a tool has no model in it to
+paraphrase with. The constraint is that **an MCP result lands in the caller's
+context**, so every such tool must be bounded: a section, not a file.
+
+### Stated vs proposed
+
+| | Source |
+|---|---|
+| The seven stages, in this order | **KH, 2026-09-09** |
+| A plan file that the hardware skills read, one skill per subsystem | **KH, 2026-09-09** |
+| The plan lives under `kb/` | **KH, 2026-09-09** |
+| Main agent, not a subagent, fetches from `kb/` on a lens's behalf | **KH, 2026-09-09** |
+| `kb/plans/` specifically, and its graduation into a decision record | this repository |
+| Lens 6 alone and last | this repository, correcting the earlier diagram |
+| The read/write split in the table above | this repository |
 
 ### Deadlock handling
 

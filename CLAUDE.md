@@ -111,7 +111,87 @@ that entry is what closes those three gaps.
 
 ---
 
-## 2. Evidence rules the code enforces
+## 2. The committee: run order, precedence, and the exceptions
+
+Three orderings are now live here, and conflating any two of them is the error
+to avoid. §1 already separates the first two; this is the third.
+
+| | Order | Governs |
+|---|---|---|
+| **README item 9** | frame rate → exposure *and* interval → intensity | **Procedure.** How the triple is picked from scratch |
+| **§1 hierarchy** | spatial resolution → image quality → time resolution → intensity | **Axes.** Which axis yields when they cannot coexist |
+| **§2, here** | kind of gate first, then lens | **Lenses.** Who runs when, and whose verdict wins |
+
+The roster — who owns what, and the nine cross-lens constraints — is
+[01 §4](docs/01-architecture.md). Do not restate it. The pipeline this sits
+inside is [05 §6](docs/05-consensus-gate.md).
+
+### Run order
+
+```
+1 · 2 · 3  (+7 if trapping)     code, in parallel      deterministic, fast
+      ↓        any hard gate m < 1 → stop here, return a revision
+4 · 5      (+8 if >30 min)      subagents, parallel    fed the computed results
+      ↓
+6                               subagent, alone        reviews all of the above
+      ↓
+synthesis → verdict
+```
+
+**The computational lenses run first** so that no subagent deliberates over a
+physically impossible proposal, and **their numbers are the input** to the
+judgment lenses — a judgment lens never generates the number it is judging.
+
+⚠ [05 §6](docs/05-consensus-gate.md)'s diagram puts 4·5·6·8 in one parallel
+block. **This supersedes that**: lens 6 reviews the other lenses' verdicts, so
+it cannot run beside them.
+
+### Precedence — the kind of gate outranks the lens
+
+A lens does not win an argument by being lens 1. **The gate's kind decides
+first**, and only within one kind does anything else apply
+([05 §2](docs/05-consensus-gate.md)):
+
+| | What it is | Who may overrule it |
+|---:|---|---|
+| **0** | [SAFETY.md](SAFETY.md) | nobody. Not a lens, not negotiable |
+| **1** | any `hard` gate at `m < 1` | nobody. Stop and return a revision |
+| **2** | any `bias` gate | proceed *only* where a correction formula exists; stop where none does |
+| **3** | `soft` gates in conflict | **§1's rank order decides which yields** |
+| **4** | lens 6's review | it may refuse to advance what 1–3 cleared; it may not clear what they stopped |
+
+So §1's hierarchy is a tie-break **at level 3 and nowhere else** — H3, seen from
+the lens side. Rank 1 does not buy an oil objective past G17, and no rank raises
+the disk's write bandwidth (G12a). And underneath all of it, **`unevaluated` ≠
+`cleared`** (§3): a lens that did not run has not agreed.
+
+### Exceptions
+
+- **E1 · Lens 5's `BLOCKED` is the standing state, not a deadlock.**
+  `power_at_sample_mw` is `{}` and `bleach_photons` is empty (§3), so lens 5
+  blocks **by design**. It must not trigger the three-round re-proposal loop or
+  the deadlock handoff — that is a missing power meter, not a conflict.
+- **E2 · Lens 6 runs alone and last.** See the ⚠ above.
+- **E3 · Lens 7 silent on heating ≠ heating cleared.** Trap heating is ungated
+  by decision ([05 §5](docs/05-consensus-gate.md), [06 D6](docs/06-pitfalls.md)).
+- **E4 · A conditional lens that was not convened leaves a hole, not a pass.**
+  Lens 8 under ~30 min and lens 7 with no trap are absent; their row in lens 6's
+  bias ledger is `unevaluated`.
+- **E5 · Lenses 2 and 3 are convened together whenever frame rate is in play.**
+  Lens 3 does not own the rate, and its arithmetic is only as good as the rate
+  handed to it. A *requested* rate is not evidence — G12b.
+- **E6 · Lenses 1 and 5 are convened together, and 1 and 4 likewise.** Light for
+  SNR against the dose budget, and immersion against depth, run in opposite
+  directions (01 §4).
+- **E7 · Objective choice at load time is not an imaging decision.** It sits
+  outside this ladder and outside §1 — load at 4×, whatever rank 1 wants
+  (SAFETY §2, README item 10).
+- **E8 · Do not correct a higher rank on lower-ranked grounds** — H4. Report the
+  bias instead.
+- **E9 · A return code is not a confirmation** (SAFETY §0). Nothing advances on
+  "the GUI accepted the command".
+
+## 3. Evidence rules the code enforces
 
 - **`measured` vs `assumed`, with a separate `advances` axis that only
   `measured` can satisfy.** A literature value lets a gate *compute* and never
@@ -127,7 +207,7 @@ that entry is what closes those three gaps.
   **lens 5 returns `BLOCKED` on this instrument by design.** Every dose number
   is relative until a power meter sits at the sample plane.
 
-## 3. Hardware, when it is in the loop
+## 4. Hardware, when it is in the loop
 
 - Nothing moves without an explicit flag: `--unlock` (piezo), `--allow-motion`,
   `--allow-laser`, `--arm`, `--allow-immersion-change`. The MCP server ships
@@ -143,7 +223,7 @@ that entry is what closes those three gaps.
   one pass); `10012` on a Kinetix is **usually a wedge, not ownership
   contention** — one standalone snap on that body clears it.
 
-## 4. Commands
+## 5. Commands
 
 ```bash
 python mcp_server/bootstrap.py --dry-run
@@ -212,7 +292,7 @@ It is **pointers only, never a citation** — open the entry and cite that
 `tests/test_kb_index.py` fails if you don't, and also on a file with no
 frontmatter or a supersession link that resolves to nothing.
 
-## 5. Writing anything down
+## 6. Writing anything down
 
 Do not duplicate what the repo already records. Pick the right home:
 
@@ -230,7 +310,7 @@ falsifier · never mix a computed result and an expert judgment into one entry �
 because a correction is dense knowledge · always link when citing the KB, and
 give no advice without a source.
 
-## 6. Code conventions
+## 7. Code conventions
 
 - **Not a package.** No `[build-system]`; `pyproject.toml` exists to put the
   repository root on `sys.path` so bare `pytest` and `python -m pytest` agree.
@@ -247,7 +327,7 @@ give no advice without a source.
   README, SAFETY or `docs/`: no claim without its date, its evidence tier, and
   its limit.
 
-## 7. Public-repository constraint
+## 8. Public-repository constraint
 
 Vendor manuals, proprietary DLLs, and commercial correspondence are in **no
 commit here** — removed from the whole history on 2026-08-28, not just from the
