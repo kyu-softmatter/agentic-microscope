@@ -14,6 +14,25 @@
 # spectral effect) are not covered here — neither has any part in "which
 # wavelengths pass", so there is no reason to put them in this screening
 # (see the relevant notes in kb/systems/current.md).
+#
+# ⚠ MEASURED 2026-09-09, AND THE PREMISE HOLDS WHILE THE OMISSION NOW COSTS.
+# LappMainBranch1 is a 50/50 mirror. Its transmission came out 0.439 / 0.438 /
+# 0.450 at 470 / 555 / 640 nm, and the same to within 0.01 at 4x, 10x and 20x
+# — so "no spectral effect" is confirmed, flat to 3 % across 170 nm, and
+# leaving it out of a SPECTRAL screening is still right.
+#
+# But "no spectral effect" is not "no effect". It removes 56 % of the light,
+# and until 2026-09-09 nothing downstream needed absolute power so nothing
+# noticed. `power_at_sample_mw` is now populated, so a photon budget that
+# ignores this element is out by a factor 2.3.
+#
+# Two things that make it worse to miss than a filter would be. Its state is a
+# DEVICE PROPERTY, not a cube choice — the .cfg labels State 1 `mirror_in` and
+# State 0 `mirror_out`, and Startup sets State 1, so the attenuating state is
+# the default. And the Spectra's registry powers are the mirror-in figures, so
+# they already have the 0.44 baked in: apply it a second time and the budget is
+# wrong the other way.
+# → kb/calibrations/illumination-power.yaml
 
 scope:
   name: current-spectra

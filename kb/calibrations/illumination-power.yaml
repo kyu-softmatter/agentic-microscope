@@ -65,6 +65,18 @@ checks:
 # The remaining combinations are not settable on this instrument
 # (KH, 2026-09-09), so the planned all-elements-out cross-check was not taken.
 #
+# THE "MIRROR" IS `LappMainBranch1`, the Ti2's Lapp branch mirror, and it is a
+# 50/50 (KH, 2026-09-09). The .cfg labels its two states literally: State 1 is
+# `mirror_in` and State 0 is `mirror_out`, and every config sets State 1 at
+# Startup -- so `all_in` is the instrument's DEFAULT state and the mirror_out
+# rows are the deliberate excursion, not the other way round.
+#
+# Its measured transmission is ~0.44 against a nominal 0.50 -- a real splitter
+# with coating and surface losses -- and it is FLAT: 0.439/0.438/0.450 across
+# 470/555/640, and the same to within 0.01 at all three objectives. One number
+# is therefore enough and per-geometry values are NOT needed
+# (KH, 2026-09-09), which is what the reduced measurement design assumed.
+#
 # mW at the sample plane, by level %. A `null` was below the meter's reading.
 #
 # ⚠ WHAT "%" MEANS DIFFERS BY ENGINE, and getting it wrong is a factor of ten.
@@ -216,10 +228,52 @@ measurements:
 # magnification effect lives here, not in the power rows: total power above is
 # flat to within 25 % across 4x/10x/20x, while area goes as 1/M^2, so 4x to 20x
 # is a factor near 25. To be measured (KH, 2026-09-09).
+# ⚠ AREA IS PER (SOURCE x OBJECTIVE), NOT PER OBJECTIVE. The three engines put
+# different SHAPES on the sample (KH, 2026-09-09) and a single per-objective
+# number cannot hold that. Keying it by objective alone was this file's error.
 illuminated_area_um2:
-  "4x": null
-  "10x": null
-  "20x": null
+
+  LUN-F-XL:
+    shape: "approximately the camera field"
+    evidence: computed
+    basis: >-
+      2400 x 2400 px at the MEASURED 20x pixel size 0.32373 um/px
+      (data/pixel_size.yaml, 1x intermediate) = 777.0 x 777.0 um. Computed, not
+      measured: the field was reported as matching the camera field closely, and
+      "closely" was not quantified.
+    "20x": 603654
+    "4x": null      # 4x and 10x pixel sizes are `nominal`, so an area from them
+    "10x": null     # would inherit that; not computed here for that reason
+    irradiance_w_cm2_at_100pct_20x: {"488": 1.14, "561": 1.08, "640": 1.64}
+
+  Spectra:
+    shape: "rectangular -- the beam arrives through the DMD"
+    "4x": null
+    "10x": null
+    "20x": null
+    needed: >-
+      TODO(human): the rectangle's size at the sample. It is set by the DMD's
+      active area imaged through the objective, so it is neither the camera
+      field nor a circle, and nothing in the repository records it.
+
+  Aura:
+    shape: "circular, and unrestricted -- no field stop was in play"
+    "4x": null
+    "10x": null
+    "20x": null
+    needed: >-
+      TODO(human): the circle's diameter at the sample -- OR, if the circle
+      overfilled the meter head, the head's aperture instead.
+
+      The two cases need different numbers and give different answers. If the
+      circle fits inside the sensor, the reading is the whole beam and
+      irradiance is P / (circle area). If it overfills, the reading is only the
+      part that landed, and irradiance is P / (SENSOR area) -- which is then the
+      easier of the two to obtain, being one number off the S121C's datasheet.
+      "Unrestricted" makes the second case the likely one at low magnification.
+
+      Until this is settled the Aura rows are a lower bound on power, which the
+      `checks.spot_fits_in_sensor` block already flags as unrecorded.
 
 # ---------------------------------------------------------------------------
 # WHAT THE ROWS SAY -- recompute from the rows; do not cite these figures

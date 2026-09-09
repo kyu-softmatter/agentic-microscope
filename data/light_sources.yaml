@@ -60,9 +60,11 @@ light_sources:
         note: >
           Used for the 488-GFP channel — the bench label for this line is "488"
           (KH 2026-09-09). Observed levels 2·5·10·50·100%.
-          Power MEASURED 2026-09-09, mirror IN. With the mirror out it is
-          35.8/33.4/30.3 — a factor 2.3, and the schema has no slot for the
-          path, so read these as mirror-in only.
+          Power MEASURED 2026-09-09 with `LappMainBranch1` IN, which is State 1 and
+          the Startup default. That 50/50 branch mirror removes 56 % (measured
+          0.44, flat across 470-640): with it out these read 35.8/33.4/30.3.
+          The schema has no slot for the path, so the 0.44 is already inside
+          these numbers — do not apply it again.
           Not linear below ~30%: 0.60 of linear at 5%, 0.75 at 10%, 0.95 at 30%.
           → kb/calibrations/illumination-power.yaml
       Teal:
@@ -76,7 +78,9 @@ light_sources:
         linear_in_level: false
         note: >
           555-TRITC channel. May shift to 585 depending on YG filter state.
-          Power MEASURED 2026-09-09, mirror IN. Mirror out: 39.9/38.1/34.9.
+          Power MEASURED 2026-09-09 with `LappMainBranch1` IN (State 1, the Startup
+          default; a 50/50 branch mirror, measured 0.44). Mirror out:
+          39.9/38.1/34.9. The 0.44 is already inside these — do not reapply.
           Not linear below ~30%: 0.65 of linear at 5%, 0.85 at 10%, 0.96 at 30%.
           → kb/calibrations/illumination-power.yaml
       Yellow:
@@ -94,7 +98,9 @@ light_sources:
           suggested the light level was insufficient; measurement 2026-09-09
           supports it — at 9.9 mW this is the dimmest Spectra line measured,
           against 15.3 at 555.
-          MEASURED 2026-09-09, mirror IN. Mirror out: 27.6/25.4/22.0.
+          MEASURED 2026-09-09 with `LappMainBranch1` IN (State 1, the Startup
+          default; a 50/50 branch mirror, measured 0.44). Mirror out:
+          27.6/25.4/22.0. The 0.44 is already inside these — do not reapply.
           ⚠ A PEDESTAL at low level, not a shortfall: 1.62 of linear at 5% and
           1.21 at 10%. It is the source and not the meter — 0.8 mW at 5% mirror
           in against 2.0 mW mirror out is a ratio of 0.40, matching this
