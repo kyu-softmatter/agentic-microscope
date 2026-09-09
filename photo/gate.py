@@ -3,12 +3,21 @@
 Mirrors optics.gate's Phase 0 / Phase 1 / Phase 2 structure and full
 ``Verdict`` schema, as compute.gate, detection.gate and sample.gate do.
 
-Phase 0 here is unusually load-bearing. Every gate in this lens needs mW at the
-sample plane, and `power_at_sample_mw` is empty for every line of every source
-in data/light_sources.yaml. So this lens BLOCKS on the real instrument today,
-and that is the correct answer rather than a shortcoming: a percent setting in
-the metadata is not a physical quantity, and docs/04 §9 marks G10 BLOCKED for
-exactly this reason.
+Phase 0 here is unusually load-bearing. Every gate in this lens needs
+**irradiance** at the sample plane, and this lens still BLOCKS on the real
+instrument -- but as of 2026-09-09 for a smaller reason than before, and the
+difference is the fix instruction.
+
+`power_at_sample_mw` is no longer empty: nine lines across the Aura, the
+Spectra and the LUN-F-XL were measured at three objectives
+(kb/calibrations/illumination-power.yaml). What is still missing is the
+**illuminated area**, and `P` alone is not `I = P/A`. So the blocker moved from
+"nobody has measured the power" to "nobody has measured the field", and G10
+carries a second one of its own: `bleach_photons` is empty for every dye, and a
+power meter cannot supply it.
+
+A percent setting in the metadata is still not a physical quantity, and
+docs/04 §9 marks G10 BLOCKED for that reason as well.
 
 Two axes, and the difference matters. A missing *number* blocks (Phase 0). A
 missing *answer* -- has anyone checked whether this sample responds to the
@@ -107,13 +116,13 @@ def _missing_inputs(setup: IlluminationSetup) -> list[Finding]:
                 "a physical quantity and does not transfer between "
                 "instruments.",
                 action="Supply a measured mW for this evaluation, or accept "
-                "that every dose number stays relative. The registry fix is "
-                "sample-plane power per level in "
-                "data/light_sources.yaml > power_at_sample_mw, which can only "
-                "be measured, never computed -- but all laser power "
-                "measurement is deferred by decision (user, 2026-08-19, "
-                "docs/07 Phase 0), so this is not being proposed as the next "
-                "task. Until it lands, BLOCKED here is the honest answer.",
+                "that every dose number stays relative. Sample-plane power was "
+                "measured on 2026-09-09 for nine lines at three objectives and "
+                "is in data/light_sources.yaml > power_at_sample_mw "
+                "(kb/calibrations/illumination-power.yaml), so the remaining "
+                "gap is usually not the power but the ILLUMINATED AREA, which "
+                "is unmeasured -- and P without A is not I. Neither can be "
+                "computed; both can only be measured.",
             )
         )
 

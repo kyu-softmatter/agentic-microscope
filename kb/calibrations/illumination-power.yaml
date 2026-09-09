@@ -1,0 +1,284 @@
+# Illumination power at the sample plane -- MEASURED 2026-09-09.
+#
+# This closes the top blocker of docs/02 §1 and the deferral in SAFETY.md §1
+# ("Dial % -> mW is uncalibrated, deferred 2026-08-19"). Raw readings only; the
+# ratios in the notes were computed from these rows and should be recomputed
+# rather than trusted, so that this file has one copy of each number.
+#
+# ---------------------------------------------------------------------------
+# WHAT THIS UNBLOCKS, AND WHAT IT DOES NOT
+# ---------------------------------------------------------------------------
+#   UNBLOCKED:        G21 (light-driving) · G22 (total dose) -- once the
+#                     illuminated area is measured, which it is not yet.
+#   STILL BLOCKED:    G10 (photobleaching). It needs `bleach_photons`, which is
+#                     per dye and empty for every dye. A power meter cannot
+#                     supply it.
+#
+# ⚠ IRRADIANCE IS NOT AVAILABLE YET. `optics.path.excitation_rate_per_s` needs
+#   BOTH power and `illuminated_area_um2`, and the area is unmeasured (below).
+#   Everything here is total power at the sample plane, in mW.
+
+meta:
+  date: 2026-09-09
+  measured_by: "Kyu Hwan Choi and Saksham Malik"
+  meter_model: "Thorlabs PM100A"
+  head_type: photodiode
+  head_model: S121C             # Thorlabs, silicon photodiode
+  head_count: 1                 # ONE head for every line, visible and 1064
+  head_wavelength_set: "changed per line, to that line's centre"
+  head_aperture_mm: null        # not recorded
+  head_position: null           # not recorded
+  mm_config: null               # not recorded
+  room_light: null              # not recorded
+  purpose: >-
+    Approximate values for gate arithmetic, stated as such by the operator
+    (KH, 2026-09-09): "the purpose is a rough approximation, not an exact
+    value." No uncertainty was propagated and none should be read in.
+
+# ---------------------------------------------------------------------------
+# PRE-CHECKS -- both were left unrecorded, and that is not the same as passing
+# ---------------------------------------------------------------------------
+checks:
+  spot_fits_in_sensor:
+    "4x": null                  # unrecorded
+    "10x": null
+    "20x": null
+    note: >-
+      If the illuminated field overfilled the head at low magnification, those
+      rows are lower bounds. Note the direction: 4x reads HIGHER than 20x here,
+      so an overfill at 4x would mean the true 4x figure is higher still, not
+      that the comparison is reversed. One row on the sheet says "aperture
+      full, size is different" for the LUN-F-XL at 640.
+  zero_pct_vs_shutter_closed: null    # unrecorded; every 0 % row read 0 mW
+
+# ---------------------------------------------------------------------------
+# THE ROWS
+# ---------------------------------------------------------------------------
+# `sheet_line` is the label used at the bench. `registry_line` is the key in
+# data/light_sources.yaml, which is what code reads -- they are NOT always the
+# same and the difference is recorded rather than silently resolved.
+#
+# `path`: which elements were in the beam path.
+#   all_in      mirror in,  multiband in,  IR in
+#   mirror_out  mirror out, multiband in,  IR in
+#   mband_out   mirror in,  multiband out, IR in
+# The remaining combinations are not settable on this instrument
+# (KH, 2026-09-09), so the planned all-elements-out cross-check was not taken.
+#
+# mW at the sample plane, by level %. A `null` was below the meter's reading.
+
+units: mW at the sample plane
+
+measurements:
+
+  # ---- Aura ---------------------------------------------------------------
+  - source: Aura
+    sheet_line: 488
+    registry_line: "488"
+    path: all_in
+    by_level_20x: {0: 0, 5: 3, 10: 5, 30: 14, 50: 23, 100: 46}
+    at_100pct: {"4x": 47, "10x": 45, "20x": 46}
+
+  - source: Aura
+    sheet_line: 555
+    registry_line: "561"        # confirmed KH 2026-09-09
+    path: all_in
+    by_level_20x: {0: 0, 5: 2.3, 10: 4.5, 30: 13.9, 50: 23.2, 100: 46.5}
+    at_100pct: {"4x": 48.3, "10x": 47.5, "20x": 46.5}
+
+  - source: Aura
+    sheet_line: 647
+    registry_line: "640"
+    path: all_in
+    by_level_20x: {0: 0, 5: 0.8, 10: 1.5, 30: 4.8, 50: 7.9, 100: 15.9}
+    at_100pct: {"4x": 16.5, "10x": 16.1, "20x": 15.9}
+
+  # ---- Spectra ------------------------------------------------------------
+  - source: Spectra
+    sheet_line: 488
+    registry_line: "470"        # confirmed KH 2026-09-09
+    path: all_in
+    by_level_20x: {0: 0, 5: 0.4, 10: 1, 30: 3.8, 50: 6.5, 100: 13.3}
+    at_100pct: {"4x": 15.5, "10x": 14.5, "20x": 13.3}
+
+  - source: Spectra
+    sheet_line: 488
+    registry_line: "470"
+    path: mirror_out
+    by_level_20x: {0: 0, 5: 1.3, 10: 2.8, 30: 8.9, 50: 15.1, 100: 30.3}
+    at_100pct: {"4x": 35.8, "10x": 33.4, "20x": 30.3}
+
+  - source: Spectra
+    sheet_line: 555
+    registry_line: "555"
+    path: all_in
+    by_level_20x: {0: 0, 5: 0.5, 10: 1.3, 30: 4.4, 50: 7.5, 100: 15.3}
+    at_100pct: {"4x": 17.5, "10x": 16.7, "20x": 15.3}
+
+  - source: Spectra
+    sheet_line: 555
+    registry_line: "555"
+    path: mirror_out
+    by_level_20x: {0: 0, 5: 1.4, 10: 3.1, 30: 10.1, 50: 17.1, 100: 34.9}
+    at_100pct: {"4x": 39.9, "10x": 38.1, "20x": 34.9}
+
+  - source: Spectra
+    sheet_line: 647
+    registry_line: "640"
+    path: all_in
+    by_level_20x: {0: 0, 5: 0.8, 10: 1.2, 30: 3, 50: 4.9, 100: 9.9}
+    at_100pct: {"4x": 12.3, "10x": 11.3, "20x": 9.9}
+
+  - source: Spectra
+    sheet_line: 647
+    registry_line: "640"
+    path: mirror_out
+    by_level_20x: {0: 0, 5: 2, 10: 2.9, 30: 6.9, 50: 11, 100: 22.0}
+    at_100pct: {"4x": 27.6, "10x": 25.4, "20x": 22.0}
+
+  # ---- LUN-F-XL (called "Confocal" at the bench, KH 2026-09-09) ------------
+  - source: LUN-F-XL
+    sheet_line: 488
+    registry_line: "488"
+    path: mband_out
+    by_level_20x: {0: 0, 5: null, 10: null, 30: 1.3, 50: 3, 100: 6.9}
+    at_100pct: {"4x": 7.0, "10x": 7.0, "20x": 6.9}
+
+  - source: LUN-F-XL
+    sheet_line: 555
+    registry_line: "561"
+    path: mband_out
+    by_level_20x: {0: 0, 5: null, 10: null, 30: 0.6, 50: 2, 100: 6.5}
+    at_100pct: {"4x": 6.9, "10x": 6.7, "20x": 6.5}
+
+  - source: LUN-F-XL
+    sheet_line: 647
+    registry_line: "640"
+    path: mband_out
+    by_level_20x: {0: 0, 5: null, 10: null, 30: null, 50: 3, 100: 9.9}
+    at_100pct: {"4x": 10.6, "10x": 10.3, "20x": 9.9}
+    note: "aperture full, size is different (operator's note at the bench)"
+
+  # ---- Optical tweezers, 1064 nm ------------------------------------------
+  # NOT a light source in data/light_sources.yaml -- this is the Class-4 trap
+  # laser, and the record belongs to SAFETY.md §1 rather than to a channel.
+  - source: optical_tweezers
+    sheet_line: 1064
+    registry_line: null         # no registry entry exists for the trap laser
+    path: all_in
+    by_level_20x: {0: 0, 5: 64, 10: 126, 30: 380, 50: 633, 80: 1020}
+    top_level_pct: 80
+    at_20pct: {"4x": 890, "10x": 1050}
+    at_100pct_extrapolated_mw: 1275
+    at_100pct_evidence: assumed
+    note: >-
+      100 % WAS NOT MEASURED: it over-ranged the meter (KH, 2026-09-09), which
+      is why 80 % is the top row. 1275 mW is 1020 x 100/80 and is `assumed`,
+      not `measured` -- CLAUDE.md §3, so it may be computed with and may not
+      advance a verdict. The extrapolation is well supported inside the
+      measured range (64 mW at 5 % predicts 1020 at 80 % to 0.4 %) but 100 % is
+      past the last reading, and a diode driver's last 20 % is exactly where a
+      knee would sit. As a safety figure it is the conservative direction: a
+      roll-over would put the true value below 1275, not above.
+
+      The two objective readings are at level 20 %, not at the 80 % reference,
+      so a comparison against 20x needs the 20x value at 20 % -- which was not
+      taken. See `open_questions.ot_20x_at_20pct`.
+
+# ---------------------------------------------------------------------------
+# ILLUMINATED AREA -- NOT MEASURED
+# ---------------------------------------------------------------------------
+# Without it there is no W/cm^2, and W/cm^2 is what the gates consume. The
+# magnification effect lives here, not in the power rows: total power above is
+# flat to within 25 % across 4x/10x/20x, while area goes as 1/M^2, so 4x to 20x
+# is a factor near 25. To be measured (KH, 2026-09-09).
+illuminated_area_um2:
+  "4x": null
+  "10x": null
+  "20x": null
+
+# ---------------------------------------------------------------------------
+# WHAT THE ROWS SAY -- recompute from the rows; do not cite these figures
+# ---------------------------------------------------------------------------
+# MIRROR. T = (all_in)/(mirror_out) on the Spectra, nine independent readings:
+#   470  0.439 / 0.433 / 0.434     (20x / 4x / 10x)
+#   555  0.438 / 0.439 / 0.438
+#   640  0.450 / 0.446 / 0.445
+# Flat in wavelength and in objective, so ~0.44 is usable as one number. This
+# is also the multiplicativity check that the reduced measurement design rested
+# on, and it passes for the one element that could be switched.
+#
+# OBJECTIVE. Total power at 100 %, against 20x: Aura 0.98-1.04, LUN-F-XL
+# 1.01-1.07, Spectra 1.09-1.25. The objective term is small; the area term is
+# the whole magnification effect.
+#
+# LEVEL LINEARITY, measured/(top x fraction):
+#   1064            1.00 0.99 0.99 0.99   linear over 5-80 %
+#   Aura 555, 640   0.94-1.01             linear
+#   Aura 488        1.30 at 5 %           over-delivers below ~10 %
+#   Spectra 470,555 0.60-0.65 at 5 %      under-delivers below ~30 %
+#   Spectra 640     1.62 at 5 %           a pedestal at low level: 0.8 mW at
+#                                         5 % all_in and 2.0 mW mirror_out,
+#                                         whose ratio 0.40 matches T_mirror, so
+#                                         it is the source and not the meter
+#   LUN-F-XL        0.31-0.87 at 30-50 %, unreadable at 5-10 %
+# Above ~30 % every source except the LUN-F-XL is linear to a few percent.
+#
+# ⚠ 1064 AT THE SAMPLE PLANE: 1020 mW at 80 %, through the 20x. Over one watt
+# of Class-4 1064. SAFETY.md §1 said this dial was uncalibrated; it is not any
+# more. The 4x and 10x pass 890 and 1050 mW at only 20 %.
+#
+# THE HEAD WAS NOT SATURATING, and the data shows it rather than assuming it:
+# 64 mW at 5 % extrapolates linearly to 1024 mW at 80 %, and 1020 was measured.
+# A compressing detector would have read distinctly low there. So 1020 mW is
+# not an underestimate from compression. What a photodiode head does NOT settle
+# is whether 1064 sits inside its calibrated range, and whether one watt was
+# inside its damage rating -- see open_questions.head_model.
+
+open_questions:
+  head_rating: >-
+    CLOSED (KH, 2026-09-09): the 1020 mW reading was within the S121C's normal
+    range, so it is neither outside the calibrated range nor a damage event
+    that would bias later readings. 100 % over-ranged it and was therefore not
+    taken, which is consistent.
+
+    The data agrees independently: 64 mW at 5 % predicts 1020 mW at 80 % to
+    within 0.4 %, so the head was not compressing anywhere in that range.
+  head_at_1064: >-
+    The S121C is a SILICON element, so 1064 nm sits near its band edge -- inside
+    the stated 400-1100 nm window, but at the end of it, where responsivity is
+    small and falls steeply with both wavelength and temperature. The visible
+    lines (470/555/640) sit in silicon's flat, well-calibrated region and are
+    unaffected.
+
+    So the 1064 ABSOLUTE figure is the least reliable number in this file. What
+    is not affected: the 1064 linearity (a single scale factor cancels in
+    measured/expected) and every ratio taken at one wavelength -- the mirror
+    transmission and the objective comparisons.
+  aura_555: >-
+    TODO(human): the Aura has no 555 key in data/light_sources.yaml -- its
+    numeric lines are 405/440/488/561/640, and 561 is the nearest. Which line
+    was driven? Until this is answered the row cannot be written into the
+    registry, though the reading itself stands.
+  spectra_488: >-
+    The Spectra's numeric keys are 395/440/470/508/555/585/640, so the bench
+    label "488" is recorded against "470" as the nearest. Confirm or correct.
+  ot_20x_at_20pct: >-
+    One further reading would remove an extrapolation from a safety number: the
+    20x at 20 %. Without it, the statement that 4x and 10x pass 3.5x and 4.1x
+    more than the 20x rests on extrapolating the 20x from its 30 % reading.
+    Note that the obvious explanation is wrong -- entrance-pupil diameter
+    2*NA*f/M gives 20.0, 18.0 and 16.0 mm for 4x, 10x and 20x, so pupil area
+    predicts 1.56x and 1.27x and puts 4x above 10x, while the measurement puts
+    10x above 4x. Objective IR transmission is the likelier cause, these being
+    visible-corrected lenses, but that is a hypothesis and not a measurement.
+  ot_100pct: >-
+    ANSWERED (KH, 2026-09-09): 100 % over-ranged the meter, which is why 80 % is
+    the top row. Recorded on the row itself, with the linear extrapolation to
+    1275 mW marked `assumed`.
+
+    If a measured 100 % is ever wanted, extrapolation is not the route -- it
+    needs a head with the range, or a 1064 attenuator of known transmission.
+    The mirror will not serve as that attenuator: its 0.44 was measured at
+    470/555/640 and using it at 1064 would trade one extrapolation for a worse
+    one, across wavelength rather than along a line that has been shown linear.

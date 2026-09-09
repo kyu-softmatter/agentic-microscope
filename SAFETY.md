@@ -54,9 +54,35 @@ and `config/tweezers/run_pattern.py` sends no `LASER_ON` for this reason.
 - **`LOAD_PROJECT` can turn the laser on.** A project file stores "the state of
   the laser operation and beam setting" (manual p.65), so loading a project
   saved laser-on arms the laser. **Save every template with the laser OFF.**
-- **Laser power is not readable or settable from software.** Dial % → mW is
-  uncalibrated (deferred 2026-08-19). Write the number down or it leaves no
-  record.
+- **Laser power is not readable or settable from software.** Still true: the
+  dial is a hand control and nothing reads it back, so **write the level down
+  or it leaves no record.**
+- **Dial % → mW is MEASURED as of 2026-09-09** (KH and Saksham Malik; Thorlabs
+  PM100A + S121C at the sample plane) and is no longer the 2026-08-19 deferral.
+  Through the **20×**:
+
+  | level | 5 % | 10 % | 30 % | 50 % | 80 % | 100 % |
+  |---|---|---|---|---|---|---|
+  | mW at the sample | 64 | 126 | 380 | 633 | **1020** | *~1275, extrapolated* |
+
+  **Over one watt of Class-4 1064 reaches the sample plane at 80 %**, and the
+  dial is linear to within 1 % across the whole measured range — so the level
+  reads directly as power and there is no soft region near the bottom. 100 %
+  over-ranged the meter and was not driven; 1275 mW is `assumed`, not
+  `measured`, and a diode driver's last 20 % is where a knee would sit.
+
+  ⚠ **The low-magnification objectives pass more, not less.** At level **20 %**
+  the 4× delivered **890 mW** and the 10× **1050 mW**, against roughly 253 mW
+  extrapolated for the 20× at that level — three to four times as much. The
+  obvious account is wrong and worth saying so: entrance-pupil diameter
+  `2·NA·f/M` gives 20.0, 18.0 and 16.0 mm for 4×/10×/20×, which predicts 1.56×
+  and 1.27× and puts 4× above 10×, while the measurement puts 10× above 4×.
+  These being visible-corrected lenses, per-objective IR transmission is the
+  likelier cause — but that is a hypothesis, and the 20× at 20 % was
+  extrapolated rather than read.
+
+  **So an objective change can multiply the power at the sample without the
+  dial moving.** → [`kb/calibrations/illumination-power.yaml`](kb/calibrations/illumination-power.yaml)
 - **`Turret2Shutter` gates the 1064 coupling path** and is **not** in
   `hardware/microscope.LASER_DEVICES` (which covers only `LUNF-Blanking`), so
   opening it is not gated as a laser action. Consider adding it.

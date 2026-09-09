@@ -55,8 +55,16 @@ light_sources:
       Cyan:
         center_nm: 470
         fwhm_nm: 24
-        power_at_sample_mw: {}
-        note: "Used for the 488-GFP channel. Observed levels 2·5·10·50·100%"
+        power_at_sample_mw: {"4x": 15.5, "10x": 14.5, "20x": 13.3}
+        linear_in_level: false
+        note: >
+          Used for the 488-GFP channel — the bench label for this line is "488"
+          (KH 2026-09-09). Observed levels 2·5·10·50·100%.
+          Power MEASURED 2026-09-09, mirror IN. With the mirror out it is
+          35.8/33.4/30.3 — a factor 2.3, and the schema has no slot for the
+          path, so read these as mirror-in only.
+          Not linear below ~30%: 0.60 of linear at 5%, 0.75 at 10%, 0.95 at 30%.
+          → kb/calibrations/illumination-power.yaml
       Teal:
         center_nm: 508
         fwhm_nm: 25
@@ -64,8 +72,13 @@ light_sources:
       Green:
         center_nm: 555
         fwhm_nm: 28
-        power_at_sample_mw: {}
-        note: "555-TRITC channel. May shift to 585 depending on YG filter state"
+        power_at_sample_mw: {"4x": 17.5, "10x": 16.7, "20x": 15.3}
+        linear_in_level: false
+        note: >
+          555-TRITC channel. May shift to 585 depending on YG filter state.
+          Power MEASURED 2026-09-09, mirror IN. Mirror out: 39.9/38.1/34.9.
+          Not linear below ~30%: 0.65 of linear at 5%, 0.85 at 10%, 0.96 at 30%.
+          → kb/calibrations/illumination-power.yaml
       Yellow:
         center_nm: 585
         fwhm_nm: 29
@@ -73,11 +86,20 @@ light_sources:
       Red:
         center_nm: 640
         fwhm_nm: 30
-        power_at_sample_mw: {}
+        power_at_sample_mw: {"4x": 12.3, "10x": 11.3, "20x": 9.9}
+        linear_in_level: false
         note: >
-          647-Cy5 channel. Observed levels 5·7·8·10·13·100%.
-          Exposures on that channel cluster at 500 ms, which suggests the light
-          level was probably insufficient — revisit after measurement.
+          647-Cy5 channel — the bench label is "647". Observed levels
+          5·7·8·10·13·100%. Exposures on that channel cluster at 500 ms, which
+          suggested the light level was insufficient; measurement 2026-09-09
+          supports it — at 9.9 mW this is the dimmest Spectra line measured,
+          against 15.3 at 555.
+          MEASURED 2026-09-09, mirror IN. Mirror out: 27.6/25.4/22.0.
+          ⚠ A PEDESTAL at low level, not a shortfall: 1.62 of linear at 5% and
+          1.21 at 10%. It is the source and not the meter — 0.8 mW at 5% mirror
+          in against 2.0 mW mirror out is a ratio of 0.40, matching this
+          instrument's measured mirror transmission of ~0.44.
+          → kb/calibrations/illumination-power.yaml
       White:
         center_nm: 0
         fwhm_nm: 0
@@ -212,11 +234,23 @@ light_sources:
       ⚠ 2026-09-03: the device reports five NAMED lines (UV/CYAN/GREEN/RED/NIR),
       not the numeric keys below — see the comment block above. Keys unverified.
     lines:
+      # Power MEASURED 2026-09-09 at the sample plane, mirror IN, per objective
+      # at level 100%. The bench labels were 488 / 555 / 647; KH confirmed those
+      # are these keys' 488 / 561 / 640 (2026-09-09).
+      # ⚠ The KEYS THEMSELVES are still unverified — see the warning above. A
+      # measured power filed against an unverified key is a measured number in a
+      # slot that may belong to another line.
       "405": { center_nm: 405, fwhm_nm: 20, power_at_sample_mw: {}, note: "fwhm unconfirmed placeholder" }
       "440": { center_nm: 440, fwhm_nm: 20, power_at_sample_mw: {}, note: "fwhm unconfirmed placeholder" }
-      "488": { center_nm: 488, fwhm_nm: 20, power_at_sample_mw: {}, note: "fwhm unconfirmed placeholder" }
-      "561": { center_nm: 561, fwhm_nm: 20, power_at_sample_mw: {}, note: "fwhm unconfirmed placeholder" }
-      "640": { center_nm: 640, fwhm_nm: 20, power_at_sample_mw: {}, note: "fwhm unconfirmed placeholder" }
+      "488": { center_nm: 488, fwhm_nm: 20, power_at_sample_mw: {"4x": 47, "10x": 45, "20x": 46},
+               linear_in_level: false,
+               note: "fwhm unconfirmed placeholder. Measured 2026-09-09, mirror in. OVER-delivers below ~10%: 1.30 of linear at 5%, 1.09 at 10%. → kb/calibrations/illumination-power.yaml" }
+      "561": { center_nm: 561, fwhm_nm: 20, power_at_sample_mw: {"4x": 48.3, "10x": 47.5, "20x": 46.5},
+               linear_in_level: true,
+               note: "fwhm unconfirmed placeholder. Measured 2026-09-09, mirror in; bench label 555. Linear 5-100% (0.97-1.01). → kb/calibrations/illumination-power.yaml" }
+      "640": { center_nm: 640, fwhm_nm: 20, power_at_sample_mw: {"4x": 16.5, "10x": 16.1, "20x": 15.9},
+               linear_in_level: true,
+               note: "fwhm unconfirmed placeholder. Measured 2026-09-09, mirror in; bench label 647. Linear 5-100% (0.94-1.01), and ~3x dimmer than 488/561. → kb/calibrations/illumination-power.yaml" }
 
     # ── Named lines: what the device actually exposes ────────────────────
     # The device reports UV / CYAN / GREEN / RED / NIR. None can be registered
@@ -265,10 +299,23 @@ light_sources:
       No measured power (power_at_sample_mw) — absolute photon budget cannot be
       computed.
     lines:
+      # Power MEASURED 2026-09-09 at the sample plane, per objective at 100%.
+      # ⚠ TAKEN WITH THE MULTIBAND FILTER OUT, which is the only configuration
+      # this path was measured in. The schema has no slot for the path, so these
+      # are not comparable with the Aura and Spectra rows above (mirror in).
+      # ⚠ This is by far the dimmest of the three engines — 6.5-9.9 mW at 20x
+      # against the Aura's 15.9-46.5 — and it is UNUSABLE BELOW ~30% level: 5%
+      # and 10% did not read at all, and 30% delivers 0.31-0.63 of linear.
       "405": { center_nm: 405, fwhm_nm: 1, power_at_sample_mw: {} }
-      "488": { center_nm: 488, fwhm_nm: 1, power_at_sample_mw: {} }
-      "561": { center_nm: 561, fwhm_nm: 1, power_at_sample_mw: {} }
-      "640": { center_nm: 640, fwhm_nm: 1, power_at_sample_mw: {} }
+      "488": { center_nm: 488, fwhm_nm: 1, power_at_sample_mw: {"4x": 7.0, "10x": 7.0, "20x": 6.9},
+               linear_in_level: false,
+               note: "Measured 2026-09-09, multiband OUT. Unreadable at 5-10%; 0.63 of linear at 30%. → kb/calibrations/illumination-power.yaml" }
+      "561": { center_nm: 561, fwhm_nm: 1, power_at_sample_mw: {"4x": 6.9, "10x": 6.7, "20x": 6.5},
+               linear_in_level: false,
+               note: "Measured 2026-09-09, multiband OUT; bench label 555. Unreadable at 5-10%; 0.31 of linear at 30%. → kb/calibrations/illumination-power.yaml" }
+      "640": { center_nm: 640, fwhm_nm: 1, power_at_sample_mw: {"4x": 10.6, "10x": 10.3, "20x": 9.9},
+               linear_in_level: false,
+               note: "Measured 2026-09-09, multiband OUT; bench label 647. Unreadable to 30%; 0.61 of linear at 50%. Operator noted 'aperture full, size is different' on this row, which bears on whether the spot fitted the head. → kb/calibrations/illumination-power.yaml" }
 
   # ══════════════════════════════════════════════════════════════════════
   # Transmitted light

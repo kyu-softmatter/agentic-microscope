@@ -167,10 +167,11 @@ the disk's write bandwidth (G12a). And underneath all of it, **`unevaluated` ≠
 
 ### Exceptions
 
-- **E1 · Lens 5's `BLOCKED` is the standing state, not a deadlock.**
-  `power_at_sample_mw` is `{}` and `bleach_photons` is empty (§3), so lens 5
+- **E1 · Lens 5's `BLOCKED` is the standing state, not a deadlock.** The
+  illuminated area is unmeasured and `bleach_photons` is empty (§3), so lens 5
   blocks **by design**. It must not trigger the three-round re-proposal loop or
-  the deadlock handoff — that is a missing power meter, not a conflict.
+  the deadlock handoff — that is a missing measurement, not a conflict. Power
+  itself stopped being the blocker on 2026-09-09.
 - **E2 · Lens 6 runs alone and last.** See the ⚠ above.
 - **E3 · Lens 7 silent on heating ≠ heating cleared.** Trap heating is ungated
   by decision ([05 §5](docs/05-consensus-gate.md), [06 D6](docs/06-pitfalls.md)).
@@ -202,10 +203,14 @@ the disk's write bandwidth (G12a). And underneath all of it, **`unevaluated` ≠
   becomes a wrong one. A margin of 10.00 against a threshold nobody supplied
   still does not advance.
 - **Lens 6 (`validity/`) reviews the other lenses' verdicts, so call it last.**
-- Two blockers are load-bearing and still open: `power_at_sample_mw` is `{}` for
-  every line of every source, and `bleach_photons` is empty for every dye — so
-  **lens 5 returns `BLOCKED` on this instrument by design.** Every dose number
-  is relative until a power meter sits at the sample plane.
+- **Lens 5 still returns `BLOCKED` on this instrument — but as of 2026-09-09
+  for a smaller reason, and the fix instruction changed with it.**
+  `power_at_sample_mw` is measured for nine lines at three objectives
+  ([`kb/calibrations/illumination-power.yaml`](kb/calibrations/illumination-power.yaml)).
+  Two blockers remain: the **illuminated area** is unmeasured, and `P` is not
+  `I = P/A` — that one is a field measurement, not another power meter — and
+  `bleach_photons` is empty for every dye, which only G10 needs and which no
+  power meter can supply. Every dose number is still relative.
 
 ## 4. Hardware, when it is in the loop
 
