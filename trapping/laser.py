@@ -19,7 +19,10 @@ measurement"):
 
 from __future__ import annotations
 
+import pathlib
 from dataclasses import dataclass, field
+
+import yaml
 
 
 #: The trap laser's MEASURED dial% -> power-at-the-sample curve, in watts.
@@ -53,6 +56,107 @@ MEASURED_1064_20X_W: dict[float, float] = {
     50.0: 0.633,
     80.0: 1.020,
 }
+
+
+#: The objective correction table -- kb/calibrations/objective-transmittance.yaml.
+#: Loaded lazily so importing this module never touches the filesystem.
+_RATIO_TABLE_PATH = (
+    pathlib.Path(__file__).resolve().parent.parent
+    / "kb"
+    / "calibrations"
+    / "objective-transmittance.yaml"
+)
+
+_ratio_table: dict | None = None
+
+
+def _ratios() -> dict:
+    global _ratio_table
+    if _ratio_table is None:
+        with _RATIO_TABLE_PATH.open() as fh:
+            _ratio_table = yaml.safe_load(fh)
+    return _ratio_table
+
+
+@dataclass(frozen=True)
+class ObjectiveRatio:
+    """One cell of the correction table, with the tier that qualifies it."""
+
+    objective: str
+    wavelength_label: str
+    ratio: float
+    tier: str
+
+    @property
+    def measured(self) -> bool:
+        return self.tier in ("reference", "measured")
+
+
+def objective_ratio_to_20x(objective: str, wavelength_label: str = "1064") -> ObjectiveRatio:
+    """Power at the sample through ``objective``, relative to the 20x.
+
+    Reads kb/calibrations/objective-transmittance.yaml. **Not a transmittance**
+    -- it is a power ratio, and the measured rows show the two differ by
+    however the source fills the pupil; see that file's header.
+
+    Raises ``KeyError`` when the cell is empty. That is the point of the table:
+    an `absent` cell has no number to be roughly right with, and inventing one
+    is what the tiers exist to prevent. A cell that IS filled computes, whatever
+    its tier -- "our purpose is rough estimation, so some error is fine" (KH,
+    2026-09-10) -- and only ``measured`` lets a verdict advance, which is
+    CLAUDE.md §3's standing rule.
+    """
+    t = _ratios()
+    if objective == t["meta"]["reference_objective"]:
+        return ObjectiveRatio(objective, wavelength_label, 1.0, "reference")
+
+    trap = t["trap_ratio_to_20x"].get(wavelength_label, {})
+    if objective in trap:
+        return ObjectiveRatio(
+            objective, wavelength_label, float(trap[objective]),
+            t["trap_ratio_to_20x"]["tier"],
+        )
+
+    plot = t["plot_ratio_to_20x"].get(wavelength_label, {})
+    if objective in plot:
+        return ObjectiveRatio(
+            objective, wavelength_label, float(plot[objective]),
+            t["plot_ratio_to_20x"]["tier"],
+        )
+
+    raise KeyError(
+        f"no power ratio for {objective!r} at {wavelength_label!r} in "
+        f"{_RATIO_TABLE_PATH.name}. Filled cells are listed there with their "
+        "evidence tier, and the empty ones with why -- see its `absent` and "
+        "`to_measure` blocks. Supplying a number here rather than measuring "
+        "one is what that file exists to stop."
+    )
+
+
+def measured_source_ratio_to_20x(
+    objective: str, wavelength_label: str, source: str
+) -> ObjectiveRatio:
+    """The MEASURED 4x/10x visible ratios, which are per source.
+
+    Kept separate from :func:`objective_ratio_to_20x` because they disagree
+    across sources by up to 0.21 at the same objective and wavelength -- the
+    Spectra runs 1.14-1.24 at the 4x against 1.01-1.07 for the other two. A
+    property of the glass alone could not do that, so collapsing them to one
+    number per objective would attribute a source's fill factor to the lens.
+    """
+    t = _ratios()
+    if objective == t["meta"]["reference_objective"]:
+        return ObjectiveRatio(objective, wavelength_label, 1.0, "reference")
+    row = t["measured_ratio_to_20x"].get(wavelength_label, {}).get(objective, {})
+    if source not in row:
+        raise KeyError(
+            f"no measured ratio for {source!r} through {objective!r} at "
+            f"{wavelength_label!r}. Measured cells cover the 4x and 10x only."
+        )
+    return ObjectiveRatio(
+        objective, wavelength_label, float(row[source]),
+        t["measured_ratio_to_20x"]["tier"],
+    )
 
 
 @dataclass(frozen=True)

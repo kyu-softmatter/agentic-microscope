@@ -341,3 +341,80 @@ def test_the_objective_is_the_remaining_assumption_not_the_dial():
     )
     assert not any("dial% -> mW calibration" in a for a in v.assumed_inputs)
     assert any("illumination-power.yaml" in a for a in v.assumed_inputs)
+
+
+# --------------------- the objective correction table (2026-09-10) ---------
+
+
+def test_the_table_computes_where_filled_and_refuses_where_empty():
+    """kb/calibrations/objective-transmittance.yaml. A filled cell computes
+    whatever its tier -- "our purpose is rough estimation, so some error is
+    fine" (KH) -- and an empty one raises, because there is no number to be
+    roughly right with.
+    """
+    from trapping.laser import objective_ratio_to_20x
+
+    assert objective_ratio_to_20x("20x").ratio == 1.0
+    assert objective_ratio_to_20x("20x").tier == "reference"
+    assert objective_ratio_to_20x("100x-Oil").ratio == pytest.approx(0.95)
+    assert objective_ratio_to_20x("40x-WI").ratio == pytest.approx(0.74)
+    assert objective_ratio_to_20x("100x-Oil", "488").tier == "read-from-plot"
+
+    # 10x at 1064: no curve exists and the direct readings were retracted.
+    with pytest.raises(KeyError, match="no power ratio"):
+        objective_ratio_to_20x("10x")
+
+
+def test_only_a_measured_tier_may_advance():
+    """The tiers are not decoration: `reference`/`measured` are the two that
+    CLAUDE.md §3 lets a verdict advance on."""
+    from trapping.laser import objective_ratio_to_20x
+
+    assert objective_ratio_to_20x("20x").measured is True
+    assert objective_ratio_to_20x("100x-Oil").measured is False
+    assert objective_ratio_to_20x("100x-Oil", "488").measured is False
+
+
+def test_the_measured_visible_ratios_stay_per_source():
+    """They disagree by up to 0.21 at the same objective and wavelength -- the
+    Spectra runs 1.14-1.24 at the 4x against 1.01-1.07 for the other two. A
+    property of the glass alone could not do that, so collapsing them would
+    attribute a source's fill factor to the lens."""
+    from trapping.laser import measured_source_ratio_to_20x
+
+    spectra = measured_source_ratio_to_20x("4x", "640", "Spectra").ratio
+    aura = measured_source_ratio_to_20x("4x", "640", "Aura").ratio
+    assert spectra == pytest.approx(1.242)
+    assert aura == pytest.approx(1.038)
+    assert spectra - aura > 0.15
+
+
+def test_the_objective_correction_actually_moves_the_power():
+    """Otherwise the table would be a document nothing consumes. 633 mW at the
+    20x becomes 601 mW through the 100x Oil."""
+    from trapping.laser import MEASURED_1064_20X_W, LaserCalibration
+
+    common = dict(
+        calibration=LaserCalibration(points=MEASURED_1064_20X_W),
+        dial_percent=50.0,
+        temperature_measured=True,
+    )
+    at_20x = _setup(**common)
+    at_100x = _setup(objective_key="100x-Oil", **common)
+    assert at_20x.weakest_power_w() == pytest.approx(0.633)
+    assert at_100x.weakest_power_w() == pytest.approx(0.633 * 0.95)
+
+
+def test_an_unset_objective_says_the_power_is_the_20x_s():
+    """Silence must not read as "this is the right objective"."""
+    from trapping.laser import MEASURED_1064_20X_W, LaserCalibration
+
+    v = evaluate(
+        _setup(
+            calibration=LaserCalibration(points=MEASURED_1064_20X_W),
+            dial_percent=50.0,
+            temperature_measured=True,
+            detector_fps=520.0,
+        )
+    )
+    assert any("the power used is the 20x's" in a for a in v.assumed_inputs)

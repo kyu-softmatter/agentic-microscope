@@ -141,11 +141,32 @@ class TrapSetup:
     #: Achieved camera frame rate from lens 2 (detection), for the G14
     #: cross-check f_s >= 10*f_c. None if lens 2 hasn't run yet.
     detector_fps: float | None = None
+    #: Which objective the beam goes through, as a key in data/objectives.yaml.
+    #: The measured 1064 curve was taken at the 20x, so without this the power
+    #: is the 20x's. Set it and the correction table applies
+    #: (kb/calibrations/objective-transmittance.yaml).
+    objective_key: str | None = None
+
+    @property
+    def objective_ratio(self):
+        """The power ratio to the 20x for this objective, or None if unset.
+
+        Returns a `laser.ObjectiveRatio`, whose `tier` is what the evidence
+        axis reads: `reference` and `measured` may advance a verdict,
+        `read-from-plot` and `past-plot-end` compute but do not.
+        """
+        if self.objective_key is None:
+            return None
+        from .laser import objective_ratio_to_20x
+
+        return objective_ratio_to_20x(self.objective_key, "1064")
 
     def powers_w(self) -> list[float]:
-        return power_per_trap(
+        powers = power_per_trap(
             self.calibration, self.dial_percent, self.n_traps, weights=self.weights
         )
+        r = self.objective_ratio
+        return powers if r is None else [p * r.ratio for p in powers]
 
     def weakest_power_w(self) -> float:
         """The least-powered trap -- the binding constraint for confinement

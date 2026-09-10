@@ -1,0 +1,150 @@
+# Power at the sample, per objective, relative to the 20x -- the correction
+# table for turning the one measured objective into the others.
+#
+#   python -m calibration.cli objective-ratio          # print this table
+#   trapping.laser.power_at_objective(dial, objective) # 1064, from it
+#
+# ─────────────────────────────────────────────────────────────────────────
+# WHAT THIS IS, AND WHAT IT IS NOT
+#
+# NOT an objective transmittance. It is a POWER RATIO at the sample plane:
+# `mW through objective X / mW through the 20x`, same source, same line, same
+# path. Those differ by however the source fills the pupil, and the measured
+# rows below show that difference is real -- the three sources disagree by up
+# to 0.21 at the same objective and wavelength, which a property of the glass
+# alone could not do. Reading these as transmittances would attribute a
+# source's fill factor to the lens.
+#
+# The 20x is the reference because it is the only objective whose power is
+# MEASURED for every line, visible and 1064
+# (kb/calibrations/illumination-power.yaml). Its ratio is 1.000 by definition.
+#
+# ⚠ WAVELENGTH AXIS IS BY LAB LABEL, NOT BY NANOMETRES. The Aura's named
+# lines have `center_nm: null` in data/light_sources.yaml -- nobody has
+# measured where CYAN/GREEN/RED sit -- so "488" here means "the 488-labelled
+# line of each engine", which is this lab's convention (KH, 2026-09-09) and
+# not a centre. Only the LUN-F-XL's numeric lines are wavelengths.
+#
+# ─────────────────────────────────────────────────────────────────────────
+# EVIDENCE TIERS, and every cell carries one
+#
+#   reference       the 20x. 1.000 by construction.
+#   measured        both objectives' power read with a meter at the sample
+#                   plane. Per-source, because the sources disagree.
+#   read-from-plot  the ratio KH read off the vendor transmittance curves on
+#                   2026-09-09, at 1000 nm or below. `+-2-3 %` by eye.
+#   past-plot-end   read at 1000 nm and USED at 1064 nm, because every plot
+#                   stops at 1000. Direction unknown per lens; the 40x WI's
+#                   curve is still falling steeply where its plot ends.
+#   absent          no curve and no measurement. Left empty on purpose.
+#
+# ⚠ THE `read-from-plot` CELLS ARE NOT CROSS-VALIDATED, AND IT LOOKS AS IF
+# THEY ARE. Back-solving them out of `estimated_visible_mw` gives the same
+# number from all three sources to within 0.008 -- but that agreement is
+# CIRCULAR: that block was built by multiplying each source's own measured 20x
+# by one shared curve ratio, so recovering the same ratio is arithmetic, not
+# confirmation. The only real test of the method is against the 4x, where a
+# measurement exists, and there it lands within 5 % for the Aura and the
+# LUN-F-XL and misses by 14-22 % for the Spectra
+# (kb/calibrations/illumination-power.yaml).
+#
+# ─────────────────────────────────────────────────────────────────────────
+# FITNESS FOR PURPOSE (KH, 2026-09-10): "our purpose is rough estimation, so
+# some error is fine." So an `estimated` cell is USABLE -- it computes. What
+# it must not do is let a verdict advance, which is CLAUDE.md §3's standing
+# rule and not a new one. An `absent` cell computes nothing at all: there is
+# no number to be roughly right with.
+
+meta:
+  id: objective-transmittance
+  reference_objective: "20x"
+  source: kb/calibrations/illumination-power.yaml
+  built: 2026-09-10
+  built_by: >-
+    Derived arithmetically from numbers already in that file and in
+    data/light_sources.yaml -- no plot was read to make this table. The
+    `read-from-plot` cells were read by KH on 2026-09-09; this file recovers
+    them by dividing `estimated_visible_mw` by each source's measured 20x.
+
+# ── Visible: 4x and 10x are MEASURED, per source ────────────────────────
+# Ratios computed from data/light_sources.yaml's per-objective readings.
+# Kept per-source because they disagree, and the disagreement is the finding.
+measured_ratio_to_20x:
+  tier: measured
+  note: >-
+    Every one of these is above 1.000: the low-mag objectives pass MORE power
+    than the 20x. The Spectra is the consistent outlier (1.14-1.24 at the 4x
+    against 1.01-1.07 for the other two), the same 14-22 % that
+    illumination-power.yaml attributes to the Spectra path rather than to the
+    objectives.
+  "488":
+    "4x":  {Spectra: 1.165, Aura: 1.022, LUN-F-XL: 1.014}
+    "10x": {Spectra: 1.090, Aura: 0.978, LUN-F-XL: 1.014}
+  "555":
+    "4x":  {Spectra: 1.144, Aura: 1.039, LUN-F-XL: 1.062}
+    "10x": {Spectra: 1.092, Aura: 1.022, LUN-F-XL: 1.031}
+  "640":
+    "4x":  {Spectra: 1.242, Aura: 1.038, LUN-F-XL: 1.071}
+    "10x": {Spectra: 1.141, Aura: 1.013, LUN-F-XL: 1.040}
+
+# ── Visible: the high-mag objectives, read off the curves ───────────────
+# One value per (objective, wavelength): source-independent BY CONSTRUCTION,
+# not by test -- see the circularity warning above.
+plot_ratio_to_20x:
+  tier: read-from-plot
+  uncertainty: "+-2-3 % by eye, and untested except against the 4x"
+  "488":  {"40x-WI": 0.995, "60x-Oil": 0.912, "100x-Oil": 0.901}
+  "555":  {"40x-WI": 0.969, "60x-Oil": 0.937, "100x-Oil": 0.950}
+  "640":  {"40x-WI": 0.940, "60x-Oil": 0.930, "100x-Oil": 0.961}
+
+# ── 1064 nm: past the end of every plot ─────────────────────────────────
+trap_ratio_to_20x:
+  tier: past-plot-end
+  reference_power_mw: 1020        # at dial 80 %, the top MEASURED level
+  reference_note: >-
+    1020 mW at 80 % through the 20x, all_in, measured 2026-09-09. 100 %
+    over-ranged the meter, so 80 % is the top row and this table inherits that
+    ceiling -- trapping.laser refuses to extrapolate past it.
+  "1064":
+    "4x":       1.08
+    "40x-WI":   0.74
+    "60x-Oil":  0.88
+    "100x-Oil": 0.95
+  caveat: >-
+    Read at 1000 nm and applied at 1064. The 40x WI passes the least NIR by a
+    clear margin and its curve is STILL FALLING STEEPLY where the plot ends,
+    so its true 1064 value is likely below even 0.71 -- and it is the
+    index-matched choice for aqueous trapping, so the objective most
+    attractive for trapping in water delivers the least trap power. Nothing
+    gates that.
+
+# ── Empty on purpose ────────────────────────────────────────────────────
+absent:
+  "10x @ 1064":
+    tier: absent
+    why: >-
+      No 10x transmittance plot exists -- both plots labelled "20x" are 20x
+      (KH, 2026-09-09). And the two direct 1064 readings that once filled the
+      4x and 10x were RETRACTED as a measurement error, so there is neither a
+      curve nor a reading. `illumination-power.yaml`'s TODO(human) on what the
+      error was is still open, and it is what stops the re-measurement
+      repeating it.
+  "4x, 20x @ visible high-mag rows":
+    tier: not-applicable
+    why: "the 4x and 10x visible cells are measured, so no curve is needed"
+
+# ── What closes the biggest gap ─────────────────────────────────────────
+to_measure:
+  - what: "1064 mW at the sample through the 40x-WI or the 100x-Oil"
+    why: >-
+      One power-meter reading removes the only extrapolation in a SAFETY
+      number. Every 1064 cell except the 20x is currently read at 1000 nm and
+      used at 1064; a single reading at a high-mag objective would anchor the
+      whole column. illumination-power.yaml already names this: "One further
+      reading would remove an extrapolation from a safety number."
+  - what: "a 10x transmittance curve, or a 10x 1064 reading"
+    why: >-
+      The plot method has ONE test (the 4x) and that is also where the
+      Spectra's 12-20 % discrepancy shows, so the data cannot say whether that
+      is the Spectra path or the method. The 10x visible power IS measured, so
+      a 10x curve would be an independent second test.

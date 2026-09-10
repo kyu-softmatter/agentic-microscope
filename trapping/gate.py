@@ -137,7 +137,9 @@ def _assumed_inputs(setup: TrapSetup) -> list[str]:
     out: list[str] = []
     if not setup.calibration.measured:
         out.append("laser dial% -> mW calibration")
-    elif setup.calibration.points == MEASURED_1064_20X_W:
+    elif setup.calibration.points == MEASURED_1064_20X_W and (
+        (r := setup.objective_ratio) is None or not r.measured
+    ):
         # This specific dataset -- kb/calibrations/illumination-power.yaml,
         # `optical_tweezers` row, KH 2026-09-09 -- was taken at the **20x**,
         # and every 1064 figure for another objective in that file is an
@@ -149,13 +151,22 @@ def _assumed_inputs(setup: TrapSetup) -> list[str]:
         # is a property of THAT measurement and not of measured calibrations
         # in general -- a caller who supplies their own points at their own
         # objective is not making this assumption.
-        out.append(
-            "1064 nm transmittance of the objective in use: the dial% -> mW "
-            "curve is MEASURED at the 20x "
-            "(kb/calibrations/illumination-power.yaml, optical_tweezers row, "
-            "KH 2026-09-09, 5-80 %), and every other objective in that file "
-            "is an estimate off a transmittance plot"
-        )
+        if r is None:
+            out.append(
+                "which objective the 1064 power applies to: the dial% -> mW "
+                "curve is MEASURED at the 20x "
+                "(kb/calibrations/illumination-power.yaml, optical_tweezers "
+                "row, KH 2026-09-09, 5-80 %) and no objective_key was given, "
+                "so the power used is the 20x's"
+            )
+        else:
+            out.append(
+                f"1064 power ratio for '{r.objective}': {r.ratio:g} at tier "
+                f"'{r.tier}' (kb/calibrations/objective-transmittance.yaml) -- "
+                "read off a vendor plot at 1000 nm and applied at 1064, "
+                "because every plot stops at 1000. The dial% -> mW curve "
+                "itself is measured, at the 20x"
+            )
     if not setup.temperature_measured:
         out.append(f"medium temperature ({setup.temperature_k:.1f} K default)")
     if setup.beam.clipped_by_tir(setup.medium):

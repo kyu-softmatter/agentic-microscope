@@ -114,6 +114,7 @@ def cmd_check(args: argparse.Namespace) -> int:
         weights=weights,
         temperature_k=args.temperature_c + 273.15,
         temperature_measured=args.temperature_measured,
+        objective_key=args.objective,
         detector_fps=args.detector_fps,
     )
     v = evaluate(setup)
@@ -183,6 +184,14 @@ def main(argv: list[str] | None = None) -> int:
 
     c = sub.add_parser("check", help="run the committee-lens gate (confinement, U/kT, G14 sampling)")
     c.add_argument("--dial", type=float, default=100.0, help="laser dial setting, 0-100%%")
+    c.add_argument(
+        "--objective", default=None,
+        help="objective key from data/objectives.yaml (100x-Oil, 60x-Oil, "
+        "40x-WI, 20x, 4x). The measured 1064 curve is the 20x's; give this and "
+        "the correction table applies "
+        "(kb/calibrations/objective-transmittance.yaml). Without it the power "
+        "used is the 20x's, and the verdict says so",
+    )
     c.add_argument("--n-traps", type=int, default=1, help="number of simultaneous traps sharing the beam")
     c.add_argument("--weights", help="comma-separated per-trap power-split weights (default: equal split)")
     c.add_argument("--max-power-w", type=float, default=1.0, help="power at dial=100%% (W) for the PLACEHOLDER path; only used with --placeholder-power")
