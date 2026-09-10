@@ -953,42 +953,34 @@ pixel_size_calibration:
       factor. Once a preset names both devices MM matches only when both agree,
       and reports 0.0 at an unlisted combination -- absent rather than wrong.
 
-    **Mirroring it exposed something the spreadsheet did not say.** Against
-    6.5 um / (M_obj * M_int), eleven of the twelve cells agree to every digit
-    they carry -- 6.5/4 = 1.625, 6.5/15 = 0.43333, 6.5/150 = 0.04333. Eleven
-    independent stage-micrometer readings agreeing with division to five
-    significant figures is not what a measurement looks like, so those eleven
-    are carried as `evidence: nominal` and change no verdict.
+    **Mirroring it raised a question about the digits, and the answer is that
+    the table is measured** (KH, 2026-09-09). Against 6.5 um / (M_obj * M_int),
+    eleven of the twelve cells agree to every digit they carry -- 6.5/4 = 1.625,
+    6.5/15 = 0.43333, 6.5/150 = 0.04333. From 2026-09-04 to 2026-09-09 this
+    repository read that as evidence the cells were arithmetic and demoted them
+    to `nominal`.
 
-    **The 20x was carried as the exception until 2026-09-09.** Its digits do
-    differ -- 0.32373 against a nominal 0.325, and 0.21582 against 0.216667,
-    both low by 0.39 % -- and that was read as a real magnification of 20.078x,
-    so the row alone was `evidence: measured`.
+    That reasoned from the digits to how the spreadsheet was produced, which is
+    an inference about provenance made by a reader without the instrument. The
+    operator has it and says the values were measured, so all six rows are
+    `evidence: measured`. Eleven cells on the quotient means those objectives
+    sit at their nominal magnification; the twelfth, 20x low by 0.39 % at both
+    intermediate settings, is a real 20.078x objective and is what makes the
+    set coherent -- five lenses on nominal and one measurably off.
 
-    **KH judges 0.39 % to be agreement (2026-09-09), so it is `nominal` too.**
-    On that reading the internal consistency between the two intermediate
-    settings is the same formula twice rather than corroboration, and 20.078x
-    is a story fitted to rounding. The values are unchanged; only the tier is.
-
-    So **no cell of the spreadsheet is a measurement**. But the 100x 1x cell no
-    longer comes from the spreadsheet: on 2026-09-03 two independent length
-    standards were driven 10 um at 100x and read off the camera -- the
+    **The 100x 1x cell is not the spreadsheet's.** On 2026-09-03 two independent
+    length standards were driven 10 um at 100x and read off the camera: the
     closed-loop piezo gave 0.06460 um/px and the AOD trap 0.06445, agreeing to
-    0.24 % with each other and to 0.73 % with the nominal. That value, 0.06453,
-    is recorded as `measured` (2026-09-09).
+    0.24 % with each other and to 0.73 % with the spreadsheet's 0.065. The more
+    direct of the two, 0.06453, is what is recorded -- so that cell has two
+    independent measurements behind it.
 
-    An earlier note here demanded a stage micrometer specifically. That was
-    wrong (KH, 2026-09-09): a length standard is a length standard, and a
-    calibrated closed-loop piezo driven a known distance measures scale.
+    Roadmap Phase 0's "measured pixel-size calibration" is therefore **closed**.
+    `tests/test_pixel_size.py::test_every_row_is_measured` is the guard, and it
+    now guards against a DEMOTION: G24 takes `pixel_size_measured` as a
+    caller's claim, and losing it would silently cost `advances` on every
+    pixel-size-dependent quantity.
 
-    The roadmap Phase 0 item "measured pixel-size calibration" is therefore
-    closed for 100x -- the standing objective -- and open for the other five.
-    `tests/test_pixel_size.py::test_only_100x_is_measured` is the guard, since
-    G24 takes `pixel_size_measured` as a caller's claim and nothing in code
-    would otherwise stop a promotion.
-
-    ⚠ The six MM `.cfg` files still carry `PixelSize_um,100x-1x,0.065`, so
-    `getPixelSizeUm()` and this table now differ by 0.73 %.
   table:
     "4x":   {"1x": 1.625,   "1.5x": 1.0833}
     "10x":  {"1x": 0.65,    "1.5x": 0.43333}

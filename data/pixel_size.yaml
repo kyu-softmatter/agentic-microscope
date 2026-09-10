@@ -8,70 +8,46 @@
 # dated 2025-04, provided by the user. Camera: Kinetix.
 #
 # ---------------------------------------------------------------------------
-# READ THIS BEFORE TREATING THE TABLE AS MEASURED  (added 2026-09-04)
+# THE TABLE IS MEASURED  (settled 2026-09-09, after two reversals)
 # ---------------------------------------------------------------------------
-# Eleven of the twelve cells are exactly the nominal quotient
+# The spreadsheet is a measurement and its values are used as they stand
+# (KH, 2026-09-09: "이미 측정을 한거야. 그 픽셀 변환값을 그대로 사용해").
+#
+# THIS OVERTURNS THIS FILE'S OWN 2026-09-04 ANALYSIS, which is kept below
+# because the observation in it is still true and only the conclusion was
+# wrong. Eleven of the twelve cells equal the nominal quotient
 #
 #     p_sample = p_sensor / (M_obj * M_int),   p_sensor = 6.5 um (Kinetix)
 #
-# to every digit the spreadsheet carries. 6.5/4 = 1.625, 6.5/15 = 0.43333,
-# 6.5/150 = 0.04333, and so on. A stage-micrometer measurement agreeing with
-# arithmetic to five significant figures in eleven independent cells is not
-# what a measurement looks like -- so those eleven are recorded here as
-# `nominal`, and they return exactly what detection.photometry.effective_pixel_nm
-# already computes from data/detectors.yaml. Using them changes no verdict.
+# to every digit the spreadsheet carries -- 6.5/4 = 1.625, 6.5/15 = 0.43333,
+# 6.5/150 = 0.04333. From that it was argued that "eleven independent readings
+# agreeing with division to five significant figures is not what a measurement
+# looks like", and all eleven were demoted to `nominal`.
 #
-# ---------------------------------------------------------------------------
-# AND THE TWELFTH IS NOT THE EXCEPTION EITHER  (revised 2026-09-09)
-# ---------------------------------------------------------------------------
-# The 20x row was marked `measured` from 2026-09-04, on the reasoning that
-# 6.5/20 = 0.325 against a table 0.32373, and 6.5/30 = 0.216667 against 0.21582
-# -- both low by 0.39 %, consistently -- which is what a real 20.078x objective
-# would look like.
+# That argument reasons from the DIGITS to how the spreadsheet was produced. It
+# is an inference about provenance, made by a reader who does not have the
+# instrument. The operator does, and says it was measured. The same precedent
+# is already recorded in kb/systems/current.md:1284 for the trapping field --
+# "an operator statement about their own instrument outranks" a shape inferred
+# from a drawing.
 #
-# **KH judges 0.39 % to be agreement, not a departure (2026-09-09).** On that
-# reading the row is the arithmetic too, the internal consistency is just the
-# same formula twice, and 20.078x is a story fitted to rounding.
+# ⚠ WHAT THE DIGITS STILL SAY, because it does not stop being odd: eleven cells
+# landing on the quotient to five figures means either the objectives are very
+# close to their nominal magnifications and the measurement rounded onto the
+# arithmetic, or the spreadsheet recorded the arithmetic. Only the first is
+# consistent with the operator's statement, and it is not implausible -- the one
+# cell that departs, 20x by 0.39 %, is the size of departure you would expect
+# from a real 20.078x objective. Reading it that way makes the table internally
+# coherent: five objectives near nominal, one measurably off.
 #
-# So NONE OF THE SPREADSHEET'S TWELVE CELLS IS A MEASUREMENT. The whole table
-# reproduces p_sensor / (M_obj * M_int), and its title -- a "conversion factor"
-# table -- promises something it does not contain.
+# CONSEQUENCE. G24 (lens 6, pixel calibration) takes `pixel_size_measured` as a
+# claim the caller makes. Callers may now make it at ANY objective, where before
+# 2026-09-09 the honest answer was nowhere and then 100x only. Every
+# pixel-size-dependent quantity can now `advance` at every magnification.
 #
-# ---------------------------------------------------------------------------
-# 100x IS MEASURED, AND NOT FROM THE SPREADSHEET  (2026-09-09)
-# ---------------------------------------------------------------------------
-# A separate measurement exists and had never been filed here. On 2026-09-03
-# two independent length standards were driven over 10 um at 100x and the
-# displacement read off the camera:
-#
-#     piezo stage (closed-loop, chamber-stuck particle)  ->  0.06460 um/px
-#     AOD trap    (trapped bead, y)                      ->  0.06445 um/px
-#     mean                                                   0.06453 um/px
-#
-# The two agree with each other to 0.24 %, and with the nominal 0.065 to 0.73 %
-# -- which KH judges to be agreement (2026-09-09), so this CONFIRMS the formula
-# at the standing objective rather than contradicting it.
-#
-# It is `measured` because a length standard is a length standard: the earlier
-# note in this file demanded a stage micrometer specifically, and that was
-# wrong (KH, 2026-09-09). A calibrated closed-loop piezo driven a known
-# distance measures scale. What is recorded is the value that came out of it.
-#
-# The distinction is not pedantry here: lens 6 owns pixel calibration (G24) and
-# the whole provenance axis is `measured` vs `assumed`. G24 takes
-# `pixel_size_measured` as a claim the caller makes, so nothing in code breaks
-# when this goes to `nominal` -- but any caller that set it True on the strength
-# of the 20x row was wrong, and now provably.
-#
-# What would promote any other row: drive a known length at THAT objective and
-# read the displacement off the camera -- a stage micrometer, the piezo, or the
-# trap. Nothing promotes a cell except a length actually traversed at it.
-#
-# 0.7 % IS AGREEMENT TOO (KH, 2026-09-09), which settles the 100x row the other
-# way round from how it was first written. Two independent 10 um rulers at 100x
-# agree with the nominal 0.065 inside that tolerance -- so the cross-check
-# PASSED. There is no lurking 0.7 % error in kappa; the arithmetic was checked
-# against hardware at the standing objective and held.
+# The 100x 1x cell does NOT come from the spreadsheet -- see its own note. It
+# has a second, independent measurement from 2026-09-03 that agrees to 0.73 %,
+# and the more direct of the two is what is recorded.
 
 pixel_size:
   camera: Kinetix
@@ -111,27 +87,33 @@ pixel_size:
   # `evidence` is per row, because it differs per row.
   table:
     "4":
-      evidence: nominal
+      evidence: measured
       values: {"1x": 1.625, "1.5x": 1.0833}
     "10":
-      evidence: nominal
+      evidence: measured
       values: {"1x": 0.65, "1.5x": 0.43333}
     "20":
-      evidence: nominal
+      evidence: measured
       values: {"1x": 0.32373, "1.5x": 0.21582}
+      effective_magnification: 20.078   # 6.5 / 0.32373
       note: >
-        Was `measured` from 2026-09-04 to 2026-09-09. It is the only row whose
-        digits differ from the quotient -- 0.32373 against 6.5/20 = 0.325, and
-        0.21582 against 0.216667, both low by 0.39 % -- and that was read as a
-        real 20.078x objective. KH judges 0.39 % to be agreement (2026-09-09),
-        so it is arithmetic like the other eleven and the consistency between
-        the two intermediate magnifications is just the same formula twice.
-        The VALUES are unchanged; only the tier moved.
+        The only row whose digits depart from the quotient: 0.32373 against
+        6.5/20 = 0.325, and 0.21582 against 0.216667, both low by 0.39 % --
+        which is what a real 20.078x objective looks like, consistently at both
+        intermediate settings.
+
+        Its tier changed twice on 2026-09-09 and landed back where it started.
+        It was demoted when KH judged 0.39 % to be agreement rather than a
+        departure, then restored with the rest of the table when he ruled the
+        spreadsheet a measurement. Both rulings hold at once: the departure is
+        small enough to call agreement, AND the cell is measured. The 20.078x
+        reading is the one that makes the table coherent -- five objectives
+        landing on nominal, one measurably off.
     "40":
-      evidence: nominal
+      evidence: measured
       values: {"1x": 0.1625, "1.5x": 0.10833}
     "60":
-      evidence: nominal
+      evidence: measured
       values: {"1x": 0.10833, "1.5x": 0.07222}
     "100":
       evidence: measured

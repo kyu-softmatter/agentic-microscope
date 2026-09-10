@@ -4,13 +4,19 @@ The table exists because the lab's Micro-Manager ``.cfg`` carries an empty
 ``PixelSize settings`` block, so ``getPixelSizeUm()`` answers 0.0 and the value
 measured in 2025-04 was unreachable from code. These tests hold two things: the
 numbers match ``kb/systems/current.md > pixel_size_calibration``, and the
-provenance stays honest -- every cell is the nominal quotient and is labelled
-as such, so nothing downstream can mistake arithmetic for a measurement.
+provenance is what the operator says it is.
 
-The 20x row was `measured` from 2026-09-04 to 2026-09-09, on the strength of a
-0.39 % departure read as a real 20.078x objective. KH judges that to be
-agreement, so it went to `nominal` with the other eleven and NO ROW IS
-MEASURED. The values did not change; only the tier did.
+The tiers moved three times on 2026-09-09 and the values never did. The 20x row
+was demoted when KH judged its 0.39 % departure to be agreement; 100x was
+promoted on the strength of two length standards driven at it; and then the
+whole table was promoted when KH ruled the 2025-04 spreadsheet a measurement
+rather than a transcription of 6.5/M. The digits-based argument for `nominal`
+is preserved in data/pixel_size.yaml's header, because the observation behind
+it is still true and only the conclusion was wrong.
+
+So these tests hold two things that are now separate: the cells still equal the
+quotient (an observation about the numbers), and every row is `measured` (a
+claim about where they came from).
 """
 
 from __future__ import annotations
@@ -56,53 +62,57 @@ def test_sensor_pixel_agrees_with_the_detector_registry():
 
 @pytest.mark.parametrize("mag", [4, 10, 40, 60])
 @pytest.mark.parametrize("inter", [1.0, 1.5])
-def test_nominal_rows_are_the_quotient_and_say_so(mag, inter):
-    """The eleven cells that carry no information, and must not claim to."""
+def test_the_spreadsheet_cells_still_equal_the_quotient(mag, inter):
+    """The observation that once argued these were not measurements.
+
+    It is kept under test after the tier changed, because it is the thing that
+    would have to stop being true for the 2026-09-04 reading to have been
+    right -- and because if any of these values is ever edited, this is what
+    notices that it no longer lands on 6.5/M.
+    """
     um, evidence = recorded_pixel_um(mag, inter)
-    assert evidence == "nominal"
+    assert evidence == "measured"
     assert um * 1000.0 == pytest.approx(
         effective_pixel_nm(SENSOR_UM, 1, mag, inter), rel=1e-4
     )
 
 
 @pytest.mark.parametrize("inter,nominal_um", [(1.0, 0.325), (1.5, 0.2166667)])
-def test_the_20x_digits_still_differ_even_though_the_tier_does_not(inter, nominal_um):
-    """0.39 % low at both intermediate settings, and `nominal` regardless.
+def test_the_20x_is_the_one_row_that_departs(inter, nominal_um):
+    """0.39 % low at both intermediate settings -- a real 20.078x objective.
 
-    The digits are kept under test because they are what a stage micrometer
-    would be compared against, and because the reason this row is `nominal` is
-    a judgement about 0.39 % rather than an absence of departure. If someone
-    later measures 20x and gets 0.39 % low again, this is the number that says
-    the spreadsheet had it right by accident or otherwise.
+    This is the cell that makes the table coherent as a measurement: five
+    objectives landing on their nominal magnification and one measurably off is
+    what a real set of lenses looks like.
     """
     um, evidence = recorded_pixel_um(20, inter)
-    assert evidence == "nominal"
+    assert evidence == "measured"
     assert um != pytest.approx(nominal_um, rel=1e-4)
     assert um / nominal_um == pytest.approx(0.9961, abs=5e-4)
 
 
-def test_only_100x_is_measured():
+def test_every_row_is_measured():
     """A regression guard on provenance, not on physics.
 
-    If a later edit promotes another row, an ``advances: YES`` appears under a
-    number nobody measured -- the failure mode lens 6 (G23-G27) exists to
-    catch. G24 takes ``pixel_size_measured`` as a claim the caller makes, so
-    nothing in code stops that; this test is what does.
-
-    100x earned it on 2026-09-03: two independent length standards driven 10 um
-    and read off the camera, agreeing to 0.24 %. The way to promote another row
-    is the same -- drive a known length AT that objective. The instrument, not
-    the spreadsheet.
+    Every row is `measured` as of 2026-09-09: the 2025-04 spreadsheet on the
+    operator's ruling, and 100x additionally by two length standards driven at
+    it in 2026-09-03. A DEMOTION is now the edit that needs justifying, and it
+    would silently cost `advances` on every pixel-size-dependent quantity --
+    G24 takes ``pixel_size_measured`` as the caller's claim, so nothing in code
+    would object.
     """
     table = pixel_size_table()["table"]
-    measured = [k for k, row in table.items() if row.get("evidence") == "measured"]
-    assert measured == ["100"]
+    tiers = {k: row.get("evidence") for k, row in table.items()}
+    assert set(tiers.values()) == {"measured"}, tiers
 
 
 def test_the_measured_100x_is_not_the_quotient():
     """0.06453 against 6.5/100 = 0.065. They agree to 0.73 %, which KH judges
-    to be agreement -- but the recorded digits are the measurement's, not the
-    formula's, which is the whole point of the tier."""
+    to be agreement -- but the recorded digits are the 2026-09-03 rulers', not
+    the spreadsheet's, because that measurement is the more direct of the two.
+
+    It is also the one cell where this table departs from `effective_pixel_nm`,
+    so it is the cell that proves the file is not just the formula."""
     um, evidence = recorded_pixel_um(100, 1.0)
     assert evidence == "measured"
     assert um == pytest.approx(0.06453)
