@@ -553,6 +553,7 @@ All decided in code. If even one fails, the proposal is void.
 | G7 | SNR | at or above target | measured light level, measured background | BLOCKED |
 | G8 | Motion blur | duty `= t_exp/t_frame ≤ 0.3` at the **decided** rate; reports a bound while the rate is undecided | D or τ_c, **decided frame rate** | ask |
 | G9 | Frame-rate realizability | `f ≤ 1/max(t_exp, t_readout)`, graded against the **decided** rate | row time, ROI, **decided frame rate** | computable |
+| ~~G10~~ | *vacant* — photobleaching, **removed 2026-09-09**. Formulas kept in §6; number not reused | — | — |
 | G11 | Statistical power | target error met | particle concentration, target precision | ask |
 | G12 | Data rate | a `< 0.7 ×` disk bandwidth · b `f` is achieved not requested · c container width is the one MM writes | measured disk bandwidth, achieved fps, confirmed bytes/px | measurement required |
 | G13 | Buffer · capacity · CPU · RAM | a `≥ 5 seconds' worth` · b fits free disk · c CPU/frame `< 1/f_total` · d RAM burst `≤` budget | RAM, frame size, duration, free disk | computable |
