@@ -4,6 +4,8 @@ split: Phase 0 refusals are right, Phase 1/2 aggregation is right.
 
 from __future__ import annotations
 
+import pytest
+
 from optics.components import Detector, DetectorMode, Objective
 from optics.spectra import Spectrum
 
@@ -254,6 +256,69 @@ def test_motion_blur_reports_a_bound_when_no_rate_is_decided():
     assert "motion_blur.biased" not in codes
     assert "motion_blur.rate_undecided" in codes
     assert acquisition.fps_source == "undecided"
+
+
+def test_g8_and_g9_report_the_same_window_from_both_ends():
+    """The frame-rate window is one thing seen from two sides (KH, 2026-09-09).
+
+    G8's end is the duty limit (fps <= 0.3/t_exp); G9's is the readout
+    ceiling. Both report `fps_at_duty_limit` and both report the camera
+    maximum, so synthesis can take a min without re-deriving either -- and if
+    the two ever disagree about the same number, that is the bug this catches.
+    """
+    camera = Camera(detector=_detector(), mode="Slow", roi_height_px=512, row_time_us=3.5312)
+    acquisition = Acquisition(exposure_ms=0.542, task_kind="tracking")
+    photons = PhotonBudget(signal_e_per_s=3_152_856.0, background_e_per_s=4_944.0)
+    v = evaluate(_setup(camera=camera, acquisition=acquisition, photons=photons))
+
+    blur = v.metrics["motion_blur.rate_undecided"]
+    rate = v.metrics["frame_rate.unconfirmed"]
+
+    assert blur["fps_at_duty_limit"] == pytest.approx(rate["fps_at_duty_limit"])
+    assert blur["fps_hardware_max"] == pytest.approx(rate["fps_hardware_max"])
+    assert rate["fps_usable_max"] == pytest.approx(
+        min(rate["fps_hardware_max"], rate["fps_at_duty_limit"])
+    )
+    # 0.3 / 0.542 ms = 553.5 fps, against a 512-row readout ceiling of 553.
+    assert blur["fps_at_duty_limit"] == pytest.approx(0.3 / 0.542e-3, rel=1e-9)
+
+
+def test_g8s_minimum_roi_actually_lands_on_the_duty_limit():
+    """`roi_height_min_px` is the actionable form of the bound, so it has to
+    be usable as given rather than approximately right.
+
+    ROI height is the only lever that buys a longer period at a fixed
+    exposure: the frame period is max(exposure, readout) with no interval
+    control, so slowing the rate means lengthening the exposure and duty rises
+    toward 100%. That is why this is a minimum ROI and not a minimum rate.
+    """
+    row_time_us = 3.5312
+    camera = Camera(detector=_detector(), mode="Slow", roi_height_px=512, row_time_us=row_time_us)
+    acquisition = Acquisition(exposure_ms=1.0, task_kind="tracking", achieved_fps=553.0)
+    photons = PhotonBudget(signal_e_per_s=3_152_856.0, background_e_per_s=4_944.0)
+    v = evaluate(_setup(camera=camera, acquisition=acquisition, photons=photons))
+
+    assert v.margins["motion_blur.biased"] < 1.0
+    roi_min = v.metrics["motion_blur.biased"]["roi_height_min_px"]
+    assert roi_min == 944
+
+    # Re-run at that ROI: the duty limit must now be met, not merely approached.
+    wider = Camera(detector=_detector(), mode="Slow", roi_height_px=roi_min, row_time_us=row_time_us)
+    v2 = evaluate(_setup(camera=wider, acquisition=Acquisition(
+        exposure_ms=1.0, task_kind="tracking", achieved_fps=1.0 / (roi_min * row_time_us * 1e-6),
+    ), photons=photons))
+    assert v2.margins["motion_blur"] >= 1.0
+
+
+def test_g8s_maximum_exposure_is_the_other_form_of_the_same_bound():
+    """`exposure_max_ms` is the dual of `roi_height_min_px` -- same limit, the
+    other variable. At a 512-row readout (1.808 ms) it is 30% of that.
+    """
+    camera = Camera(detector=_detector(), mode="Slow", roi_height_px=512, row_time_us=3.5312)
+    acquisition = Acquisition(exposure_ms=1.0, task_kind="tracking", achieved_fps=553.0)
+    photons = PhotonBudget(signal_e_per_s=3_152_856.0, background_e_per_s=4_944.0)
+    v = evaluate(_setup(camera=camera, acquisition=acquisition, photons=photons))
+    assert v.metrics["motion_blur.biased"]["exposure_max_ms"] == pytest.approx(0.542, abs=1e-3)
 
 
 def test_detection_and_compute_share_the_fps_vocabulary():

@@ -366,6 +366,24 @@ settled in synthesis, with lens 3's bandwidth arithmetic and lens 7's `G14`
 sampling requirement in hand (KH, 2026-09-09) —
 [`kb/decisions/2026-09-09-frame-period-is-not-a-gate-input.md`](../kb/decisions/2026-09-09-frame-period-is-not-a-gate-input.md).
 
+**Both gates report the window, from their own end** (KH, 2026-09-09), so
+synthesis takes a `min` instead of re-deriving either:
+
+| number | from | meaning |
+|---|---|---|
+| `fps_hardware_max` | G9 | `1/t_frame` — the readout ceiling at this ROI |
+| `fps_at_duty_limit` | **both** | `0.3/t_exp` — the fastest rate this exposure keeps duty ≤ 30% at |
+| `fps_usable_max` | G9 | the `min` of the two, and which one binds |
+| `exposure_max_ms` | G8 | `0.3 × t_frame` — the longest exposure at the period in use |
+| `roi_height_min_px` | G8 | the smallest ROI whose readout is long enough for this exposure |
+
+⚠ **`roi_height_min_px` exists because there is no minimum frame rate to give.**
+The period is `max(t_exp, t_readout)` and this camera has no interval control, so
+*slowing down means lengthening the exposure*, which drives duty toward 100 %
+rather than away from it. ROI height is the only lever that buys a longer period
+at a fixed exposure. A gate that answered "run slower" here would be wrong on
+this instrument, and G8's action text says so explicitly.
+
 ### Lens 5 · Photo-perturbation — implemented
 
 - **Owns**: light level, illumination duty, total dose, wavelength choice

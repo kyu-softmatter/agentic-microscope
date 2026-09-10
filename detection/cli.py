@@ -65,6 +65,7 @@ def cmd_check(args: argparse.Namespace) -> int:
         exposure_ms=args.exposure_ms,
         task_kind=args.task_kind,
         target_fps=args.target_fps,
+        achieved_fps=args.achieved_fps,
     )
     photons = PhotonBudget(
         signal_e_per_s=args.signal_e_per_s,
@@ -253,7 +254,13 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--wavelength-em-nm", type=float, required=True, help="dye emission peak (nm)")
     c.add_argument("--exposure-ms", type=float, required=True)
     c.add_argument("--task-kind", choices=["imaging", "tracking"], default=None)
-    c.add_argument("--target-fps", type=float, default=None, help="desired frame rate, for G9")
+    c.add_argument("--target-fps", type=float, default=None, help="REQUESTED frame rate")
+    c.add_argument(
+        "--achieved-fps", type=float, default=None,
+        help="OBSERVED frame rate, from an acquisition's own timestamps. "
+        "Outranks --target-fps. With neither, G8 and G9 report the usable "
+        "window and grade nothing -- the rate is decided in synthesis.",
+    )
     c.add_argument("--roi-height-px", type=int, default=None, help="ROI row count")
     c.add_argument(
         "--row-time-us", type=float, default=None,

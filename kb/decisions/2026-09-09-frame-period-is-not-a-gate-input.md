@@ -108,6 +108,48 @@ series, **as the span across `n−1` intervals rather than the median interval**
 because that metadata is quantised to 1 ms on this build and the proposed period
 is 1.808 ms.
 
+## Addendum, same day · both gates report the window
+
+> "G8, G9에서 모션블러가 마진까지 도달했을 때의 프레임레잇도 확인했으면 좋겠어,
+> 즉 G8, G9는 최소값과 최대값을 둘다 알려주는거지."
+> — *I want to see the frame rate at which motion blur reaches its margin too;
+> so G8 and G9 report both a minimum and a maximum.*
+
+Implemented, with one correction to the framing that the arithmetic forced.
+
+**Both ends are ceilings, not a minimum and a maximum.** G9's is the readout
+ceiling `1/t_frame`; G8's is `0.3/t_exp`, the fastest rate at which the exposure
+still meets the duty limit. Both gates now report both numbers, plus
+`fps_usable_max` = their `min` and which one binds, so synthesis takes a `min`
+rather than re-deriving either.
+
+**There is no minimum frame rate to report, and that is a property of this
+camera rather than of the gate.** The period is `max(t_exp, t_readout)` and
+there is no interval control, so the only way to run slower is a longer
+exposure — which pushes duty *up*, to 100 % once `t_exp > t_readout`:
+
+| `t_exp` | `t_frame` | fps | duty |
+|---|---|---|---|
+| 0.271 ms | 1.808 ms | 553 | 15 % |
+| 0.542 ms | 1.808 ms | 553 | **30 %** |
+| 1.808 ms | 1.808 ms | 553 | 100 % |
+| 10.0 ms | 10.0 ms | 100 | 100 % |
+
+So with the ROI fixed, the *only* rate satisfying `duty ≤ 30 %` is the readout
+ceiling itself. **"Run slower" is the wrong instruction on this instrument**, and
+G8's action text now says so rather than offering it.
+
+**The lever is ROI height**, so the actionable bound is a minimum ROI:
+`roi_height_min_px = ceil(t_exp / (0.3 · row_time))`. At 1.0 ms exposure and
+3.5312 µs rows that is 944 rows, and `test_g8s_minimum_roi_actually_lands_on_the_duty_limit`
+re-runs the gate at exactly that ROI to check the bound is usable as given
+rather than approximately right. `exposure_max_ms` is the same limit in the
+other variable.
+
+`test_g8_and_g9_report_the_same_window_from_both_ends` asserts the two gates
+agree on the shared numbers, which is the property that would silently rot if
+one of them were edited alone.
+
 ## Falsifying condition
 
 An acquisition where the duty cycle at the *achieved* rate exceeds 30 % and the

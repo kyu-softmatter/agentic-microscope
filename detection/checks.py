@@ -365,12 +365,39 @@ def check_motion_blur(setup: "DetectionSetup") -> CheckResult:
     margin = LIMITS["duty_cycle_max"] / duty if duty > 0 else MAX_MARGIN
     ok = margin >= 1.0
 
+    # THE FRAME-RATE WINDOW THIS GATE IMPLIES, so synthesis can take a min
+    # against G9's hardware ceiling instead of re-deriving it (KH, 2026-09-09).
+    #
+    #   duty = t_exp/t_frame <= 0.3  <=>  fps <= 0.3/t_exp
+    #
+    # and the dual, which is the lever that actually exists on this camera:
+    # the period is max(t_exp, t_readout) with no interval control, so slowing
+    # down means lengthening the exposure, which drives duty to 100%. ROI
+    # height is therefore the only way to buy a longer period at a fixed
+    # exposure -- hence a MINIMUM ROI height rather than a minimum frame rate.
+    duty_max = LIMITS["duty_cycle_max"]
+    exposure_s = acq.exposure_ms * 1e-3
+    fps_at_duty_limit = duty_max / exposure_s if exposure_s > 0 else float("inf")
+    roi_min_px = (
+        math.ceil(exposure_s / (duty_max * row_time * 1e-6))
+        if row_time and duty_max > 0
+        else None
+    )
     numbers = {
         "duty_cycle": duty,
         "frame_period_s": t_frame,
         "frame_period_min_s": t_frame_min,
         "bias_fraction": bias_fraction,
         "fps_source": acq.fps_source,
+        #: Fastest rate at which THIS exposure still meets the duty limit.
+        "fps_at_duty_limit": fps_at_duty_limit,
+        #: Longest exposure that meets the duty limit at the period in use.
+        "exposure_max_ms": duty_max * t_frame * 1e3,
+        #: Smallest ROI whose readout is long enough for this exposure to sit
+        #: under the duty limit. Below it, no frame rate satisfies G8.
+        "roi_height_min_px": roi_min_px,
+        #: What the camera can actually do, so the pair brackets the window.
+        "fps_hardware_max": max_fps(t_frame_min),
     }
     d = setup.photons.diffusion_coefficient_m2_s
     if d is not None:
@@ -390,14 +417,20 @@ def check_motion_blur(setup: "DetectionSetup") -> CheckResult:
             INFO,
             MAX_MARGIN,
             "info",
-            f"No frame rate decided yet. At the camera's floor "
-            f"({t_frame_min * 1e3:.2f} ms) the duty cycle would be "
-            f"{duty * 100:.0f}%, giving a {bias_fraction * 100:.1f}% "
-            f"shortest-lag MSD bias -- an UPPER BOUND, since any longer period "
-            f"lowers it. Not graded.",
-            action="Supply achieved_fps once an acquisition's timestamps are "
-            "in hand (or target_fps to judge a plan), then this grades against "
-            "the period actually run.",
+            f"No frame rate decided yet. Window: duty <= {duty_max * 100:.0f}% "
+            f"needs fps <= {fps_at_duty_limit:.0f} at this {acq.exposure_ms:.3f} ms "
+            f"exposure, and the camera ceiling is "
+            f"{max_fps(t_frame_min):.0f} fps -- so "
+            f"{min(fps_at_duty_limit, max_fps(t_frame_min)):.0f} fps is the "
+            f"usable rate, set by "
+            f"{'blur' if fps_at_duty_limit < max_fps(t_frame_min) else 'the camera'}. "
+            f"At that ceiling the duty would be {duty * 100:.0f}% "
+            f"({bias_fraction * 100:.1f}% shortest-lag MSD bias) -- an UPPER "
+            f"BOUND. Not graded.",
+            action=f"Either supply achieved_fps once timestamps are in hand, or "
+            f"keep the ROI at or above {roi_min_px} rows -- on this camera the "
+            f"period is max(exposure, readout) with no interval control, so a "
+            f"slower rate means a longer exposure and duty goes to 100%.",
             numbers=numbers,
         )
 
@@ -408,7 +441,9 @@ def check_motion_blur(setup: "DetectionSetup") -> CheckResult:
             margin,
             "ok",
             f"Duty cycle {duty * 100:.0f}% keeps the shortest-lag MSD bias at "
-            f"{bias_fraction * 100:.1f}% (limit 10%).",
+            f"{bias_fraction * 100:.1f}% (limit 10%). Headroom: this exposure "
+            f"stays inside the limit up to {fps_at_duty_limit:.0f} fps, and the "
+            f"camera reaches {max_fps(t_frame_min):.0f} fps.",
             numbers=numbers,
         )
     return CheckResult(
@@ -416,11 +451,16 @@ def check_motion_blur(setup: "DetectionSetup") -> CheckResult:
         BIAS,
         margin,
         "fail",
-        f"Duty cycle {duty * 100:.0f}% (limit {LIMITS['duty_cycle_max'] * 100:.0f}%) "
+        f"Duty cycle {duty * 100:.0f}% (limit {duty_max * 100:.0f}%) "
         f"gives a {bias_fraction * 100:.1f}% MSD bias at the shortest lag -- "
         "looks like a straight line, is not one (docs/04 §5).",
-        action="Shorten exposure relative to the frame period, or apply the "
-        "Savin-Doyle correction before fitting the MSD.",
+        action=f"Three ways out, and only two exist on this camera: exposure "
+        f"<= {duty_max * t_frame * 1e3:.3f} ms at this period, or ROI >= "
+        f"{roi_min_px} rows at this exposure (which buys a longer readout). "
+        f"Slowing the frame rate does NOT work here -- the period is "
+        f"max(exposure, readout), so a slower rate is a longer exposure and "
+        f"duty rises to 100%. Otherwise apply the Savin-Doyle correction "
+        f"before fitting the MSD.",
         numbers=numbers,
     )
 
@@ -439,18 +479,34 @@ def check_frame_rate(setup: "DetectionSetup") -> CheckResult:
     t_frame = frame_period_s(acq.exposure_ms, readout_s, cam.frame_overhead_ms)
     fps = max_fps(t_frame)
 
+    # The blur ceiling, restated here so the two gates report the same window
+    # from both ends and synthesis can take a min without re-deriving it.
+    duty_max = LIMITS["duty_cycle_max"]
+    exposure_s = acq.exposure_ms * 1e-3
+    fps_at_duty_limit = duty_max / exposure_s if exposure_s > 0 else float("inf")
+
     decided = acq.decided_fps
     if decided is None:
+        binding = "blur (G8)" if fps_at_duty_limit < fps else "readout (this gate)"
         return CheckResult(
             "frame_rate.unconfirmed",
             INFO,
             MAX_MARGIN,
             "info",
-            f"Realizable frame rate is {fps:.0f} fps (t_frame={t_frame * 1e3:.2f} ms, "
-            f"readout={readout_s * 1e3:.2f} ms); no frame rate decided yet, so "
-            "there is nothing to grade against.",
+            f"Window, both ends: the camera reaches {fps:.0f} fps "
+            f"(t_frame={t_frame * 1e3:.2f} ms, readout={readout_s * 1e3:.2f} ms) "
+            f"and G8's duty limit allows {fps_at_duty_limit:.0f} fps at this "
+            f"{acq.exposure_ms:.3f} ms exposure, so **{min(fps, fps_at_duty_limit):.0f} fps** "
+            f"is usable and {binding} is what binds. No rate decided yet, so "
+            "nothing is graded.",
+            action="Decide the rate in synthesis -- lens 3's bandwidth (at the "
+            "readout limit the data rate depends only on ROI WIDTH) and lens "
+            "7's G14 (f_s >= 10 f_c) are the other two constraints on it.",
             numbers={
                 "max_fps": fps,
+                "fps_hardware_max": fps,
+                "fps_at_duty_limit": fps_at_duty_limit,
+                "fps_usable_max": min(fps, fps_at_duty_limit),
                 "frame_period_s": t_frame,
                 "readout_s": readout_s,
                 "fps_source": acq.fps_source,
@@ -466,12 +522,21 @@ def check_frame_rate(setup: "DetectionSetup") -> CheckResult:
     ok = margin >= 1.0 - 1e-9
     numbers = {
         "max_fps": fps,
+        "fps_hardware_max": fps,
+        "fps_at_duty_limit": fps_at_duty_limit,
+        "fps_usable_max": min(fps, fps_at_duty_limit),
         "target_fps": acq.target_fps,
         "achieved_fps": acq.achieved_fps,
         "decided_fps": decided,
         "fps_source": acq.fps_source,
         "frame_period_s": t_frame,
         "readout_s": readout_s,
+        #: Largest ROI that still reaches the decided rate -- ROI height is
+        #: the frame-rate knob on a rolling shutter, so this is the actionable
+        #: form of "the rate is not realizable".
+        "roi_height_max_px": (
+            int(1.0 / (decided * row_time * 1e-6)) if row_time and decided else None
+        ),
     }
     if ok:
         return CheckResult(
