@@ -48,7 +48,7 @@ Durable expert judgment. Each carries a `Why` and a falsifier.
 - **[microrheology-standard-conditions](expertise/microrheology-standard-conditions.md)** · 2026-09-07
   What conditions does a microrheology run on this instrument default to, and which of them are choices rather than constants
 
-## `kb/decisions/` — 28 entries
+## `kb/decisions/` — 29 entries
 
 Dated design and scope choices, in the order they were made.
 
@@ -108,6 +108,8 @@ Dated design and scope choices, in the order they were made.
   Should the saturation gate stay, given that it blocks on two per-dye constants that are empty for every bead colourant this instrument images?
 - **[2026-09-09-g5-localization-variance-corrected](decisions/2026-09-09-g5-localization-variance-corrected.md)** · 2026-09-09
   Why did G5 report that a pixel finer than imaging-Nyquist hurts tracking precision, when CLAUDE.md H4 says the opposite?
+- **[2026-09-10-drag-calibration-operating-envelope](decisions/2026-09-10-drag-calibration-operating-envelope.md)** · 2026-09-10
+  What frame rate, ROI and acquisition length can a Stokes-drag trap calibration on a 5 um DragonGreen bead actually use, and which constraint sets each one?
 
 ## `kb/literature/` — 1 entries
 
