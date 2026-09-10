@@ -95,7 +95,17 @@ pixel_size:
     "20":
       evidence: measured
       values: {"1x": 0.32373, "1.5x": 0.21582}
-      effective_magnification: 20.078   # 6.5 / 0.32373
+      effective_magnification: 20.078   # 6.5 / 0.32373, and 6.5 / (0.21582*1.5)
+      # WHY THE DEPARTURE IS THE OBJECTIVE AND NOT SOMETHING UPSTREAM.
+      # 0.39 % could in principle live in the tube lens, the sensor pitch or
+      # the intermediate magnifier. The table rules all three out by itself:
+      #   · the tube lens and the 6.5 um sensor are SHARED BY ALL SIX rows, so
+      #     an error in either would put all six off by 0.39 %. Four of the
+      #     other five give M to 4.000 / 10.000 / 40.000 / 60.002.
+      #   · the intermediate magnifier is ruled out by 20x's own two cells:
+      #     6.5/0.32373 and 6.5/(0.21582*1.5) both give 20.0785, so the same
+      #     departure survives both paths and is upstream of the magnifier.
+      # What is left is the objective. 20.078x it is.
       note: >
         The only row whose digits depart from the quotient: 0.32373 against
         6.5/20 = 0.325, and 0.21582 against 0.216667, both low by 0.39 % --
@@ -127,9 +137,23 @@ pixel_size:
         They agree to 0.24 %. Source:
         kb/decisions/2026-09-03-three-subsystems-first-light.md §9.
       note: >
-        ⚠ THE 1.5x CELL IS STILL NOMINAL. Only 1x was driven. 0.04333 is
-        6.5/150; dividing the measured 1x by 1.5 would give 0.04302, and that
-        would be a derived number wearing a measured tier. Left alone.
+        ⚠ THE TWO CELLS OF THIS ROW DISAGREE, and both are kept. They are
+        different measurements, not one measurement and its arithmetic: 1x is
+        the 2026-09-03 rulers, 1.5x is the 2025-04 spreadsheet. Back out the
+        magnification and they say
+
+            6.5 / 0.06453          = 100.73x     (the rulers)
+            6.5 / (0.04333 * 1.5)  = 100.01x     (the spreadsheet)
+
+        -- 0.72 % apart, which is inside the agreement KH stated, and the same
+        0.72 % as the 1x cell's own gap from 6.5/100. Every other row's two
+        cells agree to four figures, so this row is the one place the table is
+        not internally consistent, and it is because it carries two independent
+        measurements rather than one.
+
+        Neither is overwritten with the other. Dividing the measured 1x by 1.5
+        would give 0.04302 and read as a measurement of the 1.5x path, which
+        nobody made.
 
         ⚠ THIS VALUE NOW DISAGREES WITH THE .cfg. All six Micro-Manager configs
         carry `PixelSize_um,100x-1x,0.065`, so `getPixelSizeUm()` answers the

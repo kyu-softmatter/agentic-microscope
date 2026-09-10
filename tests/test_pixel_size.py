@@ -106,6 +106,41 @@ def test_every_row_is_measured():
     assert set(tiers.values()) == {"measured"}, tiers
 
 
+@pytest.mark.parametrize("mag", [4, 10, 20, 40, 60])
+def test_both_intermediate_paths_imply_the_same_objective(mag):
+    """The cross-check that pins 20x's departure to the objective.
+
+    Back the magnification out of each cell. If the tube lens or the sensor
+    pitch were off, every row would be off together; if the intermediate
+    magnifier were, a row's two cells would disagree. Neither happens, so 20x's
+    0.39 % is the lens.
+
+    100x is excluded: its two cells are two independent measurements that
+    disagree by 0.72 %, which is the point of its own note.
+    """
+    p1, _ = recorded_pixel_um(mag, 1.0)
+    p15, _ = recorded_pixel_um(mag, 1.5)
+    assert SENSOR_UM / p1 == pytest.approx(SENSOR_UM / (p15 * 1.5), rel=1e-3)
+
+
+def test_the_20x_objective_is_20_078():
+    """6.5/0.32373, and the same from the 1.5x cell. Not the label's 20.000."""
+    p1, _ = recorded_pixel_um(20, 1.0)
+    assert SENSOR_UM / p1 == pytest.approx(20.078, abs=5e-3)
+    assert SENSOR_UM / p1 != pytest.approx(20.0, rel=1e-3)
+
+
+def test_the_100x_cells_are_two_measurements_that_disagree():
+    """1x is the 2026-09-03 rulers, 1.5x the 2025-04 spreadsheet. 0.72 % apart,
+    inside the stated agreement, and neither overwrites the other."""
+    p1, _ = recorded_pixel_um(100, 1.0)
+    p15, _ = recorded_pixel_um(100, 1.5)
+    m1, m15 = SENSOR_UM / p1, SENSOR_UM / (p15 * 1.5)
+    assert m1 == pytest.approx(100.73, abs=0.02)
+    assert m15 == pytest.approx(100.01, abs=0.02)
+    assert abs(m1 - m15) / m15 == pytest.approx(0.0072, abs=5e-4)
+
+
 def test_the_measured_100x_is_not_the_quotient():
     """0.06453 against 6.5/100 = 0.065. They agree to 0.73 %, which KH judges
     to be agreement -- but the recorded digits are the 2026-09-03 rulers', not

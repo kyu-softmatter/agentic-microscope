@@ -204,8 +204,11 @@ the disk's write bandwidth (G12a). And underneath all of it, **`unevaluated` ≠
   opposite. The 2025-04 spreadsheet is a measurement (KH), and eleven of its
   twelve cells landing exactly on `6.5 / (M_obj × M_int)` means those
   objectives sit at their nominal magnification, not that somebody typed the
-  quotient. The one that departs, 20× by 0.39 %, is a real 20.078× objective
-  and is what makes the table coherent.
+  quotient. The one that departs, 20× by 0.39 %, is a real **20.078×**
+  objective — and the table proves that itself: the tube lens and the 6.5 µm
+  sensor are shared by all six rows, so an error in either would move all six,
+  and 20×'s own two cells give 20.0785 by both paths, which rules out the
+  intermediate magnifier. Nothing upstream is left; it is the lens.
   - **The earlier reading is kept in that file's header, marked wrong.** It
     reasoned from the digits to how the spreadsheet was produced — an inference
     about provenance made without the instrument. `kb/systems/current.md:1284`
@@ -273,8 +276,8 @@ survives a clean checkout).
 pytest -q -rs
 ```
 
-1204 passed, 10 skipped on Windows, of 1,267 (measured 2026-09-09; macOS and
-Linux print 1203/11 — the 2026-09-07 figure plus the 42 net added since, not
+1211 passed, 10 skipped on Windows, of 1,274 (measured 2026-09-09; macOS and
+Linux print 1210/11 — the 2026-09-07 figure plus the 49 net added since, not
 re-measured there — one Windows-only test). Two kinds of skip: three whole
 modules behind `pytest.importorskip("pymmcore_plus")` holding 56 tests that need
 a Micro-Manager device-adapter install, and seven `requires_cv2` tests in
