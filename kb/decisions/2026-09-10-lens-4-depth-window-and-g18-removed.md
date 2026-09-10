@@ -120,14 +120,25 @@ knows how to handle — the same call the G10 removal made.
 
 ## What is still open
 
-**The datum.** The window is quoted from the coverslip's inner surface, and
-nothing establishes that surface today. The parts exist —
-`hardware/focus.py`'s `FocusAxis.position_um()`, `plan_span()`,
-`FocusCurve.peak_z_um()`, and `detection/focus_metric.py`'s `score_frame()` —
-but there is no routine that finds the coverslip specifically (as opposed to
-the sharpest object in the field) and stores it as `z0`, and nothing reports
-`h = z − z0` against this window while an acquisition runs. Requested by KH the
-same day; scoped, not built.
+**The datum — a separate sequence, by decision (KH, 2026-09-10).** The window
+is quoted from the coverslip's inner surface, and nothing establishes that
+surface today. **This lens will not grow one**; a dedicated find-the-surface
+sequence is planned instead. The parts it will have to hand are already there:
+`hardware/focus.py`'s `FocusAxis.position_um()`, `plan_span()` and
+`FocusCurve.peak_z_um()`, plus `detection/focus_metric.py`'s `score_frame()`
+and `tenengrad()`.
+
+What lens 4 needs back from it, so the interface is settled before it is built:
+
+1. **`z0`** — the ZDrive/piezo reading at the coverslip's inner surface, with
+   how it was identified (adhered particles or a reflection peak; still open).
+2. **The units it is in.** `z0` is mechanical travel, and
+   `SampleSetup.imaging_depth_um` is real optical depth, so `h` is
+   `(z − z0) × n_sample/n_immersion` — G17's converter, which exists and
+   reports both directions.
+3. **Nothing else.** The window is computed from the objective, the chamber and
+   the particle radius; the datum turns it from a band into a pair of z
+   positions to drive to, and that arithmetic belongs to the sequence.
 
 ## Falsifying condition
 
