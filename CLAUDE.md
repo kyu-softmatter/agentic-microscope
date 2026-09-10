@@ -240,10 +240,11 @@ the disk's write bandwidth (G12a). And underneath all of it, **`unevaluated` ≠
   so there is irradiance — all three engines put about the camera field on the
   sample, 603,654 µm² at 20×, giving 1.1–7.7 W/cm² depending on line. **G20,
   G21 and G22 run**; G10 was removed the same day
-  ([04 §6](docs/04-decision-engine.md)). Two limits: **20× only** — it is the
-  one row in `data/pixel_size.yaml` marked `measured`, and the rest are
-  `nominal` — and the areas are `computed`, since "about the camera field" was
-  not quantified.
+  ([04 §6](docs/04-decision-engine.md)). Two limits, and only one of them is
+  still about evidence: the areas are **20× only**, because that is the
+  magnification the fields were established at — not because of the pixel size,
+  which is `measured` at every objective — and they are `computed`, since
+  "about the camera field" was not quantified for any of the three engines.
 
 ## 4. Hardware, when it is in the loop
 
