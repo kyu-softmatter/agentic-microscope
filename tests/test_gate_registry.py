@@ -86,7 +86,9 @@ EXPECTED_CHECKS: dict[str, tuple[tuple[str, str], ...]] = {
         ("working_distance", "hard"),
         ("depth_in_chamber", "hard"),
         ("wall_drag", "bias"),
-        ("ri_mismatch", "bias"),
+        # G17 became an INFO z-to-depth converter on 2026-09-10; it no longer
+        # grades and no longer reaches G23's bias ledger.
+        ("ri_mismatch", "info"),
         ("count_in_field", "info"),
         # Reports G16/G16b/G16c/G17's bounds as one band, and is the only
         # thing that can express an EMPTY window (2026-09-10).

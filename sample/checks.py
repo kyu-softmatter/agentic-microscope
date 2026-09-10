@@ -485,11 +485,13 @@ def check_depth_window(setup: "SampleSetup") -> CheckResult:
     if setup.chamber_height_um is not None:
         uppers.append((setup.chamber_height_um, "G16b chamber height"))
 
+    # G17 used to cap this at 1.85/dn -- 10 um for oil into water. It stopped
+    # gating on 2026-09-10 (its threshold was anchored on a checklist trigger,
+    # and the operator has imaged well past it), so the ceiling is now reach
+    # and sample extent only. The mismatch is still reported, as the z-to-depth
+    # conversion, and the aberration it implies is no longer bounded by
+    # anything -- see check_ri_mismatch.
     dn = ri_mismatch(setup.resolved_n_sample, setup.n_immersion)
-    if dn > LIMITS["matched_ri_tolerance"]:
-        uppers.append(
-            (LIMITS["aberration_depth_mismatch_um"] / dn, "G17 index mismatch")
-        )
 
     limit = LIMITS["wall_drag_suppression"]
     lower = 9.0 * a / (16.0 * limit) if a is not None else None
@@ -566,11 +568,38 @@ def check_depth_window(setup: "SampleSetup") -> CheckResult:
 
 
 def check_ri_mismatch(setup: "SampleSetup") -> CheckResult:
-    """G17: refractive-index mismatch x depth -- docs/06-pitfalls.md D5.
+    """G17: the mechanical-z to optical-depth conversion. **INFO since
+    2026-09-10** -- it reports, it does not gate.
 
-    Reports the paraxial focal-shift ratio as a number, and gates on the
-    depth x mismatch product. BIAS, not HARD: mismatch does not stop the
-    image forming, it biases what the image means.
+    Why it stopped gating (KH, 2026-09-10): the screening product
+    `depth x |dn| <= 1.85 um` was anchored circularly -- 1.85 is
+    `10 um x 0.185`, i.e. docs/05's checklist trigger "does the imaging depth
+    exceed 10 um" evaluated at the oil-into-water case and then generalised.
+    So for oil into water the "tolerable depth" it produced was 10 um *by
+    construction*, and it was capping the depth window on a number that came
+    from a checklist rather than from this instrument. The operator has imaged
+    a bead well at ~9 um through the 100x Oil, which is the observation that
+    outranks a screening heuristic (CLAUDE.md §3).
+
+    **What it reports instead is the number that is actually used.** Focus is
+    driven by ZDrive and piezo, and those read out **mechanical travel**. The
+    focal plane inside the medium moves by `n_sample/n_immersion` times that
+    travel, because the refraction happens at the coverslip interface -- and
+    the factor is the same whether the objective or the stage moves, since
+    either way it is the interface-to-nominal-focus distance that changes. So
+    a z reading is not a depth, and this is the conversion between them, both
+    ways.
+
+    ``SampleSetup.imaging_depth_um`` is defined as the **real** depth past the
+    coverslip, so nothing downstream needs adjusting -- G16c's wall distance
+    and the depth window are already in the right units. What this check does
+    is tell the operator which number to put there.
+
+    **Paraxial first order only.** Ray by ray at NA 1.45 into water the ratio
+    runs 0.878 near the axis down to 0.376 at NA_ray 1.3, and rays past
+    NA 1.333 are totally internally reflected and never arrive. That spread
+    *is* the spherical aberration -- there is no single focal plane -- so the
+    number below is the optimistic end of a bracket, not a correction factor.
     """
     depth = setup.imaging_depth_um
     n_s = setup.resolved_n_sample
@@ -588,49 +617,45 @@ def check_ri_mismatch(setup: "SampleSetup") -> CheckResult:
     }
 
     if dn <= LIMITS["matched_ri_tolerance"]:
-        return _ok(
+        return CheckResult(
             "geometry.ri_mismatch",
-            BIAS,
+            INFO,
             MAX_MARGIN,
+            "info",
             f"Index-matched: mismatch {dn:.4f} between "
             f"{setup.objective.immersion} (n = {n_i:.3f}) and the sample "
-            f"medium (n = {n_s:.3f}). Depth-dependent spherical aberration "
-            "from mismatch is not a concern here.",
-            **numbers,
+            f"medium (n = {n_s:.3f}). Mechanical z travel IS optical depth "
+            "here -- no conversion, and no depth-dependent mismatch "
+            "aberration.",
+            numbers=numbers,
         )
 
-    tolerable_depth = LIMITS["aberration_depth_mismatch_um"] / dn
-    margin = tolerable_depth / depth if depth > 0 else MAX_MARGIN
-    numbers["tolerable_depth_um"] = round(tolerable_depth, 2)
-
-    if margin >= 1.0:
-        return _ok(
-            "geometry.ri_mismatch",
-            BIAS,
-            margin,
-            f"Mismatch {dn:.3f} at {depth:.1f} um depth stays inside the "
-            f"{tolerable_depth:.1f} um screening limit. Axial scale is still "
-            f"off by {abs(1.0 - shift) * 100:.1f}% "
-            f"(paraxial ratio {shift:.3f}) -- correct z distances before "
-            "reporting any depth or 3D displacement.",
-            **numbers,
+    if depth is not None:
+        numbers["z_travel_for_this_depth_um"] = round(depth / shift, 2)
+        numbers["depth_at_this_z_travel_um"] = round(depth * shift, 2)
+        detail = (
+            f" Both ways at {depth:.1f} um: commanding {depth:.1f} um of z "
+            f"reaches only {depth * shift:.2f} um of real depth, and reaching "
+            f"{depth:.1f} um of real depth needs {depth / shift:.2f} um of z."
         )
+    else:
+        detail = ""
 
     return CheckResult(
         "geometry.ri_mismatch",
-        BIAS,
-        margin,
-        "warn",
-        f"Refractive-index mismatch {dn:.3f} "
-        f"({setup.objective.immersion} n = {n_i:.3f} vs sample medium "
-        f"n = {n_s:.3f}) at {depth:.1f} um depth exceeds the "
-        f"{tolerable_depth:.1f} um screening limit. Spherical aberration "
-        f"grows with depth and the axial scale is off by "
-        f"{abs(1.0 - shift) * 100:.1f}%.",
-        action="Switch to an index-matched objective (the 40x WI for aqueous "
-        "media), image nearer the coverslip, or quantify the aberration and "
-        "the axial correction properly -- the paraxial ratio here is a "
-        "screening number, not a correction factor.",
+        INFO,
+        MAX_MARGIN,
+        "info",
+        f"Mismatch {dn:.3f} ({setup.objective.immersion} n = {n_i:.3f} vs "
+        f"sample medium n = {n_s:.3f}). **Mechanical z travel is not optical "
+        f"depth**: multiply z by {shift:.4f} to get depth, divide to go back "
+        f"-- a {abs(1.0 - shift) * 100:.1f}% axial scale error if uncorrected."
+        + detail,
+        action="Paraxial first order. At NA 1.45 into water the per-ray ratio "
+        "runs 0.878 near the axis to 0.376 at NA_ray 1.3, and rays past "
+        "NA 1.333 do not arrive at all -- that spread is the spherical "
+        "aberration, so use this to convert a z reading, not to report a "
+        "corrected depth.",
         numbers=numbers,
     )
 
@@ -789,7 +814,8 @@ CHECKS: list[Check] = [
     # G16c: BIAS, no `requires` -- an absent particle radius skips the bound
     # rather than BLOCKing, same as G16b and G19.
     Check("wall_drag", BIAS, (), check_wall_drag),
-    Check("ri_mismatch", BIAS, ("imaging_depth",), check_ri_mismatch),
+    # G17: INFO since 2026-09-10 -- a z-to-depth converter, not a gate.
+    Check("ri_mismatch", INFO, (), check_ri_mismatch),
     Check("count_in_field", INFO, (), check_count_in_field),
     Check("depth_window", INFO, (), check_depth_window),
 ]

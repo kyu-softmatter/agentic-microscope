@@ -140,11 +140,45 @@ def test_water_objective_in_aqueous_medium_is_index_matched():
     assert v.margins["geometry.ri_mismatch"] >= 1.0
 
 
-def test_oil_objective_in_aqueous_medium_warns_beyond_the_screening_depth():
-    """0.185 mismatch tolerates ~10 um; 30 um does not."""
+def test_g17_reports_and_no_longer_gates():
+    """RETARGETED 2026-09-10. The screening product `depth x dn <= 1.85 um`
+    was anchored circularly -- 1.85 IS 10 x 0.185, the checklist trigger
+    evaluated at the oil-into-water case -- and the operator has imaged well
+    past it. G17 is now the mechanical-z to optical-depth converter.
+    kb/decisions/2026-09-10-g17-becomes-a-z-to-depth-converter.md
+    """
     v = evaluate(_setup(imaging_depth_um=30.0))
-    assert any(f.code == "geometry.ri_mismatch" and f.severity == "warn" for f in v.findings)
-    assert v.margins["geometry.ri_mismatch"] < 1.0
+    assert v.margins["geometry.ri_mismatch"] == 10.0
+    assert not any(
+        f.code == "geometry.ri_mismatch" and f.severity in {"warn", "fail"}
+        for f in v.findings
+    )
+    # INFO, but it must still be SAID -- severity "info" reaches findings.
+    assert any(
+        f.code == "geometry.ri_mismatch" and f.severity == "info" for f in v.findings
+    )
+
+
+def test_g17_converts_z_travel_to_depth_both_ways():
+    """A z reading is not a depth. The factor is the same whether the
+    objective or the stage moves, because the refraction is at the interface."""
+    v = evaluate(_setup(imaging_depth_um=9.0))
+    m = v.metrics["geometry.ri_mismatch"]
+    assert m["depth_at_this_z_travel_um"] == pytest.approx(7.90, abs=0.01)
+    assert m["z_travel_for_this_depth_um"] == pytest.approx(10.25, abs=0.01)
+
+
+def test_the_depth_window_no_longer_has_a_g17_ceiling():
+    """The direct consequence, and the reason this was a conscious choice:
+    the oil objective's window was EMPTY only because G17 capped it at 10 um
+    against G16c's 13.9 um floor. It is now bounded by reach and extent."""
+    v = evaluate(
+        _setup(imaging_depth_um=20.0, particle_radius_um=2.475, chamber_height_um=100.0)
+    )
+    m = v.metrics["geometry.depth_window"]
+    assert "G17 index mismatch" not in m["upper_bounds_um"]
+    assert m["depth_min_um"] == pytest.approx(13.92, abs=0.01)
+    assert m["depth_max_um"] == pytest.approx(100.0)
 
 
 def test_oil_objective_reports_the_axial_scaling_error():
@@ -164,9 +198,9 @@ def test_water_objective_beats_oil_on_mismatch_at_the_same_depth():
     preference -- the trade the committee exists to surface."""
     oil = evaluate(_setup(imaging_depth_um=30.0))
     water = evaluate(_setup(objective_kw=WATER_40X, imaging_depth_um=30.0))
-    assert (
-        water.margins["geometry.ri_mismatch"] > oil.margins["geometry.ri_mismatch"]
-    )
+    # Since G17 became INFO the trade shows in the conversion, not a margin.
+    assert oil.metrics["geometry.ri_mismatch"]["axial_scaling_error_pct"] == 12.2
+    assert water.metrics["geometry.ri_mismatch"]["axial_scaling_error_pct"] == 0.0
 
 
 # --------------------------------------------- G16b depth in chamber -------

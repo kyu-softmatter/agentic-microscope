@@ -101,7 +101,12 @@ def test_oil_and_water_objectives_disagree_straight_from_the_registry():
     )
     assert oil.metrics["geometry.ri_mismatch"]["ri_mismatch"] == pytest.approx(0.185)
     assert water.metrics["geometry.ri_mismatch"]["ri_mismatch"] == 0.0
-    assert water.margins["geometry.ri_mismatch"] > oil.margins["geometry.ri_mismatch"]
+    # G17 stopped grading on 2026-09-10, so the disagreement shows in the
+    # CONVERSION rather than in a margin: oil needs one, water does not.
+    assert oil.metrics["geometry.ri_mismatch"][
+        "paraxial_focal_shift_ratio"
+    ] == pytest.approx(0.8781, abs=1e-4)
+    assert water.metrics["geometry.ri_mismatch"]["paraxial_focal_shift_ratio"] == 1.0
 
 
 def test_air_objectives_are_badly_mismatched_against_aqueous_media():
@@ -115,8 +120,12 @@ def test_air_objectives_are_badly_mismatched_against_aqueous_media():
             coverslip_actual_um=170.0,
         )
     )
-    assert v.metrics["geometry.ri_mismatch"]["ri_mismatch"] == pytest.approx(0.333)
-    assert v.margins["geometry.ri_mismatch"] < 1.0
+    m = v.metrics["geometry.ri_mismatch"]
+    assert m["ri_mismatch"] == pytest.approx(0.333)
+    # 1.333/1.0 -- a dry objective OVER-reaches: 30 um of z travel is 40 um of
+    # real depth, a 33.3% axial scale error against oil's 12.2%.
+    assert m["paraxial_focal_shift_ratio"] == pytest.approx(1.333, abs=1e-3)
+    assert m["axial_scaling_error_pct"] == pytest.approx(33.3, abs=0.1)
 
 
 def test_low_mag_objectives_have_ample_working_distance():

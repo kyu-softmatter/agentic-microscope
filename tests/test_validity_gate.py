@@ -376,10 +376,16 @@ def test_reviews_a_real_sample_lens_verdict():
     from sample.gate import evaluate as sample_evaluate
     from sample.setup import SampleSetup
 
+    # Retargeted 2026-09-10 onto G16c. This used G17's mismatch bias until
+    # that check became INFO, and lens 4's remaining bias sources are the
+    # near-wall drag bound and settled crowding. An untrapped 2.475 um-radius
+    # particle 9 um from the coverslip is 15.5% suppressed -- past the 10%
+    # screen, and with no trap nothing absorbs it.
     sample_verdict = sample_evaluate(
         SampleSetup(
             objective=find_objective("100x-Oil"),
-            imaging_depth_um=30.0,  # 0.185 mismatch at 30 um -> a bias finding
+            imaging_depth_um=9.0,
+            particle_radius_um=2.475,
             n_sample=1.333,
             coverslip_actual_um=170.0,
         )
@@ -387,7 +393,7 @@ def test_reviews_a_real_sample_lens_verdict():
     assert sample_verdict.status == "PASS_WITH_CHANGES"
 
     v = evaluate(_setup(upstream=_all_present(sample=sample_verdict)))
-    assert "geometry.ri_mismatch" in v.metrics["validity.bias_ledger"]["uncorrected_codes"]
+    assert "geometry.wall_drag" in v.metrics["validity.bias_ledger"]["uncorrected_codes"]
 
 
 def test_reviews_a_real_trapping_verdict():

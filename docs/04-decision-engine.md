@@ -562,8 +562,8 @@ All decided in code. If even one fails, the proposal is void.
 | G16 | Working distance | free WD `≥` imaging depth | WD, imaging depth, coverslip | BLOCKED |
 | G16b | Depth within chamber | chamber height `≥` imaging depth | chamber height, imaging depth | skipped (INFO) |
 | G16c | Near-wall drag bound | `9a/(16h) ≤ 10%`, **upper bound** (absorbed if trapped). Inverted it is the depth **floor**: `h ≥ 9a/(16 × 0.10)` | particle radius, imaging depth, trap state | skipped (INFO) |
-| — | **Depth window** | reports G16/G16b/G16c/G17's bounds as one band, and the **empty-window** case no single margin can express | all four of the above | INFO |
-| G17 | Refractive-index mismatch | `depth × \|Δn\| ≤ 1.85 µm` (screening) | immersion n, medium n, depth | BLOCKED (depth); medium n defaults to the settled 1.333, but ATPS/birefringent media BLOCK |
+| — | **Depth window** | reports G16/G16b/G16c's bounds as one band, and the **empty-window** case no single margin can express. G17 stopped contributing a ceiling on 2026-09-10 | G16, G16b, G16c | INFO |
+| G17 | Refractive-index mismatch | **INFO since 2026-09-10** — the mechanical-z → optical-depth converter, `h = Δz · n_s/n_i`, both directions. The old `depth × \|Δn\| ≤ 1.85 µm` screen is gone: 1.85 was `10 × 0.185`, a checklist trigger, and the operator has imaged past it | immersion n, medium n, depth | reported (INFO) |
 | ~~G18~~ | *vacant* — coverslip thickness, **removed 2026-09-10**. The coverslip stays in G16's working-distance budget and in lens 4's `assumed_inputs`; the collar moved to the evidence axis. Number not reused | — | — |
 | G19 | Count in field · overlap | nearest neighbour `≥ 3 ×` resolution | concentration, field size, λ_em | skipped (INFO) |
 | ~~G20~~ | *vacant* — saturation / triplet shelving, **removed 2026-09-09**. Formula kept in §5; number not reused | — | — |

@@ -7,6 +7,13 @@ status: current
 
 # 2026-09-10 · Lens 4 reports a depth window, and G18 is removed
 
+> ⚠ **§1's empty-window table is SUPERSEDED, the same day.** G17 stopped gating
+> hours later ([`2026-09-10-g17-becomes-a-z-to-depth-converter.md`](2026-09-10-g17-becomes-a-z-to-depth-converter.md)),
+> so its 10 µm ceiling no longer bounds the window and **the oil objectives are
+> no longer empty** — all three read 13.9 – 100 µm, bounded by the chamber. The
+> mechanism described below is unchanged and the G18 half stands; only the
+> ceiling that came from G17 is gone. Read the two together.
+
 Decided by KH during the gate-by-gate review.
 
 ## Request
