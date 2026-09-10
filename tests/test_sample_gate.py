@@ -295,14 +295,22 @@ def test_wall_drag_bound_reproduces_the_pitfall_table():
         assert m["drag_penalty_upper_bound"] == pytest.approx(penalty, abs=5e-4)
 
 
-def test_a_trap_absorbs_the_wall_drag_so_it_reports_as_info():
+def test_a_trap_absorbs_the_wall_drag_so_it_is_not_charged():
     """KH 2026-08-20: measurements are mainly trapped. D8's in-situ
     power-spectrum calibration at the working height returns kappa and the
-    wall-corrected drag together, so the bound is reported, not charged."""
+    wall-corrected drag together, so the bound is not charged.
+
+    ⚠ "not charged" is not "not reported" -- the last assertion said
+    `not any(...)` until 2026-09-10, which is exactly the behaviour that hid
+    an 18.3% drag inflation from every verdict. Ungraded and invisible are
+    different things, and only the first was intended.
+    """
     v = evaluate(_setup(imaging_depth_um=5.0, particle_radius_um=2.0, trapped=True))
     assert v.margins["geometry.wall_drag"] == 10.0
     assert v.metrics["geometry.wall_drag"]["trapped"] is True
-    assert not any(f.code == "geometry.wall_drag" for f in v.findings)
+    assert any(
+        f.code == "geometry.wall_drag" and f.severity == "info" for f in v.findings
+    )
 
 
 def test_untrapped_past_the_screening_limit_warns_with_the_bound():
@@ -329,6 +337,33 @@ def test_inside_the_expansion_domain_no_bound_is_offered():
     f = next(x for x in v.findings if x.code == "geometry.wall_drag")
     assert "no bound is available" in f.message
     assert "d_suppression_upper_bound" not in v.metrics["geometry.wall_drag"]
+
+
+def test_a_trapped_wall_drag_bound_still_reaches_findings():
+    """It used `_ok`, and sample/gate.py drops severity "ok" from findings --
+    so an 18.3% drag inflation was computed and then discarded into metrics,
+    on the strength of an absorption claim the reader never saw (KH,
+    2026-09-10). INFO now, so it is reported without being graded.
+    """
+    v = evaluate(_setup(particle_radius_um=2.475, imaging_depth_um=9.0, trapped=True))
+    f = next(f for f in v.findings if f.code == "geometry.wall_drag")
+    assert f.severity == "info"
+    assert f.kind == "info"          # still ungraded: the trap can absorb it
+    assert v.margins["geometry.wall_drag"] == 10.0
+    # Both numbers have to be in the text, not just the suppression.
+    assert "15.5%" in f.message and "18.3%" in f.message
+
+
+def test_the_trapped_branch_says_the_absorption_can_be_false():
+    """The premise holds when gamma comes OUT of a fit and fails when it goes
+    IN as 6*pi*eta*a -- which is exactly what a Stokes-drag calibration does.
+    A reader who takes `trapped=True` as a clearance is the failure this text
+    exists to stop."""
+    v = evaluate(_setup(particle_radius_um=2.475, imaging_depth_um=9.0, trapped=True))
+    f = next(f for f in v.findings if f.code == "geometry.wall_drag")
+    assert f.action is not None
+    assert "PREMISE, NOT A FACT" in f.action
+    assert "Stokes-drag" in f.action
 
 
 def test_wall_drag_is_skipped_without_a_particle_radius():

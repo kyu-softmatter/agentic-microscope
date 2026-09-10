@@ -79,8 +79,17 @@ The window's *passing* branches were written with `_ok(...)`, whose severity is
 number the operator asked for was computed and then discarded, visible only in
 `metrics`. Changed to severity `"info"`.
 
-**This is the same defect as G16c's `trapped` branch**, which is still open: a
-report that must be seen cannot use `_ok`. Worth a sweep across the lenses.
+**This was the same defect as G16c's `trapped` branch**, fixed the same day
+(KH): that branch computed an 18.3 % drag inflation and discarded it into
+`metrics`, on the strength of an absorption premise the reader never saw. It is
+now severity `"info"` — still ungraded, because the trap *can* absorb it, but
+visible, and its action text says the premise **is false when γ goes in as
+`6πηa`**, which is exactly what a Stokes-drag calibration does.
+
+The rule this establishes: **ungraded and invisible are different things, and
+`_ok` conflates them.** A report that must be seen cannot use it. One sibling
+branch still does — `check_wall_drag`'s untrapped-and-inside-the-limit case —
+and so do several `_ok` calls in the other lenses; a sweep is still owed.
 
 ## 2. G18 removed
 

@@ -403,16 +403,32 @@ def check_wall_drag(setup: "SampleSetup") -> CheckResult:
     pct = suppression * 100
 
     if setup.trapped:
-        return _ok(
+        # severity "info", NOT "ok" (KH, 2026-09-10). `_ok` is dropped from
+        # `findings` by sample/gate.py, so this branch used to compute an
+        # 18.3% drag inflation and then discard it into `metrics` -- a bias
+        # with no trace in any verdict, on the strength of an absorption claim
+        # the reader never got to check.
+        return CheckResult(
             "geometry.wall_drag",
             INFO,
             MAX_MARGIN,
+            "info",
             f"D is suppressed by at most {pct:.1f}% at {h:.1f} um from the "
-            f"wall (a = {a:.2f} um). The trap absorbs this: an in-situ "
-            "power-spectrum calibration at the working height returns kappa "
-            "and the wall-corrected drag together (docs/06 D8). Redo that "
-            "calibration if the working height changes.",
-            **numbers,
+            f"wall (a = {a:.2f} um), which inflates the drag by "
+            f"{numbers['drag_penalty_upper_bound'] * 100:.1f}%. Held as INFO "
+            "because the trap CAN absorb it -- an in-situ power-spectrum "
+            "calibration at the working height returns kappa and the "
+            "wall-corrected drag together (docs/06 D8), and must be redone "
+            "whenever the height changes.",
+            action="⚠ THAT ABSORPTION IS A PREMISE, NOT A FACT, AND IT IS "
+            "FALSE FOR SOME MEASUREMENTS. It holds when gamma comes OUT of "
+            "the fit -- equipartition, or a PSD corner frequency. It does not "
+            "hold when gamma goes IN as 6*pi*eta*a, which is what a "
+            "Stokes-drag (velocity) calibration does: nothing absorbs "
+            "anything there and the figure above lands directly on the "
+            "result. Confirm an in-situ calibration at this height exists, or "
+            "treat this as an uncorrected bias and hand it to lens 6.",
+            numbers=numbers,
         )
 
     if margin >= 1.0:
