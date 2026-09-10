@@ -188,6 +188,43 @@ def test_trap_on_raises_the_unowned_heating_finding():
     assert "ungated by decision" in f.message
 
 
+def test_temperature_sensitive_sample_gets_a_stronger_heating_notice():
+    """KH 2026-09-10: keep trap heating as INFO, but a temperature-sensitive
+    sample -- a liquid crystal, an ATPS, a gel -- has to be told loudly. For
+    those the trap does not bias a number, it can move the sample across a
+    transition at the focus, and nothing in the committee sees that: G21
+    covers light-DRIVING through the visible line, a different wavelength and
+    a different mechanism.
+    """
+    v = evaluate(_setup(trap_on=True, temperature_sensitive=True))
+    f = next(f for f in v.findings if f.code == "perturbation.trap_heating_unowned")
+    assert f.severity == "info"
+    assert "TEMPERATURE-SENSITIVE" in f.message
+    assert "liquid crystal" in f.message
+    assert f.action is not None and "first-order design constraint" in f.action
+
+
+def test_an_unasked_temperature_sensitivity_is_reported_as_unasked():
+    """Same tri-state discipline as `photoresponsive`: silence is not a no."""
+    v = evaluate(_setup(trap_on=True))
+    f = next(f for f in v.findings if f.code == "perturbation.trap_heating_unowned")
+    assert "Unasked, not cleared" in f.message
+    assert f.numbers["temperature_sensitive"] is None
+
+
+def test_declaring_temperature_sensitivity_never_changes_the_grade():
+    """"인포로만 남겨두자" -- it stays INFO in every state, so the feasibility
+    and the bottleneck must be identical across all three."""
+    unasked = evaluate(_setup(trap_on=True))
+    no = evaluate(_setup(trap_on=True, temperature_sensitive=False))
+    yes = evaluate(_setup(trap_on=True, temperature_sensitive=True))
+    assert unasked.feasibility == no.feasibility == yes.feasibility
+    assert unasked.bottleneck == no.bottleneck == yes.bottleneck
+    assert unasked.status == no.status == yes.status
+    for v in (unasked, no, yes):
+        assert v.margins["perturbation.trap_heating_unowned"] == 10.0
+
+
 def test_trap_heating_notice_does_not_change_the_grade():
     with_trap = evaluate(_setup(trap_on=True))
     without = evaluate(_setup())

@@ -63,6 +63,14 @@ class IlluminationSetup:
     #: True when the 1064 nm trap is on. Lens 7 owns trap heating but does not
     #: implement it, so lens 5 refuses to let that handoff vanish silently.
     trap_on: bool = False
+    #: Does this sample have a temperature-sensitive state -- a liquid-crystal
+    #: phase transition, an ATPS phase boundary, a gel point? Tri-state like
+    #: `photoresponsive`: ``None`` means nobody has said. It never changes the
+    #: grade -- trap heating is ungated by decision either way (KH,
+    #: 2026-09-10, "인포로만 남겨두자") -- it changes how loudly the notice is
+    #: written, because for these samples the trap can move the sample across
+    #: a boundary rather than merely biasing a viscosity.
+    temperature_sensitive: bool | None = None
 
     @classmethod
     def from_channel(

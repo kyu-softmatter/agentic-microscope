@@ -281,22 +281,65 @@ def check_trap_heating_ownership(setup: "IlluminationSetup") -> CheckResult:
             trap_on=False,
         )
 
+    base = (
+        "The 1064 nm trap is on and its local heating is ungated by decision "
+        "(2026-08-19): docs/06 D6 assigns it to lens 7, which has no heating "
+        "check and is not getting one, and lens 5 covers visible excitation "
+        "light only. Water absorbs strongly at 1064 nm, so the trap warms the "
+        "medium at its focus. Named, not caught."
+    )
+    numbers = {"trap_on": True, "temperature_sensitive": setup.temperature_sensitive}
+
+    if setup.temperature_sensitive:
+        return CheckResult(
+            "perturbation.trap_heating_unowned",
+            INFO,
+            MAX_MARGIN,
+            "info",
+            base + " ⚠ AND THIS SAMPLE IS DECLARED TEMPERATURE-SENSITIVE, "
+            "which changes what is at stake. For a liquid crystal near a "
+            "clearing point, an ATPS near a phase boundary, or a gel near its "
+            "gel point, trap heating does not bias a number -- it can move "
+            "the sample across the transition, at the focus, exactly where "
+            "the measurement is. Nothing in the committee sees that: G21 "
+            "covers light-DRIVING through the visible line, which is a "
+            "different wavelength and a different mechanism from thermal.",
+            action="Treat this as a first-order design constraint, not a "
+            "footnote. Bracket the trap power against the transition (hold a "
+            "particle at reducing power and watch for the boundary moving), "
+            "or work far enough below the transition that the unquantified "
+            "heating cannot reach it. Declaring the sensitivity does not "
+            "clear it -- no lens computes the temperature rise.",
+            numbers=numbers,
+        )
+
+    tail = (
+        " That changes viscosity and therefore D, so any microrheology result "
+        "from this configuration may be contaminated."
+    )
+    if setup.temperature_sensitive is None:
+        tail += (
+            " ⚠ And nobody has said whether this sample has a "
+            "temperature-sensitive state -- a liquid-crystal transition, an "
+            "ATPS phase boundary, a gel point. For those the trap can move "
+            "the sample across a boundary rather than merely biasing a "
+            "viscosity, so the answer changes how much this matters. "
+            "Unasked, not cleared."
+        )
+
     return CheckResult(
         "perturbation.trap_heating_unowned",
         INFO,
         MAX_MARGIN,
         "info",
-        "The 1064 nm trap is on and its local heating is ungated by decision "
-        "(2026-08-19): docs/06 D6 assigns it to lens 7, which has no heating "
-        "check and is not getting one, and lens 5 covers visible excitation "
-        "light only. Water absorption at 1064 nm changes viscosity and "
-        "therefore D, so any microrheology result from this configuration may "
-        "be contaminated. Named, not caught.",
+        base + tail,
         action="Treat the medium temperature near the trap as the experiment's "
         "assumption, not the gate's. Before trusting a diffusion or viscosity "
         "number from this setup, quantify the heating separately or show it is "
-        "small at this power. No lens computes it.",
-        numbers={"trap_on": True},
+        "small at this power. No lens computes it. If the sample has a "
+        "temperature-sensitive state, say so (temperature_sensitive=True) and "
+        "read this notice again -- it says something stronger.",
+        numbers=numbers,
     )
 
 

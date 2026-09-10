@@ -98,6 +98,7 @@ def _from_channel(args: argparse.Namespace) -> tuple[IlluminationSetup, str] | N
         light_driving_threshold_w_cm2=args.light_driving_threshold,
         dose_limit_j_cm2=args.dose_limit,
         trap_on=args.trap_on,
+        temperature_sensitive=args.temperature_sensitive,
     )
     return setup, f"{ch.name} ({ch.dye.name})"
 
@@ -132,6 +133,7 @@ def _from_flags(args: argparse.Namespace) -> tuple[IlluminationSetup, str] | Non
             light_driving_threshold_w_cm2=args.light_driving_threshold,
             dose_limit_j_cm2=args.dose_limit,
             trap_on=args.trap_on,
+            temperature_sensitive=args.temperature_sensitive,
         ),
         label,
     )
@@ -223,6 +225,22 @@ def main(argv: list[str] | None = None) -> int:
     )
     c.add_argument("--dose-limit", type=float, default=None, help="J/cm^2 ceiling, if any")
     c.add_argument("--trap-on", action="store_true", help="the 1064 nm trap is in use")
+    temp = c.add_mutually_exclusive_group()
+    temp.add_argument(
+        "--temperature-sensitive", dest="temperature_sensitive",
+        action="store_true", default=None,
+        help="the sample has a temperature-sensitive state (liquid-crystal "
+        "transition, ATPS phase boundary, gel point). Never changes the grade "
+        "-- trap heating is ungated by decision -- but the trap-heating notice "
+        "says something much stronger",
+    )
+    temp.add_argument(
+        "--not-temperature-sensitive", dest="temperature_sensitive",
+        action="store_false", default=None,
+        help="confirmed to have no temperature-sensitive state near the "
+        "working temperature. Say it explicitly; left unanswered the notice "
+        "reports it as unasked",
+    )
     c.set_defaults(func=cmd_check)
 
     args = p.parse_args(argv)
