@@ -36,7 +36,13 @@
 #   past-plot-end   read at 1000 nm and USED at 1064 nm, because every plot
 #                   stops at 1000. Direction unknown per lens; the 40x WI's
 #                   curve is still falling steeply where its plot ends.
-#   absent          no curve and no measurement. Left empty on purpose.
+#   operator-estimate
+#                   no curve and no measurement -- a number KH chose because
+#                   the experiment only needs a rough one. The weakest tier
+#                   here, and the only one that is somebody's judgement rather
+#                   than somebody's reading.
+#   absent          no curve, no measurement, and nobody has estimated it.
+#                   Left empty on purpose; the accessor raises.
 #
 # ⚠ THE `read-from-plot` CELLS ARE NOT CROSS-VALIDATED, AND IT LOOKS AS IF
 # THEY ARE. Back-solving them out of `estimated_visible_mw` gives the same
@@ -118,20 +124,39 @@ trap_ratio_to_20x:
     attractive for trapping in water delivers the least trap power. Nothing
     gates that.
 
+# ── Estimated by the operator, because rough is enough here ─────────────
+operator_estimate_ratio_to_20x:
+  tier: operator-estimate
+  "1064":
+    "10x": 1.0
+  basis: >-
+    KH, 2026-09-10: "10x 적외선도 대략 1로 넣어두자." The value is bracketed
+    by its neighbours -- the 4x reads 1.08 and the 20x is 1.000 by definition
+    -- and the 10x's own MEASURED visible ratios run 0.98 to 1.14 across the
+    three sources, straddling 1. So 1.0 is a defensible middle for a rough
+    estimate and it is not an interpolation this file computed; it is a
+    judgement, which is why it has its own tier.
+
+    ⚠ 1.0 means NO CORRECTION, so a caller who forgets to set the objective
+    and one who sets `10x` get the same answer. That is a coincidence of where
+    the 10x sits, not agreement -- the verdict still says which of the two
+    happened, because an unset objective reports "the power used is the 20x's".
+  why_no_better_number_exists: >-
+    No 10x transmittance plot exists -- both plots labelled "20x" are 20x
+    (KH, 2026-09-09). And the two direct 1064 readings that once filled the 4x
+    and 10x were RETRACTED as a measurement error, so there is neither a curve
+    nor a reading. `illumination-power.yaml`'s TODO(human) on what that error
+    was is still open, and it is what stops the re-measurement repeating it.
+
 # ── Empty on purpose ────────────────────────────────────────────────────
 absent:
-  "10x @ 1064":
-    tier: absent
-    why: >-
-      No 10x transmittance plot exists -- both plots labelled "20x" are 20x
-      (KH, 2026-09-09). And the two direct 1064 readings that once filled the
-      4x and 10x were RETRACTED as a measurement error, so there is neither a
-      curve nor a reading. `illumination-power.yaml`'s TODO(human) on what the
-      error was is still open, and it is what stops the re-measurement
-      repeating it.
-  "4x, 20x @ visible high-mag rows":
+  "4x, 10x @ visible, via objective_ratio_to_20x":
     tier: not-applicable
-    why: "the 4x and 10x visible cells are measured, so no curve is needed"
+    why: >-
+      Those cells are MEASURED and live in `measured_ratio_to_20x`, per
+      source. `objective_ratio_to_20x` raises for them on purpose, pointing at
+      `measured_source_ratio_to_20x` -- collapsing a per-source measurement to
+      one number is the mistake this split exists to prevent.
 
 # ── What closes the biggest gap ─────────────────────────────────────────
 to_measure:

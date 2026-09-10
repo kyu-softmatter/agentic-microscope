@@ -124,6 +124,16 @@ def objective_ratio_to_20x(objective: str, wavelength_label: str = "1064") -> Ob
             t["plot_ratio_to_20x"]["tier"],
         )
 
+    # Last, and deliberately last: the weakest tier in the table, a number
+    # somebody chose rather than read. Checked after everything sourced so an
+    # estimate can never shadow a reading.
+    est = t["operator_estimate_ratio_to_20x"].get(wavelength_label, {})
+    if objective in est:
+        return ObjectiveRatio(
+            objective, wavelength_label, float(est[objective]),
+            t["operator_estimate_ratio_to_20x"]["tier"],
+        )
+
     raise KeyError(
         f"no power ratio for {objective!r} at {wavelength_label!r} in "
         f"{_RATIO_TABLE_PATH.name}. Filled cells are listed there with their "

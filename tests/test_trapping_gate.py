@@ -360,9 +360,35 @@ def test_the_table_computes_where_filled_and_refuses_where_empty():
     assert objective_ratio_to_20x("40x-WI").ratio == pytest.approx(0.74)
     assert objective_ratio_to_20x("100x-Oil", "488").tier == "read-from-plot"
 
-    # 10x at 1064: no curve exists and the direct readings were retracted.
+    # 10x at 1064 has no curve and no reading, so it carries KH's estimate
+    # (2026-09-10) at its own weakest tier rather than nothing.
+    tenx = objective_ratio_to_20x("10x")
+    assert tenx.ratio == pytest.approx(1.0)
+    assert tenx.tier == "operator-estimate"
+    assert tenx.measured is False
+
+    # What genuinely raises: the 4x/10x VISIBLE cells, which are measured and
+    # per source, so this accessor refuses and points at the other one.
     with pytest.raises(KeyError, match="no power ratio"):
-        objective_ratio_to_20x("10x")
+        objective_ratio_to_20x("4x", "488")
+
+
+def test_an_estimate_never_shadows_a_reading():
+    """The estimate block is consulted LAST. If a cell ever gains a curve or a
+    meter reading, that value must win without anyone remembering to delete
+    the estimate."""
+    from trapping.laser import _ratios, objective_ratio_to_20x
+
+    t = _ratios()
+    est = set(t["operator_estimate_ratio_to_20x"].get("1064", {}))
+    sourced = set(t["trap_ratio_to_20x"].get("1064", {}))
+    assert not (est & sourced), (
+        "an objective appears in both the estimate and the sourced block; the "
+        "accessor would silently prefer the reading, which is right, but the "
+        "estimate should be removed rather than left to rot"
+    )
+    for obj in sourced:
+        assert objective_ratio_to_20x(obj).tier != "operator-estimate"
 
 
 def test_only_a_measured_tier_may_advance():
