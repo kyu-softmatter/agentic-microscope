@@ -561,9 +561,10 @@ All decided in code. If even one fails, the proposal is void.
 | G15 | NA feasibility | `NA ≤ n_immersion` | NA, immersion medium | BLOCKED |
 | G16 | Working distance | free WD `≥` imaging depth | WD, imaging depth, coverslip | BLOCKED |
 | G16b | Depth within chamber | chamber height `≥` imaging depth | chamber height, imaging depth | skipped (INFO) |
-| G16c | Near-wall drag bound | `9a/(16h) ≤ 10%`, **upper bound** (absorbed if trapped) | particle radius, imaging depth, trap state | skipped (INFO) |
+| G16c | Near-wall drag bound | `9a/(16h) ≤ 10%`, **upper bound** (absorbed if trapped). Inverted it is the depth **floor**: `h ≥ 9a/(16 × 0.10)` | particle radius, imaging depth, trap state | skipped (INFO) |
+| — | **Depth window** | reports G16/G16b/G16c/G17's bounds as one band, and the **empty-window** case no single margin can express | all four of the above | INFO |
 | G17 | Refractive-index mismatch | `depth × \|Δn\| ≤ 1.85 µm` (screening) | immersion n, medium n, depth | BLOCKED (depth); medium n defaults to the settled 1.333, but ATPS/birefringent media BLOCK |
-| G18 | Coverslip thickness | `\|actual − design\| ≤ 5 µm`, or collar adjusted | coverslip thickness | assumed (design value) |
+| ~~G18~~ | *vacant* — coverslip thickness, **removed 2026-09-10**. The coverslip stays in G16's working-distance budget and in lens 4's `assumed_inputs`; the collar moved to the evidence axis. Number not reused | — | — |
 | G19 | Count in field · overlap | nearest neighbour `≥ 3 ×` resolution | concentration, field size, λ_em | skipped (INFO) |
 | ~~G20~~ | *vacant* — saturation / triplet shelving, **removed 2026-09-09**. Formula kept in §5; number not reused | — | — |
 | G21 | Light-driving | irradiance `<` sample threshold | irradiance, measured threshold | BLOCKED if photoresponsive; **warns if never asked** |

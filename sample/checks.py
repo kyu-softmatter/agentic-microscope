@@ -1,7 +1,13 @@
 """Individual sample-geometry checks -- G15 (NA feasibility), G16 (working
 distance), G16b (depth within chamber), G16c (near-wall drag bound),
-G17 (refractive-index mismatch),
-G18 (coverslip thickness), G19 (count in field).
+G17 (refractive-index mismatch), G19 (count in field), plus the depth window
+that reports G16/G16b/G16c/G17's bounds as one band.
+
+G18 (coverslip thickness) was REMOVED 2026-09-10 and its number is not reused
+-- kb/decisions/2026-09-10-lens-4-depth-window-and-g18-removed.md. The
+coverslip is still in this lens twice: G16 subtracts its excess over design
+from the working-distance budget, and an unmeasured coverslip is still an
+`assumed_input` that withholds `advances`. What went is the graded margin.
 docs/05-consensus-gate.md "Lens 4";
 docs/06-pitfalls.md D5.
 
@@ -23,7 +29,6 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from .aberration import (
-    COVERSLIP_TOLERANCE_UM,
     collection_half_angle_deg,
     free_working_distance_um,
     max_na,
@@ -58,9 +63,6 @@ LIMITS = {
     #: depth term is irrelevant. Covers water-immersion into a water-based
     #: medium (mismatch 0.000) and ordinary buffer-vs-water differences.
     "matched_ri_tolerance": 0.005,
-    #: G18: excess coverslip thickness over design that an objective without
-    #: a correction collar can absorb, um.
-    "coverslip_tolerance_um": COVERSLIP_TOLERANCE_UM,
     #: G19: mean nearest-neighbour distance must exceed this multiple of the
     #: Rayleigh resolution for particles to be separable.
     "overlap_resolution_multiple": 3.0,
@@ -443,6 +445,125 @@ def check_wall_drag(setup: "SampleSetup") -> CheckResult:
     )
 
 
+def check_depth_window(setup: "SampleSetup") -> CheckResult:
+    """The usable band of focal depths, both ends, in one place.
+
+    G16, G16b, G16c and G17 each bound the imaging depth, and until 2026-09-10
+    a reader had to collect four margins and invert them by hand to learn where
+    the focal plane may actually sit. Requested by KH: report the window.
+
+    Which gate owns which end:
+
+        LOWER  G16c  near-wall drag. Working close to the coverslip is the
+                     thing to avoid, so this is a floor: 9a/(16h) <= limit
+                     gives h >= 9a/(16*limit).
+        UPPER  G16   free working distance -- how far the objective reaches.
+              G16b   chamber height -- how far the SAMPLE extends. The spacer
+                     correction on the same budget.
+              G17    depth x |dn| screening limit, when the media are
+                     mismatched. Not a reach limit; an aberration one.
+
+    INFO, and deliberately so: every bound it restates is already graded by the
+    gate that owns it, and grading the window too would double-count. What this
+    adds is the **empty-window** case, which no single margin can express -- two
+    bounds can each be satisfiable while no depth satisfies both.
+
+    Depths are measured from the coverslip's inner surface, which is the datum
+    an acquisition has to establish before any of this is actionable.
+    """
+    a = setup.particle_radius_um
+    uppers: list[tuple[float, str]] = []
+
+    free_wd = free_working_distance_um(
+        setup.objective.wd_um,
+        setup.resolved_coverslip_um,
+        setup.design_coverslip_um,
+    )
+    if free_wd is not None:
+        uppers.append((free_wd, "G16 free working distance"))
+    if setup.chamber_height_um is not None:
+        uppers.append((setup.chamber_height_um, "G16b chamber height"))
+
+    dn = ri_mismatch(setup.resolved_n_sample, setup.n_immersion)
+    if dn > LIMITS["matched_ri_tolerance"]:
+        uppers.append(
+            (LIMITS["aberration_depth_mismatch_um"] / dn, "G17 index mismatch")
+        )
+
+    limit = LIMITS["wall_drag_suppression"]
+    lower = 9.0 * a / (16.0 * limit) if a is not None else None
+
+    numbers = {
+        "depth_min_um": None if lower is None else round(lower, 2),
+        "depth_min_set_by": None if lower is None else "G16c near-wall drag",
+        "upper_bounds_um": {name: round(v, 2) for v, name in uppers},
+        "ri_mismatch": round(dn, 4),
+        "unspaced_mount": setup.unspaced_mount,
+    }
+
+    if not uppers:
+        return CheckResult(
+            "geometry.depth_window",
+            INFO,
+            MAX_MARGIN,
+            "info",
+            "Depth window not bounded above (no working distance and no "
+            "chamber height).",
+            numbers=numbers,
+        )
+
+    upper, upper_by = min(uppers, key=lambda t: t[0])
+    numbers["depth_max_um"] = round(upper, 2)
+    numbers["depth_max_set_by"] = upper_by
+
+    if lower is None:
+        return CheckResult(
+            "geometry.depth_window",
+            INFO,
+            MAX_MARGIN,
+            "info",
+            f"Focal plane may sit anywhere up to {upper:.1f} um above the "
+            f"coverslip ({upper_by}). No lower bound computed -- "
+            "particle_radius_um is what sets it, via G16c.",
+            numbers=numbers,
+        )
+
+    numbers["window_um"] = round(upper - lower, 2)
+
+    if lower <= upper:
+        return CheckResult(
+            "geometry.depth_window",
+            INFO,
+            MAX_MARGIN,
+            "info",
+            f"Usable focal depth **{lower:.1f} to {upper:.1f} um** above the "
+            f"coverslip: floor from {numbers['depth_min_set_by']} "
+            f"(a = {a:.2f} um), ceiling from {upper_by}. Work near the top of "
+            "the band -- the wall term falls as 1/h and nothing else in the "
+            "window prefers the bottom.",
+            numbers=numbers,
+        )
+
+    return CheckResult(
+        "geometry.depth_window.empty",
+        BIAS,
+        upper / lower if lower > 0 else 0.0,
+        "warn",
+        f"NO depth satisfies both ends. The near-wall drag bound needs "
+        f"h >= {lower:.1f} um for a {a:.2f} um-radius particle, and "
+        f"{upper_by} caps h at {upper:.1f} um. Every depth in this "
+        f"configuration is either too close to the wall or past the "
+        f"{upper_by.split()[0]} limit -- the two bounds are individually "
+        "satisfiable and jointly are not, which is why no single margin says "
+        "so.",
+        action="Use a smaller particle (the floor scales with radius), or an "
+        "objective whose ceiling is higher -- an index-matched one removes the "
+        "G17 term entirely. Otherwise accept the wall bias with its bound "
+        "stated and hand it to lens 6.",
+        numbers=numbers,
+    )
+
+
 def check_ri_mismatch(setup: "SampleSetup") -> CheckResult:
     """G17: refractive-index mismatch x depth -- docs/06-pitfalls.md D5.
 
@@ -509,70 +630,6 @@ def check_ri_mismatch(setup: "SampleSetup") -> CheckResult:
         "media), image nearer the coverslip, or quantify the aberration and "
         "the axial correction properly -- the paraxial ratio here is a "
         "screening number, not a correction factor.",
-        numbers=numbers,
-    )
-
-
-def check_coverslip(setup: "SampleSetup") -> CheckResult:
-    """G18: coverslip thickness vs the thickness the objective is corrected for.
-
-    docs/06-pitfalls.md: #1.5 is nominally 170+-5 um but the real spread is
-    wider, so an unmeasured coverslip is an assumption, not a fact.
-    """
-    actual = setup.resolved_coverslip_um
-    design = setup.design_coverslip_um
-    deviation = abs(actual - design)
-    tolerance = LIMITS["coverslip_tolerance_um"]
-    margin = tolerance / deviation if deviation > 0 else MAX_MARGIN
-
-    numbers = {
-        "coverslip_actual_um": actual,
-        "coverslip_design_um": design,
-        "deviation_um": round(deviation, 2),
-        "tolerance_um": tolerance,
-        "measured": setup.coverslip_actual_um is not None,
-        "correction_collar": setup.objective.correction_collar,
-        "collar_adjusted": setup.collar_adjusted,
-    }
-
-
-    if setup.objective.correction_collar and not setup.collar_adjusted:
-        return CheckResult(
-            "geometry.coverslip",
-            BIAS,
-            min(margin, 0.8),
-            "warn",
-            f"'{setup.objective.label}' has a correction collar and there is "
-            "no record of it being adjusted for this coverslip. An unadjusted "
-            "collar reintroduces exactly the aberration the collar exists to "
-            "remove.",
-            action="Adjust the collar against this coverslip and record that "
-            "you did, or state collar_adjusted=True if it was already done.",
-            numbers=numbers,
-        )
-
-    if margin >= 1.0:
-        return _ok(
-            "geometry.coverslip",
-            BIAS,
-            margin,
-            f"Coverslip {actual:.0f} um is within {tolerance:.0f} um of the "
-            f"{design:.0f} um the objective is corrected for.",
-            **numbers,
-        )
-
-    return CheckResult(
-        "geometry.coverslip",
-        BIAS,
-        margin,
-        "warn",
-        f"Coverslip {actual:.0f} um deviates {deviation:.0f} um from the "
-        f"{design:.0f} um design thickness, beyond the {tolerance:.0f} um "
-        "tolerance.",
-        action="Use a coverslip nearer the design thickness, or an objective "
-        "with a correction collar and adjust it."
-        if not setup.objective.correction_collar
-        else "Adjust the correction collar for this thickness.",
         numbers=numbers,
     )
 
@@ -696,8 +753,8 @@ CHECKS: list[Check] = [
     # rather than BLOCKing, same as G16b and G19.
     Check("wall_drag", BIAS, (), check_wall_drag),
     Check("ri_mismatch", BIAS, ("imaging_depth",), check_ri_mismatch),
-    Check("coverslip", BIAS, (), check_coverslip),
     Check("count_in_field", INFO, (), check_count_in_field),
+    Check("depth_window", INFO, (), check_depth_window),
 ]
 
 

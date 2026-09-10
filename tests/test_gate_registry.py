@@ -87,8 +87,10 @@ EXPECTED_CHECKS: dict[str, tuple[tuple[str, str], ...]] = {
         ("depth_in_chamber", "hard"),
         ("wall_drag", "bias"),
         ("ri_mismatch", "bias"),
-        ("coverslip", "bias"),
         ("count_in_field", "info"),
+        # Reports G16/G16b/G16c/G17's bounds as one band, and is the only
+        # thing that can express an EMPTY window (2026-09-10).
+        ("depth_window", "info"),
     ),
     # G10 (photobleaching) and G20 (saturation) were both removed 2026-09-09.
     "photo": (
@@ -170,7 +172,6 @@ EXPECTED_LIMITS: dict[str, dict] = {
     },
     "sample": {
         "aberration_depth_mismatch_um": 1.85,
-        "coverslip_tolerance_um": 5.0,
         "matched_ri_tolerance": 0.005,
         "overlap_resolution_multiple": 3.0,
         "wall_drag_suppression": 0.1,
@@ -219,7 +220,7 @@ def test_only_trapping_lacks_a_limits_dict() -> None:
 
 #: Numbers that are VACANT and must never be reused, so that every reference
 #: in the history stays unambiguous.
-VACANT_GATES = ("G10", "G20")
+VACANT_GATES = ("G10", "G18", "G20")
 
 #: Checks that carry NO gate number. Not an error -- but the set must not grow
 #: without somebody noticing, because two of them are `hard` and can stop a
@@ -227,6 +228,7 @@ VACANT_GATES = ("G10", "G20")
 #: Whether to number them is an open decision (KH, 2026-09-09).
 UNNUMBERED_CHECKS: dict[str, tuple[str, ...]] = {
     "optics": ("excitation", "blocking", "stokes", "collection", "centering", "crosstalk", "port"),
+    "sample": ("depth_window",),
     "photo": ("trap_heating",),
     "stability": ("convening", "vibration"),
     "trapping": ("effective_na", "confinement"),

@@ -48,7 +48,7 @@ Durable expert judgment. Each carries a `Why` and a falsifier.
 - **[microrheology-standard-conditions](expertise/microrheology-standard-conditions.md)** · 2026-09-07
   What conditions does a microrheology run on this instrument default to, and which of them are choices rather than constants
 
-## `kb/decisions/` — 30 entries
+## `kb/decisions/` — 31 entries
 
 Dated design and scope choices, in the order they were made.
 
@@ -112,6 +112,8 @@ Dated design and scope choices, in the order they were made.
   What frame rate, ROI and acquisition length can a Stokes-drag trap calibration on a 5 um DragonGreen bead actually use, and which constraint sets each one?
 - **[2026-09-10-lens-3-review-outcomes](decisions/2026-09-10-lens-3-review-outcomes.md)** · 2026-09-10
   What did the gate-by-gate review of lens 3 change, and should G12a be removed because its disk-bandwidth input is carried as assumed?
+- **[2026-09-10-lens-4-depth-window-and-g18-removed](decisions/2026-09-10-lens-4-depth-window-and-g18-removed.md)** · 2026-09-10
+  Where may the focal plane actually sit, given that four gates each bound the imaging depth from a different side, and does G18 still earn a margin?
 
 ## `kb/literature/` — 1 entries
 

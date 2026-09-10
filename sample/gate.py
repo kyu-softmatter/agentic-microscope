@@ -180,6 +180,18 @@ def _assumed_inputs(setup: SampleSetup) -> list[str]:
         )
     if not setup.objective.verified_na:
         out.append(f"NA of '{setup.objective.label}' (not marked verified)")
+    if setup.objective.correction_collar and not setup.collar_adjusted:
+        # G18 used to grade this. It was removed 2026-09-10 because the
+        # coverslip is already budgeted by G16, but the collar is not a
+        # coverslip fact -- it is a knob whose setting nothing else records,
+        # and the 40x WI is the only objective on the nosepiece that has one.
+        # So the condition moves to the evidence axis rather than vanishing:
+        # it still withholds `advances`, it just no longer carries a margin.
+        out.append(
+            f"correction collar on '{setup.objective.label}' (has one, and no "
+            "record that it was set for the coverslip actually in use -- "
+            "collar_adjusted is False)"
+        )
     return sorted(set(out))
 
 

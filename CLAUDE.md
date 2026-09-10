@@ -319,10 +319,11 @@ python -m optics.cli check config/channels/proposed-2color.yaml
 
 Every lens has the same shape — `optics` · `detection` · `compute` · `sample` ·
 `photo` · `validity` · `stability` · `trapping`, each with `checks.py` ·
-`gate.py` · `setup.py` · `cli.py`. The formulas behind all 30 gates are
-collected in [04](docs/04-decision-engine.md); 27 are implemented, and `G2`–`G4`
-exist only as a threshold and a default verdict in that document. **`G10` and
-`G20` are vacant** — both removed 2026-09-09, and neither number is reused.
+`gate.py` · `setup.py` · `cli.py`. The formulas behind all 29 gates are
+collected in [04](docs/04-decision-engine.md); 26 are implemented, and `G2`–`G4`
+exist only as a threshold and a default verdict in that document. **`G10`, `G18` and
+`G20` are vacant** — G10 and G20 removed 2026-09-09, G18 on 2026-09-10, and
+none of the three numbers is reused.
 
 ```bash
 python -m knowledge.cli write

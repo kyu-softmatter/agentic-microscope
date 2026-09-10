@@ -303,65 +303,60 @@ def test_wall_drag_is_skipped_without_a_particle_radius():
     assert v.status != "BLOCKED"
 
 
-# ----------------------------------------------------- G18 coverslip -------
+# ------------------------------ G18 removed 2026-09-10 ----------------------
+#
+# The four tests that graded `geometry.coverslip` went with the gate. What the
+# coverslip still does in this lens is asserted below instead, because those
+# two effects are the reason removing the margin was safe:
+#   * G16 keeps subtracting coverslip excess from the working-distance budget
+#   * an unmeasured coverslip is still an `assumed_input` and still withholds
+#     `advances`
+# and the collar condition moved to the evidence axis rather than vanishing.
+# kb/decisions/2026-09-10-lens-4-depth-window-and-g18-removed.md
 
 
-def test_coverslip_within_tolerance_passes():
-    v = evaluate(_setup(coverslip_actual_um=172.0))
-    assert v.margins["geometry.coverslip"] >= 1.0
+def test_no_check_grades_the_coverslip_any_more():
+    v = evaluate(_setup(coverslip_actual_um=190.0))
+    assert "geometry.coverslip" not in v.margins
+    assert not any(f.code.startswith("geometry.coverslip") for f in v.findings)
 
 
-def test_unmeasured_coverslip_falls_back_to_the_lab_glass_not_the_design():
-    """KH 2026-08-20: this lab mounts 170 um, which matches every objective's
-    design thickness, so G18 passes on the fallback.
-
-    The fallback still goes through LAB_DEFAULT_COVERSLIP_UM rather than the
-    objective's design value. The two coincide today, so this asserts the
-    provenance rather than a different number: an objective added later with a
-    different design thickness must report a real deviation, not zero.
-    """
-    v = evaluate(_setup(coverslip_actual_um=None))
-    m = v.metrics["geometry.coverslip"]
-    assert m["coverslip_actual_um"] == 170.0
-    assert m["coverslip_design_um"] == 170.0
-    assert m["measured"] is False
-    assert v.margins["geometry.coverslip"] == 10.0  # deviation 0
+def test_coverslip_excess_still_comes_off_the_working_distance():
+    """G16's budget is the geometric half of what G18 used to cover, and it is
+    why the removal loses no reach constraint. 190 um glass against a 170 um
+    design costs 20 um of working distance."""
+    thin = evaluate(_setup(coverslip_actual_um=170.0))
+    thick = evaluate(_setup(coverslip_actual_um=190.0))
+    assert (
+        thin.metrics["geometry.working_distance"]["free_wd_um"]
+        - thick.metrics["geometry.working_distance"]["free_wd_um"]
+        == pytest.approx(20.0)
+    )
 
 
 def test_the_nominal_coverslip_still_withholds_advance_on_evidence_alone():
-    """G18 passes, but a nominal product thickness is not a micrometer reading,
-    so evidence stays assumed and that alone blocks advancing. This is the
-    whole remaining cost of an unmeasured coverslip -- the gate itself is
-    content."""
+    """Unchanged by the removal: the `assumed_input` lives in sample/gate.py,
+    not in the deleted check, so a nominal product thickness still costs
+    `advances` while costing no margin."""
     v = evaluate(_setup(coverslip_actual_um=None))
-    # PASS, not PASS_WITH_CHANGES: evidence.assumed is an *info* finding, and
-    # only fail/warn downgrade the status. This is the two-axis rule doing its
-    # job -- status says the physics is sound, evidence says nobody measured it,
-    # and advancing needs both.
     assert v.status == "PASS"
     assert v.evidence == "assumed"
     assert v.advances is False
-    assert not any(f.code == "geometry.coverslip" for f in v.findings)
+    assert any("coverslip thickness" in i for i in v.assumed_inputs)
 
 
-def test_coverslip_beyond_tolerance_warns():
-    v = evaluate(_setup(coverslip_actual_um=190.0))
-    assert any(f.code == "geometry.coverslip" and f.severity == "warn" for f in v.findings)
-
-
-def test_unadjusted_correction_collar_warns():
+def test_unadjusted_correction_collar_still_withholds_advance():
+    """The collar is a knob nothing else records, and the 40x WI is the only
+    objective on the nosepiece that has one -- so the condition survives the
+    gate's removal, on the evidence axis."""
     v = evaluate(_setup(objective_kw={"correction_collar": True}, collar_adjusted=False))
-    assert any(
-        f.code == "geometry.coverslip" and "collar" in f.message.lower()
-        for f in v.findings
-    )
+    assert v.advances is False
+    assert any("correction collar" in i for i in v.assumed_inputs)
 
 
-def test_adjusted_correction_collar_does_not_warn():
+def test_adjusted_correction_collar_is_not_an_assumption():
     v = evaluate(_setup(objective_kw={"correction_collar": True}, collar_adjusted=True))
-    assert not any(
-        f.code == "geometry.coverslip" and "no record" in f.message for f in v.findings
-    )
+    assert not any("correction collar" in i for i in v.assumed_inputs)
 
 
 # ------------------------------------------------- G19 count in field ------
