@@ -48,7 +48,7 @@ Durable expert judgment. Each carries a `Why` and a falsifier.
 - **[microrheology-standard-conditions](expertise/microrheology-standard-conditions.md)** · 2026-09-07
   What conditions does a microrheology run on this instrument default to, and which of them are choices rather than constants
 
-## `kb/decisions/` — 25 entries
+## `kb/decisions/` — 26 entries
 
 Dated design and scope choices, in the order they were made.
 
@@ -98,6 +98,8 @@ Dated design and scope choices, in the order they were made.
   Does the DMD load from this repository, and why can the blue camera image flip not live in the `.cfg`?
 - **[2026-09-07-realtime-tracking-gui-scope](decisions/2026-09-07-realtime-tracking-gui-scope.md)** · 2026-09-07 · scoped not built
   What would a real-time particle-tracking GUI show, and why can the display and the measurement not be the same stream?
+- **[2026-09-09-blocking-threshold-fixed-at-5-od](decisions/2026-09-09-blocking-threshold-fixed-at-5-od.md)** · 2026-09-09
+  Should the excitation-blocking requirement rise from 5 OD to 7 OD when the path spectra are parametric rather than measured?
 - **[2026-09-09-g10-photobleaching-removed](decisions/2026-09-09-g10-photobleaching-removed.md)** · 2026-09-09
   Should the photobleaching gate stay, given that it has never returned anything but BLOCKED and its only unshared lever is the dye?
 - **[2026-09-09-g20-saturation-removed](decisions/2026-09-09-g20-saturation-removed.md)** · 2026-09-09

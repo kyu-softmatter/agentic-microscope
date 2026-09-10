@@ -127,9 +127,18 @@ signal.
 → Guarded three ways in the implementation:
 1. If the emission path has only one spectrally selective element, it is
    unconditionally `required`
-2. With approximated spectra, the blocking requirement rises 5 OD → 7 OD
-3. With approximated spectra the verdict is `candidate`, not `remove` (not an
+2. With approximated spectra the verdict is `candidate`, not `remove` (not an
    instruction until confirmed on the bench)
+
+⚠ **There used to be a third guard and it is gone (2026-09-09, KH):** with
+approximated spectra the blocking floor rose 5 OD → 7 OD, here and in G3
+alike. Both are now a flat 5 OD. The approximation is charged **once**, on the
+evidence axis — `advances` requires `evidence == "measured"`, so a channel
+built on parametric curves cannot advance regardless — and charging it again in
+the threshold meant one weakness decided the verdict twice. What still carries
+it in this function is guard 2: a removal is never an instruction on
+approximate curves. See
+[`kb/decisions/2026-09-09-blocking-threshold-fixed-at-5-od.md`](../kb/decisions/2026-09-09-blocking-threshold-fixed-at-5-od.md).
 
 ### B5. Raising objective NA buys less than you think 🟢
 

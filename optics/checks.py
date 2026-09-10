@@ -85,10 +85,14 @@ class Check:
 # Thresholds, in one place so they can be argued with.
 # --------------------------------------------------------------------------
 LIMITS = {
+    #: G3. **5.0 in both evidence tiers** -- fixed 2026-09-09 (KH). This used
+    #: to rise to 7.0 for parametric spectra, on the reasoning that an
+    #: idealized flat blocking floor flatters the number. That penalty is now
+    #: gone from the threshold: the approximation is already carried on the
+    #: evidence axis, where `advances` requires `evidence == "measured"`, so
+    #: charging for it twice made one weakness decide the verdict twice.
+    #: kb/decisions/2026-09-09-blocking-threshold-fixed-at-5-od.md
     "blocking_od": 5.0,
-    #: approximated spectra have an idealized flat blocking floor, so demand
-    #: more margin before believing a blocking number
-    "blocking_od_assumed": 7.0,
     "crosstalk": 0.05,
     "spectral_collection": 0.15,
     "filter_efficiency": 0.50,
@@ -222,8 +226,9 @@ def check_excitation(channel: "Channel", others: list["Channel"]) -> CheckResult
 def check_blocking(channel: "Channel", others: list["Channel"]) -> CheckResult:
     """Is backscattered excitation kept out of the detector?"""
     od = channel.excitation_blocking_od()
+    #: Reported, no longer priced in. See LIMITS["blocking_od"].
     assumed = not _path_measured(channel)
-    required = LIMITS["blocking_od_assumed" if assumed else "blocking_od"]
+    required = LIMITS["blocking_od"]
 
     if math.isinf(od):
         margin = 10.0

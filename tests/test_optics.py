@@ -266,6 +266,84 @@ def test_missing_emission_filter_fails_blocking():
     assert ch.excitation_blocking_od() < 1.0
 
 
+def test_blocking_bar_is_five_od_in_both_evidence_tiers():
+    """G3's threshold does not move with the evidence tier (KH, 2026-09-09).
+
+    It used to rise 5 OD -> 7 OD for parametric spectra. Nothing pinned that,
+    which is why removing it broke no test -- so the replacement behaviour is
+    pinned here instead. The approximation is charged once, on the evidence
+    axis (``advances`` needs ``evidence == "measured"``), not twice.
+    kb/decisions/2026-09-09-blocking-threshold-fixed-at-5-od.md
+    """
+    from optics.checks import LIMITS, check_blocking
+
+    assert "blocking_od_assumed" not in LIMITS, (
+        "the parametric-spectra blocking penalty was removed on 2026-09-09; "
+        "restoring it is a decision, not a tweak"
+    )
+
+    ch = build_channel(
+        {
+            "name": "647",
+            "dye": "ATTO647N",
+            "objective": {"label": "o", "magnification": 100, "na": 1.45,
+                          "immersion": "oil", "verified_na": True},
+            "detector": "Prime95B",
+            "source": ["Spectra", "Red"],
+            "emission": ["EM1-705/72"],
+        }
+    )
+    r = check_blocking(ch, [])
+    assert r.numbers["required_od"] == LIMITS["blocking_od"] == 5.0
+
+
+def test_ablation_blocking_floor_does_not_move_with_the_evidence_tier():
+    """`ablate()` carried the same +2 OD penalty G3 did, and lost it the same
+    day (KH, 2026-09-09). Neither had a test, which is why both changes broke
+    nothing -- so the floor is pinned by construction here.
+
+    What still makes the removal analysis timid on approximate curves is the
+    `candidate` downgrade, which `test_approximate_spectra_downgrade_removals`
+    covers; this test only asserts the floor stopped moving.
+    """
+    import inspect
+
+    from optics.path import ablate
+
+    src = inspect.getsource(ablate)
+    assert "blocking_floor = min_blocking_od\n" in src, (
+        "ablate()'s blocking floor must be min_blocking_od flat -- the "
+        "spectra_measured +2.0 penalty was removed 2026-09-09"
+    )
+    assert "spectra_measured else 2.0" not in src
+
+
+def test_blocking_still_reports_that_the_spectra_were_approximated():
+    """Fixing the threshold must not hide the approximation.
+
+    The evidence axis is where it is now carried, so ``assumed`` has to keep
+    coming out of the check even though it no longer changes ``required_od``.
+    """
+    from optics.checks import check_blocking
+
+    ch = build_channel(
+        {
+            "name": "647",
+            "dye": "ATTO647N",
+            "objective": {"label": "o", "magnification": 100, "na": 1.45,
+                          "immersion": "oil", "verified_na": True},
+            "detector": "Prime95B",
+            "source": ["Spectra", "Red"],
+            "emission": ["EM1-705/72"],
+        }
+    )
+    r = check_blocking(ch, [])
+    if r.severity == "ok":
+        assert "required_od" in r.numbers
+    else:
+        assert r.numbers["assumed"] is True
+
+
 def test_sole_emission_filter_is_never_suggested_for_removal():
     """Leaving only a dichroic in the detection path is not an option."""
     ch = build_channel(

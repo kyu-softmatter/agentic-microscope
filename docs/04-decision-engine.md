@@ -516,7 +516,7 @@ All decided in code. If even one fails, the proposal is void.
 |---|---|---|---|---|
 | G1 | Excitation coupling | `ex_eff > 0`, ≥ 20% of ideal | dye absorption, source, excitation path | BLOCKED |
 | G2 | Emission collection | `spectral_collection ≥ 15%` | dye emission, emission path, QE | BLOCKED |
-| G3 | Excitation blocking | `≥ 5 OD` (7 OD with approximate spectra) | emission path curves | BLOCKED |
+| G3 | Excitation blocking | `≥ 5 OD`, **both evidence tiers** (was 7 OD for approximate spectra until 2026-09-09) | emission path curves | BLOCKED |
 | G4 | Crosstalk | `< 5%` | all channel spectra | BLOCKED |
 | G5 | Sampling | per task (§2) | NA, pixel pitch, magnification, **task kind** | ask |
 | G6 | Saturation margin | `peak < 0.7 × full well` | full well, photon budget | BLOCKED |

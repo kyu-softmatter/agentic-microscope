@@ -14,7 +14,7 @@ If even one approximated spectrum is mixed in, the gate:
 
 - returns `evidence: assumed` → `advances: NO` (the verdict cannot pass the
   proposal)
-- raises the blocking requirement from 5 OD to **7 OD**
+- ~~raises the blocking requirement from 5 OD to **7 OD**~~ — **no longer true, 2026-09-09 (KH).** The blocking bar is 5 OD in both tiers; the approximation is charged once, on the evidence axis, not twice. See `kb/decisions/2026-09-09-blocking-threshold-fixed-at-5-od.md`
 - demotes a filter-removal proposal from `remove` to `candidate`
 
 In other words, **no optical configuration is confirmed until the measured

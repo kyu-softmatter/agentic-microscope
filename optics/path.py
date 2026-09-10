@@ -322,16 +322,24 @@ def ablate(
     ``spectra_measured=False`` (parametric band shapes) makes the analysis
     deliberately timid. A parametric filter has an idealized flat blocking
     floor and infinitely clean wings, so removing it looks far safer on paper
-    than it is in glass. Under approximation the blocking requirement is
-    raised and every removal is downgraded to ``candidate`` — something to
-    test on the bench, not an instruction to follow.
+    than it is in glass. Under approximation every removal is downgraded to
+    ``candidate`` — something to test on the bench, not an instruction to
+    follow.
+
+    ⚠ It no longer *raises the blocking floor*. That was a `+2.0 OD` penalty
+    here, matching G3's old 5 → 7 escalation, and both were removed on
+    2026-09-09 (KH): the approximation is charged once, on the evidence axis,
+    not twice. Downgrading the verdict to ``candidate`` is what carries it in
+    this function. See
+    kb/decisions/2026-09-09-blocking-threshold-fixed-at-5-od.md.
     """
     others = others or []
     base_signal = channel.relative_signal()
     results: list[Ablation] = []
 
-    # Approximated curves understate out-of-band leakage; demand more margin.
-    blocking_floor = min_blocking_od + (0.0 if spectra_measured else 2.0)
+    #: One floor, both evidence tiers (2026-09-09). ``spectra_measured`` still
+    #: matters below, where it downgrades a removal to ``candidate``.
+    blocking_floor = min_blocking_od
     emission_selective = [
         el for el in channel.emission_chain() if el.kind in SELECTIVE_KINDS
     ]
