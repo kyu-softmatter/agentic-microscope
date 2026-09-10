@@ -262,8 +262,14 @@ class Channel:
         absolute photon budget — only relative comparisons are meaningful.
 
         Saturation and triplet shelving are not modelled; at high irradiance
-        this overestimates. Lens 5's G20 is what checks whether that regime has
-        been reached.
+        this overestimates. ⚠ NOTHING CHECKS WHETHER THAT REGIME HAS BEEN
+        REACHED. Lens 5's G20 did until it was removed on 2026-09-09, for want
+        of the two dye constants it needed
+        (kb/decisions/2026-09-09-g20-saturation-removed.md). The bound that
+        makes this tolerable is a scale argument, not a gate: FITC saturates
+        near 3.5e5 W/cm^2 and the Aura widefield path delivers 1.1-7.7, four
+        to five orders below. That argument does NOT cover a focused confocal
+        or spinning-disk spot.
         """
         emitted = self.emitted_photons_per_s(
             power_mw_at_sample=power_mw_at_sample,

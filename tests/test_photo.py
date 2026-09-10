@@ -9,10 +9,8 @@ import pytest
 
 from photo.dose import (
     duty_cycle,
-    excited_state_fraction,
     irradiance_w_cm2,
     photon_flux_per_cm2_s,
-    saturation_irradiance_w_cm2,
     total_dose_j_cm2,
     total_illuminated_time_s,
 )
@@ -71,47 +69,6 @@ def test_duty_cycle_cannot_exceed_one():
 
 def test_duty_cycle_is_none_without_an_interval():
     assert duty_cycle(50.0, None) is None
-
-
-# ------------------------------------------------------- saturation --------
-
-
-def test_excited_state_fraction_is_half_when_k_tau_is_one():
-    """k_ex = 1/tau parks half the population in the excited state."""
-    tau_ns = 4.1
-    k_ex = 1.0 / (tau_ns * 1e-9)
-    assert excited_state_fraction(k_ex, tau_ns) == pytest.approx(0.5)
-
-
-def test_excited_state_fraction_is_small_at_low_power():
-    assert excited_state_fraction(1e6, 4.1) < 0.01
-
-
-def test_excited_state_fraction_approaches_one_at_high_power():
-    assert excited_state_fraction(1e12, 4.1) > 0.99
-
-
-def test_excited_state_fraction_rejects_nonpositive_lifetime():
-    with pytest.raises(ValueError):
-        excited_state_fraction(1e6, 0.0)
-
-
-def test_saturation_irradiance_reproduces_k_tau_equals_one():
-    """Feeding the returned irradiance back through the chain must give an
-    excited-state fraction of 0.5."""
-    eps, tau_ns, lam = 75000.0, 4.1, 488.0
-    i_sat = saturation_irradiance_w_cm2(eps, tau_ns, lam)
-    k_ex = 3.82e-21 * eps * photon_flux_per_cm2_s(i_sat, lam)
-    assert excited_state_fraction(k_ex, tau_ns) == pytest.approx(0.5, rel=1e-6)
-
-
-def test_brighter_dyes_saturate_at_lower_irradiance():
-    assert saturation_irradiance_w_cm2(150000.0, 4.1, 488.0) < saturation_irradiance_w_cm2(
-        75000.0, 4.1, 488.0
-    )
-
-
-# ------------------------------------------------------- total dose --------
 
 
 def test_total_dose_is_irradiance_times_illuminated_time():

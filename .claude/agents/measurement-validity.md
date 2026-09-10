@@ -48,7 +48,7 @@ without bias." Specifically:
 
 - **Gate G11**: statistical power — the only item this lens computes directly
 - **Final review of every bias gate** (G23): G4 crosstalk (Lens 1), G8 motion
-  blur (Lens 2), G10 photobleaching / G20 saturation / G21 light-driving (Lens
+  blur (Lens 2), G21 light-driving (Lens
   5), G17 refractive-index mismatch / G18 coverslip (Lens 4), G30 lateral drift
   / G32 evaporation (Lens 8), D3 label perturbation (no gate) — this lens does
   not recompute them. It makes the final call on "does a correction formula
@@ -357,7 +357,7 @@ prints the live tables.
 | RI mismatch, ATPS interface (G17/D5) | 4 sample | `geometry.ri_mismatch` | **none** — model not implemented | `FAIL` for axial and near-interface measurements only; lateral measurements unaffected |
 | Coverslip mismatch (G18) | 4 sample | `geometry.coverslip` | collar adjustment — **hardware, not post hoc** | `FAIL` for PSF-dependent quantities |
 | Photobleaching (G10) | 5 photo | `perturbation.photobleaching` | intensity-decay correction | `FAIL` for time-series intensity quantification |
-| Excited-state saturation (G20) | 5 photo | `perturbation.saturation` | **none** — and it invalidates Lens 1's and Lens 2's photon budgets, which assume linearity | `FAIL`; state that their SNR numbers overestimate signal while dose keeps climbing |
+| ~~Excited-state saturation (G20)~~ | — | — | **GATE REMOVED 2026-09-09** (`kb/decisions/2026-09-09-g20-saturation-removed.md`). Nothing emits `perturbation.saturation`, so this row can never appear | Do not expect it, and do not record it as `cleared`. Lens 1's and Lens 2's linearity assumption is now **unguarded** — say so when the path is confocal or spinning-disk, where the scale argument that excuses it for widefield does not hold |
 | Light-driving (G21/D2) | 5 photo | `perturbation.light_driving` | **none** | the measurement target itself has moved → `FAIL` |
 | Lateral drift (G30) | 8 stability | `stability.lateral_drift` | drift correction, if a fiducial or image registration works | `FAIL` for absolute position; MSD affected at long lags |
 | Evaporation (G32) | 8 stability | `stability.evaporation` | **none** | `FAIL` for concentration / viscosity over time |

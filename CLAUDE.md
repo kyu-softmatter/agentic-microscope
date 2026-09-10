@@ -168,10 +168,12 @@ the disk's write bandwidth (G12a). And underneath all of it, **`unevaluated` ≠
 ### Exceptions
 
 - **E1 · Lens 5's standing `BLOCKED` is over** (§3, 2026-09-09). It computes,
-  so **a failure from G20/G21/G22 is a genuine one** and nothing here excuses
-  it. G10, the gate this exception existed for, was removed the same day. The
-  entry is kept as a marker: if a lens ever blocks by design again, it needs its
-  own line here rather than the benefit of this one.
+  so **a failure from G21/G22 is a genuine one** and nothing here excuses it.
+  Both gates that made this exception necessary were removed the same day — G10
+  (photobleaching) and G20 (saturation), each keyed to a per-dye constant that
+  is empty for every dye. The entry is kept as a marker: if a lens ever blocks
+  by design again, it needs its own line here rather than the benefit of this
+  one.
 - **E2 · Lens 6 runs alone and last.** See the ⚠ above.
 - **E3 · Lens 7 silent on heating ≠ heating cleared.** Trap heating is ungated
   by decision ([05 §5](docs/05-consensus-gate.md), [06 D6](docs/06-pitfalls.md)).
@@ -238,9 +240,16 @@ the disk's write bandwidth (G12a). And underneath all of it, **`unevaluated` ≠
   illuminated area both exist
   ([`kb/calibrations/illumination-power.yaml`](kb/calibrations/illumination-power.yaml)),
   so there is irradiance — all three engines put about the camera field on the
-  sample, 603,654 µm² at 20×, giving 1.1–7.7 W/cm² depending on line. **G20,
-  G21 and G22 run**; G10 was removed the same day
-  ([04 §6](docs/04-decision-engine.md)). Two limits, and only one of them is
+  sample, 603,654 µm² at 20×, giving 1.1–7.7 W/cm² depending on line. **G21 and
+  G22 run**; G10 and G20 were both removed the same day
+  ([04 §6](docs/04-decision-engine.md),
+  [`kb/decisions/2026-09-09-g20-saturation-removed.md`](kb/decisions/2026-09-09-g20-saturation-removed.md)).
+  ⚠ The 603,654 µm² is the *square* field, which is the Spectra's and the
+  LUN-F-XL's; **the Aura is a circle circumscribing it, 948,218 µm²**, so an
+  Aura irradiance from the square number is 1.56× too high
+  ([`illumination-power.yaml`](kb/calibrations/illumination-power.yaml)) — the
+  4.85 W/cm² row, not 7.62. `photo/gate.py`'s own refusal text still quotes the
+  square for all three engines. Two more limits, and only one of them is
   still about evidence: the areas are **20× only**, because that is the
   magnification the fields were established at — not because of the pixel size,
   which is `measured` at every objective — and they are `computed`, since
@@ -277,9 +286,9 @@ survives a clean checkout).
 pytest -q -rs
 ```
 
-1211 passed, 10 skipped on Windows, of 1,274 (measured 2026-09-09; macOS and
-Linux print 1210/11 — the 2026-09-07 figure plus the 49 net added since, not
-re-measured there — one Windows-only test). Two kinds of skip: three whole
+1194 passed, 11 skipped on macOS, of 1,205 (measured 2026-09-09 after G20's
+removal took 16 tests with it; Windows prints 1195/10 — one Windows-only test,
+not re-measured there). Two kinds of skip: three whole
 modules behind `pytest.importorskip("pymmcore_plus")` holding 56 tests that need
 a Micro-Manager device-adapter install, and seven `requires_cv2` tests in
 `tests/test_objective_offsets.py` that call OpenCV
@@ -310,10 +319,10 @@ python -m optics.cli check config/channels/proposed-2color.yaml
 
 Every lens has the same shape — `optics` · `detection` · `compute` · `sample` ·
 `photo` · `validity` · `stability` · `trapping`, each with `checks.py` ·
-`gate.py` · `setup.py` · `cli.py`. The formulas behind all 31 gates are
-collected in [04](docs/04-decision-engine.md); 28 are implemented, and `G2`–`G4`
-exist only as a threshold and a default verdict in that document. **`G10` is
-vacant** — removed 2026-09-09, and the number is not reused.
+`gate.py` · `setup.py` · `cli.py`. The formulas behind all 30 gates are
+collected in [04](docs/04-decision-engine.md); 27 are implemented, and `G2`–`G4`
+exist only as a threshold and a default verdict in that document. **`G10` and
+`G20` are vacant** — both removed 2026-09-09, and neither number is reused.
 
 ```bash
 python -m knowledge.cli write

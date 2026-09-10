@@ -13,9 +13,22 @@ tools: Read, Grep, Glob
 model: inherit
 ---
 
-> **Status: the quantitative half is code now** (`photo/`, 2026-08-12). G10,
-> G20, G21, G22 and the trap-heating ownership notice all run — so this file is
-> no longer where the numbers come from. **Run the gate, then interpret it:**
+> **Status: the quantitative half is code now** (`photo/`, 2026-08-12). **G21,
+> G22 and the trap-heating ownership notice run. G10 and G20 do not exist any
+> more** — both were removed on 2026-09-09, each keyed to a per-dye constant
+> that is empty for every entry in `data/fluorophores.yaml`
+> ([`2026-09-09-g10-photobleaching-removed.md`](../../kb/decisions/2026-09-09-g10-photobleaching-removed.md),
+> [`2026-09-09-g20-saturation-removed.md`](../../kb/decisions/2026-09-09-g20-saturation-removed.md)).
+> Neither number is reused.
+>
+> ⚠ **Sections C1 and C2 below still describe those two gates and are kept as
+> the physics, not as gates.** Do not run them, do not report a margin for
+> them, and do not ask for `bleach_photons` or `lifetime_ns` — nothing consumes
+> either. C1 was already stale before this edit: G10 went on 2026-09-09 and this
+> brief was not updated then, which is the mistake being corrected here.
+>
+> So this file is no longer where the numbers come from. **Run the gate, then
+> interpret it:**
 >
 > ```
 > python -m photo.cli check --channel config/channels/<plan>.yaml \
@@ -75,8 +88,9 @@ advances      bool
    been filled in for a single entry in that whole file** — it exists only in a
    schema comment (re-verified 2026-08-19). Lens 5's bleaching computation is
    blocked by this absence without exception. `lifetime_ns` is the exception
-   that is *present* — 13 entries have one, so G20 is the one gate here whose
-   dye-side input usually exists.
+   that is *present* — 13 entries have one. Both facts are now historical:
+   since G20's removal **no gate in this lens reads any dye constant at all**,
+   so neither absence blocks anything.
 2. Illumination intensity (mW at sample) → `power_at_sample_mw` in
    `data/light_sources.yaml`. **This field is `{}` without exception for every
    registered light source (Spectra, LightEngine, Aura, LUN-F-XL, Trap)** —
@@ -103,9 +117,9 @@ advances      bool
    overlap to 1 — the line treated as if it sat on the absorption peak. Real
    couplings are well under 1 (ATTO488, abs peak 500 nm, on this lab's 462–486
    nm green band: about a half). The verdict lists it under `assumed_inputs` and
-   withholds `advances` when that happens. The bias is toward *stricter* G10 and
-   G20 verdicts, so it produces false alarms rather than false clears — still
-   wrong, because "cut the light" is then a wrong instruction.
+   withholds `advances` when that happens. ⚠ **No longer true as of 2026-09-09:**
+   `k_ex` fed only G10 and G20, so with both gone the coupling assumption is off
+   the evidence axis entirely and `photo/gate.py` no longer reports it.
 4. Whether the sample is photoresponsive (active particles, photo-crosslinking,
    LC photo-alignment, FRAP, or whether the imaging light itself already starts
    bleaching/driving) → `kb/samples/<sample-system>.md`. **That directory still
@@ -130,11 +144,9 @@ compute.
   the whole campaign)
 - Exposure time and frame count (or total acquisition time) — owned by Lens 2,
   but also an input to Lens 5
-- The dye's `bleach_photons` (for the bleaching check only)
-- The dye's `lifetime_ns` (for the saturation/triplet proximity check only).
-  `photo/gate.py` BLOCKs the whole lens on this rather than skipping G20 alone —
-  a deliberate choice, and the one place the code is stricter than this file
-  used to say. Do not "skip C2 and carry on"; report the block
+- ~~The dye's `bleach_photons`~~ and ~~the dye's `lifetime_ns`~~ — **neither is
+  an input any more** (G10 and G20 both removed 2026-09-09). `photo/gate.py` no
+  longer blocks on either. **Do not ask the operator for them.**
 - A measured threshold, if the answer to photoresponsiveness is yes (see C3)
 
 Photoresponsiveness itself is **not** in this list, and that is the point. It is
@@ -161,19 +173,20 @@ not substitute a qualitative `photostability` (low/medium/high) grade
 often **superlinear** in illumination intensity (the triplet pathway) — always
 report alongside that the formula above is a **lower bound**.
 
-### C2. Saturation / triplet shelving — bias, gate **G20**, in code (`check_saturation`)
+### C2. Saturation / triplet shelving — ⚠ **NOT A GATE. G20 removed 2026-09-09**
 
 ```
 excited-state fraction  f = k_ex·τ / (1 + k_ex·τ)      gate: f ≤ 0.1
 I_sat = hc / (λ · σ_abs · τ_fl)                        σ_abs = 3.82e-21 × ε [cm²]
 ```
 
-**This is a real gate now, not a footnote.** It was written up in
-`04-decision-engine.md §3` as "the current implementation does not model
-saturation, so warn when I ≳ 0.1·I_sat"; `photo/checks.py` implements the same
-idea directly as the steady-state excited-state fraction, registers it as G20,
-and marks it `kind=bias` — so **it does enter the feasibility grade.** Earlier
-versions of this file said it could not; that was wrong.
+**This was a gate from 2026-08-12 to 2026-09-09 and is now physics only.**
+`σ_abs` needs `ext_coeff` and the occupancy needs `τ_fl`, and both are empty for
+the proprietary bead colourants this instrument actually images — so the gate
+had one answer, `BLOCKED`, exactly as G10 did. It does **not** enter the
+feasibility grade, because it no longer exists. The route back is a **measured**
+linearity series (emission versus illuminator level at the run's exposure),
+which needs no dye identity at all — the same shape as G10's route back.
 
 Why it matters beyond this lens: past saturation, emission stops rising with
 power, so Lens 1's and Lens 2's photon budgets — which assume linearity
@@ -259,12 +272,14 @@ user knowledge or `kb/expertise`.
    statement about what the data will mean, which Lens 6 arbitrates
    (`05-consensus-gate.md` Lens 6). Do not narrate a FAIL that the gate cannot
    emit.
-1. C1 (G10), C2 (G20) and C3 (G21) are all `bias` and all gradeable: the
-   feasibility grade is `grade(worst margin)` across the three, and
+1. **C3 (G21) is the only gradeable check left in this lens.** C1 (G10) and C2
+   (G20) were both removed on 2026-09-09. The feasibility grade is
+   `grade(worst margin)` over what remains, and
    `advances = passed and evidence == "measured" and feasibility >= TIGHT`. A
-   `margin < 1` on any of them makes `status` at minimum `PASS_WITH_CHANGES`.
-2. C2 does enter the grade (see C2 above — this file used to say otherwise).
-   G22 (total dose) and the trap-heating notice are `info` and never do.
+   `margin < 1` on G21 makes `status` at minimum `PASS_WITH_CHANGES`.
+2. G22 (total dose) and the trap-heating notice are `info` and never enter the
+   grade. ⚠ **Consequence worth stating: with one gradeable gate, a
+   non-photoresponsive sample now grades on G21 alone.**
 3. C3 (light-driving) is this lens's reason to exist. If the answer is
    "yes/unknown/BLOCKED" while Lenses 1 and 2 demand brighter and more frequent
    acquisition, put **that conflict at the very top of findings**. If it cannot

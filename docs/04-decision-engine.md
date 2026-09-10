@@ -168,12 +168,19 @@ $$I_{\text{sat}} = \frac{hc}{\lambda\,\sigma_{\text{abs}}\,\tau_{\text{fl}}}$$
 
 As `k_ex → 1/τ_fl` the linear model above overestimates. Triplet shelving
 arrives earlier, at lower intensity. **The photon budget above does not model
-saturation** — `optics.path.detected_e_per_s` is linear in power throughout — so
-the warning is lens 5's job: `photo.checks.check_saturation` (G20) gates the
-steady-state excited-state fraction `k_ex τ/(1 + k_ex τ)` at 0.1, the same
-threshold expressed as an occupancy rather than as `I ≳ 0.1·I_sat`. Past it,
-this section's numbers and lens 2's SNR are both overestimates while dose keeps
-climbing.
+saturation** — `optics.path.detected_e_per_s` is linear in power throughout.
+Past `I ≳ 0.1·I_sat` — equivalently a steady-state excited-state fraction
+`k_ex τ/(1 + k_ex τ)` above 0.1 — this section's numbers and lens 2's SNR are
+both overestimates while dose keeps climbing.
+
+**⚠ No gate enforces that any more.** `photo.checks.check_saturation` (G20) did,
+and it was **removed on 2026-09-09** for the same reason G10 was: `σ_abs` needs
+`ext_coeff` and the occupancy needs `τ_fl`, and both are empty for the
+proprietary bead colourants this instrument actually images
+([`kb/decisions/2026-09-09-g20-saturation-removed.md`](../kb/decisions/2026-09-09-g20-saturation-removed.md)).
+The formula stays here because the physics did not stop being true, and the
+route back is a **measured** linearity series — emission versus level at the
+run's exposure — which needs no dye identity at all.
 
 ### ⚠ Without a measured light level this whole section is void
 
@@ -331,8 +338,13 @@ instrument measurement supplies.
 
 **Why removing it was the operator's call rather than a loss.** Of the three
 levers the gate could name — acquisition length, light level, dye — the first
-two are already governed by G20 and G22, and the third is usually not free: the
-sample dictates the label (KH, 2026-09-09).
+two are already governed by G22 and by lens 2's exposure, and the third is
+usually not free: the sample dictates the label (KH, 2026-09-09).
+
+⚠ This sentence said "G20 and G22" until G20 was removed later the same day.
+The argument is unchanged in substance — G22 and lens 2 still own those two
+levers — but the record should not read as if a gate that is now vacant is
+carrying part of it.
 
 **What it cost, recorded so it is not discovered by surprise.** G10 was a `bias`
 gate, so photobleaching has left lens 6's bias ledger. The code
@@ -522,7 +534,7 @@ All decided in code. If even one fails, the proposal is void.
 | G17 | Refractive-index mismatch | `depth × \|Δn\| ≤ 1.85 µm` (screening) | immersion n, medium n, depth | BLOCKED (depth); medium n defaults to the settled 1.333, but ATPS/birefringent media BLOCK |
 | G18 | Coverslip thickness | `\|actual − design\| ≤ 5 µm`, or collar adjusted | coverslip thickness | assumed (design value) |
 | G19 | Count in field · overlap | nearest neighbour `≥ 3 ×` resolution | concentration, field size, λ_em | skipped (INFO) |
-| G20 | Saturation · triplet shelving | excited-state fraction `≤ 0.1` | irradiance, ε, lifetime | BLOCKED |
+| ~~G20~~ | *vacant* — saturation / triplet shelving, **removed 2026-09-09**. Formula kept in §5; number not reused | — | — |
 | G21 | Light-driving | irradiance `<` sample threshold | irradiance, measured threshold | BLOCKED if photoresponsive; **warns if never asked** |
 | G22 | Total dose | `≤` stated ceiling | irradiance, exposure plan | reported (INFO) |
 | G23 | Bias ledger | every bias that damages this quantity is absent, or cleared by a correction that exists | other lenses' verdicts, declared corrections | BLOCKED |
@@ -536,7 +548,7 @@ All decided in code. If even one fails, the proposal is void.
 | G31 | Sedimentation | settling `≤` depth of field | radius, Δρ, viscosity | BLOCKED |
 | G32 | Evaporation | `≤ 5%` of volume lost | sealed, or a measured rate | warns unquantified |
 
-G15–G19 are lens 4's, G20–G22 lens 5's, G23–G27 lens 6's, G28–G32 lens 8's; the
+G15–G19 are lens 4's, G21–G22 lens 5's, G23–G27 lens 6's, G28–G32 lens 8's; the
 numbers are new. This table previously stopped at G14 because lenses 4 and 8 had
 no gate IDs at all, lens 5 had only G10 (removed 2026-09-09) and lens 6 only G11.
 
@@ -585,7 +597,7 @@ next step, but the action differs: FAIL means change the setting, BLOCKED means
 | §4 SNR · saturation (G6, G7) | `detection.gate.evaluate` | ✅ covered by tests (2026-08-11) |
 | §5 timing · blur (G8, G9) | `detection.gate.evaluate` | ✅ covered by tests (2026-08-11) |
 | §6 bleaching (G10) | — | **Removed 2026-09-09.** The gate, its tests and its plumbing are gone; §6 keeps the formulas and says why |
-| §5 dose · saturation · light-driving (G20–G22) | `photo.gate.evaluate` | ✅ covered by tests (2026-08-12) |
+| §5 dose · light-driving (G21–G22) | `photo.gate.evaluate` | ✅ covered by tests (2026-08-12; G20 removed 2026-09-09) |
 | §7 statistical power (G11) | `validity.gate.evaluate` | ✅ covered by tests (2026-08-12) |
 | bias ledger · calibrations · post-processing (G23–G27) | `validity.gate.evaluate` | ✅ covered by tests (2026-08-12); bias scoping + correction registry + per-quantity verdicts added 2026-08-20 |
 | drift · settling · evaporation (G28–G32) | `stability.gate.evaluate` | ✅ covered by tests (2026-08-12) — G29 BLOCKED until a drift rate is measured |

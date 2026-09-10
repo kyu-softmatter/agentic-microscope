@@ -5,7 +5,15 @@
 id: 2026-08-19-lens-5-hardening
 question: "What question was lens 5 not asking, and where does its excitation rate k_ex come from?"
 date: 2026-08-19
+corrected_by: [2026-09-09-g10-photobleaching-removed, 2026-09-09-g20-saturation-removed]
 ---
+
+> ⚠ **Two of the three gates this entry hardened no longer exist.** G10 was
+> removed on 2026-09-09 and G20 the same day; only G21 (light-driving) remains,
+> and the k_ex chain this entry is mostly about now feeds no gate at all. The
+> text below is left as written -- what the lens said on the day is what it
+> said -- so read it for the *reasoning* about tri-state answers and evidence
+> tiers, which still holds, and not for which gates are live.
 
 # 2026-08-19 · Lens 5 hardening — the unasked question, and where k_ex comes from
 

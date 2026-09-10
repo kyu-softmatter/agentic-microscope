@@ -48,7 +48,7 @@ Durable expert judgment. Each carries a `Why` and a falsifier.
 - **[microrheology-standard-conditions](expertise/microrheology-standard-conditions.md)** · 2026-09-07
   What conditions does a microrheology run on this instrument default to, and which of them are choices rather than constants
 
-## `kb/decisions/` — 24 entries
+## `kb/decisions/` — 25 entries
 
 Dated design and scope choices, in the order they were made.
 
@@ -62,7 +62,7 @@ Dated design and scope choices, in the order they were made.
   What does lens 3 hold fixed after hardening -- one stream per camera -- and where does the frame rate it budgets against come from?
 - **[2026-08-19-lens-4-scope](decisions/2026-08-19-lens-4-scope.md)** · 2026-08-19
   What will the sample-geometry lens model, and what is deliberately outside it?
-- **[2026-08-19-lens-5-hardening](decisions/2026-08-19-lens-5-hardening.md)** · 2026-08-19
+- **[2026-08-19-lens-5-hardening](decisions/2026-08-19-lens-5-hardening.md)** · 2026-08-19 · corrected by [2026-09-09-g10-photobleaching-removed](decisions/2026-09-09-g10-photobleaching-removed.md), [2026-09-09-g20-saturation-removed](decisions/2026-09-09-g20-saturation-removed.md)
   What question was lens 5 not asking, and where does its excitation rate k_ex come from?
 - **[2026-08-19-lens-7-scope](decisions/2026-08-19-lens-7-scope.md)** · 2026-08-19
   What will the optical-trapping lens model, and what is deliberately outside it?
@@ -100,6 +100,8 @@ Dated design and scope choices, in the order they were made.
   What would a real-time particle-tracking GUI show, and why can the display and the measurement not be the same stream?
 - **[2026-09-09-g10-photobleaching-removed](decisions/2026-09-09-g10-photobleaching-removed.md)** · 2026-09-09
   Should the photobleaching gate stay, given that it has never returned anything but BLOCKED and its only unshared lever is the dye?
+- **[2026-09-09-g20-saturation-removed](decisions/2026-09-09-g20-saturation-removed.md)** · 2026-09-09
+  Should the saturation gate stay, given that it blocks on two per-dye constants that are empty for every bead colourant this instrument images?
 
 ## `kb/literature/` — 1 entries
 

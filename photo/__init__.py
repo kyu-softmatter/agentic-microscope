@@ -21,7 +21,8 @@ question. ``IlluminationSetup.from_channel`` is the preferred constructor: the
 bare fields make k_ex from epsilon and flux alone, with the spectral overlap
 lens 1 computes silently set to 1.
 
-Gates: G20 saturation / triplet shelving, G21 light-driving, G22 total dose.
+Gates: G21 light-driving, G22 total dose. (G10 and G20 were removed
+2026-09-09; neither number is reused.)
 
 **This lens computes as of 2026-09-09**, for the first time. Power is populated
 for nine lines across the Aura, Spectra and LUN-F-XL at three objectives, and
@@ -49,10 +50,8 @@ from __future__ import annotations
 from .checks import CHECKS, GRADE_NOTES, LIMITS, CheckResult, grade
 from .dose import (
     duty_cycle,
-    excited_state_fraction,
     irradiance_w_cm2,
     photon_flux_per_cm2_s,
-    saturation_irradiance_w_cm2,
     total_dose_j_cm2,
     total_illuminated_time_s,
 )
@@ -69,11 +68,9 @@ __all__ = [
     "Verdict",
     "duty_cycle",
     "evaluate",
-    "excited_state_fraction",
     "grade",
     "irradiance_w_cm2",
     "photon_flux_per_cm2_s",
-    "saturation_irradiance_w_cm2",
     "total_dose_j_cm2",
     "total_illuminated_time_s",
 ]

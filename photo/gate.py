@@ -7,9 +7,15 @@ Phase 0 here is unusually load-bearing. Every gate in this lens needs
 **irradiance** at the sample plane, and as of 2026-09-09 the instrument has it:
 power for nine lines at three objectives, and an illuminated area for all three
 engines, which all put about the camera field on the sample
-(kb/calibrations/illumination-power.yaml). So G20, G21 and G22 compute.
+(kb/calibrations/illumination-power.yaml). So G21 and G22 compute.
 
-G10 (photobleaching) was removed on 2026-09-09 -- it had never returned
+TWO GATES WERE REMOVED FROM THIS LENS ON 2026-09-09 and neither number is
+reused. G20 (saturation / triplet shelving) needed BOTH ext_coeff and
+lifetime_ns, and both are empty for the proprietary bead colourants this
+instrument images --
+kb/decisions/2026-09-09-g20-saturation-removed.md.
+
+G10 (photobleaching) was removed the same day -- it had never returned
 anything but BLOCKED, its one lever the operator could not use was the dye, and
 the intensity decay it guarded is measurable in the acquisition rather than
 predictable from a dye constant. kb/decisions/2026-09-09-g10-photobleaching-removed.md.
@@ -140,19 +146,6 @@ def _missing_inputs(setup: IlluminationSetup) -> list[Finding]:
             )
         )
 
-    if setup.lifetime_ns is None:
-        out.append(
-            Finding(
-                "fail",
-                "missing.lifetime",
-                "The dye has no fluorescence lifetime on record, so the "
-                "saturation check (G20) cannot tell whether emission is still "
-                "linear in power.",
-                action="Add lifetime_ns to the dye's entry in "
-                "data/fluorophores.yaml.",
-            )
-        )
-
     if setup.photoresponsive is True and setup.light_driving_threshold_w_cm2 is None:
         out.append(
             Finding(
@@ -180,20 +173,12 @@ def _assumed_inputs(setup: IlluminationSetup) -> list[str]:
     as a clearance (docs/06 D2).
     """
     out: list[str] = []
-    if setup.quantum_yield is None:
-        out.append("quantum yield (absent, so emitted photons cannot be scaled)")
     if setup.frame_interval_ms is None:
         out.append("frame interval (duty cycle not computed)")
     if setup.photoresponsive is None:
         out.append(
             "sample photoresponsiveness (never asked, so light-driving is "
             "unconfirmed rather than cleared)"
-        )
-    if setup.excitation_coupling_assumed:
-        out.append(
-            "spectral overlap coupling (no channel supplied, so k_ex assumes "
-            "the line sits on the absorption peak -- an upper bound, which "
-            "makes G20 stricter than the instrument warrants)"
         )
     return sorted(set(out))
 

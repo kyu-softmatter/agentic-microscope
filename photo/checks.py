@@ -1,11 +1,15 @@
-"""Individual photo-perturbation checks -- G20 (saturation / triplet
-shelving), G21 (light-driving), G22 (total dose).
+"""Individual photo-perturbation checks -- G21 (light-driving), G22 (total
+dose).
 docs/04-decision-engine.md §5; docs/05-consensus-gate.md "Lens 5";
 docs/06-pitfalls.md D2, D3.
 
-G10 (photobleaching) was here and was REMOVED on 2026-09-09 -- see
-kb/decisions/2026-09-09-g10-photobleaching-removed.md. G20-G22 are new numbers:
-G1-G19 were taken by lenses 1/2/3/4/6/7.
+TWO GATES HAVE BEEN REMOVED FROM THIS LENS AND NEITHER NUMBER IS REUSED.
+G10 (photobleaching) went on 2026-09-09 --
+kb/decisions/2026-09-09-g10-photobleaching-removed.md. G20 (saturation /
+triplet shelving) went the same day, for the same reason one step further on --
+kb/decisions/2026-09-09-g20-saturation-removed.md. Both computed against
+per-dye constants that are empty for every dye in data/fluorophores.yaml, so
+both had exactly one answer. G21 and G22 need no dye constant and remain.
 
 Mirrors optics.checks / detection.checks / compute.checks / trapping.checks /
 sample.checks: independent margins (achieved / required), never booleans.
@@ -20,8 +24,6 @@ from typing import TYPE_CHECKING
 
 from .dose import (
     duty_cycle,
-    excited_state_fraction,
-    saturation_irradiance_w_cm2,
     total_dose_j_cm2,
     total_illuminated_time_s,
 )
@@ -36,13 +38,12 @@ INFO = "info"
 
 MAX_MARGIN = 10.0
 
-LIMITS = {
-    #: G20: steady-state excited-state fraction above which the linear
-    #: photon-budget assumption that lenses 1 and 2 rely on stops holding.
-    #: 0.1 keeps emission within ~10% of linear in power. Triplet shelving is
-    #: not modelled and pushes real saturation earlier, so this is generous.
-    "excited_state_fraction_max": 0.1,
-}
+#: Empty since 2026-09-09. This lens's only numeric threshold belonged to G20
+#: and went with it; G21 compares against a per-sample measured threshold and
+#: G22 against a caller-supplied ceiling, so neither has a constant to keep
+#: here. The name stays because every lens exports one and `photo.LIMITS` is
+#: part of that shape.
+LIMITS: dict[str, float] = {}
 
 
 @dataclass
@@ -88,73 +89,14 @@ def available_facts(setup: "IlluminationSetup") -> set[str]:
         facts.add("irradiance")
     if setup.resolved_emitted_per_s is not None:
         facts.add("emitted_rate")
-    if setup.resolved_excitation_rate is not None:
-        facts.add("excitation_rate")
     if setup.exposure_ms is not None and setup.n_frames is not None:
         facts.add("exposure_plan")
-    if setup.lifetime_ns is not None:
-        facts.add("lifetime")
     return facts
 
 
 # --------------------------------------------------------------------------
 # The checks
 # --------------------------------------------------------------------------
-
-
-def check_saturation(setup: "IlluminationSetup") -> CheckResult:
-    """G20: is the dye being driven into saturation?
-
-    Nothing else catches this. docs/04 §3 and optics.path.detected_e_per_s both
-    assume emission is linear in power; past saturation that assumption breaks
-    and lenses 1 and 2 overestimate signal while the dose keeps climbing.
-    """
-    k_ex = setup.resolved_excitation_rate
-    frac = excited_state_fraction(k_ex, setup.lifetime_ns)
-    limit = LIMITS["excited_state_fraction_max"]
-    margin = limit / frac if frac > 0 else MAX_MARGIN
-
-    numbers = {
-        "excitation_rate_per_s": k_ex,
-        "lifetime_ns": setup.lifetime_ns,
-        "excited_state_fraction": round(frac, 4),
-        "limit": limit,
-    }
-    if setup.ext_coeff_m1cm1 and setup.wavelength_nm:
-        numbers["saturation_irradiance_w_cm2"] = round(
-            saturation_irradiance_w_cm2(
-                setup.ext_coeff_m1cm1, setup.lifetime_ns, setup.wavelength_nm
-            ),
-            1,
-        )
-
-    if margin >= 1.0:
-        return _ok(
-            "perturbation.saturation",
-            BIAS,
-            margin,
-            f"{frac * 100:.2f}% of molecules sit in the excited state, inside "
-            f"the {limit * 100:.0f}% linear-regime limit, so the photon budget "
-            "lenses 1 and 2 compute is still trustworthy.",
-            **numbers,
-        )
-
-    return CheckResult(
-        "perturbation.saturation",
-        BIAS,
-        margin,
-        "warn",
-        f"{frac * 100:.1f}% of molecules are parked in the excited state "
-        f"(k_ex tau = {k_ex * setup.lifetime_ns * 1e-9:.3f}), past the "
-        f"{limit * 100:.0f}% linear limit. Emission no longer rises in "
-        "proportion to power, so the photon budget from lenses 1 and 2 "
-        "overestimates signal — while dose and bleaching keep climbing. "
-        "Triplet shelving is not modelled and makes this worse.",
-        action="Lower the light level and lengthen the exposure to keep the "
-        "same photon count: below saturation those trade evenly, above it they "
-        "do not.",
-        numbers=numbers,
-    )
 
 
 def check_light_driving(setup: "IlluminationSetup") -> CheckResult:
@@ -359,7 +301,6 @@ def check_trap_heating_ownership(setup: "IlluminationSetup") -> CheckResult:
 
 
 CHECKS: list[Check] = [
-    Check("saturation", BIAS, ("excitation_rate", "lifetime"), check_saturation),
     Check("light_driving", BIAS, ("irradiance",), check_light_driving),
     Check("total_dose", INFO, (), check_total_dose),
     Check("trap_heating", INFO, (), check_trap_heating_ownership),

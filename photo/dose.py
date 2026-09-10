@@ -49,40 +49,6 @@ def duty_cycle(exposure_ms: float, frame_interval_ms: float) -> float | None:
     return min(exposure_ms / frame_interval_ms, 1.0)
 
 
-def excited_state_fraction(excitation_rate_per_s: float, lifetime_ns: float) -> float:
-    """Steady-state fraction of molecules parked in the excited state.
-
-    ``k_ex tau / (1 + k_ex tau)`` for a two-level system. As this approaches
-    1 the molecule is saturated: emission stops rising with power, so the
-    photon budget lenses 1 and 2 compute from a linear assumption
-    overestimates, while the dose keeps climbing.
-
-    Ignores triplet shelving, which pushes real saturation *earlier*, so this
-    is an optimistic estimate of how much headroom is left.
-    """
-    if lifetime_ns <= 0:
-        raise ValueError("lifetime_ns must be positive")
-    k_tau = excitation_rate_per_s * lifetime_ns * 1e-9
-    return k_tau / (1.0 + k_tau)
-
-
-def saturation_irradiance_w_cm2(
-    ext_coeff_m1cm1: float, lifetime_ns: float, wavelength_nm: float
-) -> float:
-    """Irradiance at which ``k_ex tau = 1`` (excited-state fraction 0.5).
-
-    A useful scale for "how much light is too much" that does not depend on
-    the current setting.
-    """
-    if lifetime_ns <= 0:
-        raise ValueError("lifetime_ns must be positive")
-    #: cm^2 per (M^-1 cm^-1) -- same conversion optics.path uses.
-    sigma = 3.82e-21 * ext_coeff_m1cm1
-    flux_at_saturation = 1.0 / (sigma * lifetime_ns * 1e-9)  # photons cm^-2 s^-1
-    photon_energy_j = _H * _C / (wavelength_nm * 1e-9)
-    return flux_at_saturation * photon_energy_j
-
-
 def total_dose_j_cm2(irradiance: float, exposure_ms: float, n_frames: int) -> float:
     """Accumulated energy per unit area over the whole movie, J/cm^2."""
     return irradiance * total_illuminated_time_s(exposure_ms, n_frames)

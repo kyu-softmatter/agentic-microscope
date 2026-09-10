@@ -27,11 +27,10 @@ def _setup(**overrides) -> IlluminationSetup:
         exposure_ms=20.0,
         n_frames=100,
         frame_interval_ms=100.0,
-        #: Both stated on purpose. Left out they are the two "nobody asked"
-        #: states, which is what the tri-state and coupling tests below cover;
-        #: every other test wants a fully answered setup.
+        #: Stated on purpose. Left out it is the "nobody asked" state, which
+        #: is what the tri-state tests below cover; every other test wants a
+        #: fully answered setup.
         photoresponsive=False,
-        excitation_coupling=1.0,
         **FITC,
     )
     defaults.update(overrides)
@@ -55,12 +54,6 @@ def test_blocked_without_an_illuminated_area():
     assert any(f.code == "missing.power_at_sample" for f in v.findings)
 
 
-def test_blocked_without_a_lifetime():
-    v = evaluate(_setup(lifetime_ns=None))
-    assert v.status == "BLOCKED"
-    assert any(f.code == "missing.lifetime" for f in v.findings)
-
-
 def test_blocked_without_an_exposure_plan():
     v = evaluate(_setup(exposure_ms=None, n_frames=None))
     assert v.status == "BLOCKED"
@@ -77,48 +70,6 @@ def test_photoresponsive_sample_without_a_threshold_blocks():
 def test_photoresponsive_sample_with_a_threshold_is_judgeable():
     v = evaluate(_setup(photoresponsive=True, light_driving_threshold_w_cm2=100.0))
     assert v.status != "BLOCKED"
-
-
-# --------------------------------------------------- G20 saturation -------
-
-
-def test_low_power_stays_in_the_linear_regime():
-    v = evaluate(_setup())
-    assert v.margins["perturbation.saturation"] >= 1.0
-
-
-def test_high_power_drives_the_dye_into_saturation():
-    """FITC saturates near 3.5e5 W/cm^2, which a widefield field-of-view never
-    reaches -- but 5 mW focused into a 10 um^2 spot is 5e4 W/cm^2 and does
-    (excited-state fraction 0.126 against the 0.1 limit). That is confocal /
-    spinning-disk territory, not widefield."""
-    v = evaluate(_setup(power_mw_at_sample=5.0, illuminated_area_um2=10.0))
-    assert any(
-        f.code == "perturbation.saturation" and f.severity == "warn" for f in v.findings
-    )
-
-
-def test_widefield_power_does_not_saturate():
-    """50 mW over a 1e4 um^2 field is 500 W/cm^2 -- three orders below FITC's
-    saturation irradiance. G20 should stay quiet rather than cry wolf."""
-    v = evaluate(_setup(power_mw_at_sample=50.0))
-    assert v.margins["perturbation.saturation"] >= 1.0
-
-
-def test_saturation_warning_says_the_photon_budget_overestimates():
-    """The point of G20: it invalidates lens 1 and 2's numbers, which assume
-    emission is linear in power."""
-    v = evaluate(_setup(power_mw_at_sample=5.0, illuminated_area_um2=10.0))
-    msg = next(f.message for f in v.findings if f.code == "perturbation.saturation")
-    assert "overestimates" in msg
-
-
-def test_saturation_irradiance_is_reported():
-    v = evaluate(_setup())
-    assert v.metrics["perturbation.saturation"]["saturation_irradiance_w_cm2"] > 0
-
-
-# ------------------------------------------------- G21 light-driving ------
 
 
 def test_non_photoresponsive_sample_never_warns_about_light_driving():
@@ -145,11 +96,14 @@ def test_unasked_photoresponsiveness_costs_the_verdict_advances():
 
 
 def test_unasked_photoresponsiveness_does_not_block_the_whole_lens():
-    """It is a missing answer, not a missing number: saturation
-    can still be judged, so the lens reports rather than refusing."""
+    """It is a missing answer, not a missing number: total dose can still be
+    judged, so the lens reports rather than refusing.
+
+    Asserted on G22 since 2026-09-09. It went through G20's margin until that
+    gate was removed, and G22 is now the only other gate this lens grades."""
     v = evaluate(_setup(photoresponsive=None))
     assert v.status == "PASS_WITH_CHANGES"
-    assert "perturbation.saturation" in v.margins
+    assert "perturbation.total_dose" in v.margins
 
 
 def test_unasked_photoresponsiveness_does_not_fake_a_margin():
@@ -238,59 +192,6 @@ def test_trap_heating_notice_does_not_change_the_grade():
     with_trap = evaluate(_setup(trap_on=True))
     without = evaluate(_setup())
     assert with_trap.feasibility == without.feasibility
-
-
-# ------------------------------------------- spectral overlap coupling ----
-
-
-def test_local_chain_without_a_coupling_is_reported_as_assumed():
-    """The bare-field chain has no spectra, so it sets the overlap to 1 -- the
-    line treated as if it sat on the absorption peak. Honest about it."""
-    v = evaluate(_setup(excitation_coupling=None))
-    assert v.evidence == "assumed"
-    assert v.advances is False
-    assert any("overlap" in a for a in v.assumed_inputs)
-
-
-def test_supplying_the_coupling_restores_advances():
-    v = evaluate(_setup(excitation_coupling=0.5))
-    assert v.evidence == "measured"
-    assert v.advances is True
-
-
-def test_coupling_scales_k_ex_and_so_every_gate_downstream():
-    """Assuming perfect overlap overstates k_ex, so the gates that consume it
-    come out stricter than the instrument warrants, not laxer.
-
-    Asserted on k_ex itself. Until 2026-09-09 this went through G10's margin,
-    and after that gate was removed the obvious substitute -- G20's margin --
-    turned out to be vacuous here: this setup sits far enough from saturation
-    that both margins clip at MAX_MARGIN and the excited fraction rounds to
-    0.0. The property was never G10's; it belongs to k_ex."""
-    assumed_perfect = evaluate(_setup(excitation_coupling=1.0))
-    real = evaluate(_setup(excitation_coupling=0.5))
-
-    k_real = real.metrics["perturbation.saturation"]["excitation_rate_per_s"]
-    k_perfect = assumed_perfect.metrics["perturbation.saturation"][
-        "excitation_rate_per_s"
-    ]
-    assert k_real < k_perfect
-    assert k_perfect == pytest.approx(2 * k_real)
-
-
-def test_rates_from_lens_one_need_no_coupling():
-    """optics.path.Channel.excitation_rate_per_s already carries the overlap
-    weighting, so consuming it is not an assumption."""
-    v = evaluate(
-        _setup(
-            excitation_coupling=None,
-            excitation_rate_per_s=350.0,
-            emitted_photons_per_s=320.0,
-        )
-    )
-    assert not any("overlap" in a for a in v.assumed_inputs)
-    assert v.evidence == "measured"
-    assert v.advances is True
 
 
 # ---------------------------------------------------------- evidence ------

@@ -62,7 +62,7 @@ architecture diagram marks the middle one directly above
    hardware/      three hand-written translators + one clock.
                   What occupies the MHS layer today, per vendor.
 
-   31 gates       whether the setting is a good idea at all.
+   30 gates       whether the setting is a good idea at all.
                   Above any transport, unaffected either way.
 ```
 
@@ -75,7 +75,7 @@ cannot say much about whether the layer is worth having. It can say, in detail,
 **what the layer would have to survive**, which is the rest of this file.
 
 One consequence worth stating because it cuts against adopting MHS eagerly:
-**the 31 gates are indifferent to it.** They consume physical quantities —
+**the 30 gates are indifferent to it.** They consume physical quantities —
 irradiance at the sample, effective pixel size, τ_c, κ — and no transport
 produces those. A standard that made every device on this bench reachable
 tomorrow would not move a single gate from `BLOCKED` to `PASS`, because what
@@ -460,7 +460,7 @@ This is the repository's central split, and it is a table in the README rather
 than an aspiration: physical calculations, hardware limits, evidence and
 provenance, and hard gates are **deterministic code**; the LLM supplies
 qualitative judgment with no closed form and **originates no numerical value**
-and cannot override a failed gate. 31 gates, none of which need the
+and cannot override a failed gate. 30 gates, none of which need the
 instrument.
 
 **5 · Operation logs and reproducible evaluation for auditing.** Partly.
@@ -595,7 +595,7 @@ interface v71, `power_at_sample_mw` still needs a power meter, and no standard
 tells anyone that a temperature stage is sitting on the bench. **A standard makes
 an integration cheap; it does not document an undocumented protocol, and it does
 not perform a measurement.** It also moves only *how* a device is reached, never
-*whether the setting is a good idea* — the 31 gates sit above any transport and
+*whether the setting is a good idea* — the 30 gates sit above any transport and
 are unaffected either way.
 
 ---

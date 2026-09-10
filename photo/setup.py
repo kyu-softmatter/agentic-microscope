@@ -144,12 +144,18 @@ class IlluminationSetup:
         462-486 nm green band runs near a half
         (config/channels/active-microrheology-probe-tracer.yaml).
 
-        The bias direction is worth stating, because it is not the dangerous
-        one. Too large a k_ex inflates both the excited-state fraction (G20)
-        and the emitted-photon count, so the gates come out *stricter*
-        than the instrument warrants -- false alarms, not false clears. The
-        cost is a wrong instruction ("cut the light") rather than a missed
-        perturbation. Either way the number is not this instrument's, so the
+        ⚠ NO GATE CONSUMES k_ex SINCE 2026-09-09. G20 was the last one, and
+        this property no longer reaches any verdict -- photo/gate.py stopped
+        listing it under assumed_inputs when G20 went. It is kept because
+        from_channel still populates the chain and a future gate would want
+        the same honesty about it.
+
+        The bias direction, for that future gate. Too large a k_ex inflates
+        both the excited-state fraction and the emitted-photon count, so the
+        gates come out *stricter* than the instrument warrants -- false alarms,
+        not false clears. The cost is a wrong instruction ("cut the light")
+        rather than a missed perturbation. Either way the number is not this
+        instrument's, so the
         verdict reports it as assumed and does not advance.
         """
         return (

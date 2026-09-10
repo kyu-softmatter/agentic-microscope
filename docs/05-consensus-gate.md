@@ -340,8 +340,9 @@ class LensVerdict:
 ### Lens 5 · Photo-perturbation — implemented
 
 - **Owns**: light level, illumination duty, total dose, wavelength choice
-- **Gates**: G20 (saturation · triplet shelving)
-  G21 (light-driving) G22 (total dose)
+- **Gates**: G21 (light-driving) G22 (total dose).
+  **G20 (saturation · triplet shelving) was removed 2026-09-09** and its number
+  is not reused — `kb/decisions/2026-09-09-g20-saturation-removed.md`
 - **Key questions**
   - Photobleaching: what fraction disappears over the whole movie
   - **Does the excitation light drive the sample** — light-driven active
@@ -358,33 +359,34 @@ class LensVerdict:
   with no measured threshold returns BLOCKED
 - **⚠ `photoresponsive` is tri-state, and the third state is the important
   one.** `None` means nobody has asked, which is not a confirmed "no": it warns,
-  lands in `assumed_inputs`, and withholds `advances` while still letting
-  bleaching and saturation be judged. A default of `False` would have made G21
+  lands in `assumed_inputs`, and withholds `advances` while still letting the
+  dose be judged. A default of `False` would have made G21
   silent in exactly the case docs/06 D2 is about — the accident there is the
   unasked question, not a wrong number
 - **⚠ No `hard` gate lives in this lens**, so `status: FAIL` is unreachable from
   inside it; the outcomes are BLOCKED, PASS_WITH_CHANGES, PASS. Every check here
   is `bias` or `info`, and a bias finding is a claim about what the data will
   mean — which Lens 6 arbitrates
-- **Consume lens 1's excitation chain, do not re-derive it.**
-  `IlluminationSetup.from_channel` / `photo.cli --channel` take `k_ex` and
-  `k_em` from `optics.path.Channel`, where `σφ` is weighted by how well the
-  delivered spectrum overlaps the absorption band. The bare-field path has no
-  spectra, so without an explicit `excitation_coupling` it sets that overlap to
-  1 and reports `k_ex` as assumed. The bias is toward stricter G20 verdicts
-  — false alarms rather than false clears, but a false alarm here is still a
-  wrong instruction to cut the light
-- **⚠ G20 also invalidates other lenses' numbers.** Past saturation, emission
-  stops rising with power, so lens 1's and lens 2's photon budgets (which
-  assume linearity — `optics.path.detected_e_per_s`) overestimate signal while
-  the dose keeps climbing. Nothing else catches this. Note the scale: FITC
-  saturates near 3.5 × 10⁵ W/cm², which a widefield field-of-view never
-  reaches, but a focused confocal or spinning-disk spot does
+- **⚠ Since G20 went, no gate in this lens consumes a dye constant.**
+  `IlluminationSetup.from_channel` still carries `k_ex` and `k_em` from
+  `optics.path.Channel`, and `--dye` still fills ε, Φ and τ from the registry,
+  but nothing reads them: G21 compares irradiance against a per-sample measured
+  threshold and G22 accumulates energy. So the two build paths now differ only
+  in the label they print, and the `excitation_coupling` assumption is no longer
+  on the evidence axis
+- **⚠ The linearity assumption is now unguarded, and it is not this lens's any
+  more.** Past saturation, emission stops rising with power, so lens 1's and
+  lens 2's photon budgets (which assume linearity —
+  `optics.path.detected_e_per_s`) overestimate signal while the dose keeps
+  climbing. **Nothing catches this today.** Note the scale: FITC saturates near
+  3.5 × 10⁵ W/cm², which a widefield field-of-view never reaches, but a focused
+  confocal or spinning-disk spot does — so the exposure is real for the
+  spinning-disk and confocal paths and negligible for widefield epi
 - **Not implemented**: illumination-driven local heating (needs the medium's
   absorption coefficient, which is unrecorded) and phototoxicity (needs a dose
   limit per sample). Trap heating is lens 7's and unimplemented there, so G22's
   companion check reports it as unowned rather than assuming it is handled
-- **⚠ BLOCKED on the real instrument today**: `power_at_sample_mw` is empty for
+- **⚠ Historical, superseded 2026-09-09**: `power_at_sample_mw` is empty for
   every line of every source, and no dye has `bleach_photons`. That is the
   correct verdict, not a gap in the lens. With laser power measurement deferred
   by decision (2026-08-19, [07 Phase 0](07-roadmap.md)), it is also the expected
