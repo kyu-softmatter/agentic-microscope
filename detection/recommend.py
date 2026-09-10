@@ -541,5 +541,11 @@ def localization_precision_nm(
     background_e = background_e_per_s * t_s
     if n_photons <= 0:
         return None
-    var = localization_variance_nm2(sigma_psf_nm, pixel_nm, n_photons, background_e)
+    var = localization_variance_nm2(
+        sigma_psf_nm,
+        pixel_nm,
+        n_photons,
+        background_e,
+        option.effective_read_noise_e,
+    )
     return math.sqrt(var)

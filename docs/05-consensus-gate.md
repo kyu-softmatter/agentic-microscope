@@ -337,6 +337,35 @@ class LensVerdict:
   `.claude/agents/sample-optics.md` for the qualitative half (chamber, sample
   concentration judgement, multiple scattering)
 
+### ⚠ Neither G8 nor G9 owns the frame period (2026-09-09)
+
+The frame period is an input to both and a decision belonging to neither, so
+`Acquisition` carries it explicitly with a provenance:
+
+| `fps_source` | set by | G9 | G8 |
+|---|---|---|---|
+| `undecided` | neither field supplied | INFO — reports the realizable rate | **INFO — reports the duty at the camera's floor as an upper bound, ungraded** |
+| `requested` | `target_fps` | grades realizability (`hard`) | grades duty at that period, labelled requested |
+| `measured` | `achieved_fps` | grades against the observed rate | grades duty at the observed period |
+
+`measured` and `requested` are the same two tokens as lens 3's
+`compute.setup.FPS_SOURCES`, because **G12b is this same distinction seen from
+the data-rate side**; `undecided` is lens 2's addition, since lens 3 cannot
+compute a data rate without a rate at all.
+
+**Why the two do not merge.** They share `t_frame` and conflict over it, which
+makes it a cross-gate constraint rather than one gate. G9 asks a hardware
+question and is `hard`; G8 asks a measurement question and is `bias`. Merging
+them would force a single kind, and [05 §2](#2-three-kinds-of-gate)'s precedence
+runs on that kind — a merged gate would either stop a proposal over a
+correctable MSD bias or wave through a physically unreachable frame rate.
+
+**Why `undecided` reports instead of failing.** A gate that fails on a period
+nobody has chosen is failing a decision that has not been made. The rate is
+settled in synthesis, with lens 3's bandwidth arithmetic and lens 7's `G14`
+sampling requirement in hand (KH, 2026-09-09) —
+[`kb/decisions/2026-09-09-frame-period-is-not-a-gate-input.md`](../kb/decisions/2026-09-09-frame-period-is-not-a-gate-input.md).
+
 ### Lens 5 · Photo-perturbation — implemented
 
 - **Owns**: light level, illumination duty, total dose, wavelength choice

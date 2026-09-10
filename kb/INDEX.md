@@ -48,7 +48,7 @@ Durable expert judgment. Each carries a `Why` and a falsifier.
 - **[microrheology-standard-conditions](expertise/microrheology-standard-conditions.md)** · 2026-09-07
   What conditions does a microrheology run on this instrument default to, and which of them are choices rather than constants
 
-## `kb/decisions/` — 26 entries
+## `kb/decisions/` — 28 entries
 
 Dated design and scope choices, in the order they were made.
 
@@ -100,10 +100,14 @@ Dated design and scope choices, in the order they were made.
   What would a real-time particle-tracking GUI show, and why can the display and the measurement not be the same stream?
 - **[2026-09-09-blocking-threshold-fixed-at-5-od](decisions/2026-09-09-blocking-threshold-fixed-at-5-od.md)** · 2026-09-09
   Should the excitation-blocking requirement rise from 5 OD to 7 OD when the path spectra are parametric rather than measured?
+- **[2026-09-09-frame-period-is-not-a-gate-input](decisions/2026-09-09-frame-period-is-not-a-gate-input.md)** · 2026-09-09
+  Should G8 fail a duty cycle computed from a frame period nobody has decided yet, and do G8 and G9 collapse into one gate once the period is factored out?
 - **[2026-09-09-g10-photobleaching-removed](decisions/2026-09-09-g10-photobleaching-removed.md)** · 2026-09-09
   Should the photobleaching gate stay, given that it has never returned anything but BLOCKED and its only unshared lever is the dye?
 - **[2026-09-09-g20-saturation-removed](decisions/2026-09-09-g20-saturation-removed.md)** · 2026-09-09
   Should the saturation gate stay, given that it blocks on two per-dye constants that are empty for every bead colourant this instrument images?
+- **[2026-09-09-g5-localization-variance-corrected](decisions/2026-09-09-g5-localization-variance-corrected.md)** · 2026-09-09
+  Why did G5 report that a pixel finer than imaging-Nyquist hurts tracking precision, when CLAUDE.md H4 says the opposite?
 
 ## `kb/literature/` — 1 entries
 

@@ -186,27 +186,88 @@ def test_check_sampling_tracking_is_informational_without_photon_facts():
     assert result.severity == "info"
 
 
-def test_sampling_wrong_direction_downgrades_to_pass_with_changes_for_tracking():
-    """docs/06-pitfalls.md §C6: the legacy 100x/1.5x pixel (73.3 nm) is
-    finer than the imaging-Nyquist limit (140.5 nm); at a modest photon
-    budget that makes tracking precision *worse*, not better."""
+def test_the_legacy_pixel_is_at_the_optimum_not_past_it():
+    """RETARGETED 2026-09-09. This asserted the opposite until G5's
+    counterfactual was corrected, and the old assertion was an artifact.
+
+    The legacy 100x/1.5x pixel is 73.3 nm and the optimum for this camera and
+    photon budget is ~72 nm, so 73.3 nm is essentially ON it: 8.67 nm against
+    the Nyquist pixel's 9.30 nm. The old code reported 27.42 nm here and put
+    the optimum at 292 nm, because it squared a background *count* as if it
+    were a noise and held it fixed while changing the pixel.
+    kb/decisions/2026-09-09-g5-localization-variance-corrected.md
+    """
     camera = Camera(detector=_detector(), mode="Slow", roi_height_px=176, row_time_us=10.28)
     acquisition = Acquisition(exposure_ms=0.5, task_kind="tracking")
     photons = PhotonBudget(signal_e_per_s=800_000.0, background_e_per_s=32_000.0)
     v = evaluate(_setup(camera=camera, acquisition=acquisition, photons=photons))
-    assert v.status == "PASS_WITH_CHANGES"
-    assert v.bottleneck == "sampling.wrong_direction"
+    assert v.margins["sampling"] > 1.0
+    assert v.bottleneck != "sampling.wrong_direction"
+
+
+def test_a_pixel_far_below_the_optimum_still_trips_c6():
+    """docs/06-pitfalls.md §C6 has to remain reachable, or the correction
+    above would have deleted the pitfall rather than fixed the arithmetic.
+
+    Same optics, a 4 um sensor pixel instead of 11 um -> 26.7 nm at the
+    sample, well below the ~72 nm optimum. Background is scaled to that pixel
+    area, as the physics requires.
+    """
+    fine = _detector(pixel_um=4.0)
+    camera = Camera(detector=fine, mode="Slow", roi_height_px=176, row_time_us=10.28)
+    acquisition = Acquisition(exposure_ms=0.5, task_kind="tracking")
+    # 32,000 e-/s at 73.3 nm scaled to 26.7 nm pixels: x (26.7/73.3)^2
+    photons = PhotonBudget(signal_e_per_s=800_000.0, background_e_per_s=4_240.0)
+    v = evaluate(_setup(camera=camera, acquisition=acquisition, photons=photons))
+    assert v.margins["sampling.wrong_direction"] < 1.0
 
 
 def test_motion_blur_biased_at_full_duty_cycle():
     """10 ms exposure against a ~1.8 ms readout gives ~100% duty cycle --
-    well past the 30% limit (docs/04 §5)."""
+    well past the 30% limit (docs/04 §5).
+
+    ``achieved_fps`` is now required for this to grade at all: with no rate
+    decided G8 reports a bound instead of failing (KH, 2026-09-09). 100 fps is
+    the camera's own floor here, so the duty is the same ~100% the test always
+    meant -- what changed is that somebody now has to say so.
+    """
     camera = Camera(detector=_detector(), mode="Slow", roi_height_px=176, row_time_us=10.28)
-    acquisition = Acquisition(exposure_ms=10.0, task_kind="tracking")
+    acquisition = Acquisition(exposure_ms=10.0, task_kind="tracking", achieved_fps=100.0)
     photons = PhotonBudget(signal_e_per_s=5000.0, background_e_per_s=200.0)
     v = evaluate(_setup(camera=camera, acquisition=acquisition, photons=photons))
     assert v.status == "PASS_WITH_CHANGES"
     assert any(f.code == "motion_blur.biased" for f in v.findings)
+
+
+def test_motion_blur_reports_a_bound_when_no_rate_is_decided():
+    """The same configuration with the rate left open must not fail.
+
+    It is the worst case for duty -- the camera's floor maximises it -- so the
+    number is reported as an upper bound and excluded from the grade. A gate
+    that failed here would be failing a decision nobody has made yet.
+    """
+    camera = Camera(detector=_detector(), mode="Slow", roi_height_px=176, row_time_us=10.28)
+    acquisition = Acquisition(exposure_ms=10.0, task_kind="tracking")
+    photons = PhotonBudget(signal_e_per_s=5000.0, background_e_per_s=200.0)
+    v = evaluate(_setup(camera=camera, acquisition=acquisition, photons=photons))
+    codes = {f.code for f in v.findings}
+    assert "motion_blur.biased" not in codes
+    assert "motion_blur.rate_undecided" in codes
+    assert acquisition.fps_source == "undecided"
+
+
+def test_detection_and_compute_share_the_fps_vocabulary():
+    """lens 2 and lens 3 name the same distinction, so the tokens must match.
+
+    G12b (compute) and G8/G9 (detection) are the same requested-vs-achieved
+    question seen from the data-rate and the timing side. `undecided` is lens
+    2's only addition -- lens 3 cannot compute a data rate without a rate.
+    """
+    from compute.setup import FPS_SOURCES as COMPUTE_SOURCES
+    from detection.setup import FPS_SOURCES as DETECTION_SOURCES
+
+    assert set(COMPUTE_SOURCES) <= set(DETECTION_SOURCES)
+    assert set(DETECTION_SOURCES) - set(COMPUTE_SOURCES) == {"undecided"}
 
 
 def test_fails_frame_rate_when_target_exceeds_the_realizable_rate():

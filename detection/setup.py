@@ -8,6 +8,10 @@ from dataclasses import dataclass, field
 
 from optics.components import Detector, DetectorMode, Objective
 
+#: Accepted values for ``Acquisition.fps_source``. The first two are the same
+#: tokens as ``compute.setup.FPS_SOURCES``, on purpose -- see that property.
+FPS_SOURCES = ("measured", "requested", "undecided")
+
 
 @dataclass
 class Camera:
@@ -64,6 +68,41 @@ class Acquisition:
     #: Desired frame rate, from decision step (2) upstream of this lens.
     #: G9 only grades against this when it is supplied.
     target_fps: float | None = None
+    #: OBSERVED frame rate, from an acquisition's own timestamps. Outranks
+    #: ``target_fps`` everywhere: docs/06 §C4 measured a 3x gap between a
+    #: requested rate and a delivered one on this archive.
+    achieved_fps: float | None = None
+
+    @property
+    def decided_fps(self) -> float | None:
+        """The frame rate to judge against, or ``None`` if nobody has decided.
+
+        Neither G8 nor G9 owns the frame period. G9 asks whether a rate is
+        realizable (hardware, ``hard``); G8 asks whether the exposure is a
+        small enough fraction of the period actually run (measurement,
+        ``bias``). Both consume this, and when it is ``None`` both report
+        instead of grading -- the rate is settled later, in synthesis with the
+        other lenses' results (KH, 2026-09-09).
+        """
+        return self.achieved_fps if self.achieved_fps is not None else self.target_fps
+
+    @property
+    def fps_source(self) -> str:
+        """``measured`` | ``requested`` | ``undecided``.
+
+        Derived rather than stored so it cannot disagree with the fields it
+        describes. ``measured`` and ``requested`` are deliberately the same two
+        tokens as ``compute.setup.FPS_SOURCES`` -- lens 3's G12b is the same
+        distinction seen from the data-rate side, and
+        ``tests/test_detection_gate.py`` fails if the two vocabularies drift
+        apart. ``undecided`` is lens 2's only addition: lens 3 always has a
+        rate, because it cannot compute a data rate without one.
+        """
+        if self.achieved_fps is not None:
+            return "measured"
+        if self.target_fps is not None:
+            return "requested"
+        return "undecided"
 
 
 @dataclass

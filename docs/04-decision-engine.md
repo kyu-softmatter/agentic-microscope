@@ -103,11 +103,41 @@ variance:
 $$\sigma_{\text{loc}}^2 = \frac{\sigma_a^2}{N} + \frac{8\pi\,\sigma_a^4\,b^2}{p^2 N^2},
 \qquad \sigma_a^2 = \sigma_{\text{PSF}}^2 + \frac{p^2}{12}$$
 
-- the first term (photon shot noise) gets worse as `p` grows, because of `p²/12`
-- the second term (background noise) gets **better** as `p` grows (`1/p²`)
+**`b` is the per-pixel background *noise*, so `b²` is a variance** — the
+background's own shot variance (numerically its count) plus the read variance:
+`b² = b_counts + σ_read²`. Getting this wrong is not academic: squaring the
+count instead overstates the second term by a factor of the count.
 
-→ in real conditions, where background exists, a finite optimal `p` exists. All
-of this lab's microrheology falls in that regime.
+- the first term (photon shot noise) gets worse as `p` grows, because of `p²/12`
+- the second term splits, and **the two halves go opposite ways.** Write
+  `b² = β p² + σ_read²` with `β` a background rate per unit area:
+
+$$\frac{8\pi\sigma_a^4 b^2}{p^2N^2} = \frac{8\pi\sigma_a^4}{N^2}\left(\beta + \frac{\sigma_{\text{read}}^2}{p^2}\right)$$
+
+- the **β** half gets *worse* as `p` grows (through `σ_a⁴`), because background
+  collected per pixel scales with pixel area
+- the **σ_read²/p²** half gets better as `p` grows while `p ≪ σ_PSF`, and worse
+  after — and **this is the only term with a minimum**
+
+→ **read noise is what makes the optimal `p` finite, not background.** ⚠ This
+section said the opposite until 2026-09-09: *"the second term (background noise)
+gets better as p grows (1/p²) → in real conditions, where background exists, a
+finite optimal p exists."* That reading holds `b` fixed per pixel while varying
+`p`, which is only right if `b` is read-noise-like. An area-scaling background
+alone makes ever-finer pixels monotonically better and produces no optimum at
+all. `G5` had been computing it the old way; corrected in
+[`kb/decisions/2026-09-09-g5-localization-variance-corrected.md`](../kb/decisions/2026-09-09-g5-localization-variance-corrected.md).
+
+All of this lab's microrheology still falls in the regime with a finite optimum,
+because the cameras have read noise. On `100x-Oil` at 1×1 (64.53 nm) with
+`σ_PSF = 75 nm` at 520 nm, the optimum is **~60 nm** — so the standing 1×1
+choice sits essentially on it, and 2×2 costs about 7 %. That is the arithmetic
+behind [CLAUDE.md](../CLAUDE.md) H4, whose *"once background scales per pixel
+area"* is precisely the condition the gate had been omitting.
+
+**A counterfactual has to move `b` with `p`.** G5 grades by comparing the chosen
+pixel against the imaging-Nyquist pixel, and that comparison is only meaningful
+if the background is rescaled by `(p′/p)²` at the same time.
 
 **Gate implementation**: take the task kind (`imaging` / `tracking`) as an input
 and switch the criterion accordingly. If the task is not stated, **ask.** Do not
@@ -521,8 +551,8 @@ All decided in code. If even one fails, the proposal is void.
 | G5 | Sampling | per task (§2) | NA, pixel pitch, magnification, **task kind** | ask |
 | G6 | Saturation margin | `peak < 0.7 × full well` | full well, photon budget | BLOCKED |
 | G7 | SNR | at or above target | measured light level, measured background | BLOCKED |
-| G8 | Motion blur | `t_exp < 0.3 τ_min` | D or τ_c | ask |
-| G9 | Frame-rate realizability | `f ≤ 1/max(t_exp, t_readout)` | row time, ROI | computable |
+| G8 | Motion blur | duty `= t_exp/t_frame ≤ 0.3` at the **decided** rate; reports a bound while the rate is undecided | D or τ_c, **decided frame rate** | ask |
+| G9 | Frame-rate realizability | `f ≤ 1/max(t_exp, t_readout)`, graded against the **decided** rate | row time, ROI, **decided frame rate** | computable |
 | G11 | Statistical power | target error met | particle concentration, target precision | ask |
 | G12 | Data rate | a `< 0.7 ×` disk bandwidth · b `f` is achieved not requested · c container width is the one MM writes | measured disk bandwidth, achieved fps, confirmed bytes/px | measurement required |
 | G13 | Buffer · capacity · CPU · RAM | a `≥ 5 seconds' worth` · b fits free disk · c CPU/frame `< 1/f_total` · d RAM burst `≤` budget | RAM, frame size, duration, free disk | computable |

@@ -65,20 +65,42 @@ def peak_adu(peak_e: float, full_well_e: float, bit_depth: int, offset_adu: floa
 
 
 def localization_variance_nm2(
-    sigma_psf_nm: float, pixel_nm: float, n_photons: float, background_e: float = 0.0
+    sigma_psf_nm: float,
+    pixel_nm: float,
+    n_photons: float,
+    background_e: float = 0.0,
+    read_noise_e: float = 0.0,
 ) -> float:
     """Thompson-Larson-Webb / Mortensen localization variance (docs/04 §2).
 
     ``sigma_a^2 = sigma_psf^2 + p^2/12``
     ``var = sigma_a^2/N + 8*pi*sigma_a^4*b^2 / (p^2 * N^2)``
 
-    The second (background) term is what makes the optimal pixel size
-    *finite* -- without it, ever-finer pixels are always better, which is
-    not what docs/06-pitfalls.md §C6 warns about.
+    ``b`` is the per-pixel background **noise**, so ``b^2`` is a variance:
+    the background's own shot variance (numerically equal to its count) plus
+    the read variance. Corrected 2026-09-09 -- this function used to square
+    ``background_e``, i.e. treat a count as if it were a standard deviation,
+    which overstates the second term by a factor of the count itself: 2.7x at
+    2.7 e-/px, 100x at 100 e-/px.
+    kb/decisions/2026-09-09-g5-localization-variance-corrected.md
+
+    **``read_noise_e`` is what makes the optimal pixel size finite**, and that
+    is not what this docstring used to say. Write ``b^2 = beta*p^2 + rn^2``
+    with ``beta`` a background rate per unit area:
+
+        bg_term = 8*pi*sigma_a^4 * (beta + rn^2/p^2) / N^2
+
+    The ``beta`` half grows with ``p`` (through ``sigma_a^4``), so an
+    area-scaling background alone makes finer pixels monotonically better and
+    produces **no** optimum. The ``rn^2/p^2`` half falls with ``p`` while
+    ``p << sigma_PSF`` and rises after, and that is the term with a minimum.
+    Pass a real ``read_noise_e`` or the optimum this is being used to find
+    does not exist -- see docs/04 §2 and docs/06-pitfalls.md §C6.
     """
     sigma_a2 = sigma_psf_nm**2 + pixel_nm**2 / 12.0
     shot_term = sigma_a2 / n_photons
-    bg_term = (8 * math.pi * sigma_a2**2 * background_e**2) / (pixel_nm**2 * n_photons**2)
+    b2 = background_e + read_noise_e**2
+    bg_term = (8 * math.pi * sigma_a2**2 * b2) / (pixel_nm**2 * n_photons**2)
     return shot_term + bg_term
 
 

@@ -182,9 +182,39 @@ def check_sampling(setup: "DetectionSetup") -> CheckResult:
     exposure_s = setup.acquisition.exposure_ms * 1e-3
     n_photons = photons.signal_e_per_s * exposure_s
     background_e = photons.background_e_per_s * exposure_s
-    var_actual = localization_variance_nm2(sigma_nm, p_nm, n_photons, background_e)
     nyquist_nm = r_nm / LIMITS["nyquist_divisor"]
-    var_nyquist = localization_variance_nm2(sigma_nm, nyquist_nm, n_photons, background_e)
+
+    # Read noise is the term that gives the optimum a finite location, so a
+    # comparison run without it answers a different question (see
+    # localization_variance_nm2). Used when the camera supplies it; the
+    # tracking branch already degrades rather than blocking, and `requires`
+    # cannot be branch-specific, so the availability is reported instead.
+    cam = setup.camera
+    rn, fw, bits = (
+        cam.effective_read_noise_e(),
+        cam.effective_full_well_e(),
+        cam.effective_bit_depth(),
+    )
+    eff_read = (
+        effective_read_noise_e(rn, fw, bits)
+        if None not in (rn, fw, bits)
+        else 0.0
+    )
+
+    # THE COUNTERFACTUAL HAS TO MOVE THE BACKGROUND WITH THE PIXEL. Background
+    # per pixel scales with pixel area, so holding it fixed while changing p
+    # leaves b^2/p^2 falling as 1/p^2 and manufactures a preference for coarse
+    # pixels that no optics produces. Corrected 2026-09-09; CLAUDE.md H4 states
+    # the condition this had been omitting -- "once background scales per pixel
+    # area". kb/decisions/2026-09-09-g5-localization-variance-corrected.md
+    bg_nyquist = background_e * (nyquist_nm / p_nm) ** 2 if p_nm > 0 else background_e
+
+    var_actual = localization_variance_nm2(
+        sigma_nm, p_nm, n_photons, background_e, eff_read
+    )
+    var_nyquist = localization_variance_nm2(
+        sigma_nm, nyquist_nm, n_photons, bg_nyquist, eff_read
+    )
     margin = var_nyquist / var_actual if var_actual > 0 else MAX_MARGIN
     ok = margin >= 1.0
     return CheckResult(
@@ -206,6 +236,10 @@ def check_sampling(setup: "DetectionSetup") -> CheckResult:
             "psf_sigma_nm": sigma_nm,
             "loc_precision_nm": math.sqrt(var_actual),
             "nyquist_loc_precision_nm": math.sqrt(var_nyquist),
+            "background_e_at_pixel": background_e,
+            "background_e_at_nyquist": bg_nyquist,
+            "read_noise_e": eff_read,
+            "read_noise_available": eff_read > 0.0,
         },
     )
 
@@ -309,7 +343,11 @@ def check_motion_blur(setup: "DetectionSetup") -> CheckResult:
     acq = setup.acquisition
     row_time = cam.effective_row_time_us()
     readout_s = readout_time_s(row_time, cam.roi_height_px)
-    t_frame = frame_period_s(acq.exposure_ms, readout_s, cam.frame_overhead_ms)
+    #: The FASTEST the camera can go. Not necessarily the period it runs at.
+    t_frame_min = frame_period_s(acq.exposure_ms, readout_s, cam.frame_overhead_ms)
+    decided = acq.decided_fps
+    #: You cannot run faster than the camera, so a decided rate is floored.
+    t_frame = max(1.0 / decided, t_frame_min) if decided else t_frame_min
 
     if acq.task_kind != "tracking":
         return CheckResult(
@@ -327,11 +365,41 @@ def check_motion_blur(setup: "DetectionSetup") -> CheckResult:
     margin = LIMITS["duty_cycle_max"] / duty if duty > 0 else MAX_MARGIN
     ok = margin >= 1.0
 
-    numbers = {"duty_cycle": duty, "frame_period_s": t_frame, "bias_fraction": bias_fraction}
+    numbers = {
+        "duty_cycle": duty,
+        "frame_period_s": t_frame,
+        "frame_period_min_s": t_frame_min,
+        "bias_fraction": bias_fraction,
+        "fps_source": acq.fps_source,
+    }
     d = setup.photons.diffusion_coefficient_m2_s
     if d is not None:
         exposure_s = acq.exposure_ms * 1e-3
         numbers["msd_bias_nm2"] = 2 * d * (exposure_s / 3.0) * 1e18
+
+    if decided is None:
+        #: NOBODY HAS DECIDED THE FRAME RATE YET, so there is no duty cycle to
+        #: grade -- only a bound. `t_frame_min` is the camera's floor, which
+        #: maximises duty, so the number below is the WORST case and any real
+        #: period can only improve it. Reported, not graded (KH, 2026-09-09):
+        #: the rate is settled in synthesis with the other lenses, and a gate
+        #: that failed here would be failing a decision nobody has made.
+        #: kb/decisions/2026-09-09-frame-period-is-not-a-gate-input.md
+        return CheckResult(
+            "motion_blur.rate_undecided",
+            INFO,
+            MAX_MARGIN,
+            "info",
+            f"No frame rate decided yet. At the camera's floor "
+            f"({t_frame_min * 1e3:.2f} ms) the duty cycle would be "
+            f"{duty * 100:.0f}%, giving a {bias_fraction * 100:.1f}% "
+            f"shortest-lag MSD bias -- an UPPER BOUND, since any longer period "
+            f"lowers it. Not graded.",
+            action="Supply achieved_fps once an acquisition's timestamps are "
+            "in hand (or target_fps to judge a plan), then this grades against "
+            "the period actually run.",
+            numbers=numbers,
+        )
 
     if ok:
         return CheckResult(
@@ -371,19 +439,25 @@ def check_frame_rate(setup: "DetectionSetup") -> CheckResult:
     t_frame = frame_period_s(acq.exposure_ms, readout_s, cam.frame_overhead_ms)
     fps = max_fps(t_frame)
 
-    if acq.target_fps is None:
+    decided = acq.decided_fps
+    if decided is None:
         return CheckResult(
             "frame_rate.unconfirmed",
             INFO,
             MAX_MARGIN,
             "info",
             f"Realizable frame rate is {fps:.0f} fps (t_frame={t_frame * 1e3:.2f} ms, "
-            f"readout={readout_s * 1e3:.2f} ms); no target frame rate supplied to "
-            "grade against.",
-            numbers={"max_fps": fps, "frame_period_s": t_frame, "readout_s": readout_s},
+            f"readout={readout_s * 1e3:.2f} ms); no frame rate decided yet, so "
+            "there is nothing to grade against.",
+            numbers={
+                "max_fps": fps,
+                "frame_period_s": t_frame,
+                "readout_s": readout_s,
+                "fps_source": acq.fps_source,
+            },
         )
 
-    margin = fps / acq.target_fps
+    margin = fps / decided
     # Tolerance, not sloppiness: t_frame is assembled by float arithmetic from
     # exposure + overhead, so a camera set up to hit the target exactly lands a
     # few ulp below it and used to report "only 240 fps is realizable, below the
@@ -393,6 +467,9 @@ def check_frame_rate(setup: "DetectionSetup") -> CheckResult:
     numbers = {
         "max_fps": fps,
         "target_fps": acq.target_fps,
+        "achieved_fps": acq.achieved_fps,
+        "decided_fps": decided,
+        "fps_source": acq.fps_source,
         "frame_period_s": t_frame,
         "readout_s": readout_s,
     }
@@ -402,7 +479,7 @@ def check_frame_rate(setup: "DetectionSetup") -> CheckResult:
             HARD,
             margin,
             "ok",
-            f"{fps:.0f} fps realizable clears the {acq.target_fps:.0f} fps target.",
+            f"{fps:.0f} fps realizable clears the {decided:.0f} fps {acq.fps_source} rate.",
             numbers=numbers,
         )
     return CheckResult(
@@ -411,7 +488,7 @@ def check_frame_rate(setup: "DetectionSetup") -> CheckResult:
         margin,
         "fail",
         f"Only {fps:.0f} fps is realizable (t_frame={t_frame * 1e3:.2f} ms), "
-        f"below the {acq.target_fps:.0f} fps target -- this will not run as "
+        f"below the {decided:.0f} fps {acq.fps_source} rate -- this will not run as "
         "requested.",
         action="Shrink the ROI height (width does not help, "
         "docs/06-pitfalls.md §C3), shorten exposure, or lower the target.",
