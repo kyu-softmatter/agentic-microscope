@@ -125,6 +125,9 @@ EXPECTED_CHECKS: dict[str, tuple[tuple[str, str], ...]] = {
         ("confinement", "hard"),
         ("trap_depth", "hard"),
         ("sampling", "hard"),
+        # Proposes the stiffness window rather than judging a power
+        # (2026-09-10). Both its ends escape the uncalibrated dial scale.
+        ("power_window", "info"),
     ),
 }
 
@@ -238,7 +241,7 @@ UNNUMBERED_CHECKS: dict[str, tuple[str, ...]] = {
     # "this can fail", which none of them can.
     "photo": ("light_driving", "total_dose", "trap_heating"),
     "stability": ("convening", "vibration"),
-    "trapping": ("effective_na", "confinement"),
+    "trapping": ("effective_na", "confinement", "power_window"),
 }
 
 

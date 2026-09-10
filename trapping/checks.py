@@ -71,7 +71,16 @@ def available_facts(setup: "TrapSetup") -> set[str]:
 
 
 def _ok(code, kind, margin, message, **numbers) -> CheckResult:
-    return CheckResult(code, kind, margin, "ok", message, None, numbers)
+    """Severity "info", not "ok" (2026-09-10).
+
+    `trapping/gate.py` drops severity "ok" from `findings`, so a passing check
+    computed its number and threw it away -- and the numbers ARE this lens:
+    stiffness, trap depth in kT, corner frequency. On a configuration where
+    everything passed, the only visible finding was the TIR notice. Same
+    correction as sample/checks.py's G16c and photo/checks.py the same day:
+    ungraded and invisible are different things.
+    """
+    return CheckResult(code, kind, margin, "info", message, None, numbers)
 
 
 def check_effective_na(setup: "TrapSetup") -> CheckResult:
@@ -249,11 +258,141 @@ def check_sampling(setup: "TrapSetup") -> CheckResult:
     )
 
 
+def check_power_window(setup: "TrapSetup") -> CheckResult:
+    """Propose the laser power, as a STIFFNESS window (KH, 2026-09-10).
+
+    The two hard checks judge a power the operator already chose. This one
+    answers the question they actually have: what power should I use? The
+    bounds are the same two physical facts, inverted --
+
+        FLOOR    trap depth >= 10 kT, or thermal motion kicks the bead out.
+        CEILING  G14's f_s >= 10 f_c, so the corner frequency stays resolvable
+                 at the frame rate lens 2 achieved: kappa <= 2*pi*gamma*f_s/10.
+
+    ⚠ **REPORTED AS STIFFNESS, NOT AS A DIAL SETTING, AND THAT IS THE WHOLE
+    POINT.** The dial% -> mW map here is an uncalibrated placeholder and the
+    laser's power is neither readable nor settable on this instrument
+    (kb/decisions/2026-09-04-closed-loop-trapping-measured.md), so any mW or
+    dial figure is fiction. **Both ends of the stiffness window are free of
+    it:**
+
+    * the ceiling is ``2*pi*gamma*f_s/10`` -- only gamma and the frame rate;
+    * the floor is ``10*kT / (U/kappa)``, and ``U/kappa`` is a constant of this
+      model because the GOA stiffness and trap depth are both linear in power,
+      so the scale cancels.
+
+    So the window is a real physical statement even though the dial that
+    reaches it is not, and a measured kappa can be compared against it
+    directly -- which is the only way to use this lens quantitatively until
+    something can be told a measured stiffness.
+
+    INFO: it proposes, it does not grade. The two hard checks already judge
+    whatever power was chosen.
+    """
+    gamma = 6 * math.pi * setup.medium.viscosity_pa_s * setup.bead.radius_m
+    ref_power = setup.weakest_power_w()
+    kappa_ref = radial_stiffness_n_per_m(ref_power, setup.bead, setup.medium, setup.beam)
+    u_ref = trap_depth_kt(
+        ref_power, setup.bead, setup.medium, setup.beam, setup.temperature_k
+    )
+
+    if kappa_ref <= 0 or u_ref <= 0:
+        return CheckResult(
+            "trap.power_window",
+            INFO,
+            MAX_MARGIN,
+            "info",
+            "No power window: the model returns a non-positive stiffness or "
+            "trap depth at the reference dial, so there is nothing to scale.",
+            numbers={"evaluated": False},
+        )
+
+    #: kappa per kT of trap depth -- a constant of the model, scale-free.
+    kappa_per_kt = kappa_ref / u_ref
+    kappa_min = REQUIRED_TRAP_DEPTH_KT * kappa_per_kt
+
+    numbers = {
+        "evaluated": True,
+        "gamma_pn_s_per_um": round(gamma * 1e6, 6),
+        "kappa_min_pn_per_um": round(kappa_min * 1e6, 4),
+        "kappa_min_set_by": f"trap depth >= {REQUIRED_TRAP_DEPTH_KT:.0f} kT",
+        "kappa_at_this_dial_pn_per_um": round(kappa_ref * 1e6, 3),
+        "dial_percent": setup.dial_percent,
+    }
+
+    if setup.detector_fps is None:
+        return CheckResult(
+            "trap.power_window",
+            INFO,
+            MAX_MARGIN,
+            "info",
+            f"Stiffness floor {kappa_min * 1e6:.3f} pN/um "
+            f"({numbers['kappa_min_set_by']}). No ceiling: G14 sets it from "
+            "the achieved frame rate, and lens 2 has not supplied one. The "
+            "dial is not the unit to state this in -- see the check's "
+            "docstring.",
+            action="Pass detector_fps from lens 2 for the ceiling.",
+            numbers=numbers,
+        )
+
+    kappa_max = 2 * math.pi * gamma * setup.detector_fps / REQUIRED_SAMPLING_RATIO
+    f_c_max = setup.detector_fps / REQUIRED_SAMPLING_RATIO
+    numbers.update(
+        kappa_max_pn_per_um=round(kappa_max * 1e6, 4),
+        kappa_max_set_by=f"G14 at {setup.detector_fps:.0f} fps",
+        corner_frequency_max_hz=round(f_c_max, 2),
+        detector_fps=setup.detector_fps,
+        #: Placeholder-derived, and labelled so at every use.
+        dial_percent_for_kappa_max=round(
+            setup.dial_percent * kappa_max / kappa_ref, 3
+        )
+        if kappa_ref > 0
+        else None,
+    )
+
+    if kappa_min > kappa_max:
+        return CheckResult(
+            "trap.power_window.empty",
+            INFO,
+            MAX_MARGIN,
+            "info",
+            f"NO stiffness satisfies both ends: the trap needs "
+            f">= {kappa_min * 1e6:.3f} pN/um to hold the bead against kT, and "
+            f"G14 at {setup.detector_fps:.0f} fps allows only "
+            f"<= {kappa_max * 1e6:.3f} pN/um. Raise the frame rate (lens 2) or "
+            "use a bead the trap holds at lower stiffness.",
+            numbers=numbers,
+        )
+
+    return CheckResult(
+        "trap.power_window",
+        INFO,
+        MAX_MARGIN,
+        "info",
+        f"Use a stiffness between **{kappa_min * 1e6:.3f} and "
+        f"{kappa_max * 1e6:.2f} pN/um**: floor from "
+        f"{numbers['kappa_min_set_by']}, ceiling from "
+        f"{numbers['kappa_max_set_by']} (corner frequency must stay under "
+        f"{f_c_max:.1f} Hz). This dial computes to "
+        f"{kappa_ref * 1e6:.3f} pN/um. For a drag calibration prefer the SOFT "
+        "end -- x_eq = gamma*v/kappa, so a softer trap gives a bigger, more "
+        "measurable displacement at the same velocity.",
+        action="The dial equivalents are placeholder arithmetic and not a "
+        "setting to type in: the dial-to-mW map is uncalibrated and this "
+        "laser's power is neither readable nor settable. Compare a MEASURED "
+        "kappa against the window instead -- the window itself does not depend "
+        "on the placeholder.",
+        numbers=numbers,
+    )
+
+
 CHECKS: list[Check] = [
     Check("effective_na", INFO, (), check_effective_na),
     Check("confinement", HARD, (), check_confinement),
     Check("trap_depth", HARD, (), check_trap_depth),
     Check("sampling", HARD, ("medium.viscosity",), check_sampling),
+    # Proposes rather than judges -- see check_power_window.
+    Check("power_window", INFO, ("medium.viscosity",), check_power_window),
 ]
 
 

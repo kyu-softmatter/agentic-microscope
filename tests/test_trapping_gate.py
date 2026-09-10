@@ -4,6 +4,8 @@ the Phase 0 refusals are right, and the Phase 1/2 aggregation is right.
 
 from __future__ import annotations
 
+import pytest
+
 from trapping.dynamics import TrapSetup, water_viscosity_pa_s
 from trapping.gate import evaluate
 from trapping.goa import Bead, Medium, ObjectiveBeam
@@ -159,3 +161,85 @@ def test_index_matched_objective_still_advances():
     assert water.assumed_inputs == []
     assert water.evidence == "measured"
     assert water.advances is True
+
+
+# ------------------------------------------- the power proposal (2026-09-10)
+
+
+def test_a_passing_check_still_reports_its_number():
+    """`_ok` set severity "ok", which trapping/gate.py drops from findings --
+    so on a configuration where everything passed, the only visible finding
+    was the TIR notice. The numbers ARE this lens: stiffness, trap depth in
+    kT, corner frequency. Same correction as sample/ G16c and photo/ today.
+    """
+    v = evaluate(_setup(detector_fps=520.0))
+    codes = {f.code for f in v.findings}
+    assert {"trap.confinement", "trap.depth", "sampling"} <= codes
+    for c in ("trap.confinement", "trap.depth", "sampling"):
+        assert next(f for f in v.findings if f.code == c).severity == "info"
+
+
+def test_the_power_window_is_free_of_the_uncalibrated_dial_scale():
+    """THE property that makes proposing a power defensible.
+
+    The dial% -> mW map is a placeholder and the laser's power is neither
+    readable nor settable, so any mW figure is fiction. Both ends of the
+    STIFFNESS window escape it: the ceiling is 2*pi*gamma*f_s/10 (gamma and
+    the frame rate only), and the floor is 10*kT/(U/kappa), where U/kappa is
+    constant because the GOA stiffness and trap depth are both linear in
+    power. Rescaling the placeholder by 100x must move neither.
+    """
+    from trapping.dynamics import LaserCalibration
+
+    a = evaluate(_setup(detector_fps=520.0, calibration=LaserCalibration(placeholder_max_w=1.0)))
+    b = evaluate(_setup(detector_fps=520.0, calibration=LaserCalibration(placeholder_max_w=100.0)))
+    ma = a.metrics["trap.power_window"]
+    mb = b.metrics["trap.power_window"]
+
+    assert ma["kappa_min_pn_per_um"] == pytest.approx(mb["kappa_min_pn_per_um"], rel=1e-9)
+    assert ma["kappa_max_pn_per_um"] == pytest.approx(mb["kappa_max_pn_per_um"], rel=1e-9)
+    # And the stiffness the dial computes to DOES move -- that is the fiction.
+    assert mb["kappa_at_this_dial_pn_per_um"] > ma["kappa_at_this_dial_pn_per_um"]
+
+
+def test_the_ceiling_is_g14_inverted():
+    """kappa_max = 2*pi*gamma*f_s/10, i.e. exactly the stiffness whose corner
+    frequency is a tenth of the frame rate."""
+    import math
+
+    v = evaluate(_setup(detector_fps=520.0))
+    m = v.metrics["trap.power_window"]
+    gamma = m["gamma_pn_s_per_um"]
+    # rel 1e-4, not tighter: both figures in `numbers` are rounded for
+    # display, so recomputing from the rounded gamma cannot match to 1e-6.
+    assert m["kappa_max_pn_per_um"] == pytest.approx(2 * math.pi * gamma * 52.0, rel=1e-4)
+    assert m["corner_frequency_max_hz"] == pytest.approx(52.0)
+
+
+def test_the_measured_stiffness_sits_inside_the_window():
+    """The only way to use this lens quantitatively today: it cannot be TOLD a
+    measured stiffness, but the window can be compared against one. 2026-09-03
+    measured 3.65-4.5 pN/um three independent ways.
+    """
+    v = evaluate(_setup(detector_fps=520.0))
+    m = v.metrics["trap.power_window"]
+    for measured in (3.65, 3.87, 4.5):
+        assert m["kappa_min_pn_per_um"] <= measured <= m["kappa_max_pn_per_um"]
+
+
+def test_no_ceiling_without_a_frame_rate_from_lens_2():
+    """G14 sets the ceiling, and G14 needs an achieved frame rate this lens
+    does not own."""
+    v = evaluate(_setup())
+    m = v.metrics["trap.power_window"]
+    assert "kappa_max_pn_per_um" not in m
+    f = next(f for f in v.findings if f.code == "trap.power_window")
+    assert "No ceiling" in f.message
+
+
+def test_a_slow_camera_can_empty_the_window():
+    """At a low enough frame rate G14's ceiling drops below the trap-depth
+    floor and no stiffness works -- the same shape as lens 4's empty depth
+    window, and a case no single margin can express."""
+    v = evaluate(_setup(detector_fps=1e-4))
+    assert any(f.code == "trap.power_window.empty" for f in v.findings)
