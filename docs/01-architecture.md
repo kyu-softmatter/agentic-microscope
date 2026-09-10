@@ -241,7 +241,7 @@ FAIL is already a fix instruction.
 | 2 | **Detection** | Exposure, binning, ROI, readout, gain, frame interval | Photon budget, SNR, sampling → deterministic | `detection/` ✅ |
 | 3 | **Compute resources** | Frame rate, buffer, storage, processing | Bandwidth and capacity arithmetic → deterministic | `compute/` ✅ (G12a–c, G13a–d) + `compute/drops.py` for the post-hoc half + `.claude/agents/compute-resources.md` for the interpretive half |
 | 4 | **Sample geometry & optics** | Objective choice, immersion, coverslip, focal depth | Refractive index, WD, aberration → semi-deterministic | `sample/` ✅ (G15–G19 less the vacant `G18`, removed 2026-09-10) + a **depth window** reporting all four depth bounds as one band + `.claude/agents/sample-optics.md` for the qualitative half |
-| 5 | **Photo-perturbation** | Light level, illumination duty, total dose | Bleaching, heating, light-driving → semi-deterministic | `photo/` ✅ (G21–G22; **G10 and G20 both removed 2026-09-09**, neither number reused) + `.claude/agents/photo-perturbation.md` for the qualitative half |
+| 5 | **Photo-perturbation** — ⚠ **a REPORTING SECTION, not a judging lens** (2026-09-10) | Light level, illumination duty, total dose | Reports irradiance, dose, light-driving and trap heating. **No gates**: G10/G20 went 2026-09-09, G21/G22 on 2026-09-10, and it is out of `STANDING_LENSES` — it cannot block or bless | `photo/` ✅ (every check `INFO`) + `.claude/agents/photo-perturbation.md` |
 | 6 | **Measurement validity** | Whether all of the above yields the intended physical quantity without bias | Bias computation + qualitative | `validity/` ✅ (G11, G23–G27) + `.claude/agents/measurement-validity.md` for the qualitative half |
 
 ### Conditional (2)
@@ -287,7 +287,7 @@ experimentalist/
 │   ├── 01-architecture.md        (this file)
 │   ├── 02-knowledge-base.md      KB schema · three-way wiring cross-check · off-ledger settings
 │   ├── 03-cross-system-transfer.md   transferring settings between systems
-│   ├── 04-decision-engine.md     decision order · formulas · the 29 gates
+│   ├── 04-decision-engine.md     decision order · formulas · the 27 gates
 │   ├── 05-consensus-gate.md      committee · difficulty grades · improvement proposals
 │   ├── 06-pitfalls.md            pitfall list grounded in measured evidence
 │   ├── 07-roadmap.md             Phase 0–5

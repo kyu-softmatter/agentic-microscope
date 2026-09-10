@@ -567,8 +567,8 @@ All decided in code. If even one fails, the proposal is void.
 | ~~G18~~ | *vacant* — coverslip thickness, **removed 2026-09-10**. The coverslip stays in G16's working-distance budget and in lens 4's `assumed_inputs`; the collar moved to the evidence axis. Number not reused | — | — |
 | G19 | Count in field · overlap | nearest neighbour `≥ 3 ×` resolution | concentration, field size, λ_em | skipped (INFO) |
 | ~~G20~~ | *vacant* — saturation / triplet shelving, **removed 2026-09-09**. Formula kept in §5; number not reused | — | — |
-| G21 | Light-driving | irradiance `<` sample threshold | irradiance, measured threshold | BLOCKED if photoresponsive; **warns if never asked** |
-| G22 | Total dose | `≤` stated ceiling | irradiance, exposure plan | reported (INFO) |
+| ~~G21~~ | *vacant* — light-driving, **removed 2026-09-10** when lens 5 became a reporting section. The comparison still runs, as `INFO`. Number not reused | — | — |
+| ~~G22~~ | *vacant* — total dose, **removed 2026-09-10** with G21. The dose is still computed and now actually *reported*; it was being discarded by `_ok`. Number not reused | — | — |
 | G23 | Bias ledger | every bias that damages this quantity is absent, or cleared by a correction that exists | other lenses' verdicts, declared corrections | BLOCKED |
 | G24 | Pixel calibration | measured, when the quantity needs it | measured pixel size | BLOCKED |
 | G25 | Photometric calibration | background · dark · flat-field measured | those frames | BLOCKED |
@@ -580,7 +580,8 @@ All decided in code. If even one fails, the proposal is void.
 | G31 | Sedimentation | settling `≤` depth of field | radius, Δρ, viscosity | BLOCKED |
 | G32 | Evaporation | `≤ 5%` of volume lost | sealed, or a measured rate | warns unquantified |
 
-G15–G19 are lens 4's, G21–G22 lens 5's, G23–G27 lens 6's, G28–G32 lens 8's; the
+G15–G19 are lens 4's, G23–G27 lens 6's, G28–G32 lens 8's; **lens 5 has no gate
+numbers at all** since 2026-09-10 — it is a reporting section. The
 numbers are new. This table previously stopped at G14 because lenses 4 and 8 had
 no gate IDs at all, lens 5 had only G10 (removed 2026-09-09) and lens 6 only G11.
 
@@ -629,7 +630,7 @@ next step, but the action differs: FAIL means change the setting, BLOCKED means
 | §4 SNR · saturation (G6, G7) | `detection.gate.evaluate` | ✅ covered by tests (2026-08-11) |
 | §5 timing · blur (G8, G9) | `detection.gate.evaluate` | ✅ covered by tests (2026-08-11) |
 | §6 bleaching (G10) | — | **Removed 2026-09-09.** The gate, its tests and its plumbing are gone; §6 keeps the formulas and says why |
-| §5 dose · light-driving (G21–G22) | `photo.gate.evaluate` | ✅ covered by tests (2026-08-12; G20 removed 2026-09-09) |
+| §5 dose · light-driving | `photo.gate.evaluate` | ✅ covered by tests, but **not gates**: G20 went 2026-09-09, G21 and G22 on 2026-09-10 when lens 5 became a reporting section |
 | §7 statistical power (G11) | `validity.gate.evaluate` | ✅ covered by tests (2026-08-12) |
 | bias ledger · calibrations · post-processing (G23–G27) | `validity.gate.evaluate` | ✅ covered by tests (2026-08-12); bias scoping + correction registry + per-quantity verdicts added 2026-08-20 |
 | drift · settling · evaporation (G28–G32) | `stability.gate.evaluate` | ✅ covered by tests (2026-08-12) — G29 BLOCKED until a drift rate is measured |

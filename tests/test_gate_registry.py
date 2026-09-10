@@ -95,8 +95,11 @@ EXPECTED_CHECKS: dict[str, tuple[tuple[str, str], ...]] = {
         ("depth_window", "info"),
     ),
     # G10 (photobleaching) and G20 (saturation) were both removed 2026-09-09.
+    # A REPORTING SECTION since 2026-09-10, not a judging lens: every check
+    # is INFO, G21 and G22 joined G10 and G20 as vacant, and `photo` left
+    # validity's STANDING_LENSES. tests/test_advances_rule.py holds the rest.
     "photo": (
-        ("light_driving", "bias"),
+        ("light_driving", "info"),
         ("total_dose", "info"),
         ("trap_heating", "info"),
     ),
@@ -222,7 +225,7 @@ def test_only_trapping_lacks_a_limits_dict() -> None:
 
 #: Numbers that are VACANT and must never be reused, so that every reference
 #: in the history stays unambiguous.
-VACANT_GATES = ("G10", "G18", "G20")
+VACANT_GATES = ("G10", "G18", "G20", "G21", "G22")
 
 #: Checks that carry NO gate number. Not an error -- but the set must not grow
 #: without somebody noticing, because two of them are `hard` and can stop a
@@ -231,7 +234,9 @@ VACANT_GATES = ("G10", "G18", "G20")
 UNNUMBERED_CHECKS: dict[str, tuple[str, ...]] = {
     "optics": ("excitation", "blocking", "stokes", "collection", "centering", "crosstalk", "port"),
     "sample": ("depth_window",),
-    "photo": ("trap_heating",),
+    # All three: photo is a reporting section, and a number here would mean
+    # "this can fail", which none of them can.
+    "photo": ("light_driving", "total_dose", "trap_heating"),
     "stability": ("convening", "vibration"),
     "trapping": ("effective_na", "confinement"),
 }

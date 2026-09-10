@@ -98,10 +98,24 @@ def test_missing_standing_lens_fails():
     """Nothing else in the codebase notices that a lens never ran -- there is
     no orchestrator, so each lens is invoked separately."""
     up = _all_present()
-    del up["photo"]
+    del up["sample"]
     v = evaluate(_setup(upstream=up))
     assert v.status == "FAIL"
-    assert v.metrics["validity.committee_coverage"]["missing_standing"] == ["photo"]
+    assert v.metrics["validity.committee_coverage"]["missing_standing"] == ["sample"]
+
+
+def test_photo_is_no_longer_a_standing_lens():
+    """It became a reporting section on 2026-09-10, so it has no verdict to
+    return and G27 must not demand one -- doing so would BLOCK every review
+    forever. Its absence is not a hole in the sense E4 means; it is not a
+    lens."""
+    from validity.setup import STANDING_LENSES
+
+    assert "photo" not in STANDING_LENSES
+    up = _all_present()
+    up.pop("photo", None)
+    v = evaluate(_setup(upstream=up))
+    assert v.metrics["validity.committee_coverage"]["missing_standing"] == []
 
 
 def test_blocked_upstream_lens_fails_coverage():

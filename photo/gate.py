@@ -56,7 +56,11 @@ class Finding:
 
 @dataclass
 class Verdict:
-    status: str  # PASS | PASS_WITH_CHANGES | FAIL | BLOCKED
+    #: REPORT | BLOCKED. This is a reporting section, not a judging lens
+    #: (KH, 2026-09-10), so PASS / PASS_WITH_CHANGES / FAIL are gone: there is
+    #: nothing here that can pass or fail. BLOCKED survives because a report
+    #: still cannot be written without its inputs.
+    status: str
     feasibility: str = "UNKNOWN"  # ROUTINE .. INFEASIBLE
     evidence: str = "assumed"  # measured | assumed
     confidence: str = "low"
@@ -68,23 +72,20 @@ class Verdict:
 
     @property
     def passed(self) -> bool:
-        return self.status in {"PASS", "PASS_WITH_CHANGES"}
+        """A report is written or it is not; it does not pass."""
+        return self.status == "REPORT"
 
     @property
-    def advances(self) -> bool:
-        """The committee's criterion, from docs/05's Verdict schema:
-        ``feasibility >= TIGHT and evidence == measured and no hard gate < 1.0``.
+    def advances(self) -> None:
+        """**Not applicable.** ``None``, not ``False``.
 
-        The hard-gate clause is already covered by ``passed``: a hard gate below
-        1.0 makes the status FAIL. The feasibility clause was missing until
-        2026-08-12, which let an INFEASIBLE verdict whose only failures were
-        bias-kind report ``advances=True``.
+        A judging lens advances or refuses to. This section does neither: it
+        cannot block a proposal and it cannot bless one, so answering ``False``
+        would read as a refusal and answering ``True`` would claim an
+        endorsement it has no gate to base on. Lens 6's G27 no longer looks for
+        this section at all -- it left ``STANDING_LENSES`` on 2026-09-10.
         """
-        return (
-            self.passed
-            and self.evidence == "measured"
-            and meets_grade(self.feasibility)
-        )
+        return None
 
     def to_dict(self) -> dict:
         return {
@@ -92,7 +93,10 @@ class Verdict:
             "status": self.status,
             "feasibility": self.feasibility,
             "feasibility_note": GRADE_NOTES.get(self.feasibility, ""),
+            #: None -- see Verdict.advances. Consumers must not read this as
+            #: False; a reporting section neither advances nor refuses.
             "advances": self.advances,
+            "reporting_only": True,
             "evidence": self.evidence,
             "confidence": self.confidence,
             "bottleneck": self.bottleneck,
@@ -225,13 +229,19 @@ def evaluate(setup: IlluminationSetup) -> Verdict:
     # ---- Phase 1 -- every check runs -------------------------------------
     results: list[CheckResult] = [c.run(setup) for c in CHECKS]
 
-    # ---- Phase 2 -- aggregate --------------------------------------------
-    hard_failed = [r for r in results if r.kind == HARD and r.margin < 1.0]
+    # ---- Phase 2 -- collate ----------------------------------------------
+    # Nothing here is gradeable, by construction: every check is INFO since
+    # 2026-09-10. So there is no worst margin, no bottleneck and no
+    # feasibility -- and saying "UNKNOWN" would be wrong in the way that
+    # matters, because UNKNOWN is what an ungraded JUDGEMENT looks like. This
+    # is not an ungraded judgement; it is a report.
     gradeable = [r for r in results if r.kind in (HARD, SOFT, BIAS)]
-    worst = min(gradeable, key=lambda r: r.margin) if gradeable else None
-
-    feasibility = grade(worst.margin) if worst else "UNKNOWN"
-    bottleneck = worst.code if worst else None
+    assert not gradeable, (
+        "photo/ is a reporting section: every check must be INFO. "
+        f"Gradeable: {[r.code for r in gradeable]}"
+    )
+    feasibility = "N/A"
+    bottleneck = None
 
     findings = [
         Finding(
@@ -259,15 +269,8 @@ def evaluate(setup: IlluminationSetup) -> Verdict:
             )
         )
 
-    if hard_failed:
-        status = "FAIL"
-    elif any(f.severity in {"fail", "warn"} for f in findings):
-        status = "PASS_WITH_CHANGES"
-    else:
-        status = "PASS"
-
     return Verdict(
-        status=status,
+        status="REPORT",
         feasibility=feasibility,
         evidence=evidence,
         confidence="high" if evidence == "measured" else "low",

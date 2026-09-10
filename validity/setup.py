@@ -149,7 +149,11 @@ BIAS_SCOPE: dict[str, frozenset[str]] = {
 #: here -- but `stability/` does implement G28-G32 and two of its gates are
 #: `kind: bias`, so pass its verdict in `upstream` when it convened and the
 #: ledger will pick those up like any other lens's.
-STANDING_LENSES: tuple[str, ...] = ("optics", "detection", "compute", "sample", "photo")
+#: The lenses G27 requires a verdict from. `photo` left on 2026-09-10 when it
+#: became a reporting section rather than a judging lens -- it has no gate to
+#: return a verdict from, so demanding one would BLOCK every review forever.
+#: kb/decisions/2026-09-10-lens-5-becomes-a-reporting-section.md
+STANDING_LENSES: tuple[str, ...] = ("optics", "detection", "compute", "sample")
 
 
 @dataclass

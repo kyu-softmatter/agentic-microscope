@@ -156,7 +156,8 @@ def cmd_check(args: argparse.Namespace) -> int:
     )
     print(
         f"feasibility: {v.feasibility}   evidence: {v.evidence}   "
-        f"confidence: {v.confidence}   advances: {'YES' if v.advances else 'NO'}"
+        f"confidence: {v.confidence}   "
+        "advances: n/a (reporting section -- neither advances nor blocks)"
     )
     if v.assumed_inputs:
         print("assumed:")
@@ -164,11 +165,10 @@ def cmd_check(args: argparse.Namespace) -> int:
             print(f"  - {a}")
     print("=" * 72)
 
-    if v.margins:
-        print("\n  margins (achieved / required; 1.0 = exactly at the limit)")
-        for code, m in sorted(v.margins.items(), key=lambda kv: kv[1]):
-            bar = "#" * min(int(m * 10), 30)
-            print(f"    {m:6.2f}  {code:36s} {bar}")
+    # DELIBERATELY NO MARGINS BLOCK. Nothing here is graded, so every entry
+    # would be MAX_MARGIN with a full bar -- which reads as "lots of headroom"
+    # from a section that measured no limit at all. The numbers are in
+    # `metrics`; the words are in `findings`, and every check reaches it.
 
     if v.findings:
         print("\n  findings")
@@ -181,7 +181,9 @@ def cmd_check(args: argparse.Namespace) -> int:
             if f.action:
                 print(f"        -> {f.action}")
     print()
-    return 0 if v.advances or v.status == "PASS" else 1
+    # A report succeeds when it could be written. Only a Phase 0 BLOCKED --
+    # no irradiance, no exposure plan -- is a non-zero exit.
+    return 0 if v.status == "REPORT" else 1
 
 
 def main(argv: list[str] | None = None) -> int:

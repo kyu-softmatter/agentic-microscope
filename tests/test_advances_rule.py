@@ -18,13 +18,17 @@ import importlib
 
 import pytest
 
+#: The JUDGING lenses. `photo` is not one: it became a reporting section on
+#: 2026-09-10, every check INFO, and its `advances` is `None` by design rather
+#: than a bool -- so the rule below does not apply to it and asserting it
+#: would be asserting that a report can advance.
+#: kb/decisions/2026-09-10-lens-5-becomes-a-reporting-section.md
 LENS_MODULES = [
     "optics",
     "detection",
     "compute",
     "trapping",
     "sample",
-    "photo",
     "validity",
     "stability",
 ]
@@ -133,3 +137,32 @@ def test_all_lenses_share_one_grade_scale(mod):
     reference = _checks("optics")
     assert _checks(mod).GRADES == reference.GRADES
     assert _checks(mod).GRADE_NOTES == reference.GRADE_NOTES
+
+
+# ------------------------------------------------- the one exception -------
+
+
+def test_photo_is_a_reporting_section_and_does_not_advance_at_all():
+    """`advances` is None, not False, and that distinction is the point.
+
+    A judging lens advances or refuses to. This section does neither: it
+    cannot block a proposal and it cannot bless one. `False` would read as a
+    refusal, so the field answers `None` and lens 6's G27 no longer looks for
+    it -- `photo` left STANDING_LENSES the same day.
+    """
+    from photo.gate import Verdict
+
+    v = Verdict(status="REPORT", feasibility="N/A", evidence="measured")
+    assert v.advances is None
+    assert v.passed is True
+    assert v.to_dict()["reporting_only"] is True
+
+
+def test_nothing_in_photo_is_gradeable():
+    """The invariant `photo.gate.evaluate` asserts at runtime, pinned here so
+    adding a graded check to a reporting section fails a test rather than an
+    assertion in the field."""
+    import photo
+
+    assert all(c.kind == "info" for c in photo.CHECKS)
+    assert photo.LIMITS == {}

@@ -30,7 +30,7 @@ hardest; rank 4 is the free variable that moves first.
 | **1** | **Spatial resolution** | Pixel size at the sample and the NA that feeds it. Standing choice: `100x-Oil` at **1×1 binning, 0.06453 µm/px** — measured 2026-09-03, and 0.73 % from the 2025-04 table's 0.065 (§3) | lens 4 (objective, immersion) · lens 2 (binning, ROI) | objective, intermediate mag, binning |
 | **2** | **Image quality** | SNR and localisation precision — whether a particle can be found and centred, not whether the picture is pretty | lens 2 (photon budget, SNR) · lens 1 (throughput) | exposure, gain, readout mode, filters |
 | **3** | **Time resolution** | Achieved frame period. Standing choice: **20.0 ms exposure ⇒ ~50 fps** (this camera takes the exposure as the period) | lens 2 (frame interval) · lens 3 (frame-rate arithmetic) | exposure, interval, ROI, data rate |
-| **4** | **Light source intensity** | Source level at the sample. Standing choice: Aura **GREEN ~80/1000** | lens 5 (light level, duty, dose) · lens 1 | level %, illumination duty |
+| **4** | **Light source intensity** | Source level at the sample. Standing choice: Aura **GREEN ~80/1000** | lens 5 **reports** (level, duty, dose); nothing gates it — see H2 | level %, illumination duty |
 
 Standing values and the reasoning behind them:
 [`kb/expertise/microrheology-standard-conditions.md`](kb/expertise/microrheology-standard-conditions.md).
@@ -43,7 +43,12 @@ Standing values and the reasoning behind them:
 - **H2 · Intensity is instrumental, not a goal.** It is the lever, bounded above
   by bleaching and light-driving and below by "the analysis cannot work" — the
   *working LUT* of README item 9. It is **not** licence to add light: the bound
-  is a measured window and lens 5's gates are the fence.
+  is a measured window.
+  ⚠ **The fence is gone as of 2026-09-10.** This rule used to end "and lens 5's
+  gates are the fence"; lens 5 is a reporting section now and has no gates, so
+  nothing enforces H2 but the reader. The only remaining ceiling on light level
+  is lens 2's G6 saturation, which is about the camera and not about the sample
+  → [`2026-09-10-lens-5-becomes-a-reporting-section.md`](kb/decisions/2026-09-10-lens-5-becomes-a-reporting-section.md).
 - **H3 · The hierarchy is a tie-break among `soft` and `bias` trade-offs. It
   never overrides a `hard` gate** → [05 §2](docs/05-consensus-gate.md). Rank 1
   does not buy an oil objective past G17's RI-mismatch depth (~10 µm), and no
@@ -319,11 +324,12 @@ python -m optics.cli check config/channels/proposed-2color.yaml
 
 Every lens has the same shape — `optics` · `detection` · `compute` · `sample` ·
 `photo` · `validity` · `stability` · `trapping`, each with `checks.py` ·
-`gate.py` · `setup.py` · `cli.py`. The formulas behind all 29 gates are
-collected in [04](docs/04-decision-engine.md); 26 are implemented, and `G2`–`G4`
-exist only as a threshold and a default verdict in that document. **`G10`, `G18` and
-`G20` are vacant** — G10 and G20 removed 2026-09-09, G18 on 2026-09-10, and
-none of the three numbers is reused.
+`gate.py` · `setup.py` · `cli.py`. The formulas behind all 27 gates are
+collected in [04](docs/04-decision-engine.md); 24 are implemented, and `G2`–`G4`
+exist only as a threshold and a default verdict in that document. **`G10`, `G18`, `G20`, `G21` and `G22` are vacant** — G10 and G20 on
+2026-09-09, G18/G21/G22 on 2026-09-10, the last two when **lens 5 stopped
+being a judging lens** and became a reporting section. None of the five
+numbers is reused.
 
 ```bash
 python -m knowledge.cli write

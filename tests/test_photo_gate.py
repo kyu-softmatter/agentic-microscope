@@ -91,19 +91,23 @@ def test_unasked_photoresponsiveness_warns_instead_of_clearing():
 def test_unasked_photoresponsiveness_costs_the_verdict_advances():
     v = evaluate(_setup(photoresponsive=None))
     assert v.evidence == "assumed"
-    assert v.advances is False
+    # `advances` is None, not False -- a reporting section neither advances
+    # nor refuses (2026-09-10). What an unasked question still costs is the
+    # evidence tier and its place in assumed_inputs.
+    assert v.advances is None
     assert any("photoresponsiveness" in a for a in v.assumed_inputs)
 
 
 def test_unasked_photoresponsiveness_does_not_block_the_whole_lens():
-    """It is a missing answer, not a missing number: total dose can still be
-    judged, so the lens reports rather than refusing.
+    """It is a missing answer, not a missing number: the dose is still
+    reported, so the section reports rather than refusing.
 
-    Asserted on G22 since 2026-09-09. It went through G20's margin until that
-    gate was removed, and G22 is now the only other gate this lens grades."""
+    Went through G20's margin, then G22's, and now through neither -- since
+    2026-09-10 nothing here is graded, so the assertion is that the report was
+    still written and the dose still reached `findings`."""
     v = evaluate(_setup(photoresponsive=None))
-    assert v.status == "PASS_WITH_CHANGES"
-    assert "perturbation.total_dose" in v.margins
+    assert v.status == "REPORT"
+    assert any(f.code == "perturbation.total_dose" for f in v.findings)
 
 
 def test_unasked_photoresponsiveness_does_not_fake_a_margin():
@@ -172,9 +176,11 @@ def test_total_dose_is_info_and_never_blocks():
 
 def test_trap_heating_is_silent_when_the_trap_is_off():
     v = evaluate(_setup())
-    assert not any(
-        f.code == "perturbation.trap_heating_unowned" for f in v.findings
-    )
+    f = next(f for f in v.findings if f.code == "perturbation.trap_heating_unowned")
+    # Visible, but saying the opposite thing: "does not apply". Since
+    # 2026-09-10 every check in this section reaches `findings`, so silence is
+    # no longer how "not applicable" is expressed -- words are.
+    assert "not in use" in f.message
 
 
 def test_trap_on_raises_the_unowned_heating_finding():
@@ -237,17 +243,26 @@ def test_trap_heating_notice_does_not_change_the_grade():
 def test_missing_frame_interval_downgrades_evidence():
     v = evaluate(_setup(frame_interval_ms=None))
     assert v.evidence == "assumed"
-    assert v.advances is False
+    assert v.advances is None  # reporting section; see test_advances_rule.py
 
 
-def test_fully_specified_setup_advances():
+def test_fully_specified_setup_reports():
+    """RENAMED 2026-09-10: there is nothing here to advance. A fully specified
+    setup produces a report, with every check in it."""
     v = evaluate(_setup())
     assert v.evidence == "measured"
-    assert v.status == "PASS"
-    assert v.advances is True
+    assert v.status == "REPORT"
+    assert v.feasibility == "N/A"
+    assert v.advances is None
+    assert {f.code for f in v.findings} >= {
+        "perturbation.light_driving",
+        "perturbation.total_dose",
+        "perturbation.trap_heating_unowned",
+    }
 
 
 def test_verdict_serializes_with_the_lens_name():
     d = evaluate(_setup()).to_dict()
     assert d["lens"] == "photo"
-    assert d["feasibility_note"]
+    assert d["reporting_only"] is True
+    assert d["advances"] is None

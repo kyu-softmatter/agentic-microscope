@@ -1,5 +1,17 @@
-"""Individual photo-perturbation checks -- G21 (light-driving), G22 (total
-dose).
+"""Photo-perturbation REPORTS -- light-driving, total dose, trap heating.
+
+⚠ **THIS IS NOT A JUDGING LENS ANY MORE (KH, 2026-09-10).** Every check here
+is `INFO`: it reports, it does not grade, and it cannot block. `G21` and `G22`
+are vacant alongside `G10` and `G20`, because in this repository a gate number
+means "this can fail and stop or bias the result", and nothing here can.
+kb/decisions/2026-09-10-lens-5-becomes-a-reporting-section.md
+
+Why: two things the illumination numbers cannot see. Samples get radical
+scavengers and other mitigations that change the answer without changing the
+irradiance, and often there is no sample information at all -- and warning on
+the absence of information made "we do not know" block a verdict. Reporting
+what the light does, and letting the operator judge it against a sample they
+know and the gate does not, is the honest division.
 docs/04-decision-engine.md §5; docs/05-consensus-gate.md "Lens 5";
 docs/06-pitfalls.md D2, D3.
 
@@ -75,7 +87,17 @@ class Check:
 
 
 def _ok(code, kind, margin, message, **numbers) -> CheckResult:
-    return CheckResult(code, kind, margin, "ok", message, None, numbers)
+    """Severity "info", not "ok" -- this is a reporting section.
+
+    `photo/gate.py` drops severity "ok" from `findings`, so `_ok` used to mean
+    "compute this and then throw it away". That cost the dose number every
+    time: `check_total_dose`'s docstring says it "always reports the number"
+    and the no-ceiling branch -- the only branch that ever runs, since no dye
+    or bead here has a dose ceiling -- discarded it into `metrics`. Ungraded
+    and invisible are different things, and only the first was intended
+    (2026-09-10, the same correction made in sample/checks.py's G16c).
+    """
+    return CheckResult(code, kind, margin, "info", message, None, numbers)
 
 
 # --------------------------------------------------------------------------
@@ -100,7 +122,7 @@ def available_facts(setup: "IlluminationSetup") -> set[str]:
 
 
 def check_light_driving(setup: "IlluminationSetup") -> CheckResult:
-    """G21: is the illumination driving the sample rather than measuring it?
+    """Is the illumination driving the sample rather than measuring it?
 
     docs/06 D2. This is lens 5's reason to exist -- lens 1 says raise the light
     for SNR, and this is the only lens that can answer "that ruins the
@@ -117,7 +139,7 @@ def check_light_driving(setup: "IlluminationSetup") -> CheckResult:
     if setup.photoresponsive is None:
         return CheckResult(
             "perturbation.light_driving",
-            BIAS,
+            INFO,
             MAX_MARGIN,
             "warn",
             "Nobody has said whether this sample responds to light, so "
@@ -144,7 +166,7 @@ def check_light_driving(setup: "IlluminationSetup") -> CheckResult:
     if not setup.photoresponsive:
         return _ok(
             "perturbation.light_driving",
-            BIAS,
+            INFO,
             MAX_MARGIN,
             f"Sample confirmed not photoresponsive; {irradiance:.1f} W/cm^2 is "
             "treated as measurement light only.",
@@ -165,7 +187,7 @@ def check_light_driving(setup: "IlluminationSetup") -> CheckResult:
     if margin >= 1.0:
         return _ok(
             "perturbation.light_driving",
-            BIAS,
+            INFO,
             margin,
             f"{irradiance:.1f} W/cm^2 stays under the {threshold:.1f} W/cm^2 "
             "at which this sample starts responding to the light.",
@@ -174,7 +196,7 @@ def check_light_driving(setup: "IlluminationSetup") -> CheckResult:
 
     return CheckResult(
         "perturbation.light_driving",
-        BIAS,
+        INFO,
         margin,
         "warn",
         f"{irradiance:.1f} W/cm^2 exceeds the {threshold:.1f} W/cm^2 at which "
@@ -191,7 +213,7 @@ def check_light_driving(setup: "IlluminationSetup") -> CheckResult:
 
 
 def check_total_dose(setup: "IlluminationSetup") -> CheckResult:
-    """G22: accumulated energy per unit area, and the duty cycle that sets it.
+    """Accumulated energy per unit area, and the duty cycle that sets it.
 
     INFO, because a dose ceiling is sample-specific: without one supplied there
     is nothing to gate against, and inventing a limit would be exactly the
@@ -344,7 +366,9 @@ def check_trap_heating_ownership(setup: "IlluminationSetup") -> CheckResult:
 
 
 CHECKS: list[Check] = [
-    Check("light_driving", BIAS, ("irradiance",), check_light_driving),
+    # All INFO since 2026-09-10 -- see the module docstring. BIAS is still
+    # imported because the severity vocabulary is shared, but no check uses it.
+    Check("light_driving", INFO, ("irradiance",), check_light_driving),
     Check("total_dose", INFO, (), check_total_dose),
     Check("trap_heating", INFO, (), check_trap_heating_ownership),
 ]
