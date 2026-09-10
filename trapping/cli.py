@@ -19,7 +19,7 @@ import sys
 from .dynamics import TrapSetup, water_viscosity_pa_s
 from .gate import evaluate
 from .goa import Bead, Medium, ObjectiveBeam, radial_stiffness_n_per_m, ray_optics_regime, trap_force
-from .laser import LaserCalibration, power_per_trap
+from .laser import MEASURED_1064_20X_W, LaserCalibration, power_per_trap
 
 
 def cmd_force_curve(args: argparse.Namespace) -> int:
@@ -37,7 +37,11 @@ def cmd_force_curve(args: argparse.Namespace) -> int:
         )
         return 1
 
-    cal = LaserCalibration(placeholder_max_w=args.max_power_w)
+    cal = (
+        LaserCalibration(placeholder_max_w=args.max_power_w)
+        if args.placeholder_power
+        else LaserCalibration(points=MEASURED_1064_20X_W)
+    )
     if not cal.measured:
         print(
             f"note: laser calibration is a placeholder (linear to "
@@ -93,7 +97,11 @@ def cmd_check(args: argparse.Namespace) -> int:
         viscosity = water_viscosity_pa_s(args.temperature_c)
     medium = Medium(n=args.n_medium, viscosity_pa_s=viscosity)
     beam = ObjectiveBeam(na=args.na, wavelength_m=args.wavelength_nm * 1e-9)
-    cal = LaserCalibration(placeholder_max_w=args.max_power_w)
+    cal = (
+        LaserCalibration(placeholder_max_w=args.max_power_w)
+        if args.placeholder_power
+        else LaserCalibration(points=MEASURED_1064_20X_W)
+    )
     weights = [float(w) for w in args.weights.split(",")] if args.weights else None
 
     setup = TrapSetup(
@@ -157,7 +165,14 @@ def main(argv: list[str] | None = None) -> int:
     f = sub.add_parser("force-curve", help="print radial/axial force vs. displacement")
     f.add_argument("--dial", type=float, default=100.0, help="laser dial setting, 0-100%%")
     f.add_argument("--n-traps", type=int, default=1, help="number of simultaneous traps sharing the beam")
-    f.add_argument("--max-power-w", type=float, default=1.0, help="placeholder power at dial=100%% (W) until calibrated")
+    f.add_argument("--max-power-w", type=float, default=1.0, help="power at dial=100%% (W) for the PLACEHOLDER path; only used with --placeholder-power")
+    f.add_argument(
+        "--placeholder-power", action="store_true",
+        help="ignore the measured 1064 curve and use the straight-line "
+        "placeholder instead. The measured curve "
+        "(kb/calibrations/illumination-power.yaml, optical_tweezers row, "
+        "KH 2026-09-09, 20x, 5-80%%) is the default since 2026-09-10",
+    )
     f.add_argument("--radius-um", type=float, default=2.5, help="bead radius (um)")
     f.add_argument("--n-bead", type=float, default=1.45, help="bead refractive index")
     f.add_argument("--n-medium", type=float, default=1.33, help="medium refractive index")
@@ -170,7 +185,14 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--dial", type=float, default=100.0, help="laser dial setting, 0-100%%")
     c.add_argument("--n-traps", type=int, default=1, help="number of simultaneous traps sharing the beam")
     c.add_argument("--weights", help="comma-separated per-trap power-split weights (default: equal split)")
-    c.add_argument("--max-power-w", type=float, default=1.0, help="placeholder power at dial=100%% (W) until calibrated")
+    c.add_argument("--max-power-w", type=float, default=1.0, help="power at dial=100%% (W) for the PLACEHOLDER path; only used with --placeholder-power")
+    c.add_argument(
+        "--placeholder-power", action="store_true",
+        help="ignore the measured 1064 curve and use the straight-line "
+        "placeholder instead. The measured curve "
+        "(kb/calibrations/illumination-power.yaml, optical_tweezers row, "
+        "KH 2026-09-09, 20x, 5-80%%) is the default since 2026-09-10",
+    )
     c.add_argument("--radius-um", type=float, default=2.5, help="bead radius (um)")
     c.add_argument("--n-bead", type=float, default=1.45, help="bead refractive index")
     c.add_argument("--n-medium", type=float, default=1.33, help="medium refractive index")

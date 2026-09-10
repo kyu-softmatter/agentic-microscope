@@ -243,3 +243,101 @@ def test_a_slow_camera_can_empty_the_window():
     window, and a case no single margin can express."""
     v = evaluate(_setup(detector_fps=1e-4))
     assert any(f.code == "trap.power_window.empty" for f in v.findings)
+
+
+# ------------------------------- the measured 1064 curve (2026-09-10) -------
+
+
+def test_the_measured_1064_curve_is_the_default_and_is_measured():
+    """kb/calibrations/illumination-power.yaml's `optical_tweezers` row, KH
+    2026-09-09. That file says outright "SAFETY.md §1 said this dial was
+    uncalibrated; it is not any more" -- and this lens went on using the
+    placeholder until 2026-09-10.
+    """
+    from trapping.laser import MEASURED_1064_20X_W, LaserCalibration
+
+    cal = LaserCalibration(points=MEASURED_1064_20X_W)
+    assert cal.measured is True
+    assert cal.power_at(50.0) == pytest.approx(0.633)
+    assert cal.power_at(5.0) == pytest.approx(0.064)
+
+
+def test_it_refuses_to_extrapolate_past_the_meter():
+    """100 % over-ranged the meter, so 80 % is the top row and the file's
+    1275 mW at 100 % is `assumed`. It is deliberately not in the points, and
+    `power_at` refuses rather than guessing."""
+    from trapping.laser import MEASURED_1064_20X_W, LaserCalibration
+
+    cal = LaserCalibration(points=MEASURED_1064_20X_W)
+    assert cal.power_at(80.0) == pytest.approx(1.020)
+    with pytest.raises(ValueError, match="exceeds the highest calibrated"):
+        cal.power_at(100.0)
+
+
+def test_the_placeholder_was_off_by_1_27_not_by_40():
+    """THE CORRECTION this measurement forced.
+
+    The gap between the model's stiffness and the measured 3.65-4.5 pN/um was
+    read as a fault in the dial -> mW map. It is not: the placeholder
+    (dial% x 10 mW) undershoots the measured curve by a flat 1.27x at every
+    level. So the discrepancy was never in the power scale, and where it
+    actually sits is settled by one number nobody recorded -- the dial the
+    2026-09-03 session ran at.
+    """
+    from trapping.laser import MEASURED_1064_20X_W, LaserCalibration
+
+    measured = LaserCalibration(points=MEASURED_1064_20X_W)
+    placeholder = LaserCalibration(placeholder_max_w=1.0)
+    for dial in (5.0, 10.0, 30.0, 50.0, 80.0):
+        ratio = measured.power_at(dial) / placeholder.power_at(dial)
+        assert ratio == pytest.approx(1.27, abs=0.02)
+
+
+def test_the_model_reproduces_the_measured_stiffness_near_dial_one_percent():
+    """And so the ray-optics model is not 40x optimistic -- it agrees.
+
+    On the measured curve, dial 0.879 % (11.3 mW) gives exactly the 3.87 pN/um
+    that 2026-09-03 measured three independent ways, and dial 1 % gives
+    4.40 pN/um -- 14 % high, which for a model whose own docstring calls it an
+    upper bound (unmodelled Fresnel roll-off at the critical angle, no
+    spherical aberration) is agreement rather than failure.
+
+    What this does NOT establish is the dial that session used. If it was ~1 %
+    the model is validated to 14 %; if it was 50 % the model is ~53x
+    optimistic. That one unrecorded number decides it.
+    """
+    import math
+
+    from trapping.dynamics import Bead, Medium, ObjectiveBeam
+    from trapping.goa import radial_stiffness_n_per_m
+    from trapping.laser import MEASURED_1064_20X_W, LaserCalibration
+
+    cal = LaserCalibration(points=MEASURED_1064_20X_W)
+    bead = Bead(radius_m=2.475e-6, n=1.57154)
+    med = Medium(n=1.33, viscosity_pa_s=1.002e-3)
+    beam = ObjectiveBeam(na=1.45)
+
+    kappa_1pct = radial_stiffness_n_per_m(cal.power_at(1.0), bead, med, beam) * 1e6
+    assert kappa_1pct == pytest.approx(4.40, abs=0.05)
+    assert 0.9 < kappa_1pct / 3.87 < 1.2
+
+
+def test_the_objective_is_the_remaining_assumption_not_the_dial():
+    """The dial -> mW map is measured now, so it left assumed_inputs. What
+    replaced it is narrower and true: that curve was taken at the 20x, and
+    every other objective's 1064 figure in that file is an estimate off a
+    vendor plot. The text cites the file."""
+    from trapping.laser import MEASURED_1064_20X_W, LaserCalibration
+
+    v = evaluate(
+        _setup(
+            calibration=LaserCalibration(points=MEASURED_1064_20X_W),
+            # 50, not the fixture's 100: the measured curve tops out at 80 %
+            # and refuses to extrapolate, which is the behaviour wanted.
+            dial_percent=50.0,
+            temperature_measured=True,
+            detector_fps=520.0,
+        )
+    )
+    assert not any("dial% -> mW calibration" in a for a in v.assumed_inputs)
+    assert any("illumination-power.yaml" in a for a in v.assumed_inputs)

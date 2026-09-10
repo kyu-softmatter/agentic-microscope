@@ -22,6 +22,39 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 
+#: The trap laser's MEASURED dial% -> power-at-the-sample curve, in watts.
+#:
+#: SOURCE: **kb/calibrations/illumination-power.yaml**, the `optical_tweezers`
+#: row (`sheet_line: 1064`, `path: all_in`, `by_level_20x`). Measured by KH
+#: 2026-09-09 at the sample plane through the **20x** objective with a
+#: PM100A + S121C head. That file is the record; this is a transcription, and
+#: it is the only place in this package carrying these numbers.
+#:
+#: Three limits, all from that file and all worth knowing before using this:
+#:
+#: 1. **It stops at 80 %.** 100 % over-ranged the meter, so that file's
+#:    `at_100pct_extrapolated_mw: 1275` is `assumed`, and it is deliberately
+#:    NOT included here -- `power_at` refuses to extrapolate past the highest
+#:    measured point, which is exactly the wanted behaviour.
+#: 2. **It is the 20x.** Every 1064 figure for another objective is an
+#:    estimate off a vendor transmittance plot read by eye, and those plots
+#:    stop at 1000 nm; the 100x Oil estimate is ~0.95 of the 20x. That file's
+#:    `at_20pct_RETRACTED` row records what a 1064 reading at another
+#:    objective cost last time it was attempted.
+#: 3. **The absolute scale is the least reliable number in that file** -- the
+#:    S121C is silicon and 1064 nm sits near its band edge. What is *not*
+#:    affected is the linearity, because a single scale factor cancels: that
+#:    file records 1.00 / 0.99 / 0.99 / 0.99 over 5-80 %.
+MEASURED_1064_20X_W: dict[float, float] = {
+    0.0: 0.0,
+    5.0: 0.064,
+    10.0: 0.126,
+    30.0: 0.380,
+    50.0: 0.633,
+    80.0: 1.020,
+}
+
+
 @dataclass(frozen=True)
 class LaserCalibration:
     """Maps a 0-100% software dial setting to incident power in watts.

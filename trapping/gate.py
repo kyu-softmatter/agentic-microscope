@@ -39,6 +39,7 @@ from .checks import (
 )
 from .dynamics import TrapSetup
 from .goa import ray_optics_regime
+from .laser import MEASURED_1064_20X_W
 
 LENS = "trapping"
 
@@ -136,6 +137,25 @@ def _assumed_inputs(setup: TrapSetup) -> list[str]:
     out: list[str] = []
     if not setup.calibration.measured:
         out.append("laser dial% -> mW calibration")
+    elif setup.calibration.points == MEASURED_1064_20X_W:
+        # This specific dataset -- kb/calibrations/illumination-power.yaml,
+        # `optical_tweezers` row, KH 2026-09-09 -- was taken at the **20x**,
+        # and every 1064 figure for another objective in that file is an
+        # estimate off a vendor transmittance plot that stops at 1000 nm (the
+        # 100x Oil estimate is ~0.95 of the 20x). So the dial->mW map is no
+        # longer an assumption; which objective it applies to still is.
+        #
+        # Keyed to the dataset rather than to `measured`, because the caveat
+        # is a property of THAT measurement and not of measured calibrations
+        # in general -- a caller who supplies their own points at their own
+        # objective is not making this assumption.
+        out.append(
+            "1064 nm transmittance of the objective in use: the dial% -> mW "
+            "curve is MEASURED at the 20x "
+            "(kb/calibrations/illumination-power.yaml, optical_tweezers row, "
+            "KH 2026-09-09, 5-80 %), and every other objective in that file "
+            "is an estimate off a transmittance plot"
+        )
     if not setup.temperature_measured:
         out.append(f"medium temperature ({setup.temperature_k:.1f} K default)")
     if setup.beam.clipped_by_tir(setup.medium):
