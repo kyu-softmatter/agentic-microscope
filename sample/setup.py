@@ -69,6 +69,18 @@ class SampleSetup:
     birefringent: bool = False
     #: Particle concentration, for the count-in-field check.
     concentration_per_ml: float | None = None
+    #: Vendor %solids (w/v) as a FRACTION -- 0.01 for "1% solids". Preferred
+    #: over `concentration_per_ml`, because this is what vendors actually
+    #: state and the conversion is geometry plus a literature density rather
+    #: than an assay (KH, 2026-09-10).
+    solids_fraction_w_v: float | None = None
+    #: The polymer's density, g/cm^3. Literature: polystyrene 1.05.
+    density_g_cm3: float | None = None
+    #: Dilution applied to the stock, as a factor: 20 means 1 part in 20.
+    dilution_factor: float = 1.0
+    #: Particles wanted in the field. 1.0 for single-particle tracking, which
+    #: is what this bench does; raise it for an ensemble measurement.
+    target_particles_in_field: float = 1.0
     #: Field of view at the sample, um. Owned by lenses 1/2 (objective +
     #: camera); lens 4 only consumes it.
     field_width_um: float | None = None
@@ -132,6 +144,29 @@ class SampleSetup:
     def n_immersion(self) -> float:
         """Immersion index, from optics.components.IMMERSION_N."""
         return self.objective.n_medium
+
+    @property
+    def resolved_concentration_per_ml(self) -> tuple[float | None, str]:
+        """(particles/mL after dilution, where it came from).
+
+        %solids wins when both are supplied: it is the number the vendor
+        states, and going through density and geometry keeps the provenance
+        visible instead of burying it in a pre-computed figure.
+        """
+        from .aberration import number_concentration_per_ml
+
+        if (
+            self.solids_fraction_w_v is not None
+            and self.density_g_cm3 is not None
+            and self.particle_radius_um is not None
+        ):
+            stock = number_concentration_per_ml(
+                self.solids_fraction_w_v, self.density_g_cm3, self.particle_radius_um
+            )
+            return stock / self.dilution_factor, "solids_w_v"
+        if self.concentration_per_ml is not None:
+            return self.concentration_per_ml / self.dilution_factor, "concentration_per_ml"
+        return None, "unavailable"
 
     @property
     def resolved_n_sample(self) -> float:

@@ -367,57 +367,130 @@ def test_count_in_field_is_skipped_without_a_concentration():
     assert v.metrics["geometry.count_in_field"]["evaluated"] is False
 
 
-def test_count_in_field_reports_a_count_when_supplied():
-    v = evaluate(
-        _setup(concentration_per_ml=1e9, field_width_um=100.0, field_height_um=100.0)
-    )
-    m = v.metrics["geometry.count_in_field"]
-    assert m["evaluated"] is True
-    assert m["expected_count"] == 50.0  # 1e9/mL x 100x100x5 um
-    # No emission wavelength to size a DOF, so the whole column is used and
-    # the count is flagged as an upper bound.
-    assert m["axial_extent_source"] == "imaging_depth"
+def test_settled_areal_density_replaces_the_volume_count():
+    """REWRITTEN 2026-09-10. G19 used to count particles in an observed
+    volume, whose default extent was the depth of field -- 377 nm against a
+    4950 nm bead. Now it assumes total sedimentation, so there is no slab to
+    guess: sigma = c * H.
 
-
-def test_count_uses_the_depth_of_field_when_an_emission_line_is_known():
-    """The count feeds lens 6's G11, so the axial extent must not be the
-    imaging depth by default -- validity/setup.py::resolved_n_particles would
-    inherit an overestimate of statistical power."""
-    common = dict(concentration_per_ml=1e9, field_width_um=100.0, field_height_um=100.0)
-    column = evaluate(_setup(**common)).metrics["geometry.count_in_field"]
-    dof = evaluate(_setup(emission_nm=668.0, **common)).metrics["geometry.count_in_field"]
-
-    assert dof["axial_extent_source"] == "depth_of_field"
-    # 100x NA 1.45 oil at 668 nm is a ~0.48 um DOF against a 5 um imaging depth
-    assert dof["axial_extent_um"] == pytest.approx(0.482, abs=0.01)
-    assert dof["expected_count"] < column["expected_count"] / 10
-
-
-def test_an_explicit_observed_slab_wins_over_both_fallbacks():
+    1 % w/v of 4.95 um polystyrene is 1.50e8 /mL (the figure
+    data/particles.yaml derives independently), and a 100 um column puts all
+    of it on the floor: 0.0150 particles/um^2.
+    """
     v = evaluate(
         _setup(
-            emission_nm=668.0,
-            observed_slab_um=1.0,
-            concentration_per_ml=1e9,
-            field_width_um=100.0,
-            field_height_um=100.0,
-        )
-    )
-    m = v.metrics["geometry.count_in_field"]
-    assert m["axial_extent_source"] == "explicit"
-    assert m["expected_count"] == pytest.approx(10.0)  # 1e9/mL x 100x100x1 um
-
-
-def test_dense_suspension_warns_about_overlap():
-    v = evaluate(
-        _setup(
-            concentration_per_ml=1e13,
-            field_width_um=100.0,
-            field_height_um=100.0,
+            particle_radius_um=2.475,
+            chamber_height_um=100.0,
+            field_width_um=16.5,
+            field_height_um=33.0,
             emission_nm=520.0,
+            solids_fraction_w_v=0.01,
+            density_g_cm3=1.05,
         )
     )
-    assert any(f.code == "geometry.count_in_field" and f.severity == "warn" for f in v.findings)
+    m = v.metrics["geometry.count_in_field.crowded"]
+    assert m["evaluated"] is True
+    assert m["concentration_source"] == "solids_w_v"
+    assert m["concentration_per_ml"] == pytest.approx(1.50e8, rel=1e-3)
+    assert m["settled_areal_density_per_um2"] == pytest.approx(0.0150, rel=1e-2)
+    assert "axial_extent_source" not in m, "the slab guess is gone, not renamed"
+
+
+def test_the_separability_bar_is_the_particle_not_the_optics_for_a_bead():
+    """Two 5 um beads stop being resolvable when they touch, at 4.95 um
+    centre-to-centre -- three orders above 3x the 219 nm Rayleigh limit. The
+    old check compared against the resolution term alone, which is right only
+    for a sub-diffraction tracer."""
+    v = evaluate(
+        _setup(
+            particle_radius_um=2.475,
+            chamber_height_um=100.0,
+            field_width_um=16.5,
+            field_height_um=33.0,
+            emission_nm=520.0,
+            solids_fraction_w_v=0.01,
+            density_g_cm3=1.05,
+        )
+    )
+    m = v.metrics["geometry.count_in_field.crowded"]
+    assert m["required_spacing_basis"] == "particle diameter (touching)"
+    assert m["required_spacing_um"] == pytest.approx(4.95)
+
+
+def test_a_subdiffraction_tracer_falls_back_to_the_resolution_bar():
+    """The other side of the same branch: below the PSF, optics binds."""
+    v = evaluate(
+        _setup(
+            particle_radius_um=0.02,
+            chamber_height_um=100.0,
+            field_width_um=16.5,
+            field_height_um=33.0,
+            emission_nm=520.0,
+            solids_fraction_w_v=1e-6,
+            density_g_cm3=1.05,
+        )
+    )
+    m = next(
+        v.metrics[k] for k in v.metrics if k.startswith("geometry.count_in_field")
+    )
+    assert "Rayleigh" in m["required_spacing_basis"]
+
+
+def test_the_minimum_dilution_is_a_floor_not_an_estimate():
+    """The whole point of the total-sedimentation model: it is the worst case
+    for crowding, so the dilution it demands is a floor and any real
+    preparation is sparser. 8.2 particles in the ROI against a target of 1."""
+    v = evaluate(
+        _setup(
+            particle_radius_um=2.475,
+            chamber_height_um=100.0,
+            field_width_um=16.5,
+            field_height_um=33.0,
+            emission_nm=520.0,
+            solids_fraction_w_v=0.01,
+            density_g_cm3=1.05,
+        )
+    )
+    m = v.metrics["geometry.count_in_field.crowded"]
+    assert m["expected_count"] == pytest.approx(8.17, abs=0.05)
+    assert m["min_dilution_factor"] == pytest.approx(8.2, abs=0.1)
+
+    # Applying it lands on the target, and the gate then clears.
+    diluted = evaluate(
+        _setup(
+            particle_radius_um=2.475,
+            chamber_height_um=100.0,
+            field_width_um=16.5,
+            field_height_um=33.0,
+            emission_nm=520.0,
+            solids_fraction_w_v=0.01,
+            density_g_cm3=1.05,
+            dilution_factor=m["min_dilution_factor"],
+        )
+    )
+    assert diluted.metrics["geometry.count_in_field"]["expected_count"] == pytest.approx(
+        1.0, abs=0.05
+    )
+
+
+def test_a_jammed_monolayer_says_the_spacing_is_meaningless():
+    """Above ~50% areal coverage the Poisson spacing stops describing
+    anything, so the finding says so rather than quoting it."""
+    v = evaluate(
+        _setup(
+            particle_radius_um=2.475,
+            chamber_height_um=100.0,
+            field_width_um=16.5,
+            field_height_um=33.0,
+            emission_nm=520.0,
+            solids_fraction_w_v=0.05,
+            density_g_cm3=1.05,
+        )
+    )
+    assert any(
+        f.code == "geometry.count_in_field.jammed" and f.severity == "warn"
+        for f in v.findings
+    )
 
 
 def test_count_in_field_never_blocks_the_gate():

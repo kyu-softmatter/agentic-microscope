@@ -128,6 +128,67 @@ def particles_in_field(
     return concentration_per_ml * volume_um3 / 1e12
 
 
+def number_concentration_per_ml(
+    solids_fraction_w_v: float, density_g_cm3: float, radius_um: float
+) -> float:
+    """Particles per mL from a vendor's %solids (w/v), the material's density
+    and the particle geometry.
+
+    ``w/v`` is grams of solid per 100 mL, so a fraction of 0.01 is 1 % is
+    0.01 g/mL. One particle weighs ``rho * (4/3) pi a^3``. Both inputs are
+    literature/geometric rather than measured -- the density is the polymer's
+    (polystyrene 1.05 g/cm^3) and the volume assumes a sphere of the recorded
+    mean diameter, which the lot CV makes approximate. That is the point: this
+    is a bound, not an assay.
+
+    Reproduces data/particles.yaml's own derived figures: 1 % w/v at
+    rho 1.05 and d 4.95 um gives 1.50e8 /mL.
+    """
+    if radius_um <= 0 or density_g_cm3 <= 0:
+        raise ValueError("radius and density must be positive")
+    radius_cm = radius_um * 1e-4
+    volume_cm3 = (4.0 / 3.0) * math.pi * radius_cm**3
+    mass_g = density_g_cm3 * volume_cm3
+    return solids_fraction_w_v / mass_g
+
+
+def settled_areal_density_per_um2(
+    concentration_per_ml: float, chamber_height_um: float
+) -> float:
+    """Particles per um^2 on the floor once **everything** has sedimented.
+
+    The whole column above a patch of coverslip ends up on that patch, so
+    ``sigma = c * H``. 1 mL = 1e12 um^3.
+
+    This is deliberately the worst case for crowding: nothing stays in
+    suspension, nothing is lost to the walls or the pipette. Any real
+    preparation is sparser, which is why a dilution derived from it is a
+    floor -- see docs/01 §3 Principle 1b.
+    """
+    return concentration_per_ml / 1e12 * chamber_height_um
+
+
+def areal_coverage_fraction(areal_density_per_um2: float, radius_um: float) -> float:
+    """Fraction of the coverslip covered by settled particles.
+
+    Geometric cross-section ``pi a^2`` times the areal density. Above ~0.5 the
+    monolayer is jammed and the Poisson spacing below stops meaning anything.
+    """
+    return areal_density_per_um2 * math.pi * radius_um**2
+
+
+def mean_areal_spacing_um(areal_density_per_um2: float) -> float | None:
+    """Mean nearest-neighbour distance in a random 2D layer, um.
+
+    ``0.5 * sigma^(-1/2)`` for a Poisson point process in the plane -- the 2D
+    counterpart of the ``0.554 n^(-1/3)`` used for a suspension. A settled
+    monolayer is a plane, so the 3D form does not apply to it.
+    """
+    if areal_density_per_um2 <= 0:
+        return None
+    return 0.5 * areal_density_per_um2 ** (-0.5)
+
+
 def mean_nearest_neighbour_um(concentration_per_ml: float) -> float | None:
     """Mean nearest-neighbour distance for a random 3D suspension, um.
 

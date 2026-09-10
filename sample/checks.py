@@ -29,12 +29,13 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from .aberration import (
+    areal_coverage_fraction,
     collection_half_angle_deg,
     free_working_distance_um,
     max_na,
-    mean_nearest_neighbour_um,
+    mean_areal_spacing_um,
     paraxial_focal_shift_ratio,
-    particles_in_field,
+    settled_areal_density_per_um2,
     ri_mismatch,
     wall_drag_suppression,
 )
@@ -635,110 +636,146 @@ def check_ri_mismatch(setup: "SampleSetup") -> CheckResult:
 
 
 def check_count_in_field(setup: "SampleSetup") -> CheckResult:
-    """G19: expected particle count and overlap in the observed volume.
+    """G19: how crowded the coverslip gets once **everything** has sedimented.
 
-    INFO, so a missing concentration leaves the rest of the gate runnable.
-    Whether the count is *enough* is statistical power -- G11, lens 6 -- not
-    this lens's call. What this lens owns is whether particles are so dense
-    that they stop being separable.
+    REWRITTEN 2026-09-10 (KH). It used to count particles in an observed
+    *volume*, and that was unreliable for two reasons the operator named: bulk
+    concentration is hard to predict in the first place, and a preparation
+    loses particles to the walls and the pipette. Worse, the volume came from
+    `resolved_slab()`, whose default is the depth of field -- 377 nm against a
+    4950 nm bead, so the count came out ~260x low and fed lens 6's G11 that
+    way.
 
-    The count is taken over ``setup.resolved_slab()``, not over the imaging
-    depth. The two are the same only for a widefield column; for a sectioning
-    modality the depth is far larger, and this count is what
-    ``validity/setup.py::resolved_n_particles`` hands to G11, so an
-    over-generous extent lands as an overestimate of statistical power.
-    ``axial_extent_source`` in the numbers says which extent was used.
+    So the model changed rather than the number. **Assume total sedimentation:**
+    the whole column above a patch of coverslip ends up on that patch, giving
+    an areal density `sigma = c * H` with no slab to guess. That is the worst
+    case for crowding -- nothing stays up, nothing is lost -- so a dilution
+    derived from it is a **floor**, and every real preparation is sparser.
+    docs/01 §3 Principle 1b: bound it, do not estimate it.
 
-    The separability half (``mean_NN``) is computed from bulk concentration and
-    is unaffected by any of this.
+    Concentration comes from the vendor's %solids (w/v) through the polymer's
+    literature density and a sphere of the recorded mean diameter. Both are
+    approximations and deliberately so; the lot CV alone (7.9 % on diameter
+    for the Bangs bead) is +-24 % on volume.
+
+    **The separability limit is the particle, not the optics, for anything
+    bigger than the PSF.** Two 5 um beads stop being resolvable when they
+    touch, at 4.95 um centre-to-centre, long before 3x the 219 nm Rayleigh
+    limit matters. So the requirement is `max(2a, 3 * Rayleigh)` -- the old
+    check compared against the resolution term alone, which is right only for
+    sub-diffraction tracers.
+
+    INFO, unchanged: whether the count is *enough* is G11's call, and a
+    missing concentration must not take the rest of the lens down.
     """
-    c = setup.concentration_per_ml
-    w, h = setup.field_width_um, setup.field_height_um
-    depth = setup.imaging_depth_um
+    a = setup.particle_radius_um
+    h = setup.chamber_height_um
+    w, hf = setup.field_width_um, setup.field_height_um
+    c, source = setup.resolved_concentration_per_ml
 
-    if c is None or w is None or h is None or depth is None:
-        missing = [
-            n
-            for n, v in (
-                ("concentration_per_ml", c),
-                ("field_width_um", w),
-                ("field_height_um", h),
-                ("imaging_depth_um", depth),
-            )
-            if v is None
-        ]
+    missing = [
+        n
+        for n, v in (
+            ("particle_radius_um", a),
+            ("chamber_height_um", h),
+            ("concentration (solids_fraction_w_v + density_g_cm3, or concentration_per_ml)", c),
+        )
+        if v is None
+    ]
+    if missing:
         return _ok(
             "geometry.count_in_field",
             INFO,
             MAX_MARGIN,
-            "Count in field not evaluated (missing: " + ", ".join(missing) + ").",
+            "Settled crowding not evaluated (missing: " + ", ".join(missing) + ").",
             evaluated=False,
         )
 
-    slab, slab_source = setup.resolved_slab()
-    count = particles_in_field(c, w, h, slab)
-    nn = mean_nearest_neighbour_um(c)
+    sigma = settled_areal_density_per_um2(c, h)
+    coverage = areal_coverage_fraction(sigma, a)
+    spacing = mean_areal_spacing_um(sigma)
+
+    required = 2.0 * a
+    basis = "particle diameter (touching)"
+    if setup.emission_nm is not None:
+        rayleigh = setup.objective.resolution_nm(setup.emission_nm) / 1e3
+        optical = LIMITS["overlap_resolution_multiple"] * rayleigh
+        if optical > required:
+            required, basis = optical, f"{LIMITS['overlap_resolution_multiple']:.0f}x Rayleigh"
+
     numbers = {
-        "expected_count": round(count, 1),
-        "concentration_per_ml": c,
-        "field_um": [w, h],
-        "depth_um": depth,
-        "axial_extent_um": round(slab, 3),
-        "axial_extent_source": slab_source,
-        "mean_nn_distance_um": round(nn, 3) if nn else None,
         "evaluated": True,
+        "concentration_per_ml": c,
+        "concentration_source": source,
+        "dilution_factor": setup.dilution_factor,
+        "settled_areal_density_per_um2": round(sigma, 6),
+        "areal_coverage_fraction": round(coverage, 4),
+        "mean_spacing_um": None if spacing is None else round(spacing, 2),
+        "required_spacing_um": round(required, 3),
+        "required_spacing_basis": basis,
     }
 
-    extent = (
-        f"counted over a {slab:.2f} um axial extent ({slab_source.replace('_', ' ')})"
+    if w is not None and hf is not None:
+        count = sigma * w * hf
+        numbers["expected_count"] = round(count, 3)
+        target = setup.target_particles_in_field
+        if count > 0 and target > 0:
+            numbers["min_dilution_factor"] = round(
+                setup.dilution_factor * count / target, 1
+            )
+            numbers["target_particles_in_field"] = target
+
+    dil = numbers.get("min_dilution_factor")
+    dil_txt = (
+        f" To reach {numbers.get('target_particles_in_field', 1):g} in the "
+        f"{w:.0f}x{hf:.0f} um field, dilute the stock at least {dil:g}x."
+        if dil
+        else ""
     )
-    if slab_source == "imaging_depth":
-        extent += " -- no emission wavelength to size the depth of field, so "
-        extent += "this is the whole column and an upper bound"
 
-    if setup.emission_nm is None or nn is None:
-        head = (
-            f"About {count:.0f} particles expected in the observed volume, "
-            f"{extent}"
+    if coverage >= 0.5:
+        return CheckResult(
+            "geometry.count_in_field.jammed",
+            BIAS,
+            0.5 / coverage,
+            "warn",
+            f"Settled monolayer would cover {coverage * 100:.0f}% of the "
+            f"coverslip -- jammed, so the Poisson spacing below is meaningless "
+            f"and particles are in contact. Concentration from {source}, "
+            f"diluted {setup.dilution_factor:g}x, in a {h:.0f} um chamber."
+            + dil_txt,
+            action="Dilute. This is an upper bound on crowding (total "
+            "sedimentation, no losses), so the real layer is sparser -- but "
+            "not by the factor this needs.",
+            numbers=numbers,
         )
-        if nn:
-            head += f"; mean nearest-neighbour distance {nn:.2f} um"
-        return _ok(
-            "geometry.count_in_field",
-            INFO,
-            MAX_MARGIN,
-            head + ".",
-            **numbers,
-        )
 
-    resolution_um = setup.objective.resolution_nm(setup.emission_nm) / 1000.0
-    required = LIMITS["overlap_resolution_multiple"] * resolution_um
-    margin = nn / required if required > 0 else MAX_MARGIN
-    numbers["resolution_um"] = round(resolution_um, 3)
-    numbers["required_nn_um"] = round(required, 3)
-
+    margin = (spacing / required) if spacing and required > 0 else MAX_MARGIN
     if margin >= 1.0:
-        return _ok(
+        return CheckResult(
             "geometry.count_in_field",
             INFO,
             margin,
-            f"About {count:.0f} particles in the observed volume ({extent}), "
-            f"mean nearest-neighbour {nn:.2f} um against a "
-            f"{resolution_um:.2f} um resolution -- separable.",
-            **numbers,
+            "info",
+            f"Once settled: {sigma:.4f} particles/um^2, {coverage * 100:.1f}% "
+            f"areal coverage, mean spacing {spacing:.1f} um against "
+            f"{required:.2f} um required ({basis}). Separable."
+            + dil_txt,
+            numbers=numbers,
         )
 
     return CheckResult(
-        "geometry.count_in_field",
-        INFO,
+        "geometry.count_in_field.crowded",
+        BIAS,
         margin,
         "warn",
-        f"At {c:.2e} /mL the mean nearest-neighbour distance is {nn:.2f} um, "
-        f"under the {required:.2f} um needed to keep particles separable at "
-        f"{resolution_um:.2f} um resolution. Tracking will mislink and "
-        "intensities will be blended.",
-        action="Dilute the sample, or image a thinner slice to reduce the "
-        "number of overlapping particles along z.",
+        f"Once settled, mean spacing {spacing:.1f} um is below the "
+        f"{required:.2f} um two particles need to stay separable ({basis}); "
+        f"{coverage * 100:.1f}% areal coverage. Tracking will swap identities "
+        f"-- 2026-09-03 §10 is what that looks like." + dil_txt,
+        action="Dilute the stock. The figure above assumes total sedimentation "
+        "and no preparation losses, so it is a floor on the dilution, not an "
+        "estimate of it.",
         numbers=numbers,
     )
 

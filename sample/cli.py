@@ -99,6 +99,10 @@ def cmd_check(args: argparse.Namespace) -> int:
         multiphase=args.multiphase,
         birefringent=args.birefringent,
         concentration_per_ml=args.concentration_per_ml,
+        solids_fraction_w_v=args.solids_fraction,
+        density_g_cm3=args.density,
+        dilution_factor=args.dilution,
+        target_particles_in_field=args.target_in_field,
         field_width_um=args.field_width_um,
         field_height_um=args.field_height_um,
         emission_nm=args.emission_nm,
@@ -220,6 +224,24 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--multiphase", action="store_true", help="ATPS or other multi-phase sample")
     c.add_argument("--birefringent", action="store_true", help="liquid crystal or other birefringent sample")
     c.add_argument("--concentration-per-ml", type=float, default=None)
+    c.add_argument(
+        "--solids-fraction", type=float, default=None,
+        help="vendor %solids (w/v) as a FRACTION -- 0.01 for \"1%% solids\". "
+        "Preferred over --concentration-per-ml; needs --density and "
+        "--particle-radius-um",
+    )
+    c.add_argument(
+        "--density", type=float, default=None,
+        help="particle material density, g/cm^3 (literature: polystyrene 1.05)",
+    )
+    c.add_argument(
+        "--dilution", type=float, default=1.0,
+        help="dilution applied to the stock, as a factor (20 = 1 part in 20)",
+    )
+    c.add_argument(
+        "--target-in-field", type=float, default=1.0,
+        help="particles wanted in the field; sets min_dilution_factor",
+    )
     c.add_argument("--field-width-um", type=float, default=None)
     c.add_argument("--field-height-um", type=float, default=None)
     c.add_argument("--emission-nm", type=float, default=None, help="for the overlap/resolution comparison")
