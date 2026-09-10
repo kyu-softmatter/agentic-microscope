@@ -160,12 +160,25 @@ def _assumed_inputs(setup: TrapSetup) -> list[str]:
                 "so the power used is the 20x's"
             )
         else:
+            # The basis differs by tier, and saying the wrong one is worse than
+            # saying none: there is no 10x plot to be past the end of.
+            basis = {
+                "past-plot-end": (
+                    "read off a vendor plot at 1000 nm and applied at 1064, "
+                    "because every plot stops at 1000"
+                ),
+                "read-from-plot": "read off a vendor plot by eye, +-2-3 %",
+                "operator-estimate": (
+                    "an operator's estimate, not a reading -- there is no "
+                    "transmittance plot for this objective and its two direct "
+                    "1064 readings were retracted, so this is the weakest "
+                    "cell in that table"
+                ),
+            }.get(r.tier, "see that file for what this tier means")
             out.append(
                 f"1064 power ratio for '{r.objective}': {r.ratio:g} at tier "
                 f"'{r.tier}' (kb/calibrations/objective-transmittance.yaml) -- "
-                "read off a vendor plot at 1000 nm and applied at 1064, "
-                "because every plot stops at 1000. The dial% -> mW curve "
-                "itself is measured, at the 20x"
+                f"{basis}. The dial% -> mW curve itself is measured, at the 20x"
             )
     if not setup.temperature_measured:
         out.append(f"medium temperature ({setup.temperature_k:.1f} K default)")

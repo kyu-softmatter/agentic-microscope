@@ -444,3 +444,27 @@ def test_an_unset_objective_says_the_power_is_the_20x_s():
         )
     )
     assert any("the power used is the 20x's" in a for a in v.assumed_inputs)
+
+
+def test_the_evidence_text_matches_the_tier_it_reports():
+    """It said "read off a vendor plot at 1000 nm" for every tier, which is
+    false for the 10x -- there is no 10x plot to be past the end of. Saying
+    the wrong basis is worse than saying none.
+    """
+    from trapping.laser import MEASURED_1064_20X_W, LaserCalibration
+
+    common = dict(
+        calibration=LaserCalibration(points=MEASURED_1064_20X_W),
+        dial_percent=1.0,
+        temperature_measured=True,
+        detector_fps=520.0,
+    )
+    tenx = evaluate(_setup(objective_key="10x", **common)).assumed_inputs
+    oil = evaluate(_setup(objective_key="100x-Oil", **common)).assumed_inputs
+
+    tenx_line = next(a for a in tenx if "power ratio" in a)
+    oil_line = next(a for a in oil if "power ratio" in a)
+
+    assert "operator's estimate, not a reading" in tenx_line
+    assert "vendor plot at 1000 nm" not in tenx_line
+    assert "vendor plot at 1000 nm" in oil_line
