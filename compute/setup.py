@@ -121,7 +121,14 @@ class AcquisitionResourceSetup:
     #: fastest stream. Cross-lens 2<->3: this lens does not own frame rate,
     #: so without lens 2's ceiling it can only warn, not gate (the same
     #: arrangement as trapping.checks.check_sampling's detector_fps).
-    detector_max_fps: float | None = None
+    #: Lens 2's **fps_usable_max** -- `min(readout ceiling, G8's duty
+    #: ceiling)`, not the bare hardware maximum (KH, 2026-09-10). Renamed from
+    #: `detector_max_fps` because that name invited the hardware figure, and
+    #: passing it lets G12b clear a rate G8 would refuse: at the readout limit
+    #: this camera takes the exposure as the period, so the fastest REALIZABLE
+    #: rate and the fastest rate with an acceptable duty cycle are different
+    #: numbers. Lens 2 reports both plus their min; this field wants the min.
+    usable_fps_ceiling: float | None = None
     #: RAM-capture path: hold the whole burst in memory and flush afterwards,
     #: which removes G12's real-time disk constraint and replaces it with
     #: G13d. kb/decisions/2026-08-12-ram-buffer-detour-for-disk-bandwidth.md,

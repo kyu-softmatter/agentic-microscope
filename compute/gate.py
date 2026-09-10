@@ -166,9 +166,14 @@ def _assumed_inputs(setup: AcquisitionResourceSetup) -> list[str]:
         )
     if setup.disk_bandwidth_mb_s is not None and not setup.disk_bandwidth_path_confirmed:
         out.append(
-            "disk bandwidth measured somewhere other than the confirmed "
-            "Micro-Manager save directory (kb/calibrations/disk-bandwidth.yaml "
-            "flags this itself)"
+            "disk bandwidth: the 206.8 MB/s is a real measurement (random "
+            "write + fsync, 4 GB in 19.3 s, verified on the microscope PC) "
+            "but nobody has confirmed that directory is Micro-Manager's save "
+            "directory for this system -- a LOCATION question, not a "
+            "measurement one. Closes with one command: `python -m "
+            "calibration.cli disk-bandwidth \"<MM save directory>\" "
+            "--size-gb 4`, the path read off a recent acquisition's own "
+            "metadata (kb/calibrations/disk-bandwidth.yaml)"
         )
     for s in setup.unverified_fps_streams():
         out.append(

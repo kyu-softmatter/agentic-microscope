@@ -555,8 +555,8 @@ All decided in code. If even one fails, the proposal is void.
 | G9 | Frame-rate realizability | `f ≤ 1/max(t_exp, t_readout)`, graded against the **decided** rate; reports `fps_usable_max` = min(readout ceiling, G8's duty ceiling) and which binds | row time, ROI, **decided frame rate** | computable |
 | ~~G10~~ | *vacant* — photobleaching, **removed 2026-09-09**. Formulas kept in §6; number not reused | — | — |
 | G11 | Statistical power | target error met | particle concentration, target precision | ask |
-| G12 | Data rate | a `< 0.7 ×` disk bandwidth · b `f` is achieved not requested · c container width is the one MM writes | measured disk bandwidth, achieved fps, confirmed bytes/px | measurement required |
-| G13 | Buffer · capacity · CPU · RAM | a `≥ 5 seconds' worth` · b fits free disk · c CPU/frame `< 1/f_total` · d RAM burst `≤` budget | RAM, frame size, duration, free disk | computable |
+| G12 | Data rate | a `< 0.7 ×` disk bandwidth (**reduce ROI *width*** — at the readout limit height cancels) · b `f` is achieved not requested, judged against lens 2's `fps_usable_max` · c container width is the one MM writes | measured disk bandwidth, achieved fps, confirmed bytes/px | measurement required |
+| G13 | Buffer · capacity · CPU · RAM | a `≥ 5 seconds' worth` · b fits free disk · c CPU/frame `< 1/f_total` · d RAM burst `≤` budget (**128 GB** authorized 2026-09-10, was 32) | RAM, frame size, duration, free disk | computable |
 | G14 | Tweezers sampling | `f_s ≥ 10 f_c` | κ, viscosity, particle radius | BLOCKED |
 | G15 | NA feasibility | `NA ≤ n_immersion` | NA, immersion medium | BLOCKED |
 | G16 | Working distance | free WD `≥` imaging depth | WD, imaging depth, coverslip | BLOCKED |

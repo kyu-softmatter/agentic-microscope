@@ -102,7 +102,7 @@ def cmd_check(args: argparse.Namespace) -> int:
         free_disk_gb=args.free_disk_gb,
         cpu_per_frame_ms=args.cpu_per_frame_ms,
         realtime_processing=args.realtime_processing,
-        detector_max_fps=args.detector_max_fps,
+        usable_fps_ceiling=args.usable_fps,
         ram_capture=args.ram_capture,
         ram_capture_budget_mb=args.ram_capture_budget_mb,
     )
@@ -132,9 +132,19 @@ def cmd_check(args: argparse.Namespace) -> int:
 
     if v.margins:
         print("\n  margins (achieved / required; 1.0 = exactly at the limit)")
+        # A check that is WARNING at the top of the scale has no headroom to
+        # report -- MAX_MARGIN there means "no threshold was crossed", because
+        # its penalty is on the evidence axis rather than against a limit
+        # (G12b, G12c). Printing 10.00 for it reads as cleared, which is the
+        # one thing this repo refuses to let a margin do. So it prints as
+        # `ungraded` (KH, 2026-09-10).
+        flagged = {f.code for f in (v.findings or []) if f.severity in {"warn", "fail"}}
         for code, m in sorted(v.margins.items(), key=lambda kv: kv[1]):
-            bar = "#" * min(int(m * 10), 30)
-            print(f"    {m:6.2f}  {code:28s} {bar}")
+            if code in flagged and m >= 10.0:
+                print(f"    {'ungraded':>8}  {code:28s} <- warns, see findings")
+            else:
+                bar = "#" * min(int(m * 10), 30)
+                print(f"    {m:6.2f}    {code:28s} {bar}")
 
     if v.findings:
         print("\n  findings")
@@ -330,7 +340,7 @@ def main(argv: list[str] | None = None) -> int:
         help="MM's bytes/pixel for this bit depth has been confirmed on the real adapter (G12c)",
     )
     c.add_argument(
-        "--detector-max-fps", type=float, default=None,
+        "--usable-fps", type=float, default=None,
         help="lens 2's realizable frame rate (detection.timing.max_fps), for the G12b cross-check",
     )
     c.add_argument(

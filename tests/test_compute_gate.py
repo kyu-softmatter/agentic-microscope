@@ -155,7 +155,7 @@ def test_requested_frame_rate_downgrades_evidence():
 
 
 def test_requested_rate_within_lens_2_ceiling_still_warns():
-    v = evaluate(_setup(fps_source="requested", detector_max_fps=88.0))
+    v = evaluate(_setup(fps_source="requested", usable_fps_ceiling=88.0))
     warns = [f for f in v.findings if f.code == "fps_provenance.unmeasured"]
     assert len(warns) == 1
     assert v.advances is False
@@ -166,7 +166,7 @@ def test_unrealizable_frame_rate_is_a_bias_finding_not_a_hard_fail():
     own numbers rest on a rate the camera cannot deliver, and lets the
     feasibility grade collapse -- it does not seize a verdict it does not
     own."""
-    v = evaluate(_setup(fps_source="requested", detector_max_fps=30.0))
+    v = evaluate(_setup(fps_source="requested", usable_fps_ceiling=30.0))
     finding = next(f for f in v.findings if f.code == "fps_provenance.unrealizable")
     assert finding.kind == "bias"
     assert finding.severity == "fail"

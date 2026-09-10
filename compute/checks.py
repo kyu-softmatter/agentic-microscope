@@ -49,11 +49,14 @@ LIMITS = {
     #: G13d: RAM the capture path may claim, in MB. The machine has 255.65 GB
     #: total (kb/decisions/2026-08-12-ram-buffer-detour-for-disk-bandwidth.md)
     #: but how much of it the OS, MM, and the DMD/piezo/tweezers control
-    #: processes actually hold during an acquisition has never been measured
-    #: -- that is still an open checkbox in that decision log. 32 GB is the
-    #: ceiling authorized in the meantime (user, 2026-08-19), not a
-    #: measurement of what is free. Raise it only against a measurement.
-    "ram_capture_budget_mb": 32_000.0,
+    #: processes actually hold during an acquisition has **still** never been
+    #: measured -- that remains an open checkbox in that decision log.
+    #:
+    #: 128 GB, authorized by KH 2026-09-10 (was 32 GB, 2026-08-19). Half of
+    #: the machine's 255.65 GB. This is an AUTHORIZATION, not a measurement of
+    #: what is free -- the distinction the 2026-08-19 note made and this one
+    #: keeps. What changed is the operator's tolerance, not the evidence.
+    "ram_capture_budget_mb": 128_000.0,
 }
 
 
@@ -129,6 +132,13 @@ def check_data_rate(setup: "AcquisitionResourceSetup") -> CheckResult:
     On the RAM-capture path nothing is written while the camera runs, so
     this stops being a gate and G13d takes over.
     """
+    #: The 0.7 multiplies a REAL measurement -- random-data write plus fsync,
+    #: so OS write-behind cannot inflate it, 4 GB in 19.3 s = 206.8 MB/s on the
+    #: microscope PC (kb/calibrations/disk-bandwidth.yaml, verified: true). It
+    #: is carried as `assumed` for one reason only: nobody has confirmed that
+    #: directory is the one Micro-Manager streams into for this system. That is
+    #: a location question, not a measurement question, and it closes with one
+    #: command -- see the action text below.
     rate = setup.data_rate_bytes_s()
     budget = LIMITS["disk_bandwidth_fraction"] * setup.disk_bandwidth_mb_s * 1e6
 
@@ -167,8 +177,14 @@ def check_data_rate(setup: "AcquisitionResourceSetup") -> CheckResult:
         f"the {LIMITS['disk_bandwidth_fraction'] * 100:.0f}% disk-bandwidth "
         f"budget ({budget / 1e6:.0f} MB/s). Frames will drop silently, not "
         "error (docs/06-pitfalls.md §C5).",
-        action="Reduce ROI, frame rate, or stream count; write to faster "
-        "storage; or switch to the RAM-capture path (ram_capture=True, "
+        action="REDUCE ROI **WIDTH**, not height. At the readout limit the "
+        "frame period is H*row_time, so R = W*H*2*f with f = 1/(H*row_time) "
+        "collapses to R = W*2/row_time -- height cancels. 512x1024, 512x512, "
+        "512x256 and 512x128 all sit at the same MB/s, because halving the "
+        "height doubles the rate. Height is lens 2's frame-rate knob and buys "
+        "nothing here. Otherwise: lengthen the exposure (which lowers f but "
+        "costs duty cycle, G8), drop a stream, write to faster storage, or "
+        "switch to the RAM-capture path (ram_capture=True, "
         "calibration/ram_capture.py), which trades this gate for G13d.",
         numbers={"data_rate_mb_s": rate / 1e6, "disk_budget_mb_s": budget / 1e6},
     )
@@ -183,7 +199,7 @@ def check_fps_provenance(setup: "AcquisitionResourceSetup") -> CheckResult:
     so a requested rate makes the whole verdict a rehearsal.
 
     This lens does not own frame rate (that is lens 2, G9), so without lens
-    2's ``detector_max_fps`` it can only warn. With it, the shortfall gets a
+    2's ``usable_fps_ceiling`` it can only warn. With it, the shortfall gets a
     margin -- the same arrangement as trapping.checks.check_sampling.
     """
     unverified = setup.unverified_fps_streams()
@@ -200,7 +216,7 @@ def check_fps_provenance(setup: "AcquisitionResourceSetup") -> CheckResult:
     worst = max(unverified, key=lambda s: s.fps)
     labels = ", ".join(s.label for s in unverified)
 
-    if setup.detector_max_fps is None:
+    if setup.usable_fps_ceiling is None:
         return CheckResult(
             "fps_provenance.requested",
             BIAS,
@@ -211,21 +227,23 @@ def check_fps_provenance(setup: "AcquisitionResourceSetup") -> CheckResult:
             "archive (85 Hz camera ceiling, 28 Hz delivered) with MM "
             "overhead or the disk -- not the camera -- as the bottleneck. "
             "Every number below scales linearly with it.",
-            action="Supply detector_max_fps from lens 2 to gate realizability, "
+            action="Supply usable_fps_ceiling from lens 2 -- its **fps_usable_max**, "
+            "the min of the readout ceiling and G8's duty ceiling, not the bare "
+            "hardware maximum -- to gate realizability, "
             "and get an achieved rate from a comparable past acquisition with "
             "`python -m compute.cli drops <metadata.txt>` (its cadence_fps), "
             "then set fps_source='measured'.",
             numbers={"requested_fps": worst.fps},
         )
 
-    margin = setup.detector_max_fps / worst.fps if worst.fps > 0 else MAX_MARGIN
+    margin = setup.usable_fps_ceiling / worst.fps if worst.fps > 0 else MAX_MARGIN
     if margin >= 1.0:
         return CheckResult(
             "fps_provenance.unmeasured",
             BIAS,
             margin,
             "warn",
-            f"Lens 2 puts the realizable ceiling at {setup.detector_max_fps:.0f} "
+            f"Lens 2 puts the usable ceiling at {setup.usable_fps_ceiling:.0f} "
             f"fps, so the camera can deliver the {worst.fps:g} fps requested "
             f"for {labels}. That clears G9, but not §C4: there the camera was "
             "not the bottleneck either, and the delivered rate still came in "
@@ -234,7 +252,7 @@ def check_fps_provenance(setup: "AcquisitionResourceSetup") -> CheckResult:
             "as measured (`python -m compute.cli drops <metadata.txt>`).",
             numbers={
                 "requested_fps": worst.fps,
-                "detector_max_fps": setup.detector_max_fps,
+                "usable_fps_ceiling": setup.usable_fps_ceiling,
             },
         )
     return CheckResult(
@@ -243,7 +261,7 @@ def check_fps_provenance(setup: "AcquisitionResourceSetup") -> CheckResult:
         margin,
         "fail",
         f"{worst.fps:g} fps is requested for {labels}, but lens 2 caps the "
-        f"realizable rate at {setup.detector_max_fps:.0f} fps (G9). The "
+        f"usable rate at {setup.usable_fps_ceiling:.0f} fps (G9 and G8). The "
         "acquisition will not fail -- it will quietly run slower, which makes "
         "every data-rate and capacity number below an overestimate and every "
         "lag time in the analysis wrong (§C5).",
@@ -252,7 +270,7 @@ def check_fps_provenance(setup: "AcquisitionResourceSetup") -> CheckResult:
         "lens 2's verdict, not this lens's.",
         numbers={
             "requested_fps": worst.fps,
-            "detector_max_fps": setup.detector_max_fps,
+            "usable_fps_ceiling": setup.usable_fps_ceiling,
         },
     )
 

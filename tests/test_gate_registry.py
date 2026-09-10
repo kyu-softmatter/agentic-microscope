@@ -164,7 +164,9 @@ EXPECTED_LIMITS: dict[str, dict] = {
     "compute": {
         "buffer_seconds_min": 5.0,
         "disk_bandwidth_fraction": 0.7,
-        "ram_capture_budget_mb": 32000.0,
+        # 32000 -> 128000, authorized by KH 2026-09-10. Still an
+        # authorization, not a measurement of free RAM.
+        "ram_capture_budget_mb": 128000.0,
     },
     "sample": {
         "aberration_depth_mismatch_um": 1.85,
