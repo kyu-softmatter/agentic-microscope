@@ -17,8 +17,6 @@ def _setup(**overrides) -> StabilitySetup:
         objective=find_objective("100x-Oil"),
         emission_nm=520.0,
         axial_drift_rate_nm_per_min=1.0,
-        pfs_enabled=True,
-        pfs_in_range=True,
         particle_radius_um=0.5,
         delta_density_kg_m3=0.0,  # density-matched by default, so G31 is quiet
         viscosity_pa_s=1.0e-3,
@@ -74,46 +72,30 @@ def test_depth_of_field_comes_from_the_objective_registry():
 # ---------------------------------------------------- G28 PFS lock -------
 
 
-def test_unrecorded_focus_maintenance_fails():
-    v = evaluate(_setup(pfs_enabled=None))
-    assert v.status == "FAIL"
-    assert any(f.code == "stability.pfs_lock" for f in v.findings)
+# ---------------- G28 removed 2026-09-10 -------------------------------------
+#
+# The six tests that exercised `stability.pfs_lock` went with the gate. It
+# moved to the hardware execution stage (KH), and not only as a relocation:
+# the gate read `PFS in Range` as if it meant "the servo is holding", and
+# `hardware/focus.py::FocusAxis.pfs_state` records that that property reports
+# the COVERSLIP -- `In Range` is the normal reading for a focused sample. The
+# hardware stage asks MMCore's autofocus API instead, which is the servo. So
+# the gate was reading the wrong property, and a planning-time gate on a
+# runtime state was the wrong shape for it regardless.
+# kb/decisions/2026-09-10-g28-moves-to-the-hardware-stage.md
 
 
-def test_pfs_on_but_range_unrecorded_fails():
-    """docs/06 D7: the on state alone cannot tell a held focus from a wandered
-    one, and the archive has sessions of exactly that shape."""
-    v = evaluate(_setup(pfs_in_range=None))
-    assert v.status == "FAIL"
-    msg = next(f.message for f in v.findings if f.code == "stability.pfs_lock")
-    assert "without being locked" in msg
-
-
-def test_pfs_on_but_out_of_range_fails():
-    v = evaluate(_setup(pfs_in_range=False))
-    assert v.status == "FAIL"
-    msg = next(f.message for f in v.findings if f.code == "stability.pfs_lock")
-    assert "Out of Range" in msg
-
-
-def test_pfs_off_on_a_long_acquisition_fails():
-    v = evaluate(_setup(pfs_enabled=False, pfs_in_range=None, duration_min=120.0))
-    assert v.status == "FAIL"
-
-
-def test_pfs_off_on_a_short_acquisition_is_allowed():
-    v = evaluate(
-        _setup(pfs_enabled=False, pfs_in_range=None, duration_min=5.0)
-    )
-    assert v.margins["stability.pfs_lock"] == 10.0
-
-
-def test_pfs_on_and_locked_passes():
+def test_nothing_in_this_lens_gates_pfs_any_more():
     v = evaluate(_setup())
-    assert v.margins["stability.pfs_lock"] == 10.0
+    assert "stability.pfs_lock" not in v.margins
+    assert not any(f.code.startswith("stability.pfs") for f in v.findings)
 
 
-# ------------------------------------------------- G29 axial drift -------
+def test_the_setup_no_longer_accepts_the_pfs_flags():
+    """They were planning-time stand-ins for a runtime state. Removing the
+    fields is what stops a caller asserting a lock the lens cannot see."""
+    with pytest.raises(TypeError):
+        _setup(pfs_enabled=True)
 
 
 def test_small_drift_stays_inside_the_focus_budget():

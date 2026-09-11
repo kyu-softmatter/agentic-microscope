@@ -249,7 +249,7 @@ FAIL is already a fix instruction.
 | # | Lens | Convened when | Basis of verdict | Implementation |
 |---|---|---|---|---|
 | 7 | **Optical tweezers** | Tweezers in use | Trap stiffness κ, U/kT, corner frequency f_c → computed | `trapping/` ✅ (no heating check — [06 D6](06-pitfalls.md)) |
-| 8 | **Mechanical & environmental** | Long experiments (>30 min) | Drift, vibration, evaporation, PFS lock | `stability/` ✅ (G28–G32) + `.claude/agents/mechanical-env.md` for the qualitative half. Vibration and stage repeatability remain ungated — no measurement channel exists |
+| 8 | **Mechanical & environmental** | Long experiments (>30 min) | Drift, vibration, evaporation, PFS lock | `stability/` ✅ (G29–G32; **G28 moved to the hardware execution stage 2026-09-10**) + `.claude/agents/mechanical-env.md` for the qualitative half. Vibration and stage repeatability remain ungated — no measurement channel exists |
 
 ### Why 4 and 5 are separate
 
@@ -287,7 +287,7 @@ experimentalist/
 │   ├── 01-architecture.md        (this file)
 │   ├── 02-knowledge-base.md      KB schema · three-way wiring cross-check · off-ledger settings
 │   ├── 03-cross-system-transfer.md   transferring settings between systems
-│   ├── 04-decision-engine.md     decision order · formulas · the 27 gates
+│   ├── 04-decision-engine.md     decision order · formulas · the 26 gates
 │   ├── 05-consensus-gate.md      committee · difficulty grades · improvement proposals
 │   ├── 06-pitfalls.md            pitfall list grounded in measured evidence
 │   ├── 07-roadmap.md             Phase 0–5
@@ -335,7 +335,7 @@ experimentalist/
 │   ├── checks.py  gate.py  setup.py  cli.py
 │                                 reviews the other lenses' verdicts — call last
 │
-├── stability\                    ← lens 8 (mechanical & environmental, G28–G32)
+├── stability\                    ← lens 8 (mechanical & environmental, G29–G32)
 │   ├── drift.py                  drift, Stokes settling, evaporation
 │   ├── checks.py  gate.py  setup.py  cli.py
 │                                 conditional: acquisitions over 30 min

@@ -553,10 +553,12 @@ this instrument, and G8's action text says so explicitly.
 
 - **Owns**: drift (thermal, mechanical), PFS lock state, evaporation,
   sedimentation, vibration, stage repeatability
-- **Gates**: G28 (PFS lock) G29 (axial drift) G30 (lateral drift)
+- **Gates**: G29 (axial drift) G30 (lateral drift)
+  **G28 (PFS lock) moved to the hardware execution stage 2026-09-10** and its
+  number is vacant — `kb/decisions/2026-09-10-g28-moves-to-the-hardware-stage.md`
   G31 (sedimentation) G32 (evaporation)
 - The archive contains sessions where `PFS in Range` reads `Out of Range` — PFS
-  can be on without being locked. **G28 catches this and needs no new
+  can be on without being locked. **The hardware stage catches this; no gate does, and it needs no new
   measurement**: it is a state check on metadata that already exists, and an
   unrecorded range flag is itself a failure, because the on state alone cannot
   tell a held focus from a wandered one (docs/06 D7)

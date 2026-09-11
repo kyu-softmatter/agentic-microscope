@@ -36,12 +36,6 @@ class StabilitySetup:
     lateral_tolerance_um: float | None = None
 
     # -- PFS (docs/06 D7) --------------------------------------------------
-    #: `PFS-FocusMaintenance`. None means it was not recorded.
-    pfs_enabled: bool | None = None
-    #: `PFS in Range`. None means it was not recorded -- which is exactly the
-    #: D7 trap: recording only the on state cannot tell you whether focus was
-    #: actually held.
-    pfs_in_range: bool | None = None
 
     # -- sedimentation -----------------------------------------------------
     particle_radius_um: float | None = None

@@ -358,7 +358,13 @@ There are sessions with `PFS-FocusMaintenance: On` but `PFS in Range: Out of
 Range`. Record only the on state and you cannot tell whether focus was actually
 held. **Both must be recorded.**
 
-Caught by `stability.gate` G28 (2026-08-12), which needs no new measurement —
+⚠ **No longer caught by a gate.** `stability.gate`'s G28 did from 2026-08-12,
+and it moved to the hardware execution stage on 2026-09-10 — partly *because*
+of this entry: the gate read `PFS in Range` as the servo state, and
+`hardware/focus.py::FocusAxis.pfs_state` records that that property reports the
+**coverslip**, so `In Range` is the normal reading for a focused sample. The
+hardware stage asks MMCore's autofocus API instead. The pitfall below stands as
+the record of what the archive contains —
 it is a state check on metadata that already exists. An unrecorded range flag
 fails the gate, not just an out-of-range one.
 

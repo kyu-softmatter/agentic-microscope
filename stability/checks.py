@@ -1,10 +1,23 @@
-"""Individual mechanical / environmental checks -- G28 (PFS lock), G29 (axial
-drift), G30 (lateral drift), G31 (sedimentation), G32 (evaporation).
+"""Individual mechanical / environmental checks -- G29 (axial drift),
+G30 (lateral drift), G31 (sedimentation), G32 (evaporation).
 
-docs/05-consensus-gate.md "Lens 8"; docs/06-pitfalls.md D7.
+docs/05-consensus-gate.md "Lens 8".
 
-G28-G32 are new numbers (G1-G27 were taken by lenses 1-7). Lens 8 had no gate
+G29-G32 are new numbers (G1-G27 were taken by lenses 1-7). Lens 8 had no gate
 IDs because it had no implementation.
+
+G28 (PFS lock) WAS HERE AND IS GONE -- moved to the hardware execution stage
+on 2026-09-10 (KH), and the number is vacant.
+kb/decisions/2026-09-10-g28-moves-to-the-hardware-stage.md
+
+It is not just a relocation. The gate read `PFS in Range` as if it meant "the
+servo is holding", and `hardware/focus.py::FocusAxis.pfs_state` records that
+that property reports **the coverslip, not the servo** -- `In Range` is the
+normal reading for a focused sample. The hardware stage asks MMCore's
+autofocus API instead (`isContinuousFocusEnabled` / `isContinuousFocusLocked`),
+which is the actual servo state. So the check moved to where the right
+property is read, and a planning-time gate on a runtime state was the wrong
+shape for it anyway.
 
 Most of what this lens owns needs a measurement nobody has taken: there is no
 drift rate, no vibration spectrum and no stage-repeatability figure anywhere in
@@ -106,99 +119,6 @@ def available_facts(setup: "StabilitySetup") -> set[str]:
 # --------------------------------------------------------------------------
 # The checks
 # --------------------------------------------------------------------------
-
-
-def check_pfs_lock(setup: "StabilitySetup") -> CheckResult:
-    """G28: was focus maintenance on AND actually locked? docs/06 D7.
-
-    The archive contains sessions with `PFS-FocusMaintenance: On` but
-    `PFS in Range: Out of Range`. Recording only the on state cannot tell you
-    whether focus was held, so an unrecorded range flag is itself the finding.
-
-    Fully computable with no new measurement -- it is a state check on metadata
-    that already exists.
-    """
-    numbers = {
-        "pfs_enabled": setup.pfs_enabled,
-        "pfs_in_range": setup.pfs_in_range,
-        "duration_min": setup.duration_min,
-    }
-
-    if setup.pfs_enabled is None:
-        return CheckResult(
-            "stability.pfs_lock",
-            HARD,
-            0.0,
-            "fail",
-            "Focus-maintenance state was not recorded, so whether focus was "
-            "held over the acquisition is unknown.",
-            action="Record both `PFS-FocusMaintenance` and `PFS in Range`. "
-            "docs/06 D7: both, not just the first.",
-            numbers=numbers,
-        )
-
-    if not setup.pfs_enabled:
-        if not setup.convenes:
-            return _ok(
-                "stability.pfs_lock",
-                HARD,
-                MAX_MARGIN,
-                f"Focus maintenance off, but the acquisition is "
-                f"{setup.duration_min:.0f} min — under the "
-                f"{CONVENE_DURATION_MIN:.0f} min where drift usually forces it.",
-                **numbers,
-            )
-        return CheckResult(
-            "stability.pfs_lock",
-            HARD,
-            0.0,
-            "fail",
-            f"Focus maintenance is off for a {setup.duration_min:.0f} min "
-            "acquisition. Nothing is holding the focal plane against thermal "
-            "drift for that long.",
-            action="Turn PFS on and confirm it reports In Range, or "
-            "demonstrate with a measured drift rate that focus holds without "
-            "it.",
-            numbers=numbers,
-        )
-
-    if setup.pfs_in_range is None:
-        return CheckResult(
-            "stability.pfs_lock",
-            HARD,
-            0.0,
-            "fail",
-            "Focus maintenance is on but `PFS in Range` was not recorded. "
-            "PFS can be on without being locked — this is exactly the case "
-            "docs/06 D7 found in the archive, and the on state alone does not "
-            "distinguish it.",
-            action="Record `PFS in Range` alongside "
-            "`PFS-FocusMaintenance`. Without it a session cannot be told apart "
-            "from one where focus silently wandered.",
-            numbers=numbers,
-        )
-
-    if not setup.pfs_in_range:
-        return CheckResult(
-            "stability.pfs_lock",
-            HARD,
-            0.0,
-            "fail",
-            "Focus maintenance is on but reports Out of Range: the loop is "
-            "enabled and not holding. Focus was not maintained.",
-            action="Re-establish the PFS offset within range before "
-            "acquiring. Data already taken in this state has an unknown focal "
-            "plane.",
-            numbers=numbers,
-        )
-
-    return _ok(
-        "stability.pfs_lock",
-        HARD,
-        MAX_MARGIN,
-        "Focus maintenance is on and reports In Range; both flags recorded.",
-        **numbers,
-    )
 
 
 def check_axial_drift(setup: "StabilitySetup") -> CheckResult:
@@ -529,7 +449,6 @@ def check_convening(setup: "StabilitySetup") -> CheckResult:
 
 CHECKS: list[Check] = [
     Check("convening", INFO, ("duration",), check_convening),
-    Check("pfs_lock", HARD, ("duration",), check_pfs_lock),
     Check(
         "axial_drift",
         HARD,

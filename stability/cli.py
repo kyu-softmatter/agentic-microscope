@@ -1,16 +1,16 @@
 """Quick command-line verification of the mechanical/environmental gate (lens 8).
 
     python -m stability.cli check --duration-min 60 --objective 100x-Oil \\
-        --emission-nm 520 --axial-drift-nm-per-min 5 --pfs-on --pfs-in-range \\
+        --emission-nm 520 --axial-drift-nm-per-min 5 \\
         --particle-radius-um 0.5 --delta-density 50 --viscosity 1e-3
 
     # density-matched suspension: the settling term vanishes
     python -m stability.cli check --duration-min 60 --objective 100x-Oil \\
-        --emission-nm 520 --axial-drift-nm-per-min 5 --pfs-on --pfs-in-range \\
+        --emission-nm 520 --axial-drift-nm-per-min 5 \\
         --particle-radius-um 0.5 --delta-density 0 --viscosity 1e-3
 
 ``check`` runs the committee-lens gate (stability.gate.evaluate): PFS lock
-(G28), axial drift (G29), lateral drift (G30), sedimentation (G31), evaporation
+axial drift (G29), lateral drift (G30), sedimentation (G31), evaporation
 (G32).
 
 There is no measured drift rate anywhere in the repo, so --axial-drift-nm-per-min
@@ -49,8 +49,6 @@ def cmd_check(args: argparse.Namespace) -> int:
         axial_drift_rate_nm_per_min=args.axial_drift_nm_per_min,
         lateral_drift_rate_nm_per_min=args.lateral_drift_nm_per_min,
         lateral_tolerance_um=args.lateral_tolerance_um,
-        pfs_enabled=args.pfs_on if args.pfs_on or args.pfs_off else None,
-        pfs_in_range=args.pfs_in_range if args.pfs_in_range or args.pfs_out_of_range else None,
         particle_radius_um=args.particle_radius_um,
         delta_density_kg_m3=args.delta_density,
         viscosity_pa_s=args.viscosity,
@@ -103,7 +101,7 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="stability", description=__doc__)
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    c = sub.add_parser("check", help="run the committee-lens gate (G28-G32)")
+    c = sub.add_parser("check", help="run the committee-lens gate (G29-G32)")
     c.add_argument("--duration-min", type=float, required=True, help="acquisition length")
     c.add_argument("--objective", default=None, help="key from data/objectives.yaml, for the DOF")
     c.add_argument("--emission-nm", type=float, default=None)
@@ -119,10 +117,6 @@ def main(argv: list[str] | None = None) -> int:
         help="for tracking this is the search window, not the field",
     )
 
-    c.add_argument("--pfs-on", action="store_true", help="PFS-FocusMaintenance was On")
-    c.add_argument("--pfs-off", action="store_true", help="PFS-FocusMaintenance was Off")
-    c.add_argument("--pfs-in-range", action="store_true", help="PFS in Range")
-    c.add_argument("--pfs-out-of-range", action="store_true", help="PFS reported Out of Range")
 
     c.add_argument("--particle-radius-um", type=float, default=None)
     c.add_argument(
@@ -139,12 +133,6 @@ def main(argv: list[str] | None = None) -> int:
     c.set_defaults(func=cmd_check)
 
     args = p.parse_args(argv)
-    if args.pfs_on and args.pfs_off:
-        print("--pfs-on and --pfs-off are contradictory", file=sys.stderr)
-        return 2
-    if args.pfs_in_range and args.pfs_out_of_range:
-        print("--pfs-in-range and --pfs-out-of-range are contradictory", file=sys.stderr)
-        return 2
     return args.func(args)
 
 

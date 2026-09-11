@@ -113,7 +113,7 @@ EXPECTED_CHECKS: dict[str, tuple[tuple[str, str], ...]] = {
     ),
     "stability": (
         ("convening", "info"),
-        ("pfs_lock", "hard"),
+        # G28 (pfs_lock) moved to the hardware execution stage 2026-09-10.
         ("axial_drift", "hard"),
         ("lateral_drift", "bias"),
         ("sedimentation", "bias"),
@@ -228,7 +228,7 @@ def test_only_trapping_lacks_a_limits_dict() -> None:
 
 #: Numbers that are VACANT and must never be reused, so that every reference
 #: in the history stays unambiguous.
-VACANT_GATES = ("G10", "G18", "G20", "G21", "G22")
+VACANT_GATES = ("G10", "G18", "G20", "G21", "G22", "G28")
 
 #: Checks that carry NO gate number. Not an error -- but the set must not grow
 #: without somebody noticing, because two of them are `hard` and can stop a

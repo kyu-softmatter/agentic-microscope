@@ -11,12 +11,11 @@ docs/05-consensus-gate.md "Lens 8"; docs/06-pitfalls.md D7.
         duration_min=60.0,
         objective=find_objective("100x-Oil"), emission_nm=520.0,
         axial_drift_rate_nm_per_min=5.0,
-        pfs_enabled=True, pfs_in_range=True,
         particle_radius_um=0.5, delta_density_kg_m3=50.0,
         viscosity_pa_s=1.0e-3,
     ))
 
-Gates: G28 PFS lock, G29 axial drift, G30 lateral drift, G31 sedimentation,
+Gates: G29 axial drift, G30 lateral drift, G31 sedimentation,
 G32 evaporation. New numbers -- lens 8 had none, because it had no code.
 
 Conditional on acquisitions longer than 30 min (docs/01 §4). That threshold is
@@ -25,11 +24,9 @@ do not switch on at 30 minutes, so when this lens is called it answers.
 
 What it can and cannot do, honestly:
 
-- **G28 works today with no new measurement.** It is a state check on metadata
-  that already exists, and it catches docs/06 D7: the archive has sessions with
-  `PFS-FocusMaintenance: On` but `PFS in Range: Out of Range`. An unrecorded
-  range flag is itself a failure, because the on state alone cannot tell a held
-  focus from a wandered one.
+- **G28 (PFS lock) is gone**, to the hardware execution stage (2026-09-10).
+  It read `PFS in Range` as the servo state and that property reports the
+  coverslip; `hardware/focus.py` asks MMCore's autofocus API instead.
 - **G31 works today** because Stokes settling follows from particle radius,
   density contrast and viscosity -- sample properties, not instrument
   measurements. It bites hard: a 1 um polystyrene sphere in water settles about

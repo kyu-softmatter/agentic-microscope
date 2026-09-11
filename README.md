@@ -115,7 +115,7 @@ design, not a gap.
 | | |
 |---|---|
 | **8 review lenses** | optics · detection · compute resources · sample geometry · photo-perturbation · measurement validity · optical tweezers · mechanical & environmental |
-| **27 deterministic gates** | G1–G32 less the vacant `G10`, `G18`, `G20`, `G21` and `G22`, each classified `hard` / `bias` / `soft` by what its failure costs. **24 are implemented** — `G2`–`G4` carry a threshold and a default verdict in [04](docs/04-decision-engine.md) and appear in no Python file; `G10` and `G20` went on 2026-09-09, `G18`, `G21` and `G22` on 2026-09-10 — the last two when **lens 5 became a reporting section rather than a judging lens**; none of the five numbers is reused → [below](#two-more-axes-and-the-questions-neither-working-repo-asks) → [05 §2](docs/05-consensus-gate.md) |
+| **26 deterministic gates** | G1–G32 less the vacant `G10`, `G18`, `G20`, `G21`, `G22` and `G28`, each classified `hard` / `bias` / `soft` by what its failure costs. **23 are implemented** — `G2`–`G4` carry a threshold and a default verdict in [04](docs/04-decision-engine.md) and appear in no Python file; `G10` and `G20` went on 2026-09-09, `G18`, `G21` and `G22` on 2026-09-10 — the last two when **lens 5 became a reporting section rather than a judging lens**; `G28` moved to the hardware execution stage on 2026-09-10; none of the six numbers is reused → [below](#two-more-axes-and-the-questions-neither-working-repo-asks) → [05 §2](docs/05-consensus-gate.md) |
 | **Provenance on every input** | `measured` vs `assumed`, with a separate `advances` axis that only `measured` can satisfy. Literature values compute but never advance → [`kb/literature/`](kb/literature/) |
 | **2,343 prior acquisitions** | normalized out of Micro-Manager metadata into transferable physical quantities, across two schema generations |
 | **1,225 tests, 1,162 on CI** | offline; the instrument is not required to run any of them. The badge covers 1,162 — of the rest, 56 need a Micro-Manager device-adapter install and 7 need `opencv-python`, and `PYTEST_CI_EMULATE=ci` reproduces the runner's environment here → [running the tests](#running-the-tests) |
@@ -368,7 +368,7 @@ evidence back into it. `R` marks a read, `W` marks a write.
   +---------------------------------+---------------------------------+
                                     v
   +-------------------------------------------------------------------+
-  |  COMMITTEE          8 lenses . 27 gates (7 judging lenses)      |
+  |  COMMITTEE          8 lenses . 26 gates (7 judging lenses)      |
   |                                                                   |
   |    1 optics/     2 detection/    3 compute/     4 sample/         |
   |    5 photo/      6 validity/     7 trapping/    8 stability/      |
@@ -407,7 +407,7 @@ evidence back into it. `R` marks a read, `W` marks a write.
   +-------------------------------------------------------------------+
   |  [ a device-level standard would land HERE, or beside it ]        |
   |  It replaces the per-vendor half of the drivers below and the     |
-  |  discovery rung above. It does NOT touch the 27 gates, which sit  |
+  |  discovery rung above. It does NOT touch the 26 gates, which sit  |
   |  over any transport, and MCP is the layer above again -- how an   |
   |  agent reaches tools and context at all.                          |
   |                                                                   |
@@ -500,7 +500,7 @@ Lens-by-lens implementation status is in the **Code** table below.
 ## Current status
 
 **Design complete; all eight committee lenses are implemented.** Nine design
-documents, 27 gates (G1–G32 less G10, G18, G20, G21, G22), 1,194 tests passing. The badge above reports
+documents, 26 gates (G1–G32 less G10, G18, G20, G21, G22, G28), 1,237 tests passing. The badge above reports
 1,162 of them — 56 need a Micro-Manager device-adapter install and run in a
 separate workflow, and 7 need `opencv-python`, which is stated at the top of each file in
 [`.github/workflows/`](.github/workflows/) and again under [running the
@@ -530,7 +530,7 @@ hardware measurements have runnable scripts in
 [`kb/calibrations/`](kb/calibrations/). → [Phase 0](docs/07-roadmap.md)
 
 **`BLOCKED` is the current default, not the permanent one.** One `UNKNOWN`
-among the 27 gates blocks the verdict today, which is the only defensible
+among the 26 gates blocks the verdict today, which is the only defensible
 setting while there is no record to check a verdict against. As experiments
 accumulate, strictness relaxes — but against the record rather than against
 confidence, by promoting an input's evidence tier rather than lowering a
@@ -1206,7 +1206,7 @@ produce a **stub**, not an answer:
 - **Write the stub, and stop.** A new `hardware/<device>/` with the description
   and the open questions. **Nothing is written into `kb/systems/` until a human
   confirms it** — that file is the wiring dossier every lens reads, and a guess
-  landing in it propagates into 27 gates.
+  landing in it propagates into 26 gates.
 - **Read-only.** Enumerate and read descriptors; issue no commands. Same rule as
   item 0b, and for the same reason.
 
@@ -2025,7 +2025,7 @@ make, not an oversight to correct.
 | [01 Architecture](docs/01-architecture.md) | Overall design, layers, 5 design principles, committee composition, folder structure |
 | [02 Knowledge base](docs/02-knowledge-base.md) | 3-tier normalization, **three-way device wiring cross-check**, off-ledger settings, SQLite schema |
 | [03 Cross-system transfer](docs/03-cross-system-transfer.md) | Current instrument ≠ past instrument. What transfers and what does not |
-| [04 Decision engine](docs/04-decision-engine.md) | Decision order, photon budget / SNR / sampling / timing formulas, the 27 gates |
+| [04 Decision engine](docs/04-decision-engine.md) | Decision order, photon budget / SNR / sampling / timing formulas, the 26 gates |
 | [05 Committee](docs/05-consensus-gate.md) | hard/bias/soft distinction, **difficulty grades**, **improvement proposals (sensitivity analysis)**, deadlock handling |
 | [06 Pitfalls](docs/06-pitfalls.md) | What actually goes wrong in this data and this science — grounded in measured evidence |
 | [07 Roadmap](docs/07-roadmap.md) | Phase 0 (secure the evidence) → 5 (automate manipulation) → 6 (join the simulation agent). Three things that pay off immediately |
@@ -2044,7 +2044,7 @@ make, not an oversight to correct.
 | [`sample/`](sample/) | 4 · sample geometry & optics (G15–G19) | Implemented. Scope fixed 2026-08-19 ([`kb/decisions/2026-08-19-lens-4-scope.md`](kb/decisions/2026-08-19-lens-4-scope.md)): sample-medium index settled at 1.333, coverslip settled at 170 µm — matching every objective's design ([`kb/expertise/coverslip-thickness-in-use.md`](kb/expertise/coverslip-thickness-in-use.md)) — and wave-optics aberration + wavelength/temperature RI **ungated by decision**. So **a micrometer reading of the coverslip is the only routine assumption left, and it is sufficient**: `100x-Oil` at 9 µm depth then reaches `PASS · TIGHT · advances YES`, and `40x-WI` with its collar recorded reaches `PASS · ROUTINE · advances YES`. Past ~10 µm depth an oil objective is held by G17's RI mismatch instead. ATPS BLOCKs by design and is asked at experiment time, not pre-populated |
 | [`photo/`](photo/) | 5 · photo-perturbation (G21–G22) | Implemented, and **computing since 2026-09-09** — power and illuminated area were measured that day, so irradiance exists at 20×. **G10 and G20 were both removed the same day** ([04 §6](docs/04-decision-engine.md), [`kb/decisions/2026-09-09-g20-saturation-removed.md`](kb/decisions/2026-09-09-g20-saturation-removed.md)); each was keyed to a per-dye constant that is empty for every dye, so neither could ever return anything but `BLOCKED` on this instrument's proprietary bead colourants. The transcript above is what it used to refuse, kept because [a refusal is still a valid result](#a-refusal-is-a-valid-result) |
 | [`validity/`](validity/) | 6 · measurement validity (G11, G23–G27) | Implemented. Reviews the other lenses' verdicts, so **call it last**. Judges each `intended_quantities` entry separately — a biased MSD and a sound intensity profile can come out of one session — and checks a declared correction against a registry rather than believing it. G27 is currently the only thing that notices the committee never convened |
-| [`stability/`](stability/) | 8 · mechanical & environmental (G28–G32) | Implemented, conditional on acquisitions over 30 min. G28 (PFS lock) and G31 (sedimentation) work today; G29 BLOCKED until a drift rate is measured; vibration and stage repeatability ungated |
+| [`stability/`](stability/) | 8 · mechanical & environmental (G29–G32) | Implemented, conditional on acquisitions over 30 min. **G28 (PFS lock) moved to the hardware execution stage 2026-09-10** — it read `PFS in Range` as the servo state and that property reports the coverslip. G31 (sedimentation) works today; G29 BLOCKED until a drift rate is measured; vibration and stage repeatability ungated |
 | [`trapping/`](trapping/) | 7 · optical tweezers (G14) | Physics library + committee gate wired. Objectives whose design NA exceeds the sample index are TIR-clipped and computed rather than refused (2026-08-18) — see [`kb/expertise/oil-objective-trapping-in-water.md`](kb/expertise/oil-objective-trapping-in-water.md). Scope fixed 2026-08-19: the dial-% → mW calibration is **deferred** (so verdicts stay `evidence: assumed`), water-only media, and local heating + near-wall Faxén drag are **ungated by decision**, not gaps ([06 D6 · D8](docs/06-pitfalls.md), [`kb/decisions/2026-08-19-lens-7-scope.md`](kb/decisions/2026-08-19-lens-7-scope.md)) |
 | [`hardware/`](hardware/) | drivers | Microscope, optical tweezers, piezo stage and waveform, trap patterns, and a shared-clock orchestrator. Offline today — the working PC and the microscope PC are separate, and the vendor DLLs these drivers bind to are not published here ([NOTICE](NOTICE.md)). [`hardware/lunf_power.py`](hardware/lunf_power.py) is complete as transport and **refuses to transmit**: the LUN-F-XL DAC word format is undocumented, and a guessed byte goes into a laser driver |
 | [`.claude/agents/`](.claude/agents/) | 3 · 4 · 5 · 6 · 8 | Prompt-only, by design: layered over the code above rather than standing in for it. For lenses 4 · 5 · 6 · 8 that is the qualitative half — the part with no closed form. Lens 3 is different: it is fully deterministic, so [`compute-resources.md`](.claude/agents/compute-resources.md) only gathers inputs, runs the code, and carries the 2↔3 and 3↔6 cross-lens wires |
