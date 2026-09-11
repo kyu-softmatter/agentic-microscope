@@ -39,8 +39,10 @@ What it can and cannot do, honestly:
   compare a whole run's settling against the depth of field, which called every
   real bead INFEASIBLE -- 5 um polystyrene in water moves 41 um/min against
   0.375 um -- including the experiments that work, because **a trapped bead
-  does not settle** (axial sag is buoyant weight over kappa_z, ~32 nm at
-  1 pN/um) and this lens has no `trapped` field to tell the two apart. The
+  does not settle** (gravity's axial sag is the buoyant weight over kappa_z --
+  0.032 pN, so 32 nm per pN/um -- and kappa_z is computed nowhere in this
+  repository, so the number cannot be closed) and this lens has no `trapped`
+  field to tell the two apart. The
   free-settling case is lens 4's G19, which *assumes* the settled state; what
   this reports is when that state arrives. 100 um chamber, 5 um bead: 2.4 min.
 - **G32 reports because sealing is declarable and a rate is not.** A sealed

@@ -342,10 +342,24 @@ ones that work. Two things were wrong with that reading:
 
 - **A trapped bead does not settle.** `StabilitySetup` has no `trapped` field,
   so the free-settling velocity was applied to a bead held in a trap. Its axial
-  displacement is the buoyant weight over the axial stiffness — **0.032 pN for
-  a 5 µm polystyrene bead**, giving 32 nm at κ_z = 1 pN/µm and 381 nm at
-  κ_z = 0.084 (the KB's 0.42 pN/µm lateral, over five). Against a 375 nm DOF
-  that is a real question with a real answer, and the gate was not asking it.
+  displacement under gravity is the buoyant weight over the **axial**
+  stiffness — **0.032 pN** for a 5 µm polystyrene bead, so **32 nm for every
+  1 pN/µm of κ_z**. That arithmetic is exact. **κ_z is not**: nothing in this
+  repository computes or measures it. `trapping.goa.radial_stiffness_n_per_m`
+  is radial only, and `trap_force` documents that it "assumes zero axial
+  offset" — there is no z coordinate to difference. **Do not close the number
+  with a κ_z/κ_xy ratio**; none is recorded here, and one was briefly written
+  into this file on 2026-09-10 and removed as unsourced.
+
+  Two things that are computable and worth saying instead. The **gradient is
+  the right formula** — sag per unit stiffness — so a measured κ_z closes it
+  immediately. And the model's own `f_axial` at zero displacement is
+  **9.56 pN at 100 mW** for this bead, about **300× the buoyant weight**: the
+  bead's axial position is set by the scattering-versus-gradient balance and
+  gravity is a small perturbation on top of it. That does not change the sag
+  formula (superposition, over a range where κ_z is roughly constant) but it
+  does mean the bead does not sit at the focus, which is a question for lens 4's
+  depth window rather than for settling.
 - **The free-settling case is lens 4's.** G19 rebuilt itself on a
   total-sedimentation premise on 2026-09-10: it assumes the population has
   reached the floor and computes the areal density there. Two lenses were

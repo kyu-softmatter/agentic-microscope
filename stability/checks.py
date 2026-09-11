@@ -164,8 +164,13 @@ def check_sedimentation(setup: "StabilitySetup") -> CheckResult:
 
     - **A trapped bead does not settle.** The lens has no `trapped` field, so
       the gate applied the free-settling velocity to a bead held in a trap,
-      whose axial sag is its buoyant weight over the axial stiffness -- 32 nm
-      at kappa_z = 1 pN/um, against a 375 nm DOF.
+      whose axial sag under gravity is its buoyant weight over the AXIAL
+      stiffness: 0.032 pN for a 5 um polystyrene bead, so **32 nm for every
+      1 pN/um of kappa_z**. That arithmetic is exact; kappa_z is not, because
+      NOTHING IN THIS REPOSITORY COMPUTES OR MEASURES IT. `trapping.goa` gives
+      the radial stiffness only -- `trap_force` documents that it "assumes zero
+      axial offset", so there is no z to difference. Do not close the number
+      with a kappa_z/kappa_xy ratio; none is recorded here.
     - **The free-settling case is already lens 4's.** G19 rebuilt itself on a
       total-sedimentation premise on 2026-09-10: it assumes the population has
       reached the floor and works out the areal density there. Two lenses were
@@ -264,7 +269,8 @@ def check_sedimentation(setup: "StabilitySetup") -> CheckResult:
         f"The population {direction} at {speed * 60.0:.2f} um/min "
         f"({speed:.4f} um/s), by Stokes.{clock}",
         action="Not gated: a trapped bead does not settle (its axial sag is "
-        "the buoyant weight over kappa_z, tens of nm), and the free-settling "
+        "the buoyant weight over kappa_z, 32 nm per pN/um, and kappa_z is not "
+        "computed anywhere in this repository), and the free-settling "
         "case belongs to lens 4's G19, which assumes the settled state this "
         "reports the arrival time of. Density-matching removes the term "
         "entirely; settling goes as radius squared.",

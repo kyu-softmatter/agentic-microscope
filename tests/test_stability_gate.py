@@ -198,7 +198,8 @@ def test_the_drift_budget_is_visible_rather_than_graded():
 # run's free settling against the depth of field and so called every real bead
 # INFEASIBLE -- 5 um polystyrene in water moves 41 um/min against 0.375 um --
 # including the experiments that work, because a TRAPPED bead does not settle
-# (axial sag is buoyant weight over kappa_z, ~32 nm at 1 pN/um) and the lens has
+# (gravity's axial sag is buoyant weight over kappa_z, 32 nm per pN/um, and
+# kappa_z is computed nowhere here) and the lens has
 # no `trapped` field to tell the two apart. The free-settling case is lens 4's
 # G19, which assumes the settled state; this reports when it arrives.
 

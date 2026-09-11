@@ -600,8 +600,11 @@ this instrument, and G8's action text says so explicitly.
   measurements — and 5 µm polystyrene in water moves **41 µm/min**, reaching the
   bottom of a 100 µm chamber in **2.4 min**. It stopped comparing that to the
   depth of field on 2026-09-10, for two reasons: **a trapped bead does not
-  settle** (axial sag is buoyant weight over κ_z, ~32 nm at 1 pN/µm, and this
-  lens has no `trapped` field), and the free-settling case is **lens 4's G19**,
+  settle** (gravity's axial sag is the buoyant weight over κ_z — 0.032 pN, so
+  **32 nm per pN/µm**, and **κ_z is computed nowhere in this repository**:
+  `trapping.goa.trap_force` assumes zero axial offset, so there is no z to
+  difference and only the radial stiffness exists. This lens also has no
+  `trapped` field), and the free-settling case is **lens 4's G19**,
   which assumes the settled state this now reports the arrival time of.
   Density-matching removes the term entirely
 - **⚠ Lens 8 contributes nothing to lens 6's bias ledger.** G23 collects

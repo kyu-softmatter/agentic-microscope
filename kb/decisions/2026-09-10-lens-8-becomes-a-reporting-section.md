@@ -34,11 +34,19 @@ every experiment this instrument runs, including the ones that work.
 
 - **A trapped bead does not settle.** `StabilitySetup` has no `trapped` field,
   so the free-settling velocity was applied to a bead held in a trap. Its axial
-  displacement is the buoyant weight over the axial stiffness — **0.032 pN**
-  for a 5 µm polystyrene bead — giving **32 nm at κ_z = 1 pN/µm** and **381 nm
-  at κ_z = 0.084** (the KB's 0.42 pN/µm lateral, over five). Against a 375 nm
-  DOF that is a real question with a real answer near the weak-trap end, and
-  the gate never asked it.
+  displacement under gravity is the buoyant weight over the **axial**
+  stiffness — **0.032 pN** for a 5 µm polystyrene bead, so **32 nm for every
+  1 pN/µm of κ_z**.
+
+  ⚠ **This entry first closed that number with κ_z = κ_xy/5 and that ratio was
+  unsourced — my own rule of thumb, not in this repository or its KB.**
+  Corrected 2026-09-10: nothing here computes or measures κ_z.
+  `trapping.goa.radial_stiffness_n_per_m` is radial only, and `trap_force`
+  documents that it *"assumes zero axial offset"*, so there is no z coordinate
+  to difference. The sag-per-unit-stiffness form is exact and closes as soon as
+  a κ_z exists; the point against the old gate stands either way, since 32 nm
+  per pN/µm against a 375 nm DOF is a real question and free settling at
+  41 µm/min is not the same question.
 - **The free-settling case already belongs to lens 4.** G19 was rebuilt on a
   total-sedimentation premise hours earlier: it assumes the population has
   reached the floor and computes the areal density there. Two lenses were
@@ -174,10 +182,19 @@ until it is closed.
   `G21`/`G22` when it became a reporting section; lens 8 did not, because the
   instruction was "leave it as info", not "remove it". The inconsistency is
   visible rather than resolved — a naming decision for KH.
-- **No `trapped` field, so the 32–381 nm axial sag is prose in an action rather
-  than a number the lens computes.** Computing it needs κ_z, which lens 7 owns,
-  and the cross-lens hand-off does not exist. Named here so the next person does
-  not re-derive it.
+- **No `trapped` field, so the axial sag is prose in an action rather than a
+  number the lens computes** — and it could not be computed even with the
+  field, because **κ_z does not exist in this repository**. `trapping/goa.py`
+  integrates Ashkin's Qs/Qg over the aperture with the bead centre in the focal
+  plane and returns `(f_radial, f_axial)`; the radial stiffness comes from a
+  finite difference in x, and there is no x-analogue in z to difference.
+  Extending it means the focus displaced along the axis, which is a different
+  ray geometry and not a small edit — and it would inherit the model's existing
+  upper-bound caveats (full weighting of rays whose Fresnel transmission goes
+  to zero at the critical angle, no spherical aberration), both of which are
+  worse in z than in x. **Measuring it is the other route** and is the same
+  method as κ_xy (equipartition or corner frequency on the axial coordinate),
+  but this instrument has no axial position readout for a trapped bead.
 - **Lens 6 receives nothing from lens 8** — above.
 
 ## Falsifier
