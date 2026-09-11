@@ -18,11 +18,13 @@ import importlib
 
 import pytest
 
-#: The JUDGING lenses. `photo` is not one: it became a reporting section on
-#: 2026-09-10, every check INFO, and its `advances` is `None` by design rather
-#: than a bool -- so the rule below does not apply to it and asserting it
-#: would be asserting that a report can advance.
+#: The JUDGING lenses. TWO OF THE EIGHT ARE NOT ON THIS LIST. `photo` (lens 5)
+#: and `stability` (lens 8) both became reporting sections on 2026-09-10, every
+#: check INFO, and their `advances` is `None` by design rather than a bool -- so
+#: the rule below does not apply to them, and asserting it would be asserting
+#: that a report can advance.
 #: kb/decisions/2026-09-10-lens-5-becomes-a-reporting-section.md
+#: kb/decisions/2026-09-10-lens-8-becomes-a-reporting-section.md
 LENS_MODULES = [
     "optics",
     "detection",
@@ -30,8 +32,10 @@ LENS_MODULES = [
     "trapping",
     "sample",
     "validity",
-    "stability",
 ]
+
+#: The reporting sections, which are held to the opposite rule.
+REPORTING_MODULES = ["photo", "stability"]
 
 #: Grades at or above TIGHT, which may advance.
 ADVANCING = ["ROUTINE", "COMFORTABLE", "TIGHT"]
@@ -139,30 +143,49 @@ def test_all_lenses_share_one_grade_scale(mod):
     assert _checks(mod).GRADE_NOTES == reference.GRADE_NOTES
 
 
-# ------------------------------------------------- the one exception -------
+# ------------------------------------------------ the two exceptions -------
 
 
-def test_photo_is_a_reporting_section_and_does_not_advance_at_all():
+@pytest.mark.parametrize("lens", REPORTING_MODULES)
+def test_a_reporting_section_does_not_advance_at_all(lens: str):
     """`advances` is None, not False, and that distinction is the point.
 
-    A judging lens advances or refuses to. This section does neither: it
+    A judging lens advances or refuses to. A reporting section does neither: it
     cannot block a proposal and it cannot bless one. `False` would read as a
-    refusal, so the field answers `None` and lens 6's G27 no longer looks for
-    it -- `photo` left STANDING_LENSES the same day.
+    refusal, so the field answers `None`. `photo` left STANDING_LENSES the same
+    day; `stability` was never in it, being conditional.
     """
-    from photo.gate import Verdict
+    gate = importlib.import_module(f"{lens}.gate")
 
-    v = Verdict(status="REPORT", feasibility="N/A", evidence="measured")
+    v = gate.Verdict(status="REPORT", feasibility="N/A", evidence="measured")
     assert v.advances is None
     assert v.passed is True
     assert v.to_dict()["reporting_only"] is True
 
 
-def test_nothing_in_photo_is_gradeable():
-    """The invariant `photo.gate.evaluate` asserts at runtime, pinned here so
+@pytest.mark.parametrize("lens", REPORTING_MODULES)
+def test_nothing_in_a_reporting_section_is_gradeable(lens: str):
+    """The invariant each `gate.evaluate` asserts at runtime, pinned here so
     adding a graded check to a reporting section fails a test rather than an
     assertion in the field."""
-    import photo
+    mod = importlib.import_module(lens)
 
-    assert all(c.kind == "info" for c in photo.CHECKS)
-    assert photo.LIMITS == {}
+    assert all(c.kind == "info" for c in mod.CHECKS)
+    assert mod.LIMITS == {}
+
+
+def test_the_two_reporting_sections_got_there_differently():
+    """Worth keeping apart, because the reasons do not transfer.
+
+    Lens 5 stopped judging because its gates needed per-dye constants that are
+    empty for every proprietary bead colourant this instrument images -- a
+    missing-input problem. Lens 8 stopped judging because its inputs arrive
+    DURING the run (drift, PFS state, an evaporation rate) or belong to another
+    lens (free settling, to lens 4's G19) -- a timing and ownership problem.
+    A lens whose numbers merely happen to be absent is not a reporting section;
+    it is BLOCKED, which is a different and recoverable state.
+    """
+    import photo
+    import stability
+
+    assert photo.LIMITS == stability.LIMITS == {}

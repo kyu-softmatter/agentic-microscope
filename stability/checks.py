@@ -33,10 +33,28 @@ reads an acquisition that already ran, from its own timestamps, and does not
 pretend to be a gate on a plan.
 kb/decisions/2026-09-10-drift-is-not-a-design-element.md
 
-What is left is what IS knowable before the run starts: what the sample does to
-itself over time, from the particle, the medium and the chamber. Sedimentation
-follows from particle size, density contrast and viscosity; evaporation from
-the chamber. Vibration remains INFO -- no measurement channel is set up for it.
+AND AS OF 2026-09-10 NOTHING HERE IS GRADED AT ALL: this is a reporting
+section, like lens 5 became the same day. G31 and G32 became INFO on KH's
+instruction -- G31 because it was comparing a whole run's free settling against
+a depth of field and calling every real bead INFEASIBLE (5 um polystyrene in
+water moves 41 um/min against 0.375 um), when a TRAPPED bead does not settle at
+all and the free case is already lens 4's G19; G32 because sealing is
+declarable and an evaporation rate is not, and its 0.5 stand-in margin was a
+number invented to mean "not quantified".
+
+`vibration` is gone too, and on a physical argument rather than a scheduling
+one: **every part of this microscope sits on the same isolation table, so the
+camera and the sample move together.** An image shows their RELATIVE motion,
+and common-mode motion of a rigid assembly cancels out of it -- so there is no
+channel to measure, not merely an unbuilt one. Note the contrast with drift,
+which is differential expansion in the path between objective and holder and
+therefore does show up: that is why `drift_budget` survives and `vibration`
+does not.
+
+So what this lens reports is what IS knowable before the run starts -- the
+settling velocity and the time it takes to be over, the evaporative
+concentration if a rate exists, and the drift rate the plan could absorb -- and
+`stability/gate.py` returns `status: REPORT` with `advances: None`.
 """
 
 from __future__ import annotations
@@ -49,7 +67,6 @@ from typing import TYPE_CHECKING
 from .drift import (
     concentration_factor,
     evaporated_fraction,
-    settling_distance_um,
 )
 from .setup import CONVENE_DURATION_MIN
 
@@ -63,15 +80,12 @@ INFO = "info"
 
 MAX_MARGIN = 10.0
 
-LIMITS = {
-    #: G31: settling over the acquisition, as a fraction of the depth of field.
-    #: The population must stay in the plane it was characterised in.
-    "settling_dof_fraction": 1.0,
-    #: G32: fraction of sample volume that may evaporate before
-    #: concentration-dependent quantities drift measurably. 5% evaporation is
-    #: already a 5.3% concentration increase.
-    "evaporated_fraction_max": 0.05,
-}
+#: EMPTY, AND THAT IS THE STATE OF THE LENS. Both entries went on 2026-09-10
+#: when G31 and G32 became reports: `settling_dof_fraction` (1.0) had nothing
+#: left to compare, and `evaporated_fraction_max` (0.05) was a threshold on a
+#: quantity the plan cannot supply. An entry appearing here again means a
+#: judging gate has come back, which is a decision and not a refactor.
+LIMITS: dict = {}
 
 
 @dataclass
@@ -103,7 +117,17 @@ class Check:
 
 
 def _ok(code, kind, margin, message, **numbers) -> CheckResult:
-    return CheckResult(code, kind, margin, "ok", message, None, numbers)
+    """Severity **"info"**, not "ok", and the distinction is load-bearing.
+
+    Every `gate.py` in this repository drops `severity == "ok"` from
+    `findings`, so a check that computed a number and returned `_ok` put it in
+    `metrics` and nowhere a reader would see it. That defect was found three
+    times during the 2026-09-10 review, twice in this lens. **Ungraded and
+    invisible are different things**, and in a reporting section -- where
+    nothing is graded and the findings ARE the output -- an invisible check is
+    the whole lens failing silently. Nothing here returns "ok".
+    """
+    return CheckResult(code, kind, margin, "info", message, None, numbers)
 
 
 # --------------------------------------------------------------------------
@@ -128,72 +152,142 @@ def available_facts(setup: "StabilitySetup") -> set[str]:
 
 
 def check_sedimentation(setup: "StabilitySetup") -> CheckResult:
-    """G31: does the population stay in the plane it was characterised in?
+    """G31: how fast does the population move, and how long until it stops?
 
-    The one thing in this lens that needs no instrument measurement -- Stokes
-    settling follows from particle size, density contrast and viscosity.
+    REPORTS, DOES NOT GATE, since 2026-09-10 (KH): *"침강 상승 속도와 평형에
+    도달하는 시간 정도만 계산하고 인포로 남겨두자."* It used to compare the
+    distance settled over the whole acquisition against the depth of field,
+    which put out a margin of 0.00 for any real bead -- 5 um polystyrene in
+    water moves 41 um/min against a 0.375 um DOF, so the gate said INFEASIBLE
+    to every experiment this instrument actually runs, including the ones that
+    work. Two reasons that reading was wrong:
+
+    - **A trapped bead does not settle.** The lens has no `trapped` field, so
+      the gate applied the free-settling velocity to a bead held in a trap,
+      whose axial sag is its buoyant weight over the axial stiffness -- 32 nm
+      at kappa_z = 1 pN/um, against a 375 nm DOF.
+    - **The free-settling case is already lens 4's.** G19 rebuilt itself on a
+      total-sedimentation premise on 2026-09-10: it assumes the population has
+      reached the floor and works out the areal density there. Two lenses were
+      charging the same fact against different thresholds.
+
+    What is left is the pair of numbers that premise needs and nobody was
+    reporting: **the velocity, and the time until it is over.** G19 assumes the
+    settled state; this says when the settled state arrives.
     """
     v = setup.settling_velocity_um_per_s
-    dof = setup.resolved_dof_um
-    distance = settling_distance_um(v, setup.duration_min)
-    budget = LIMITS["settling_dof_fraction"] * dof
-    margin = budget / abs(distance) if distance != 0 else MAX_MARGIN
-    direction = "settles" if distance > 0 else "creams upward"
+    numbers = {"duration_min": setup.duration_min}
 
-    numbers = {
-        "settling_velocity_um_per_s": round(v, 6),
-        "duration_min": setup.duration_min,
-        "settling_distance_um": round(distance, 2),
-        "depth_of_field_um": round(dof, 3),
-        "budget_um": round(budget, 3),
-        "chamber_height_um": setup.chamber_height_um,
-    }
-
-    if setup.chamber_height_um and abs(distance) >= setup.chamber_height_um:
-        numbers["leaves_chamber"] = True
-
-    if margin >= 1.0:
-        return _ok(
+    if v is None:
+        return CheckResult(
             "stability.sedimentation",
-            BIAS,
-            margin,
-            f"The population moves {abs(distance):.2f} um axially over "
-            f"{setup.duration_min:.0f} min, inside a {dof:.2f} um depth of "
-            "field.",
-            **numbers,
+            INFO,
+            MAX_MARGIN,
+            "info",
+            "No settling velocity: it needs particle radius, the "
+            "particle-minus-medium density difference and the medium "
+            "viscosity. Nothing is gated on it, but the time for the "
+            "suspension to settle out is worth knowing before a long run.",
+            action="Supply particle_radius_um, delta_density_kg_m3 (0 for a "
+            "density-matched suspension) and viscosity_pa_s.",
+            numbers=numbers,
         )
 
-    extra = ""
-    if numbers.get("leaves_chamber"):
-        extra = (
-            f" That exceeds the {setup.chamber_height_um:.0f} um chamber "
-            "height, so the particles reach the wall and the bulk suspension "
-            "is gone entirely."
+    direction = "settles" if v > 0 else "creams upward" if v < 0 else "neither"
+    speed = abs(v)
+    numbers.update(
+        {
+            "settling_velocity_um_per_s": round(v, 6),
+            "settling_velocity_um_per_min": round(v * 60.0, 4),
+            "direction": direction,
+            "chamber_height_um": setup.chamber_height_um,
+        }
+    )
+
+    if speed == 0.0:
+        return CheckResult(
+            "stability.sedimentation",
+            INFO,
+            MAX_MARGIN,
+            "info",
+            "Density-matched: the settling term is exactly zero, so the "
+            "population stays where it was put for as long as the run lasts. "
+            "Nothing else in this check applies.",
+            action=None,
+            numbers=numbers,
+        )
+
+    # Time to equilibrium. The equilibrium of a settling suspension under
+    # gravity is the floor (or the ceiling, creaming) -- for a micron-scale
+    # bead the sedimentation-diffusion balance sits far below one bead
+    # diameter, so there is no suspended steady state to reach instead. The
+    # chamber height is what sets the clock, and it is a planning input.
+    if setup.chamber_height_um:
+        t_min = setup.chamber_height_um / speed / 60.0
+        numbers["time_to_equilibrium_min"] = round(t_min, 3)
+        if setup.duration_min:
+            numbers["equilibrium_before_end"] = t_min < setup.duration_min
+            numbers["duration_over_equilibrium_time"] = round(
+                setup.duration_min / t_min, 2
+            )
+        clock = (
+            f" A particle starting at the top of a "
+            f"{setup.chamber_height_um:.0f} um chamber reaches the "
+            f"{'bottom' if v > 0 else 'top'} in {t_min:.1f} min"
+        )
+        if setup.duration_min and t_min < setup.duration_min:
+            clock += (
+                f" -- {setup.duration_min / t_min:.0f}x inside the "
+                f"{setup.duration_min:.0f} min acquisition, so the suspension "
+                "is already settled out for most of it, which is the premise "
+                "lens 4's G19 works from."
+            )
+        elif setup.duration_min:
+            clock += (
+                f", longer than the {setup.duration_min:.0f} min acquisition, "
+                "so the population is still in transit when the run ends and "
+                "G19's settled-state premise does not hold yet."
+            )
+        else:
+            clock += "."
+    else:
+        clock = (
+            " No chamber height on record, so there is no clock: supply "
+            "chamber_height_um for the time to equilibrium."
         )
 
     return CheckResult(
         "stability.sedimentation",
-        BIAS,
-        margin,
-        "warn",
-        f"The population {direction} {abs(distance):.1f} um over "
-        f"{setup.duration_min:.0f} min against a {dof:.2f} um depth of field "
-        f"({abs(distance) / dof:.0f}x). What is in the focal plane at the end "
-        f"is not the population that was there at the start, so any ensemble "
-        f"average mixes two different samples.{extra}",
-        action="Density-match the medium (this term vanishes at zero density "
-        "contrast), use smaller particles — settling goes as radius squared — "
-        "shorten the acquisition, or re-characterise the population at the end "
-        "and treat the change as part of the measurement.",
+        INFO,
+        MAX_MARGIN,
+        "info",
+        f"The population {direction} at {speed * 60.0:.2f} um/min "
+        f"({speed:.4f} um/s), by Stokes.{clock}",
+        action="Not gated: a trapped bead does not settle (its axial sag is "
+        "the buoyant weight over kappa_z, tens of nm), and the free-settling "
+        "case belongs to lens 4's G19, which assumes the settled state this "
+        "reports the arrival time of. Density-matching removes the term "
+        "entirely; settling goes as radius squared.",
         numbers=numbers,
     )
 
 
 def check_evaporation(setup: "StabilitySetup") -> CheckResult:
-    """G32: does the sample concentrate measurably during the acquisition?
+    """G32: how much does the sample concentrate during the acquisition?
 
-    Evaporation is a bias, not an inconvenience: every concentration-dependent
-    quantity drifts through the run even if focus is held perfectly.
+    REPORTS, DOES NOT GATE, since 2026-09-10 (KH). The reason is in the input:
+    **sealing is declarable, an evaporation rate is not.** A sealed chamber is
+    a fact about the plan, and it already answers the question -- the term
+    vanishes. Unsealed, the only honest input is a weighed rate, and weighing a
+    chamber before and after is something you do around a run, not while
+    designing one. The old gate handled that by returning a stand-in margin of
+    0.5, which graded HARD and blocked `advances` on an acquisition nobody had
+    measured anything about; a number invented to represent "not quantified" is
+    exactly what this repository is not supposed to produce.
+
+    So: sealed is reported as answered, unsealed with a rate is reported as
+    arithmetic, unsealed without one is reported as unquantified -- and none of
+    the three is graded.
     """
     numbers = {
         "chamber_sealed": setup.chamber_sealed,
@@ -201,49 +295,44 @@ def check_evaporation(setup: "StabilitySetup") -> CheckResult:
     }
 
     if setup.chamber_sealed:
-        return _ok(
+        return CheckResult(
             "stability.evaporation",
-            BIAS,
+            INFO,
             MAX_MARGIN,
-            "Chamber sealed; no evaporative concentration.",
-            **numbers,
+            "info",
+            "Chamber declared sealed, so there is no evaporative "
+            "concentration. This is the one input in this lens that a plan can "
+            "settle outright rather than measure.",
+            action=None,
+            numbers=numbers,
         )
 
     rate = setup.evaporation_rate_ul_per_hour
     volume = setup.sample_volume_ul
 
     if rate is None or volume is None:
-        if not setup.convenes:
-            return _ok(
-                "stability.evaporation",
-                BIAS,
-                MAX_MARGIN,
-                f"Chamber unsealed but the acquisition is only "
-                f"{setup.duration_min:.0f} min, under the "
-                f"{CONVENE_DURATION_MIN:.0f} min where evaporation usually "
-                "becomes measurable.",
-                **numbers,
-            )
+        span = (
+            f"a {setup.duration_min:.0f} min acquisition"
+            if setup.duration_min
+            else "an acquisition of unstated length"
+        )
         return CheckResult(
             "stability.evaporation",
-            BIAS,
-            0.5,
-            "warn",
-            f"Chamber is unsealed for a {setup.duration_min:.0f} min "
-            "acquisition and no evaporation rate is on record, so the "
-            "concentration drift cannot be quantified. Solvent leaving "
-            "concentrates everything left behind.",
-            action="Seal the chamber, or weigh an identical unsealed chamber "
-            "before and after a run of this length to get a rate in uL/hour "
-            "and supply it. This cannot be computed from the setting.",
+            INFO,
+            MAX_MARGIN,
+            "info",
+            f"Chamber is unsealed for {span} and no evaporation rate is on "
+            "record, so the concentration drift is UNQUANTIFIED -- not small. "
+            "Solvent leaving concentrates everything left behind, and every "
+            "concentration-dependent quantity drifts with it.",
+            action="Seal the chamber, which settles it. Otherwise weigh an "
+            "identical unsealed chamber before and after a run of this length "
+            "for a uL/hour rate; it cannot be computed from the setting.",
             numbers=numbers,
         )
 
     frac = evaporated_fraction(rate, volume, setup.duration_min)
     factor = concentration_factor(frac)
-    limit = LIMITS["evaporated_fraction_max"]
-    margin = limit / frac if frac > 0 else MAX_MARGIN
-
     numbers.update(
         {
             "evaporation_rate_ul_per_hour": rate,
@@ -252,30 +341,19 @@ def check_evaporation(setup: "StabilitySetup") -> CheckResult:
             "concentration_factor": round(factor, 3)
             if math.isfinite(factor)
             else None,
-            "limit": limit,
         }
     )
-
-    if margin >= 1.0:
-        return _ok(
-            "stability.evaporation",
-            BIAS,
-            margin,
-            f"About {frac * 100:.1f}% of the volume evaporates, concentrating "
-            f"the sample {factor:.3f}x — inside the {limit * 100:.0f}% limit.",
-            **numbers,
-        )
-
     return CheckResult(
         "stability.evaporation",
-        BIAS,
-        margin,
-        "warn",
+        INFO,
+        MAX_MARGIN,
+        "info",
         f"About {frac * 100:.1f}% of the volume evaporates over "
         f"{setup.duration_min:.0f} min, concentrating the sample "
-        + (f"{factor:.2f}x" if math.isfinite(factor) else "without bound")
-        + f", past the {limit * 100:.0f}% limit. Every "
-        "concentration-dependent quantity drifts through the acquisition.",
+        + (f"{factor:.3f}x" if math.isfinite(factor) else "without bound")
+        + ". Read it against the precision the measurement needs: a few "
+        "percent moves a viscosity, and on a multiphase sample a few percent "
+        "of water can cross a phase boundary.",
         action="Seal the chamber, use an oil overlay, add a humidity reservoir, "
         "or shorten the acquisition.",
         numbers=numbers,
@@ -297,6 +375,19 @@ def check_drift_budget(setup: "StabilitySetup") -> CheckResult:
     is the one that walks the focus through exactly one depth of field over the
     acquisition. Any tolerance fraction scales it linearly: allow half a DOF
     and halve the rate.
+
+    ⚠ IT DOES CARRY A MODEL, AND THE OUTPUT SAYS SO. Dividing by the duration
+    presumes drift is **monotonic and linear for the whole run** -- that it
+    accumulates in one direction and never comes back. `drift.py` records why
+    that is the optimistic case: thermal drift is worst in the first hour after
+    the enclosure is disturbed, so a real run front-loads it and blows the
+    quoted rate early while averaging under it. And it is pessimistic in the
+    other direction for any run that re-establishes focus part way through,
+    where the window that matters is the interval between re-focuses, not the
+    total length. So read the number as **the requirement a linear reading of
+    the plan places on the instrument**, not as a prediction. Duration and
+    depth of field are the only two planning inputs in it; the monotonicity is
+    an assumption and is stated in the message.
     """
     dof_um = setup.resolved_dof_um
     duration = setup.duration_min
@@ -327,55 +418,32 @@ def check_drift_budget(setup: "StabilitySetup") -> CheckResult:
         f"Drift is not gated at planning time. This {duration:.0f} min run "
         f"against a {dof_um:.3f} um depth of field can absorb an axial drift "
         f"of {rate_full_dof:.1f} nm/min before the focus has walked one full "
-        f"DOF -- {rate_full_dof / 2:.1f} nm/min for half of it. That is the "
-        "requirement on the instrument; whether the instrument meets it is a "
-        "measurement, and it is taken during the acquisition, not before.",
+        f"DOF -- {rate_full_dof / 2:.1f} nm/min for half of it. ASSUMES DRIFT "
+        "IS MONOTONIC FOR THE WHOLE RUN, which is the only part of this that "
+        "is a model: thermal drift is worst in the first hour after the "
+        "enclosure is disturbed, so a real run front-loads it and can blow "
+        "this rate early while averaging under it. Read it as the requirement "
+        "a linear reading of the plan places on the instrument, not as a "
+        "prediction -- and if the run re-establishes focus part way through, "
+        "recompute it on that interval instead of the total length.",
         action="Axial: config/session/focus_monitor.py already samples ZDrive "
         "and both cameras several times a second, so the rate falls out of the "
         "run's own focus scores. Lateral: data/particles.yaml records that most "
         "of the bead population is stuck to the coverslip, so a stuck bead in "
         "the same frames is the fiducial -- no extra acquisition either way. "
-        "Judge both after the fact, like compute.drops does.",
+        "Note this is NOT the argument that killed the vibration check: the "
+        "table moves camera and sample together, so vibration is common-mode "
+        "and cancels out of an image, while drift is differential expansion in "
+        "the path between objective and holder and does not. Judge both after "
+        "the fact, like compute.drops does.",
         numbers={
             "duration_min": duration,
             "depth_of_field_um": dof_um,
             "axial_rate_for_one_dof_nm_per_min": round(rate_full_dof, 3),
             "axial_rate_for_half_dof_nm_per_min": round(rate_full_dof / 2, 3),
+            "assumes_monotonic_drift": True,
             "gated": False,
         },
-    )
-
-
-def check_vibration(setup: "StabilitySetup") -> CheckResult:
-    """Report that vibration is not gated, rather than passing silently.
-
-    docs/05 lists vibration and stage repeatability under lens 8, and neither
-    has a measurement channel anywhere in the repo. Saying so is more useful
-    than a gate built on a guessed amplitude.
-    """
-    if setup.vibration_measured:
-        return _ok(
-            "stability.vibration",
-            INFO,
-            MAX_MARGIN,
-            "A vibration measurement was declared; this gate does not yet "
-            "evaluate it.",
-            vibration_measured=True,
-        )
-
-    return CheckResult(
-        "stability.vibration",
-        INFO,
-        MAX_MARGIN,
-        "info",
-        "Vibration and stage repeatability are unmeasured and ungated. "
-        "docs/05 assigns them to this lens, but there is no measurement "
-        "channel for either, so nothing here evaluates them — a quiet pass on "
-        "this line is an absence of evidence, not evidence of stability.",
-        action="Measure the table's vibration spectrum, and the stage's "
-        "repeatability if the acquisition is multipoint. Until then treat "
-        "unexplained blur or position scatter as a live suspect.",
-        numbers={"vibration_measured": False},
     )
 
 
@@ -412,15 +480,13 @@ def check_convening(setup: "StabilitySetup") -> CheckResult:
 
 CHECKS: list[Check] = [
     Check("convening", INFO, ("duration",), check_convening),
-    Check(
-        "sedimentation",
-        BIAS,
-        ("duration", "depth_of_field", "settling_inputs"),
-        check_sedimentation,
-    ),
-    Check("evaporation", BIAS, ("duration",), check_evaporation),
+    # All INFO since 2026-09-10, so `requires` is documentation here rather
+    # than a gate: Phase 0 only withholds non-INFO checks. Each one handles its
+    # own missing input and says what is absent, which is why one absent number
+    # no longer takes the whole lens down with it.
+    Check("sedimentation", INFO, ("settling_inputs",), check_sedimentation),
+    Check("evaporation", INFO, (), check_evaporation),
     Check("drift_budget", INFO, (), check_drift_budget),
-    Check("vibration", INFO, (), check_vibration),
 ]
 
 
@@ -438,6 +504,11 @@ GRADES: list[tuple[float, str]] = [
 ]
 
 GRADE_NOTES = {
+    #: Not a grade. `stability/gate.py` reports `feasibility: "N/A"` because
+    #: nothing in this lens is gradeable, and an empty note would read as a
+    #: lookup miss rather than as the deliberate answer it is.
+    "N/A": "Not graded. This lens is a reporting section -- every check is "
+    "INFO, so there is no margin to grade and no bottleneck to name.",
     "ROUTINE": "Comfortable headroom. If it fails, the settings are not to blame.",
     "COMFORTABLE": "Normal range.",
     "TIGHT": "No headroom. Sample preparation quality decides the outcome.",

@@ -119,6 +119,13 @@ UNCORRECTABLE: dict[str, str] = {
     "irradiance",
     "perturbation.light_driving": "the light is moving the sample; nothing "
     "downstream recovers the unperturbed dynamics (docs/06 D2)",
+    # DORMANT since 2026-09-10, with the CORRECTIONS entry for lateral drift:
+    # lens 8 became a reporting section and emits no bias code, so nothing
+    # produces this key at planning time. The judgement is unchanged and right
+    # -- there IS no post-hoc correction for a composition that moved -- which
+    # is why the entry stays rather than being deleted. A reviewer carrying the
+    # bias across by hand should use this wording.
+    # kb/decisions/2026-09-10-lens-8-becomes-a-reporting-section.md
     "stability.evaporation": "the composition changed during the movie -- seal the "
     "chamber or shorten the acquisition",
 }

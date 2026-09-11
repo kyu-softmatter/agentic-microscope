@@ -1,4 +1,4 @@
-"""Quick command-line verification of the mechanical/environmental gate (lens 8).
+"""Quick command-line report from the mechanical/environmental lens (lens 8).
 
     python -m stability.cli check --duration-min 60 --objective 100x-Oil \\
         --emission-nm 520 \\
@@ -9,8 +9,13 @@
         --emission-nm 520 \\
         --particle-radius-um 0.5 --delta-density 0 --viscosity 1e-3
 
-``check`` runs the committee-lens gate (stability.gate.evaluate):
-sedimentation (G31) and evaporation (G32).
+``check`` runs stability.gate.evaluate, which since 2026-09-10 is a REPORT and
+not a verdict: G31 (settling velocity and the time to reach the floor), G32
+(evaporative concentration, or that it is unquantified) and `drift_budget` (the
+drift rate this run could absorb). Every check is INFO, so **every margin reads
+10.00 and none of them means anything** -- `status: REPORT`,
+`feasibility: N/A`, `advances: None`. Nothing here can pass or fail.
+kb/decisions/2026-09-10-lens-8-becomes-a-reporting-section.md
 
 THERE ARE NO DRIFT FLAGS AND THAT IS NOT AN OMISSION. G29 (axial drift) and
 G30 (lateral drift) left this lens on 2026-09-10, with G28 (PFS lock), because
@@ -55,7 +60,6 @@ def cmd_check(args: argparse.Namespace) -> int:
         chamber_sealed=args.sealed,
         evaporation_rate_ul_per_hour=args.evaporation_ul_per_hour,
         sample_volume_ul=args.sample_volume_ul,
-        vibration_measured=args.vibration_measured,
     )
     v = evaluate(setup)
 
@@ -68,7 +72,8 @@ def cmd_check(args: argparse.Namespace) -> int:
     )
     print(
         f"feasibility: {v.feasibility}   evidence: {v.evidence}   "
-        f"confidence: {v.confidence}   advances: {'YES' if v.advances else 'NO'}"
+        f"confidence: {v.confidence}   "
+        "advances: n/a (reporting section -- neither advances nor blocks)"
     )
     if v.assumed_inputs:
         print("assumed:")
@@ -76,11 +81,12 @@ def cmd_check(args: argparse.Namespace) -> int:
             print(f"  - {a}")
     print("=" * 72)
 
-    if v.margins:
-        print("\n  margins (achieved / required; 1.0 = exactly at the limit)")
-        for code, m in sorted(v.margins.items(), key=lambda kv: kv[1]):
-            bar = "#" * min(int(m * 10), 30)
-            print(f"    {m:6.2f}  {code:30s} {bar}")
+    # DELIBERATELY NO MARGINS BLOCK, as in photo/cli.py. Nothing here is
+    # graded, so every entry would be MAX_MARGIN with a full bar -- which reads
+    # as "lots of headroom" from a section that measured no limit at all, and
+    # on this lens in particular that would read as "the run is stable". The
+    # numbers are in `metrics`; the words are in `findings`, and every check
+    # reaches it because no check returns severity "ok".
 
     if v.findings:
         print("\n  findings")
@@ -93,14 +99,14 @@ def cmd_check(args: argparse.Namespace) -> int:
             if f.action:
                 print(f"        -> {f.action}")
     print()
-    return 0 if v.advances or v.status == "PASS" else 1
+    return 0 if v.status == "REPORT" else 1
 
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="stability", description=__doc__)
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    c = sub.add_parser("check", help="run the committee-lens gate (G31-G32)")
+    c = sub.add_parser("check", help="report on settling, evaporation and the drift budget")
     c.add_argument("--duration-min", type=float, required=True, help="acquisition length")
     c.add_argument("--objective", default=None, help="key from data/objectives.yaml, for the DOF")
     c.add_argument("--emission-nm", type=float, default=None)
@@ -117,7 +123,6 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--sealed", action="store_true", help="chamber is sealed")
     c.add_argument("--evaporation-ul-per-hour", type=float, default=None)
     c.add_argument("--sample-volume-ul", type=float, default=None)
-    c.add_argument("--vibration-measured", action="store_true")
     c.set_defaults(func=cmd_check)
 
     args = p.parse_args(argv)

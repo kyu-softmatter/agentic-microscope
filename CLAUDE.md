@@ -185,6 +185,13 @@ the disk's write bandwidth (G12a). And underneath all of it, **`unevaluated` ≠
 - **E4 · A conditional lens that was not convened leaves a hole, not a pass.**
   Lens 8 under ~30 min and lens 7 with no trap are absent; their row in lens 6's
   bias ledger is `unevaluated`.
+  ⚠ **Lens 8's row is now `unevaluated` even when it runs** (2026-09-10). It
+  became a reporting section — every check INFO, `status: REPORT`,
+  `advances: None` — so it emits no `bias` code for G23 to collect, and its
+  drift and evaporation notes sit in `assumed_inputs`, which lens 6's
+  single-quantity path does not read. The drift bias reaches a human reader and
+  no gate. **Open, and lens 6's to close**
+  → [`2026-09-10-lens-8-becomes-a-reporting-section.md`](kb/decisions/2026-09-10-lens-8-becomes-a-reporting-section.md).
 - **E5 · Lenses 2 and 3 are convened together whenever frame rate is in play.**
   Lens 3 does not own the rate, and its arithmetic is only as good as the rate
   handed to it. A *requested* rate is not evidence — G12b.
@@ -241,6 +248,16 @@ the disk's write bandwidth (G12a). And underneath all of it, **`unevaluated` ≠
   becomes a wrong one. A margin of 10.00 against a threshold nobody supplied
   still does not advance.
 - **Lens 6 (`validity/`) reviews the other lenses' verdicts, so call it last.**
+- **Two of the eight lenses judge nothing.** Lens 5 and lens 8 both became
+  reporting sections on 2026-09-10 — every check INFO, `LIMITS` empty,
+  `status: REPORT`, `feasibility: "N/A"`, `advances: None`. The reasons do not
+  transfer and should not be merged: lens 5's gates needed per-dye constants
+  that are empty for every proprietary bead colourant here (a missing input),
+  while lens 8's inputs arrive **during** the run (drift, PFS state, an
+  evaporation rate) or belong to another lens (free settling → lens 4's G19) —
+  a timing and ownership problem. **A lens whose numbers merely happen to be
+  absent is `BLOCKED`, which is different and recoverable.**
+  `tests/test_advances_rule.py` holds both to the opposite of the advances rule.
 - **Lens 5 computes as of 2026-09-09**, for the first time. Power and
   illuminated area both exist
   ([`kb/calibrations/illumination-power.yaml`](kb/calibrations/illumination-power.yaml)),

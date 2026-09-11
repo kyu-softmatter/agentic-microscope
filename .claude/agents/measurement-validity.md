@@ -155,13 +155,21 @@ you hit it, say so and leave the design decision to the human.
 
 1. **Lens 8 is invisible to `validity/`.** The string `stability` does not
    appear anywhere in that package. `STANDING_LENSES` omits it — correctly, as
-   Lens 8 is conditional — but `stability/` implements G31–G32 and **both are
-   `kind: bias`** (`stability.sedimentation`, `stability.evaporation`).
-   `gate.evaluate` picks those up if the caller puts a `"stability"` key in
-   `upstream`, yet `validity/cli.py` rejects the name as unknown. So for any
-   acquisition over 30 minutes, **make sure Lens 8's verdict is actually handed
-   in** — from `stability.gate.evaluate`, or from the `mechanical-env` agent,
-   which is Lens 8's qualitative half. Via the CLI it cannot be.
+   Lens 8 is conditional — and as of 2026-09-10 it **became a reporting
+   section** (every check INFO, `status: REPORT`, `advances: None`), so it
+   emits **no `bias` code at all** and G23's ledger gets nothing from it.
+   Its drift and evaporation knowledge lives in `assumed_inputs`, and
+   `_evaluate_one` does not read upstream `assumed_inputs` either — only the
+   multi-quantity aggregation unions them, and that is across *your own*
+   per-quantity verdicts.
+
+   **So for a long acquisition, lens 8's biases reach a human and no gate, and
+   closing that is yours.** Read `stability.gate.evaluate`'s findings (or the
+   `mechanical-env` agent's) and carry the drift and evaporation biases into C5
+   by hand. Two of them are standing: the drift entry is **unconditional** —
+   no planning input retires it — and evaporation's survives any unsealed
+   chamber without a weighed rate. `validity/cli.py` rejects `"stability"` as
+   an upstream name, so via the CLI none of this arrives at all.
 2. **G24 is a boolean, not a provenance check.** `pixel_size_measured=True` says
    a measured value exists somewhere; it does not say this data was acquired with
    it. That question is C2, and it is yours.
@@ -359,9 +367,9 @@ prints the live tables.
 | Photobleaching (G10) | 5 photo | `perturbation.photobleaching` | intensity-decay correction | `FAIL` for time-series intensity quantification |
 | ~~Excited-state saturation (G20)~~ | — | — | **GATE REMOVED 2026-09-09** (`kb/decisions/2026-09-09-g20-saturation-removed.md`). Nothing emits `perturbation.saturation`, so this row can never appear | Do not expect it, and do not record it as `cleared`. Lens 1's and Lens 2's linearity assumption is now **unguarded** — say so when the path is confocal or spinning-disk, where the scale argument that excuses it for widefield does not hold |
 | Light-driving (G21/D2) | 5 photo | `perturbation.light_driving` | **none** | the measurement target itself has moved → `FAIL` |
-| ~~Lateral drift (G30)~~ | — | — | **GATE REMOVED 2026-09-10** with G29 and G28 (`kb/decisions/2026-09-10-drift-is-not-a-design-element.md`): a drift rate is measured *during* a run, so it is not a design input. Nothing emits `stability.lateral_drift`, so **this row can never appear** | Do not expect it and do not record it as `cleared`. The bias did not go anywhere — lens 8 now carries an **unconditional** drift entry in `assumed_inputs`, so its `evidence` is permanently `assumed` and it never `advances`. Read that as the drift bias, uncorrected, and say so. Drift correction from a coverslip-stuck fiducial is still the remedy; it is applied after the run, not planned |
-| Sedimentation (G31) | 8 stability | `stability.sedimentation` | re-characterise the population at the end, or density-match | `FAIL` for any ensemble average — the end population is not the start population |
-| Evaporation (G32) | 8 stability | `stability.evaporation` | **none** | `FAIL` for concentration / viscosity over time |
+| ~~Lateral drift (G30)~~ | — | — | **GATE REMOVED 2026-09-10** with G29 and G28 (`kb/decisions/2026-09-10-drift-is-not-a-design-element.md`): a drift rate is measured *during* a run, so it is not a design input. Nothing emits `stability.lateral_drift`, so **this row can never appear** | Do not expect it and do not record it as `cleared`. The bias did not go anywhere — lens 8 carries an **unconditional** drift entry in `assumed_inputs`, which pins its `evidence` to `assumed` forever. ⚠ That entry **no longer blocks anything**: lens 8 became a reporting section the same day, so its `advances` is `None` and there is no gate left to stop on drift. **You are the only one who can.** Drift correction from a coverslip-stuck fiducial is still the remedy; it is applied after the run, not planned |
+| ~~Sedimentation (G31)~~ | — | — | **BECAME A REPORT 2026-09-10**: a trapped bead does not settle, and the free-settling case is lens 4's G19. G31 now reports the settling velocity and the time to reach the floor | Read it as lens 4's input, not as a bias of its own: G19 *assumes* the settled state, and G31 says when it arrives. Where the run is shorter than that, G19's premise does not hold and **that** is the finding |
+| ~~Evaporation (G32)~~ | — | — | **BECAME A REPORT 2026-09-10** with G31, when lens 8 stopped judging (`kb/decisions/2026-09-10-lens-8-becomes-a-reporting-section.md`): sealing is declarable but an evaporation rate is not, and the gate's 0.5 stand-in margin was a number invented to mean "not quantified". Nothing emits `stability.evaporation` as a bias | The bias is unchanged and still has **no** post-hoc correction. It now arrives as lens 8's INFO finding and its `assumed_inputs` — which **this lens does not read on the single-quantity path** — so for any unsealed run over ~30 min, read lens 8's report yourself and carry the bias here. `FAIL` for concentration / viscosity over time |
 | Label perturbation (D3) | 5 photo (scope tension) | *no gate* | **none** short of changing the sample | the measurement target itself has changed → `FAIL` |
 
 **Two rules.**

@@ -111,6 +111,13 @@ EXPECTED_CHECKS: dict[str, tuple[tuple[str, str], ...]] = {
         ("post_processing", "hard"),
         ("statistical_power", "soft"),
     ),
+    # A REPORTING SECTION SINCE 2026-09-10, like photo above: every check INFO.
+    # G31 and G32 became reports (a trapped bead does not settle, and the free
+    # case is lens 4's G19; sealing is declarable but an evaporation rate is
+    # not), and `vibration` was deleted outright -- every part of the
+    # microscope sits on one isolation table, so camera and sample move
+    # together and an image shows only their relative motion.
+    # kb/decisions/2026-09-10-lens-8-becomes-a-reporting-section.md
     "stability": (
         ("convening", "info"),
         # THREE GATES LEFT THIS LENS ON 2026-09-10, all to the hardware /
@@ -119,13 +126,12 @@ EXPECTED_CHECKS: dict[str, tuple[tuple[str, str], ...]] = {
         # reading the right one at the wrong time -- a drift rate is measured
         # during a run, so it is not an input to a design.
         # kb/decisions/2026-09-10-drift-is-not-a-design-element.md
-        ("sedimentation", "bias"),
-        ("evaporation", "bias"),
+        ("sedimentation", "info"),
+        ("evaporation", "info"),
         # Replaced the two drift gates: reports the rate the run can absorb
         # (duration and DOF are both planning inputs) instead of gating on a
         # rate nobody can supply in advance. INFO, and unnumbered.
         ("drift_budget", "info"),
-        ("vibration", "info"),
     ),
     "trapping": (
         ("effective_na", "info"),
@@ -196,14 +202,15 @@ EXPECTED_LIMITS: dict[str, dict] = {
     # constant of its own. An entry appearing here is a new standing number.
     "photo": {},
     "validity": {"linearity_breaking_filters": ("despeckle",)},
-    # `axial_drift_dof_fraction` (0.5) went with G29 on 2026-09-10.
-    # `stability.drift_budget` replaced it and deliberately carries NO
-    # threshold: it quotes the rate for one full DOF, which is a definition,
-    # and halves it on the same line so a reader can pick their own fraction.
-    "stability": {
-        "evaporated_fraction_max": 0.05,
-        "settling_dof_fraction": 1.0,
-    },
+    # Empty since lens 8 became a reporting section on 2026-09-10 -- the
+    # second lens to have no constant of its own, for a different reason than
+    # photo's. `axial_drift_dof_fraction` (0.5) went with G29;
+    # `settling_dof_fraction` (1.0) had nothing left to compare once G31
+    # reported a velocity instead of a distance; `evaporated_fraction_max`
+    # (0.05) was a threshold on a quantity the plan cannot supply.
+    # `drift_budget` deliberately carries none: one full DOF is a definition,
+    # and the half is printed beside it so a reader picks their own fraction.
+    "stability": {},
 }
 
 
@@ -254,7 +261,8 @@ UNNUMBERED_CHECKS: dict[str, tuple[str, ...]] = {
     "photo": ("light_driving", "total_dose", "trap_heating"),
     # `drift_budget` is unnumbered on purpose: it reports, it cannot fail, and
     # a number would advertise it as a gate. G29/G30 are vacant, not reused.
-    "stability": ("convening", "vibration", "drift_budget"),
+    # `vibration` was deleted outright on 2026-09-10 and left this list.
+    "stability": ("convening", "drift_budget"),
     # confinement gained G14a on 2026-09-10 and is no longer here.
     "trapping": ("effective_na", "power_window"),
 }

@@ -578,8 +578,8 @@ All decided in code. If even one fails, the proposal is void.
 | ~~G28~~ | *vacant* — PFS lock, **moved to the hardware execution stage 2026-09-10**. It read `PFS in Range` as the servo state, and that property reports the coverslip; `hardware/focus.py` asks MMCore's autofocus API instead. Number not reused | — | — |
 | ~~G29~~ | *vacant* — axial drift, **moved to the hardware execution stage 2026-09-10**, with G30. A drift rate is measured while a run happens, so it is not an input to a design: *"실험 중 측정해야한다면 디자인 요소로는 적합하지 않은듯"* (KH). Number not reused | — | — |
 | ~~G30~~ | *vacant* — lateral drift, same move, same day, same reason. Both rates **are** obtainable here (`config/session/focus_monitor.py` for axial; the coverslip-stuck beads in `data/particles.yaml` as lateral fiducials) — obtainable *from the acquisition*, which is the wrong timing for a gate on a proposal. `compute.drops` is the precedent. Number not reused | — | — |
-| G31 | Sedimentation | settling `≤` depth of field | radius, Δρ, viscosity | warns |
-| G32 | Evaporation | `≤ 5%` of volume lost | sealed, or a measured rate | warns unquantified |
+| G31 | Sedimentation | **reports only** — velocity, and the time to reach the floor | radius, Δρ, viscosity, chamber height | INFO |
+| G32 | Evaporation | **reports only** — evaporated fraction and concentration factor | sealed, or a measured rate | INFO |
 
 G15–G19 are lens 4's, G23–G27 lens 6's, G31–G32 lens 8's; **lens 5 has no gate
 numbers at all** since 2026-09-10 — it is a reporting section. The
@@ -634,7 +634,7 @@ next step, but the action differs: FAIL means change the setting, BLOCKED means
 | §5 dose · light-driving | `photo.gate.evaluate` | ✅ covered by tests, but **not gates**: G20 went 2026-09-09, G21 and G22 on 2026-09-10 when lens 5 became a reporting section |
 | §7 statistical power (G11) | `validity.gate.evaluate` | ✅ covered by tests (2026-08-12) |
 | bias ledger · calibrations · post-processing (G23–G27) | `validity.gate.evaluate` | ✅ covered by tests (2026-08-12); bias scoping + correction registry + per-quantity verdicts added 2026-08-20 |
-| settling · evaporation (G31–G32) | `stability.gate.evaluate` | ✅ covered by tests (2026-08-12) — **G28, G29 and G30 all moved to the hardware execution stage 2026-09-10**, leaving the two gates a plan can actually answer. `stability.drift_budget` (INFO, unnumbered) reports the drift rate the run can absorb, and the lens's `evidence` is permanently `assumed` because of it |
+| settling · evaporation (G31–G32) | `stability.gate.evaluate` | ✅ covered by tests (2026-08-12) — but **lens 8 became a reporting section on 2026-09-10** and grades nothing: G28/G29/G30 moved to the hardware execution stage, G31/G32 became INFO reports, `vibration` was deleted. `status: REPORT`, `advances: None`. `stability.drift_budget` (INFO, unnumbered) reports the drift rate the run can absorb |
 | §8 compute resources (G12, G13) | `compute.gate.evaluate` | ✅ covered by tests (2026-08-11) |
 | §9 tweezers (G14) | `trapping.gate.evaluate` (corner frequency → required fps) | ✅ covered by tests |
 | sample geometry (G15–G19) | `sample.gate.evaluate` (RI mismatch, WD, coverslip, overlap) | ✅ covered by tests (2026-08-12) |

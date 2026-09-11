@@ -1,8 +1,15 @@
 """Lens 8 -- mechanical and environmental (conditional, long acquisitions).
 
-Owns sedimentation and evaporation -- what the sample does to itself over
-time. Drift, PFS lock state, vibration and stage repeatability are lens 8's
-subject matter too, but none of them is GATED here; see below.
+**A REPORTING SECTION, NOT A JUDGING LENS, SINCE 2026-09-10** -- the second
+one, after lens 5 the same day. Every check is INFO, `LIMITS` is empty,
+`evaluate` returns `status: REPORT` with `feasibility: "N/A"` and
+`advances: None`. Nothing here can pass or fail.
+
+Reports what the sample and the plan settle between them: the settling velocity
+and the time until the suspension is over, the evaporative concentration if a
+rate exists, and the drift rate the run could absorb. Drift, PFS lock state and
+stage repeatability are lens 8's subject matter too but are judged elsewhere;
+vibration is judged nowhere, on purpose. See below.
 docs/05-consensus-gate.md "Lens 8"; docs/06-pitfalls.md D7.
 
     from optics.components import find_objective
@@ -15,7 +22,8 @@ docs/05-consensus-gate.md "Lens 8"; docs/06-pitfalls.md D7.
         viscosity_pa_s=1.0e-3,
     ))
 
-Gates: G31 sedimentation, G32 evaporation. G28, G29 and G30 were here and are
+Gate numbers: G31 (sedimentation) and G32 (evaporation) still name the two
+reports, though neither grades any more. G28, G29 and G30 were here and are
 vacant -- see below.
 
 Conditional on acquisitions longer than 30 min (docs/01 §4). That threshold is
@@ -27,10 +35,19 @@ What it can and cannot do, honestly:
 - **G28 (PFS lock) is gone**, to the hardware execution stage (2026-09-10).
   It read `PFS in Range` as the servo state and that property reports the
   coverslip; `hardware/focus.py` asks MMCore's autofocus API instead.
-- **G31 works today** because Stokes settling follows from particle radius,
-  density contrast and viscosity -- sample properties, not instrument
-  measurements. It bites hard: a 1 um polystyrene sphere in water settles about
-  49 um in 30 minutes, against a 0.375 um depth of field on the 100x oil.
+- **G31 reports a velocity and a clock, and no longer a verdict.** It used to
+  compare a whole run's settling against the depth of field, which called every
+  real bead INFEASIBLE -- 5 um polystyrene in water moves 41 um/min against
+  0.375 um -- including the experiments that work, because **a trapped bead
+  does not settle** (axial sag is buoyant weight over kappa_z, ~32 nm at
+  1 pN/um) and this lens has no `trapped` field to tell the two apart. The
+  free-settling case is lens 4's G19, which *assumes* the settled state; what
+  this reports is when that state arrives. 100 um chamber, 5 um bead: 2.4 min.
+- **G32 reports because sealing is declarable and a rate is not.** A sealed
+  chamber settles the question outright. Unsealed without a weighed rate, the
+  old gate returned a stand-in margin of 0.5 -- a number invented to mean "not
+  quantified", which graded HARD and blocked `advances` on an acquisition
+  nobody had measured anything about.
 - **G29 and G30 are gone**, to the same place, on the same day, for a reason
   that generalises G28's: *"if it has to be measured during the experiment, it
   is not suitable as a design element"* (KH). Both rates are obtainable on this
@@ -48,8 +65,16 @@ What it can and cannot do, honestly:
   unconditional, so this lens cannot report `evidence: measured` and a long
   acquisition does not `advance` on lens 8 alone. Deliberate: the dominant
   bias on a long run is not discharged by planning it well.
-- **Vibration and stage repeatability are ungated**, and the lens says so
-  rather than passing quietly. There is no measurement channel for either.
+- **Vibration is not here at all, and not because nobody built the channel.**
+  The check that reported its own absence was deleted on 2026-09-10: **every
+  part of this microscope sits on the same isolation table, so the camera and
+  the sample move together.** An image shows their RELATIVE motion, and
+  common-mode motion of a rigid assembly cancels out of it -- a stuck-bead PSD
+  in the acquisition would not supply it either. Contrast drift, which is
+  differential expansion in the path between objective and holder and therefore
+  does show up; that asymmetry is why `drift_budget` survives and vibration
+  does not.
+- **Stage repeatability is still ungated** and has no check at all.
 """
 
 from __future__ import annotations

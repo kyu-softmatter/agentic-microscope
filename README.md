@@ -115,7 +115,7 @@ design, not a gap.
 | | |
 |---|---|
 | **8 review lenses** | optics · detection · compute resources · sample geometry · photo-perturbation · measurement validity · optical tweezers · mechanical & environmental |
-| **24 deterministic gates** | G1–G32 less the vacant `G10`, `G18`, `G20`, `G21`, `G22`, `G28`, `G29` and `G30`, each classified `hard` / `bias` / `soft` by what its failure costs. **21 are implemented** — `G2`–`G4` carry a threshold and a default verdict in [04](docs/04-decision-engine.md) and appear in no Python file; `G10` and `G20` went on 2026-09-09, `G18`, `G21` and `G22` on 2026-09-10 — the last two when **lens 5 became a reporting section rather than a judging lens**; `G28`, `G29` and `G30` moved to the hardware execution stage on 2026-09-10, the last two because a drift rate is measured *during* a run and so is not a design input; none of the eight numbers is reused → [below](#two-more-axes-and-the-questions-neither-working-repo-asks) → [05 §2](docs/05-consensus-gate.md) |
+| **24 deterministic gates** | G1–G32 less the vacant `G10`, `G18`, `G20`, `G21`, `G22`, `G28`, `G29` and `G30`, each classified `hard` / `bias` / `soft` by what its failure costs. **21 are implemented** — `G2`–`G4` carry a threshold and a default verdict in [04](docs/04-decision-engine.md) and appear in no Python file; `G10` and `G20` went on 2026-09-09, `G18`, `G21` and `G22` on 2026-09-10 — the last two when **lens 5 became a reporting section rather than a judging lens**; `G28`, `G29` and `G30` moved to the hardware execution stage on 2026-09-10, the last two because a drift rate is measured *during* a run and so is not a design input; none of the eight numbers is reused. **Two of the 21 grade nothing**: `G31` and `G32` became INFO reports the same day, when **lens 8 became the second reporting section** — so `hard` / `bias` / `soft` describes 19 gates and 6 of the 8 lenses → [below](#two-more-axes-and-the-questions-neither-working-repo-asks) → [05 §2](docs/05-consensus-gate.md) |
 | **Provenance on every input** | `measured` vs `assumed`, with a separate `advances` axis that only `measured` can satisfy. Literature values compute but never advance → [`kb/literature/`](kb/literature/) |
 | **2,343 prior acquisitions** | normalized out of Micro-Manager metadata into transferable physical quantities, across two schema generations |
 | **1,225 tests, 1,162 on CI** | offline; the instrument is not required to run any of them. The badge covers 1,162 — of the rest, 56 need a Micro-Manager device-adapter install and 7 need `opencv-python`, and `PYTEST_CI_EMULATE=ci` reproduces the runner's environment here → [running the tests](#running-the-tests) |
@@ -368,7 +368,7 @@ evidence back into it. `R` marks a read, `W` marks a write.
   +---------------------------------+---------------------------------+
                                     v
   +-------------------------------------------------------------------+
-  |  COMMITTEE          8 lenses . 24 gates (7 judging lenses)      |
+  |  COMMITTEE          8 lenses . 24 gates (6 judging lenses)      |
   |                                                                   |
   |    1 optics/     2 detection/    3 compute/     4 sample/         |
   |    5 photo/      6 validity/     7 trapping/    8 stability/      |
@@ -500,7 +500,7 @@ Lens-by-lens implementation status is in the **Code** table below.
 ## Current status
 
 **Design complete; all eight committee lenses are implemented.** Nine design
-documents, 24 gates (G1–G32 less G10, G18, G20, G21, G22, G28, G29, G30), 1,239 tests passing. The badge above reports
+documents, 24 gates (G1–G32 less G10, G18, G20, G21, G22, G28, G29, G30), 1,230 tests passing. The badge above reports
 1,162 of them — 56 need a Micro-Manager device-adapter install and run in a
 separate workflow, and 7 need `opencv-python`, which is stated at the top of each file in
 [`.github/workflows/`](.github/workflows/) and again under [running the

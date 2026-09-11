@@ -48,10 +48,16 @@ class StabilitySetup:
     evaporation_rate_ul_per_hour: float | None = None
     sample_volume_ul: float | None = None
 
-    # -- vibration (not implemented) ---------------------------------------
-    #: True if a vibration spectrum was actually measured. There is no
-    #: measurement channel for this, so the check only reports its absence.
-    vibration_measured: bool = False
+    # -- vibration: NO FIELD, AND NO CHECK ---------------------------------
+    # `vibration_measured` stood here and fed an INFO check that reported the
+    # absence of a measurement channel. Removed 2026-09-10 (KH), on a physical
+    # argument rather than a scheduling one: **every part of this microscope
+    # sits on the same vibration-isolation table, so the camera and the sample
+    # move together.** What an image can show is their RELATIVE motion, and
+    # common-mode motion of a rigid assembly cancels out of it -- so there is
+    # no channel to measure, not merely an unbuilt one, and a stuck-bead PSD in
+    # the acquisition would not supply it either.
+    # kb/decisions/2026-09-10-drift-is-not-a-design-element.md
 
     # -- derived -----------------------------------------------------------
 

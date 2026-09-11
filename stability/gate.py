@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 
-from .checks import BIAS, CHECKS, GRADE_NOTES, HARD, INFO, SOFT, CheckResult, available_facts, grade, meets_grade
+from .checks import BIAS, CHECKS, GRADE_NOTES, HARD, INFO, SOFT, CheckResult, available_facts
 from .setup import StabilitySetup
 
 LENS = "stability"
@@ -40,7 +40,12 @@ class Finding:
 
 @dataclass
 class Verdict:
-    status: str  # PASS | PASS_WITH_CHANGES | FAIL | BLOCKED
+    #: REPORT | BLOCKED. A reporting section, not a judging lens, since
+    #: 2026-09-10 -- every check here is INFO, so PASS / PASS_WITH_CHANGES /
+    #: FAIL are gone: nothing in this lens can pass or fail. BLOCKED survives
+    #: because a report still cannot be written without its inputs. Same shape
+    #: as lens 5 took on the same day, and for a related reason.
+    status: str
     feasibility: str = "UNKNOWN"  # ROUTINE .. INFEASIBLE
     evidence: str = "assumed"  # measured | assumed
     confidence: str = "low"
@@ -52,23 +57,29 @@ class Verdict:
 
     @property
     def passed(self) -> bool:
-        return self.status in {"PASS", "PASS_WITH_CHANGES"}
+        """A report is written or it is not; it does not pass."""
+        return self.status == "REPORT"
 
     @property
-    def advances(self) -> bool:
-        """The committee's criterion, from docs/05's Verdict schema:
-        ``feasibility >= TIGHT and evidence == measured and no hard gate < 1.0``.
+    def advances(self) -> None:
+        """**Not applicable.** ``None``, not ``False``.
 
-        The hard-gate clause is already covered by ``passed``: a hard gate below
-        1.0 makes the status FAIL. The feasibility clause was missing until
-        2026-08-12, which let an INFEASIBLE verdict whose only failures were
-        bias-kind report ``advances=True``.
+        A judging lens advances or refuses to. This section does neither: with
+        every check INFO it cannot block a proposal and it cannot bless one, so
+        ``False`` would read as a refusal and ``True`` would claim an
+        endorsement it has no gate to base on. Lens 5 took the same shape on
+        the same day.
+
+        ⚠ **This is what the unconditional drift entry in ``assumed_inputs``
+        cost.** While this lens still graded, that entry pinned ``evidence`` to
+        ``assumed`` and so pinned ``advances`` to ``False`` -- drift blocked a
+        long acquisition from advancing on lens 8 alone. It no longer blocks
+        anything, because a reporting section has nothing to block with. The
+        entry stays and ``evidence`` is still reported, so a reader can see the
+        bias is uncorrected; nothing in the code stops on it. Lens 6 is the
+        only place left that can.
         """
-        return (
-            self.passed
-            and self.evidence == "measured"
-            and meets_grade(self.feasibility)
-        )
+        return None
 
     def to_dict(self) -> dict:
         return {
@@ -76,7 +87,10 @@ class Verdict:
             "status": self.status,
             "feasibility": self.feasibility,
             "feasibility_note": GRADE_NOTES.get(self.feasibility, ""),
+            #: None -- see Verdict.advances. Consumers must not read this as
+            #: False; a reporting section neither advances nor refuses.
             "advances": self.advances,
+            "reporting_only": True,
             "evidence": self.evidence,
             "confidence": self.confidence,
             "bottleneck": self.bottleneck,
@@ -107,33 +121,16 @@ def _missing_inputs(setup: StabilitySetup) -> list[Finding]:
             )
         )
 
-    if setup.resolved_dof_um is None:
-        out.append(
-            Finding(
-                "fail",
-                "missing.depth_of_field",
-                "No depth of field available, so there is nothing to judge "
-                "axial drift or settling against. It comes from the objective "
-                "(lens 1) plus an emission wavelength.",
-                action="Supply the objective and emission_nm, or "
-                "depth_of_field_um directly.",
-            )
-        )
-
-    if setup.settling_velocity_um_per_s is None:
-        out.append(
-            Finding(
-                "fail",
-                "missing.settling_inputs",
-                "Cannot compute sedimentation: it needs particle radius, the "
-                "particle-minus-medium density difference, and the medium "
-                "viscosity. Unlike the drift terms these are properties of the "
-                "sample, not measurements of the instrument.",
-                action="Supply particle_radius_um, delta_density_kg_m3 (0 for a "
-                "density-matched suspension) and viscosity_pa_s.",
-            )
-        )
-
+    # NOTHING ELSE BLOCKS, AND THAT IS THE POINT OF THE 2026-09-10 REVIEW.
+    # `missing.depth_of_field` and `missing.settling_inputs` stood here and
+    # made Phase 0 all-or-nothing: one absent number returned BLOCKED with
+    # empty `margins` and empty `metrics`, so a missing density contrast took
+    # down the evaporation report too, and a missing drift rate -- the standing
+    # state of the repository -- took down everything. Each check now reports
+    # its own absent input and says where it comes from, which is strictly more
+    # information than a blanket refusal. Duration survives because it is the
+    # one input every quantity here is a rate against, and because the
+    # convening decision (docs/01 §4) is a comparison to it.
     return out
 
 
@@ -150,11 +147,6 @@ def _assumed_inputs(setup: StabilitySetup) -> list[str]:
         "drift, axial and lateral (not gated here -- measured from the "
         "acquisition, not from the plan; see stability.drift_budget)"
     )
-    if not setup.vibration_measured:
-        out.append(
-            "vibration and stage repeatability (unmeasured and ungated -- no "
-            "measurement channel exists)"
-        )
     if not setup.chamber_sealed and setup.evaporation_rate_ul_per_hour is None:
         out.append("evaporation rate (chamber unsealed and rate unmeasured)")
     return sorted(set(out))
@@ -202,13 +194,19 @@ def evaluate(setup: StabilitySetup) -> Verdict:
     # ---- Phase 1 -- every check runs -------------------------------------
     results: list[CheckResult] = [c.run(setup) for c in CHECKS]
 
-    # ---- Phase 2 -- aggregate --------------------------------------------
-    hard_failed = [r for r in results if r.kind == HARD and r.margin < 1.0]
+    # ---- Phase 2 -- collate ----------------------------------------------
+    # Nothing here is gradeable, by construction: every check is INFO since
+    # 2026-09-10. So there is no worst margin, no bottleneck and no
+    # feasibility -- and "UNKNOWN" would be wrong in the way that matters,
+    # because UNKNOWN is what an ungraded JUDGEMENT looks like. This is not an
+    # ungraded judgement; it is a report. Lens 5 asserts the same invariant.
     gradeable = [r for r in results if r.kind in (HARD, SOFT, BIAS)]
-    worst = min(gradeable, key=lambda r: r.margin) if gradeable else None
-
-    feasibility = grade(worst.margin) if worst else "UNKNOWN"
-    bottleneck = worst.code if worst else None
+    assert not gradeable, (
+        "stability/ is a reporting section: every check must be INFO. "
+        f"Gradeable: {[r.code for r in gradeable]}"
+    )
+    feasibility = "N/A"
+    bottleneck = None
 
     findings = [
         Finding(
@@ -229,23 +227,18 @@ def evaluate(setup: StabilitySetup) -> Verdict:
             Finding(
                 "info",
                 "evidence.assumed",
-                "This verdict used assumed values for: " + ", ".join(assumed) + ".",
-                action="Measure an evaporation rate and seal the chamber if "
-                "you can. The drift entry cannot be retired at planning time "
-                "by design -- judge it from the acquisition's own frames.",
+                "This report rests on assumed values for: "
+                + ", ".join(assumed)
+                + ".",
+                action="The drift entry cannot be retired at planning time by "
+                "design -- judge it from the acquisition's own frames. Any "
+                "others listed above can be: seal the chamber, or weigh a rate.",
                 kind=INFO,
             )
         )
 
-    if hard_failed:
-        status = "FAIL"
-    elif any(f.severity in {"fail", "warn"} for f in findings):
-        status = "PASS_WITH_CHANGES"
-    else:
-        status = "PASS"
-
     return Verdict(
-        status=status,
+        status="REPORT",
         feasibility=feasibility,
         evidence=evidence,
         confidence="high" if evidence == "measured" else "low",

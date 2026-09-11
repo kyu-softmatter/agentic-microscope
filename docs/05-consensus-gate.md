@@ -549,12 +549,20 @@ this instrument, and G8's action text says so explicitly.
   → [`kb/decisions/2026-08-19-lens-7-scope.md`](../kb/decisions/2026-08-19-lens-7-scope.md)
 - **Implementation**: `trapping/gate.py`
 
-### Lens 8 · Mechanical & environmental (conditional, >30 min) — implemented
+### Lens 8 · Mechanical & environmental (conditional, >30 min) — **reporting section**
 
+- **⚠ NOT A JUDGING LENS AS OF 2026-09-10** — the second reporting section,
+  after lens 5 the same day. Every check is INFO, `LIMITS` is empty, and
+  `stability.gate.evaluate` returns `status: REPORT`, `feasibility: "N/A"`,
+  `advances: None`. **Nothing in lens 8 can pass or fail**, so it cannot stop a
+  proposal and cannot bless one
+  → [`kb/decisions/2026-09-10-lens-8-becomes-a-reporting-section.md`](../kb/decisions/2026-09-10-lens-8-becomes-a-reporting-section.md)
 - **Owns**: drift (thermal, mechanical), PFS lock state, evaporation,
-  sedimentation, vibration, stage repeatability — but **gates only the last
-  two of those it can judge before the run starts**
-- **Gates**: G31 (sedimentation) G32 (evaporation)
+  sedimentation, vibration, stage repeatability — and **reports on two of
+  them**
+- **Reports** (numbers kept, grading gone): G31 (settling velocity and the time
+  to equilibrium) G32 (evaporative concentration) plus `drift_budget` (the
+  drift rate the run could absorb) and `convening`
 - **⚠ THREE GATES LEFT THIS LENS ON 2026-09-10** and none of the numbers is
   reused: G28 (PFS lock), G29 (axial drift), G30 (lateral drift). G28 was
   reading the wrong property — `kb/decisions/2026-09-10-g28-moves-to-the-hardware-stage.md`.
@@ -587,19 +595,29 @@ this instrument, and G8's action text says so explicitly.
   measurement**: it is a state check on metadata that already exists, and an
   unrecorded range flag is itself a failure, because the on state alone cannot
   tell a held focus from a wandered one (docs/06 D7)
-- **G31 is the gate that works entirely from the sample.** Stokes settling follows from
-  particle radius, density contrast and viscosity — sample properties, not
-  instrument measurements. It bites hard: a 1 µm polystyrene sphere in water
-  settles ~98 µm in an hour against a 0.375 µm depth of field on the 100x oil,
-  so the population in the focal plane at the end is not the one that started
-  there. Density-matching removes the term entirely
-- **⚠ No hard-kind check remains in this lens.** Both HARD gates (G28, G29)
-  left on 2026-09-10, so **lens 8 cannot return FAIL on its own** — G31 and G32
-  are `bias` and cap out at PASS_WITH_CHANGES while dragging `feasibility` down.
-  A verdict here reading PASS_WITH_CHANGES · INFEASIBLE is not a contradiction
-- **⚠ Vibration and stage repeatability are ungated**, and the lens says so
-  rather than passing quietly — there is no measurement channel for either. A
-  quiet pass on that line is an absence of evidence, not evidence of stability
+- **G31 reports a velocity and a clock.** Stokes settling follows from particle
+  radius, density contrast and viscosity — sample properties, not instrument
+  measurements — and 5 µm polystyrene in water moves **41 µm/min**, reaching the
+  bottom of a 100 µm chamber in **2.4 min**. It stopped comparing that to the
+  depth of field on 2026-09-10, for two reasons: **a trapped bead does not
+  settle** (axial sag is buoyant weight over κ_z, ~32 nm at 1 pN/µm, and this
+  lens has no `trapped` field), and the free-settling case is **lens 4's G19**,
+  which assumes the settled state this now reports the arrival time of.
+  Density-matching removes the term entirely
+- **⚠ Lens 8 contributes nothing to lens 6's bias ledger.** G23 collects
+  `bias`-kind findings and lens 8 has none left. Its drift and evaporation
+  notes live in `assumed_inputs`, and lens 6's single-quantity path does not
+  read upstream `assumed_inputs` — only the multi-quantity aggregation unions
+  them, and that is across lens 6's own verdicts. **So the drift bias currently
+  reaches a human reader and no gate.** Open, and lens 6's to close
+- **⚠ Vibration is gone from the lens entirely**, and not for want of a
+  measurement channel: **every part of this microscope sits on the same
+  isolation table, so the camera and the sample move together.** An image shows
+  their *relative* motion and common-mode motion of a rigid assembly cancels
+  out of it, so a stuck-bead PSD in the acquisition would not supply it either.
+  Contrast drift — differential expansion in the path between objective and
+  holder, which does not cancel — and that asymmetry is why `drift_budget`
+  survives. **Stage repeatability remains ungated and has no check at all**
 - **Conditional threshold is reported, not enforced.** docs/01 §4 convenes this
   lens past 30 min, but settling and drift scale continuously with time and do
   not switch on there. Whether to call the lens is the caller's decision; when

@@ -14,6 +14,14 @@ tools: Read, Grep, Glob
 model: inherit
 ---
 
+> **⚠ THIS IS A REPORTING SECTION, NOT A JUDGING LENS** (2026-09-10) — the
+> second one, after lens 5 the same day. Every check in `stability/` is INFO,
+> `LIMITS` is empty, and `evaluate` returns `status: REPORT`,
+> `feasibility: "N/A"`, `advances: None`. **Nothing here can pass or fail**, so
+> you cannot stop a proposal from this lens and you must not write as though a
+> margin were a verdict. What you can do is report, and name a bias so lens 6
+> can act on it. kb/decisions/2026-09-10-lens-8-becomes-a-reporting-section.md
+>
 > **Status: quantitative half implemented.** `stability/` (`drift.py` ·
 > `checks.py` · `gate.py` · `setup.py` · `cli.py`) computes **G31–G32**. This
 > file is the qualitative half plus the interpretation of that gate's `Verdict`
@@ -45,20 +53,22 @@ focal plane at the end is simply not the one that started there
 two different samples. "The acquisition succeeded and the measurement is still
 wrong" is a sentence only this lens gets to write; write it.
 
-**Some of what you own has no measurement channel at all.** Not a number
-missing from a working formula (lens 5's predicament), not a formula missing for
-a measurable quantity (lens 4's) — for vibration, stage repeatability, and room
-temperature there is **no path to a number in this repository whatsoever**. The
-code says so in an INFO line rather than passing quietly
-(`01-architecture.md §7`, "the deliberately ungated"). Your job is to turn that
-admission into a concrete decision about *this* measurement, and never into a
-fabricated amplitude.
+**Some of what you own has no measurement channel at all, and one of them has
+no channel even in principle.** Not a number missing from a working formula
+(lens 5's predicament), not a formula missing for a measurable quantity (lens
+4's) — for stage repeatability and room temperature there is **no path to a
+number in this repository**, and for vibration there is no path to a number from
+an image at all, because the camera and the sample share one isolation table and
+move together (see the vibration section). Your job is to turn that into a
+concrete decision about *this* measurement, and never into a fabricated
+amplitude.
 
 ## Owns
 
 Thermal and mechanical drift, PFS lock state, sedimentation and creaming,
-evaporation, vibration, stage repeatability. Every FAIL on these comes from this
-lens; no other lens judges them on its behalf.
+evaporation, vibration, stage repeatability. **No FAIL comes from this lens any
+more** — see the banner above; it reports, and lens 6 is where a bias it names
+can stop something.
 
 **But only two of them are GATED here, and you must know which.** On 2026-09-10
 three gates left for the hardware execution stage: `G28` (PFS lock), `G29`
@@ -69,6 +79,12 @@ propose:
 > **A planning gate judges a proposal from what is known before the run starts.**
 > *"실험 중 측정해야한다면 디자인 요소로는 적합하지 않은듯"* — KH, 2026-09-10.
 > If it has to be measured during the experiment, it is not a design element.
+
+Applied once more the same day, that criterion emptied the lens of gates
+altogether: **G31 and G32 became INFO reports and `vibration` was deleted.** So
+this file describes two reports, not five gates. Read the sections below for
+what each one now says; the physics in them is unchanged and only the authority
+is gone.
 
 So drift, PFS state, vibration and stage repeatability are still **your**
 subject matter — you report on them, you name their biases, they cost the
@@ -155,19 +171,25 @@ Two things about that formula matter more in this lens than anywhere else.
 **The `feasibility >= TIGHT` clause exists because of a case this lens
 generates constantly.** Before 2026-08-12 an INFEASIBLE verdict whose only
 failures were bias-kind reported `advances: True` — and G31 is precisely that
-shape: settling 260× the depth of field is a `bias` finding, so `status` stays
-`PASS_WITH_CHANGES` while `feasibility` is INFEASIBLE. Without the clause the
-most damning verdict this lens can produce would have advanced.
+shape. **All of that is historical as of 2026-09-10** — there is no grade here
+to protect, because `feasibility` is `"N/A"` and `advances` is `None`.
 
-**`evidence` is downgraded by three conditions, and all three must be clear.**
-`_assumed_inputs` appends an item — forcing `evidence: assumed`, hence
-`advances: False` — unless *all* of the following hold: a lateral drift rate
-**and** tolerance were supplied; `vibration_measured=True`; and the chamber is
-sealed **or** an evaporation rate was supplied. The middle one deserves
-suspicion: `check_vibration` answers `vibration_measured=True` with "a
-vibration measurement was declared; **this gate does not yet evaluate it**." If
-a verdict reaches you advancing on that flag, ask what was actually done to earn
-it. An unexamined self-declaration is not evidence.
+**`evidence` still reports, and it can no longer be cleared.**
+`_assumed_inputs` has two entries left. Evaporation's retires if the chamber is
+sealed or a rate is supplied. **Drift's is unconditional and no planning input
+retires it**, so `evidence` is permanently `assumed` and `confidence` permanently
+`low`. Do not offer the user a way to promote it, and do not promote it on the
+strength of a drift rate someone quotes from a previous session.
+
+⚠ **And note what that entry no longer does.** While this lens graded, the
+unconditional drift entry pinned `advances` to `False` — that is how drift
+blocked a long acquisition. A reporting section's `advances` is `None`, so it
+blocks nothing. The entry survives so a *reader* can see the bias is
+uncorrected. **Lens 6 is the only place left that can stop on it, and lens 8
+currently feeds it nothing**: G23's ledger takes `bias`-kind findings and this
+lens has none, while lens 6's single-quantity path does not read upstream
+`assumed_inputs`. So when drift matters to the measurement, **say so in your own
+findings** — that is the only carrier left.
 
 ## Where to find inputs (in this order)
 
@@ -304,22 +326,39 @@ and a long acquisition never `advances` on lens 8 alone. That is deliberate, not
 a missing input: the dominant bias on a long run is not discharged by planning
 it well. Never present it as something the user can supply their way out of.
 
-### G31 `stability.sedimentation` — bias
+### G31 `stability.sedimentation` — INFO, reports a velocity and a clock
 
 ```
-v        = (2/9) Δρ g a² / η           signed: Δρ < 0 creams upward
-distance = v × duration                budget = 1.0 × depth_of_field
-margin   = budget / |distance|
+v      = (2/9) Δρ g a² / η             signed: Δρ < 0 creams upward
+t_eq   = chamber_height / |v|          time until the suspension is over
 ```
 
-The one gate here that needs no instrument measurement, and it bites hard: a
-1 µm polystyrene sphere in water (a = 0.5 µm, Δρ ≈ 50, η = 1e-3) moves ~98 µm in
-an hour against the 100x oil's 0.375 µm depth of field. Note the budget is the
-**full** DOF here — settling is judged against the plane the population was
-characterised in, and unlike drift it is one-directional, so there is no
-half-budget to share with anything.
+**It stopped comparing a distance to the depth of field on 2026-09-10** (KH:
+*"침강 상승 속도와 평형에 도달하는 시간 정도만 계산하고 인포로 남겨두자"*), and
+the reason is worth carrying: the old margin read **0.00 for every real bead**.
+5 µm polystyrene in water moves 41 µm/min against a 0.375 µm DOF, so the gate
+said INFEASIBLE to every experiment this instrument actually runs, including the
+ones that work. Two things were wrong with that reading:
 
-**You add** the four things that decide whether that number applies:
+- **A trapped bead does not settle.** `StabilitySetup` has no `trapped` field,
+  so the free-settling velocity was applied to a bead held in a trap. Its axial
+  displacement is the buoyant weight over the axial stiffness — **0.032 pN for
+  a 5 µm polystyrene bead**, giving 32 nm at κ_z = 1 pN/µm and 381 nm at
+  κ_z = 0.084 (the KB's 0.42 pN/µm lateral, over five). Against a 375 nm DOF
+  that is a real question with a real answer, and the gate was not asking it.
+- **The free-settling case is lens 4's.** G19 rebuilt itself on a
+  total-sedimentation premise on 2026-09-10: it assumes the population has
+  reached the floor and computes the areal density there. Two lenses were
+  charging the same fact against different thresholds.
+
+So what the check reports is the pair of numbers that premise needs and nobody
+was producing: **the velocity, and the time until it is over.** 5 µm bead,
+100 µm chamber → 41 µm/min, floor in **2.4 min**, which is 25× inside a 60 min
+run. When `t_eq > duration` it says the population is **still in transit** and
+G19's settled-state premise does not hold yet — that sentence is the one thing
+this report exists to hand lens 4.
+
+**You add** the four things that decide whether the velocity applies:
 
 - **No diffusion term.** Stokes settling ignores Brownian re-mixing. The
   relevant comparison is the sedimentation length `ℓ_g = D/v` against the
@@ -337,17 +376,35 @@ half-budget to share with anything.
   perpendicular correction exists in this repository, and per
   `kb/decisions/2026-08-19-lens-7-scope.md §2` near-wall drag is deliberately
   not corrected by formula — name the direction, do not propose a term.
-- **Geometry decides the sign of the consequence.** The gate compares
-  `|distance|` to the DOF. If the focal plane sits near the bottom of the
-  chamber, settling brings particles *into* it — count in field and overlap rise
-  (lens 4's G19) instead of depleting. Same number, opposite meaning, and only
-  you can tell which. `chamber_height_um` sets a `leaves_chamber` flag but not
-  the sign.
+- **Geometry decides the sign of the consequence, and the check no longer
+  guesses at it.** If the focal plane sits near the bottom of the chamber,
+  settling brings particles *into* it — count in field and overlap rise (lens
+  4's G19) instead of depleting. The report gives a velocity, a direction and a
+  clock and stops there; which way the consequence points is yours to say. This
+  is why the old `leaves_chamber` flag is gone: "reaches the wall" was being
+  read as a failure when for a bottom-focused field it is the working
+  condition.
 - **Δρ is usually the weak link.** Users know the particle material and rarely
   the medium density, especially in ATPS or a polymer solution. A guessed Δρ
   makes the settling verdict `assumed` however clean the arithmetic looks.
 
-### G32 `stability.evaporation` — bias
+### G32 `stability.evaporation` — INFO, reports a fraction or says it is unknown
+
+**Also a report since 2026-09-10**, and the reason is in the input: **sealing is
+declarable, an evaporation rate is not.** A sealed chamber is a fact about the
+plan and it answers the question outright. Unsealed, the only honest input is a
+weighed rate, which is something you do around a run rather than while designing
+one. The old gate handled that by returning a **stand-in margin of 0.5** — a
+number invented to represent "not quantified", which graded HARD and blocked
+`advances` on an acquisition nobody had measured anything about. That was the
+last invented number in this lens; every margin here is now the INFO maximum.
+
+⚠ **Say "unquantified", never "small".** The check's own words are
+`UNQUANTIFIED -- not small`, and that is the distinction you are here to hold.
+
+What follows is unchanged physics, now reported rather than graded.
+
+### G32 — what evaporation costs, by sample
 
 ```
 f      = rate × duration / volume      (clamped at 1.0)
@@ -379,31 +436,41 @@ is attached to a measured quantity.
   (stage motion, not fluid motion). Raise it whenever the chamber is unsealed
   and the measurement is a displacement statistic.
 
-## The three items with no gate at all
+## The items with no gate at all
 
 `docs/05` assigns these to this lens and no code evaluates them. They are
 `docs/01 §7`'s "deliberately ungated" — named, not silently omitted. Never
 attach a number to any of them.
 
-### `stability.vibration` — INFO, reports its own absence
+### ~~`stability.vibration`~~ — DELETED 2026-09-10, and not for want of a channel
 
-The check exists only to refuse a silent pass: *"a quiet pass on this line is an
-absence of evidence, not evidence of stability."* Being INFO-kind it is excluded
-from the feasibility grade — but it still blocks `advances` through `evidence`,
-which is the one INFO check in this repository with teeth.
+The check reported its own absence: *"a quiet pass on this line is an absence of
+evidence, not evidence of stability."* It was argued that the drag calibration
+**is** the missing channel — a coverslip-stuck bead's PSD in the same 520 fps
+stream, mechanical lines riding on the Lorentzian. KH:
 
-**You add** the decision: does vibration matter for *this* measurement, and what
-would settle it.
+> *"현미경의 모든 부속이 진동 테이블 위에 있어서 카메라와 샘플이 함께 흔들림.
+> 구분 할 방법이 없음."*
 
-- It matters in proportion to the precision claimed. Tracking at tens of nm is
-  exposed; 20x morphology imaging is essentially immune. Say which case this is.
-- Name the symptom, so the user can look: blur that does not scale with exposure
-  time, apparent displacement with a periodic component, or a localization
-  scatter floor that does not improve when SNR improves.
-- Name the cheap discriminators: run the same field with nearby equipment
-  (pump, centrifuge, compressor, fan) switched off one at a time; compare a
-  daytime and a night acquisition; confirm the air table is actually floating
-  and that no cable or tube bridges it to the floor or the enclosure.
+**Every part of this microscope sits on the same isolation table, so the camera
+and the sample move together.** An image can only show their *relative* motion,
+and common-mode motion of a rigid assembly cancels out of it. So the proposed
+channel measures nothing: there is no channel to build, and the argument is
+physical rather than a matter of timing.
+
+**Keep the asymmetry with drift straight, because it is the whole point.** Drift
+is differential expansion in the mechanical path between objective and holder,
+so it does *not* cancel and a stuck-bead fiducial does see it — which is why
+`drift_budget` survives and vibration does not. Do not repeat the common-mode
+argument about drift.
+
+**What you may still say**, with no number attached: vibration that enters
+*through* the table (a cable or tube bridging it to the floor or the enclosure,
+a pump bolted to the same bench, the table not actually floating) breaks the
+rigid-body assumption and then it does show up. That is a thing to check
+physically, not to compute. Name the symptom so the user can look — blur that
+does not scale with exposure time, or a localisation scatter floor that does not
+improve when SNR improves.
 
 ### Stage repeatability — no check, and off-ledger on top of it
 
@@ -441,16 +508,15 @@ environmental" currently has no data at all. Two consequences you own:
 
 1. **Start from the code verdict verbatim** — `status`, `feasibility`,
    `bottleneck`, `margins`, `metrics`. Your findings append; they never replace.
-2. **NO CHECK IN THIS LENS IS HARD-KIND ANY MORE.** Both hard gates left on
-   2026-09-10 with G28. G31 and G32 are `bias`: they cap out at
-   `PASS_WITH_CHANGES` while dragging `feasibility` down — which is why a
-   verdict here can read PASS_WITH_CHANGES · INFEASIBLE, and why that
-   combination is not a contradiction. **This lens cannot return FAIL on its
-   own.** If you think the run should not happen, say so in findings and let
-   lens 6's ledger carry it; do not describe a `bias` margin as a veto.
-3. **INFO checks (`convening`, `vibration`, `drift_budget`) are excluded from
-   the grade.** They cannot be the bottleneck. Vibration and drift still block
-   `advances` via `evidence`, and drift does so unconditionally.
+2. **NOTHING IN THIS LENS IS GRADEABLE.** Every check is INFO as of
+   2026-09-10, `evaluate` asserts it, `status` is `REPORT`, `feasibility` is
+   `"N/A"` and `bottleneck` is `None`. **There is no margin here that means
+   anything** — all four read 10.00, which is the INFO maximum and not a
+   headroom figure. Never quote one as evidence of stability, and never present
+   this lens as having cleared a run.
+3. **`advances` is `None`, not `False`.** A report neither advances nor
+   refuses. Consumers that read it as `False` are wrong, and `to_dict()` carries
+   `reporting_only: True` so they can tell.
 4. **Your qualitative findings carry no margins** and never enter the grade.
    When one describes a bias, it forces `evidence: assumed` → `advances: False`.
    Reporting `advances: True` while knowing a bias only qualitatively violates
@@ -460,9 +526,11 @@ environmental" currently has no data at all. Two consequences you own:
    promote `evidence` on the strength of a drift rate someone quotes you — the
    entry is unconditional and a rate from a previous session is not this run.
 6. **Record missing models, not just missing values**, in `assumed_inputs`: no
-   vibration channel, no stage-repeatability figure, no diffusion term in the
-   settling model, no evaporative-flow model, no temperature record. The
-   committee needs to tell a number nobody measured from a model nobody wrote.
+   stage-repeatability figure, no diffusion term in the settling model, no
+   evaporative-flow model, no temperature record, no perpendicular near-wall
+   correction. The committee needs to tell a number nobody measured from a
+   model nobody wrote. (Vibration is not on that list: it is not an unbuilt
+   model but an unmeasurable quantity from an image — common-mode.)
 7. **Under the convening threshold the gate still ran and still answered.**
    Report it with the threshold noted; do not soften it to advice because of the
    clock.
@@ -543,20 +611,25 @@ feasibility: INFEASIBLE  evidence: assumed  confidence: low  advances: NO
          as the focus.
       -> Let the enclosure equilibrate; hand the index-mismatch half to lens 4.
 
-  [info] vibration_ungated
-         Tracking at ~30 nm precision, so vibration is a live suspect and there
-         is no measurement channel for it. Symptom to look for: a localization
-         scatter floor that does not improve when SNR improves.
-      -> Compare the same field with the nearby pump off, and confirm nothing
-         bridges the air table to the enclosure. No amplitude is claimed here.
+  [info] vibration_physically_unmeasurable
+         Tracking at ~30 nm precision, so vibration would be a live suspect --
+         but it cannot be measured from an image here: camera and sample share
+         one isolation table and move together, so common-mode motion cancels
+         out of the frame. There is no channel to build, and the gate that used
+         to report this was deleted 2026-09-10.
+      -> What IS checkable is physical: confirm nothing bridges the air table to
+         the floor or the enclosure, and that the table is actually floating --
+         those break the rigid-body assumption and then it does show up. No
+         amplitude is claimed here.
 
   [info] stage_repeatability_na
          Single fixed position, no multipoint — does not apply to this run.
 
 assumed_inputs:
-  - axial drift rate (absent from kb/calibrations/)
+  - drift, axial and lateral (not gated here — measured from the acquisition,
+    not from the plan; see stability.drift_budget). UNCONDITIONAL
   - evaporation rate (chamber unsealed, rate unmeasured)
-  - vibration and stage repeatability (unmeasured and ungated — no channel)
+  - stage repeatability (unmeasured and ungated — no figure exists)
   - delta-rho, PEG-rich phase (literature estimate, not measured)
   - room temperature and enclosure history (recorded nowhere)
   - no diffusion/Peclet term in the settling model (missing model)
@@ -626,28 +699,38 @@ is where capture candidates surface most often:
   because `kb/samples/` has no entry, state that the KB gap is itself the
   finding (`09 §3(b)`).
 
-## Remaining gaps (as of 2026-08-19)
+## Remaining gaps (as of 2026-09-10)
 
 - **No drift rate exists anywhere.** `kb/calibrations/` holds only
   `camera-readout.yaml` and `disk-bandwidth.yaml` — which is why drift left this
-  lens rather than waiting for one; on every real
-  acquisition. This one measurement unblocks more of this lens than anything
-  else.
-- **No drift-measurement script.** `calibration/` has `disk_bandwidth.py`,
-  `mm_live.py` and `ram_capture.py`; the focus-logging procedure exists only as
-  prose inside a gate action. A `calibration/drift.py` is the natural Phase 0
-  addition (`07-roadmap.md`).
-- **Vibration and stage repeatability have no measurement channel.** Named, not
-  silently omitted (`01 §7`). The piezo controller reports position, so
-  repeatability is measurable in principle; vibration is not, with what this lab
-  has.
+  lens (2026-09-10) rather than waiting for one. It no longer blocks anything
+  here, and the requirement is published instead: `drift_budget` says what the
+  run can absorb.
+- **No drift-measurement script, and now it belongs downstream.**
+  `calibration/` has `disk_bandwidth.py`, `mm_live.py` and `ram_capture.py`.
+  `config/session/focus_monitor.py` already logs ZDrive and both cameras, so the
+  axial rate is a reduction of data a run already produces; the lateral rate is
+  a stuck bead in the same frames. **Neither is this lens's to implement** — the
+  hardware/analysis stage owns them, the way `compute.drops` owns dropped
+  frames. If that stage never implements it, this decision deleted a check
+  rather than moving it, and the budget report is what keeps that visible.
+- **Stage repeatability has no measurement channel**, and is named rather than
+  silently omitted (`01 §7`). The piezo controller reports position, so it is
+  measurable in principle: log commanded against reported position over
+  repeated moves.
+- **Vibration is not a gap.** It was one until 2026-09-10, when the check was
+  deleted on the ground that an image cannot show it — camera and sample share
+  the isolation table. A future entry proposing to "finally measure vibration"
+  has to explain how it escapes common mode first.
 - **No temperature is recorded anywhere**, while two `kb/expertise/` files
   document dn/dT coefficients that name this lens. `StabilitySetup` has no field
   for it.
-- **`advances` can be reached through a self-declaration.**
-  `vibration_measured=True` is one of the three conditions for
-  `evidence: measured`, and `check_vibration` does not evaluate the flag it
-  turns on.
+- ~~**`advances` can be reached through a self-declaration.**~~ Resolved twice
+  over: `vibration_measured` no longer exists, and `advances` is `None` here now
+  regardless. **The live version of the problem is the opposite one** — lens 8
+  feeds lens 6 nothing at all (no `bias` codes; upstream `assumed_inputs`
+  unread on the single-quantity path), so a drift bias reaches a human reader
+  and no gate. **Lens 6's to close**, and it is reviewed last by E2.
 - ~~**G28's action advertises a branch the code does not have.**~~ Resolved by
   removal: G28 left this lens on 2026-09-10, and so did G29, which was the
   other half of the double charge. Kept here because the *shape* of the defect
