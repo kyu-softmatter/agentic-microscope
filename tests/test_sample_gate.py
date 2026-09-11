@@ -306,10 +306,11 @@ def test_a_trap_absorbs_the_wall_drag_so_it_is_not_charged():
     different things, and only the first was intended.
     """
     v = evaluate(_setup(imaging_depth_um=5.0, particle_radius_um=2.0, trapped=True))
-    assert v.margins["geometry.wall_drag"] == 10.0
-    assert v.metrics["geometry.wall_drag"]["trapped"] is True
+    assert v.margins["geometry.wall_drag.trapped"] == 10.0
+    assert v.metrics["geometry.wall_drag.trapped"]["trapped"] is True
     assert any(
-        f.code == "geometry.wall_drag" and f.severity == "info" for f in v.findings
+        f.code == "geometry.wall_drag.trapped" and f.severity == "info"
+        for f in v.findings
     )
 
 
@@ -343,15 +344,49 @@ def test_a_trapped_wall_drag_bound_still_reaches_findings():
     """It used `_ok`, and sample/gate.py drops severity "ok" from findings --
     so an 18.3% drag inflation was computed and then discarded into metrics,
     on the strength of an absorption claim the reader never saw (KH,
-    2026-09-10). INFO now, so it is reported without being graded.
+    2026-09-10). Severity "info" now, so it is reported without being graded
+    -- and since 2026-09-11 `kind: BIAS` under a distinct code, so it also
+    reaches lens 6's ledger. Severity was only half the fix: the ledger filters
+    on the result's KIND, so an INFO-kind result still reached a human reader
+    and no gate, on the principal bias of a drag calibration.
     """
     v = evaluate(_setup(particle_radius_um=2.475, imaging_depth_um=9.0, trapped=True))
-    f = next(f for f in v.findings if f.code == "geometry.wall_drag")
-    assert f.severity == "info"
-    assert f.kind == "info"          # still ungraded: the trap can absorb it
-    assert v.margins["geometry.wall_drag"] == 10.0
+    f = next(f for f in v.findings if f.code == "geometry.wall_drag.trapped")
+    assert f.severity == "info"      # still ungraded HERE
+    assert f.kind == "bias"          # but graded by lens 6
+    assert v.margins["geometry.wall_drag.trapped"] == 10.0
     # Both numbers have to be in the text, not just the suppression.
     assert "15.5%" in f.message and "18.3%" in f.message
+
+
+def test_the_trapped_branch_uses_a_distinct_code_from_the_untrapped_one():
+    """The registries are keyed by code and the two branches need different
+    answers: trapped has an absorption route and belongs in
+    `validity.setup.CORRECTIONS`, untrapped has none and belongs in
+    `UNCORRECTABLE`. One code could only get one answer."""
+    from validity.setup import CORRECTIONS, UNCORRECTABLE
+
+    trapped = evaluate(
+        _setup(particle_radius_um=2.0, imaging_depth_um=5.0, trapped=True)
+    )
+    free = evaluate(_setup(particle_radius_um=2.0, imaging_depth_um=5.0, trapped=False))
+    assert "geometry.wall_drag.trapped" in trapped.margins
+    assert "geometry.wall_drag" not in trapped.margins
+    assert "geometry.wall_drag" in free.margins
+    assert "geometry.wall_drag.trapped" not in free.margins
+
+    assert "geometry.wall_drag.trapped" in CORRECTIONS
+    assert "geometry.wall_drag.trapped" not in UNCORRECTABLE
+    assert "geometry.wall_drag" in UNCORRECTABLE
+    assert "geometry.wall_drag" not in CORRECTIONS
+
+
+def test_the_trapped_bias_does_not_drag_lens_4s_grade_down():
+    """MAX_MARGIN and severity "info", so BIAS-kind costs this lens nothing --
+    10.0 is never the worst margin and "info" stays out of PASS_WITH_CHANGES.
+    The grading moved to lens 6, not into lens 4."""
+    v = evaluate(_setup(particle_radius_um=2.475, imaging_depth_um=9.0, trapped=True))
+    assert v.bottleneck != "geometry.wall_drag.trapped"
 
 
 def test_the_trapped_branch_says_the_absorption_can_be_false():
@@ -360,7 +395,7 @@ def test_the_trapped_branch_says_the_absorption_can_be_false():
     A reader who takes `trapped=True` as a clearance is the failure this text
     exists to stop."""
     v = evaluate(_setup(particle_radius_um=2.475, imaging_depth_um=9.0, trapped=True))
-    f = next(f for f in v.findings if f.code == "geometry.wall_drag")
+    f = next(f for f in v.findings if f.code == "geometry.wall_drag.trapped")
     assert f.action is not None
     assert "PREMISE, NOT A FACT" in f.action
     assert "Stokes-drag" in f.action

@@ -48,7 +48,7 @@ Durable expert judgment. Each carries a `Why` and a falsifier.
 - **[microrheology-standard-conditions](expertise/microrheology-standard-conditions.md)** · 2026-09-07
   What conditions does a microrheology run on this instrument default to, and which of them are choices rather than constants
 
-## `kb/decisions/` — 38 entries
+## `kb/decisions/` — 39 entries
 
 Dated design and scope choices, in the order they were made.
 
@@ -128,6 +128,8 @@ Dated design and scope choices, in the order they were made.
   What is left of lens 8 once every quantity it gated on is either measured during the run, owned by another lens, or unmeasurable in principle?
 - **[2026-09-11-g11-and-g26-removed](decisions/2026-09-11-g11-and-g26-removed.md)** · 2026-09-11
   Should the validity lens compute a statistical-power margin from an ensemble formula, and gate on a post-processing flag nobody verifies?
+- **[2026-09-11-wall-drag-reaches-the-bias-ledger](decisions/2026-09-11-wall-drag-reaches-the-bias-ledger.md)** · 2026-09-11
+  Why did a bias that lens 4 measured and reported never reach the lens whose job is reviewing biases?
 
 ## `kb/literature/` — 1 entries
 

@@ -100,6 +100,22 @@ def calibrations_for(quantity: str | None) -> tuple[str, ...]:
 CORRECTIONS: dict[str, str] = {
     "crosstalk": "linear unmixing from a measured mixing matrix",
     "motion_blur.biased": "Savin-Doyle blur correction (docs/04 §5)",
+    # Trapped only, which is why lens 4 emits a distinct code for it. The
+    # in-situ route returns kappa and the wall-corrected gamma TOGETHER from
+    # one corner frequency, so the Faxen bias is absorbed by measurement rather
+    # than corrected by formula -- which is the route docs/06 D8 sanctions and
+    # kb/expertise/oil-objective-trapping-in-water.md describes.
+    #
+    # ⚠ DECLARING THIS IS A CLAIM ABOUT WHERE gamma ENTERS, NOT ABOUT THE
+    # TRAP. It is true when gamma comes OUT of a fit (equipartition, or a PSD
+    # corner frequency). It is FALSE when gamma goes IN as 6*pi*eta*a, which is
+    # exactly what a Stokes-drag velocity calibration does -- there the bias
+    # lands undiminished on the result. Lens 4's action text says so; this
+    # entry cannot check which one the experiment is doing, so a reviewer must.
+    "geometry.wall_drag.trapped": "in-situ corner-frequency calibration at the "
+    "working height, which returns kappa and the wall-corrected drag together "
+    "(docs/06 D8) -- valid only where gamma comes out of the fit, not where it "
+    "goes in as 6*pi*eta*a",
     "perturbation.photobleaching": "intensity-decay correction (docs/04 §6)",
     # DORMANT since 2026-09-10: G30 left lens 8 for the hardware/analysis stage
     # (a drift rate is measured during a run, not designed before one), so
@@ -132,6 +148,16 @@ UNCORRECTABLE: dict[str, str] = {
     # kb/decisions/2026-09-10-lens-8-becomes-a-reporting-section.md
     "stability.evaporation": "the composition changed during the movie -- seal the "
     "chamber or shorten the acquisition",
+    # Untrapped, so the in-situ absorption route that clears
+    # `geometry.wall_drag.trapped` is unavailable -- there is no corner
+    # frequency without a trap. Faxen's formula exists, and
+    # kb/decisions/2026-08-19-lens-7-scope.md §2 is the standing decision NOT
+    # to correct near-wall drag by formula, so this is uncorrectable by
+    # decision rather than by ignorance.
+    "geometry.wall_drag": "no in-situ calibration is possible without a trap, "
+    "and near-wall drag is deliberately not corrected by formula "
+    "(kb/decisions/2026-08-19-lens-7-scope.md §2) -- image further from the "
+    "coverslip, or trap the particle",
 }
 
 #: Which of a quantity's required calibrations a bias actually damages. This is
@@ -154,6 +180,13 @@ BIAS_SCOPE: dict[str, frozenset[str]] = {
     # Absolute position goes wrong and long-lag MSD points follow it.
     # Dormant with the CORRECTIONS entry above -- no planning gate emits it.
     "stability.lateral_drift": frozenset({"pixel_size"}),
+    # Wall drag biases gamma, hence D, hence every force and viscosity read
+    # through it. Those are the kinematic quantities, which rest on
+    # `pixel_size`; an intensity or stoichiometry measurement on the same
+    # frames is untouched, and scoping it here is what lets one session report
+    # a biased D and a sound intensity profile. Both branches, same scope.
+    "geometry.wall_drag": frozenset({"pixel_size"}),
+    "geometry.wall_drag.trapped": frozenset({"pixel_size"}),
     # docs/04 §6 frames bleaching as an intensity decay. It costs a tracking
     # experiment statistics rather than accuracy -- particles vanish, which
     # lands in G11's particle count, not in a positional bias.
@@ -161,6 +194,26 @@ BIAS_SCOPE: dict[str, frozenset[str]] = {
         {"background", "dark_current", "flat_field", "linearity"}
     ),
 }
+
+#: Severities at which a bias-kind finding enters the ledger.
+#:
+#: **"info" was added on 2026-09-11** and it is the load-bearing one. A
+#: bias-kind result with severity "info" means *the origin lens measured a real
+#: bias and declined to GRADE it* -- because grading it is somebody else's
+#: question. `sample.geometry.wall_drag.trapped` is the case that forced this:
+#: the Faxen bound is real, lens 4 holds it at MAX_MARGIN because a trap can
+#: absorb it, and whether the absorption actually applies depends on where
+#: gamma enters the analysis -- which is this lens's question, not lens 4's. At
+#: `{"warn", "fail"}` it reached a human reader and no gate, on the principal
+#: bias of a drag calibration.
+#:
+#: ⚠ THE DISTINCTION IS THE RESULT'S `kind`, NOT ITS SEVERITY, and the filter
+#: above already keys on that. `detection.motion_blur` returns
+#: `motion_blur.not_applicable` and `motion_blur.rate_undecided` at severity
+#: "info" too, and those mean "no bias occurred" / "nobody has decided yet" --
+#: both carry `kind: INFO`, so neither is admitted. An origin lens that wants a
+#: bias reviewed here says so with BIAS; one that wants to narrate says INFO.
+_BIAS_SEVERITIES = frozenset({"info", "warn", "fail"})
 
 #: Standing lenses that should have returned a verdict before this one runs.
 #: Lens 8 is conditional (acquisitions past ~30 min), so it is not required
@@ -267,7 +320,7 @@ class ValiditySetup:
         for name in sorted(self.upstream):
             v = self.upstream[name]
             for f in v.findings or []:
-                if getattr(f, "kind", None) == "bias" and f.severity in {"warn", "fail"}:
+                if getattr(f, "kind", None) == "bias" and f.severity in _BIAS_SEVERITIES:
                     out.append(f)
         return out
 

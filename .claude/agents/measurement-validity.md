@@ -104,7 +104,7 @@ Your tools are `Read`, `Grep`, `Glob`. There is no `Bash`, so you never execute
 | C2 pixel calibration | **G24** `validity.pixel_calibration` | a boolean — is a measured pixel size on record, for a quantity that needs one | **whether that calibration is actually attached to this session.** The code cannot see this |
 | C3 post-processing | ~~**G26**~~ — **no gate since 2026-09-11** | nothing here. `detection/recommend.py` refuses a reference frame shot with despeckle on, which is where it destroys something computable | **all of it**, and the same question as before: the declaration was never trustworthy — the current camera's PP state has never been recorded, which is why the gate on it was removed rather than believed |
 | C4 photometric calibration | **G25** `validity.photometric_calibration` | which of background / dark / flat-field are missing, and the fraction held | the evidence-grade audit of Lens 2's SNR — "upper bound only" |
-| C5 bias ledger | **G23** `validity.bias_ledger` | collects upstream `kind: bias` findings, scopes them to the quantity (`BIAS_SCOPE`), refuses a declared correction that does not exist (`CORRECTIONS`/`UNCORRECTABLE`), reports the worst uncorrected margin | whether the registries themselves are right, and whether a correction the tables do not know about is real — the gate defers that to you and marks the verdict `assumed` |
+| C5 bias ledger | **G23** `validity.bias_ledger` | collects upstream `kind: bias` findings **at severity info, warn or fail** (2026-09-11), scopes them to the quantity (`BIAS_SCOPE`), refuses a declared correction that does not exist (`CORRECTIONS`/`UNCORRECTABLE`), reports the worst uncorrected **shortfall** and drops to 0.0 when an uncorrected bias arrived ungraded | whether the registries themselves are right, and whether a correction the tables do not know about is real — the gate defers that to you and marks the verdict `assumed` |
 | C6 analysis-script cross-check | *none* — an undeclared `analysis_script` only downgrades `evidence` to `assumed` | nothing | everything. This is yours alone |
 | C7 committee coverage | **G27** `validity.committee_coverage` | the five standing lenses returned, none BLOCKED, none FAILED | whether **Lens 8** should have been convened — the gate cannot see Lens 8 at all |
 
@@ -127,8 +127,24 @@ advances     passed AND evidence == measured AND feasibility >= TIGHT
 `G23` is **HARD, not BIAS**, deliberately: the upstream gates are the bias gates,
 and G23 is the meta-check that they were all dealt with, so its failure is a veto
 on this lens's whole purpose rather than one more correctable bias. Its margin is
-the worst *uncorrected* upstream margin, so the committee's worst unhandled
-problem stays visible instead of being averaged away.
+the worst *uncorrected* upstream **shortfall**, so the committee's worst
+unhandled problem stays visible instead of being averaged away.
+
+⚠ **And an uncorrected bias cannot rescue itself with a passing upstream
+margin** (2026-09-11). A margin ≥ 1.0 on an uncorrected bias means the origin
+lens declined to *grade* it, not that the bias is small —
+`sample.geometry.wall_drag.trapped` arrives at MAX_MARGIN for exactly that
+reason — so the gate drops to **0.0** and the upstream number moves to
+`metrics.worst_uncorrected_margin` with the codes in
+`ungraded_uncorrected_codes`. Before this, the principal bias of a drag
+calibration read ROUTINE with `advances: True`. `unevaluated != cleared`,
+CLAUDE.md §3, applied to a margin instead of a status.
+
+**What this means for you in practice:** a trapped-bead measurement now
+hard-FAILs G23 until somebody declares `geometry.wall_drag.trapped` corrected
+— and that declaration is a claim about **where γ enters the analysis**, not
+about the trap. True where γ comes out of a fit, false where it goes in as
+6πηa. The registry cannot check which; you can.
 
 ### ⚠ Divergence to report, not to paper over
 

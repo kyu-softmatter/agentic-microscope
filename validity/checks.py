@@ -142,6 +142,11 @@ def check_bias_ledger(setup: "ValiditySetup") -> CheckResult:
       declaring it; there is no such correction to have applied. A code in
       neither registry is accepted but costs the verdict its `measured` grade,
       because nobody has audited it.
+    - **It does not let an ungraded bias rescue itself.** An uncorrected bias
+      whose upstream margin is >= 1.0 drops this gate to 0.0, because a
+      passing margin on an uncorrected bias means the origin lens declined to
+      grade it rather than that the bias is small. See the comment at the
+      margin computation. `unevaluated != cleared`, CLAUDE.md §3.
     """
     all_bias = setup.bias_findings()
     applicable = setup.applicable_bias_findings()
@@ -160,6 +165,10 @@ def check_bias_ledger(setup: "ValiditySetup") -> CheckResult:
         "false_correction_codes": [f.code for f in false_claims],
         "unverified_correction_codes": unverified,
         "corrections_declared": sorted(setup.corrections_applied),
+        #: Present in every branch so the metrics shape does not depend on
+        #: which one ran. Filled in below when there is anything uncorrected.
+        "worst_uncorrected_margin": None,
+        "ungraded_uncorrected_codes": [],
     }
 
     scoped_note = ""
@@ -210,7 +219,34 @@ def check_bias_ledger(setup: "ValiditySetup") -> CheckResult:
     margins = [
         f.margin for f in uncorrected if getattr(f, "margin", None) is not None
     ]
-    margin = min(margins) if margins else 0.0
+    # AN UNCORRECTED BIAS MUST NOT BE RESCUED BY ITS OWN UPSTREAM MARGIN.
+    #
+    # The worst uncorrected margin is reported, because the committee's worst
+    # unhandled problem should stay visible instead of being averaged away --
+    # but only where that margin is a shortfall. A margin at or above 1.0 on an
+    # *uncorrected* bias means the origin lens deliberately declined to GRADE
+    # it, which is not the same as clearing it: `sample.geometry.wall_drag`
+    # returns MAX_MARGIN for a trapped bead because the trap CAN absorb the
+    # Faxen bound, and whether the absorption applies is this lens's question.
+    # Taking 10.0 at face value let the principal bias of a drag calibration
+    # report ROUTINE and `advances: True` (found 2026-09-11). So an ungraded
+    # uncorrected bias drops the gate to 0.0 -- CLAUDE.md §3's
+    # `unevaluated != cleared`, applied to a margin instead of a status.
+    shortfalls = [m for m in margins if m < 1.0]
+    margin = min(shortfalls) if shortfalls else 0.0
+    ungraded = [
+        f.code
+        for f in uncorrected
+        if getattr(f, "margin", None) is None or f.margin >= 1.0
+    ]
+    numbers["worst_uncorrected_margin"] = round(min(margins), 3) if margins else None
+    numbers["ungraded_uncorrected_codes"] = ungraded
+
+    if ungraded:
+        numbers["ungraded_note"] = (
+            "these arrived with a passing upstream margin because the origin "
+            "lens declined to grade them, not because they are small"
+        )
     worst = ", ".join(f"{f.lens}:{f.code}" for f in uncorrected[:4])
     more = f" (+{len(uncorrected) - 4} more)" if len(uncorrected) > 4 else ""
 

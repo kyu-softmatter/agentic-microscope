@@ -481,7 +481,10 @@ this instrument, and G8's action text says so explicitly.
 - **G23 is HARD, not BIAS.** The upstream gates are the bias gates; G23 is the
   meta-check that they were all dealt with, so its failure means the intended
   quantity does not survive — a veto on this lens's whole purpose. Its margin
-  is the worst *uncorrected* upstream bias margin, so the committee's worst
+  is the worst *uncorrected* upstream bias **shortfall** — and **0.0 when an
+  uncorrected bias arrived with a passing margin**, because that means its
+  origin lens declined to grade it rather than that it is small (2026-09-11;
+  `unevaluated ≠ cleared`, §3). So the committee's worst
   unhandled problem stays visible rather than being averaged away
 - **G23 checks the declaration, it does not believe it.**
   `validity.setup.CORRECTIONS` names the biases a correction exists for

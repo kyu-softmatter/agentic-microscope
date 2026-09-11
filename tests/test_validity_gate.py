@@ -182,6 +182,73 @@ def test_bias_ledger_margin_is_the_worst_uncorrected_upstream_margin():
     )
     v = evaluate(_setup(upstream=up))
     assert v.margins["validity.bias_ledger"] == pytest.approx(0.33)
+    assert v.metrics["validity.bias_ledger"]["worst_uncorrected_margin"] == (
+        pytest.approx(0.33)
+    )
+
+
+def test_an_ungraded_bias_cannot_rescue_the_ledger_with_its_own_margin():
+    """Found 2026-09-11, and it is the reason routing `wall_drag` here was not
+    enough on its own.
+
+    `sample.geometry.wall_drag.trapped` arrives at MAX_MARGIN because lens 4
+    deliberately does not grade it -- the trap CAN absorb the Faxen bound, and
+    whether the absorption applies depends on where gamma enters the analysis,
+    which is THIS lens's question. Taking 10.0 at face value made the principal
+    bias of a drag calibration read ROUTINE with `advances: True`.
+
+    A passing margin on an UNCORRECTED bias means ungraded, not small.
+    CLAUDE.md §3: `unevaluated != cleared`."""
+    up = _all_present(
+        sample=_V(
+            findings=[
+                _F("geometry.wall_drag.trapped", "sample", severity="info", margin=10.0)
+            ]
+        )
+    )
+    v = evaluate(_setup(upstream=up))
+    assert v.margins["validity.bias_ledger"] == 0.0
+    assert v.status == "FAIL"
+    assert v.advances is False
+    m = v.metrics["validity.bias_ledger"]
+    # The upstream number is not destroyed, only demoted out of the margin.
+    assert m["worst_uncorrected_margin"] == pytest.approx(10.0)
+    assert m["ungraded_uncorrected_codes"] == ["geometry.wall_drag.trapped"]
+
+
+def test_a_graded_shortfall_still_sets_the_margin_alongside_an_ungraded_one():
+    """Mixed case: the real shortfall is more informative than the 0.0 floor,
+    so it wins."""
+    up = _all_present(
+        sample=_V(
+            findings=[
+                _F("geometry.wall_drag.trapped", "sample", severity="info", margin=10.0),
+                _F("geometry.ri_mismatch", "sample", margin=0.4),
+            ]
+        )
+    )
+    v = evaluate(_setup(upstream=up))
+    assert v.margins["validity.bias_ledger"] == pytest.approx(0.4)
+    assert v.metrics["validity.bias_ledger"]["ungraded_uncorrected_codes"] == (
+        ["geometry.wall_drag.trapped"]
+    )
+
+
+def test_the_ledger_metrics_shape_does_not_depend_on_the_branch():
+    """A consumer reading `metrics` should not have to guess which branch ran."""
+    clean = evaluate(_setup())
+    dirty = evaluate(
+        _setup(
+            upstream=_all_present(
+                sample=_V(findings=[_F("geometry.ri_mismatch", "sample")])
+            )
+        )
+    )
+    assert set(clean.metrics["validity.bias_ledger"]) <= set(
+        dirty.metrics["validity.bias_ledger"]
+    )
+    for key in ("worst_uncorrected_margin", "ungraded_uncorrected_codes"):
+        assert key in clean.metrics["validity.bias_ledger"]
 
 
 def test_only_bias_kind_findings_enter_the_ledger():
@@ -195,10 +262,111 @@ def test_only_bias_kind_findings_enter_the_ledger():
 
 def test_ok_severity_bias_findings_are_not_counted():
     up = _all_present(
-        sample=_V(findings=[_F("geometry.coverslip", "sample", severity="info")])
+        sample=_V(findings=[_F("geometry.coverslip", "sample", severity="ok")])
     )
     v = evaluate(_setup(upstream=up))
     assert v.metrics["validity.bias_ledger"]["bias_findings"] == 0
+
+
+def test_info_severity_bias_findings_ARE_counted():
+    """Changed 2026-09-11, and this is the load-bearing case. A bias-kind
+    result at severity "info" means the origin lens measured a real bias and
+    declined to GRADE it, because grading it is somebody else's question.
+    `sample.geometry.wall_drag.trapped` is the one that forced it: at
+    `{"warn", "fail"}` the principal bias of a drag calibration reached a human
+    reader and no gate."""
+    up = _all_present(
+        sample=_V(
+            findings=[
+                _F("geometry.wall_drag.trapped", "sample", severity="info", margin=10.0)
+            ]
+        )
+    )
+    v = evaluate(_setup(upstream=up))
+    m = v.metrics["validity.bias_ledger"]
+    assert m["bias_findings"] == 1
+    assert m["uncorrected_codes"] == ["geometry.wall_drag.trapped"]
+
+
+def test_an_info_KIND_finding_is_still_not_a_bias():
+    """The filter keys on the result's `kind`, not its severity.
+    `detection.motion_blur` returns `motion_blur.not_applicable` and
+    `motion_blur.rate_undecided` at severity "info" with `kind: INFO`, and
+    those mean "no bias occurred" / "nobody has decided yet"."""
+    up = _all_present(
+        detection=_V(
+            findings=[
+                _F("motion_blur.rate_undecided", "detection", kind="info", severity="info")
+            ]
+        )
+    )
+    v = evaluate(_setup(upstream=up))
+    assert v.metrics["validity.bias_ledger"]["bias_findings"] == 0
+
+
+# ------------------------------ wall drag, both branches -----------------
+
+
+def test_the_in_situ_calibration_clears_a_trapped_wall_drag_bias():
+    """The drag calibration IS the correction, so declaring it reads clean --
+    but only if declared."""
+    up = _all_present(
+        sample=_V(
+            findings=[
+                _F("geometry.wall_drag.trapped", "sample", severity="info", margin=10.0)
+            ]
+        )
+    )
+    v = evaluate(
+        _setup(
+            upstream=up,
+            corrections_applied=frozenset({"geometry.wall_drag.trapped"}),
+        )
+    )
+    m = v.metrics["validity.bias_ledger"]
+    assert m["uncorrected_codes"] == []
+    assert m["unverified_correction_codes"] == []  # it IS registered
+
+
+def test_an_untrapped_wall_drag_bias_cannot_be_declared_away():
+    """No corner frequency without a trap, and near-wall drag is deliberately
+    not corrected by formula (kb/decisions/2026-08-19-lens-7-scope.md §2). So
+    the untrapped code is UNCORRECTABLE and declaring it is a false claim --
+    louder than leaving it, because the ledger would have read clean."""
+    up = _all_present(sample=_V(findings=[_F("geometry.wall_drag", "sample")]))
+    v = evaluate(
+        _setup(upstream=up, corrections_applied=frozenset({"geometry.wall_drag"}))
+    )
+    m = v.metrics["validity.bias_ledger"]
+    assert m["false_correction_codes"] == ["geometry.wall_drag"]
+    assert m["uncorrected_codes"] == ["geometry.wall_drag"]
+    f = next(f for f in v.findings if f.code == "validity.bias_ledger")
+    assert "no correction" in f.message
+
+
+def test_wall_drag_does_not_touch_a_photometric_quantity():
+    """It biases gamma, hence D and every force read through it -- the
+    kinematic quantities, which rest on pixel_size. An intensity measurement on
+    the same frames is untouched."""
+    up = _all_present(
+        sample=_V(
+            findings=[
+                _F("geometry.wall_drag.trapped", "sample", severity="info", margin=10.0)
+            ]
+        )
+    )
+    v = evaluate(
+        _setup(
+            upstream=up,
+            intended_quantity="intensity",
+            background_measured=True,
+            dark_current_measured=True,
+            flat_field_measured=True,
+        )
+    )
+    m = v.metrics["validity.bias_ledger"]
+    assert m["uncorrected_codes"] == []
+    assert m["out_of_scope_codes"] == ["geometry.wall_drag.trapped"]
 
 
 # --------------------------------------------- G24 pixel calibration ----

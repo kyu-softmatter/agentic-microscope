@@ -500,7 +500,7 @@ Lens-by-lens implementation status is in the **Code** table below.
 ## Current status
 
 **Design complete; all eight committee lenses are implemented.** Nine design
-documents, 22 gates (G1–G32 less G10, G11, G18, G20, G21, G22, G26, G28, G29, G30), 1,227 tests passing. The badge above reports
+documents, 22 gates (G1–G32 less G10, G11, G18, G20, G21, G22, G26, G28, G29, G30), 1,237 tests passing. The badge above reports
 1,162 of them — 56 need a Micro-Manager device-adapter install and run in a
 separate workflow, and 7 need `opencv-python`, which is stated at the top of each file in
 [`.github/workflows/`](.github/workflows/) and again under [running the

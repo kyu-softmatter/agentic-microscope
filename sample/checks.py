@@ -358,8 +358,10 @@ def check_wall_drag(setup: "SampleSetup") -> CheckResult:
     Trapped is the ordinary case in this lab, and it has an absorption route:
     D8's in-situ power-spectrum calibration at the working height returns kappa
     and the wall-corrected gamma together. So a trapped setup reports the bound
-    as INFO. Untrapped, nothing absorbs it and the bound is the answer, so it
-    goes BIAS and warns past the screening limit.
+    at MAX_MARGIN with severity "info" -- **ungraded here, but BIAS-kind and
+    under a distinct code, so it reaches lens 6's ledger**, which is where the
+    absorption claim gets audited. Untrapped, nothing absorbs it and the bound
+    is the answer, so it warns past the screening limit.
     """
     a = setup.particle_radius_um
     h = setup.imaging_depth_um
@@ -403,14 +405,34 @@ def check_wall_drag(setup: "SampleSetup") -> CheckResult:
     pct = suppression * 100
 
     if setup.trapped:
+        # THREE THINGS ARE DELIBERATE HERE AND EACH WAS A SEPARATE DEFECT.
+        #
         # severity "info", NOT "ok" (KH, 2026-09-10). `_ok` is dropped from
         # `findings` by sample/gate.py, so this branch used to compute an
         # 18.3% drag inflation and then discard it into `metrics` -- a bias
         # with no trace in any verdict, on the strength of an absorption claim
         # the reader never got to check.
+        #
+        # kind BIAS, NOT INFO (KH, 2026-09-11). severity "info" fixed the
+        # visibility and left a second hole: `validity.setup.bias_findings`
+        # filters on the RESULT's kind, so an INFO-kind result never reached
+        # lens 6's ledger. On a drag calibration that is the principal bias on
+        # the measured quantity, so it was reaching a human reader and no gate.
+        # BIAS at MAX_MARGIN does not cost lens 4 anything -- 10.0 is never the
+        # worst margin -- and severity "info" still keeps it out of
+        # PASS_WITH_CHANGES here. The grading stays with lens 6, which is whose
+        # question it is.
+        #
+        # A DISTINCT CODE, `geometry.wall_drag.trapped` (KH, 2026-09-11),
+        # following the `motion_blur` / `motion_blur.biased` convention. The
+        # registries are keyed by code, and the two branches need different
+        # answers: trapped HAS an absorption route (in-situ calibration) so it
+        # belongs in CORRECTIONS, untrapped has none and belongs in
+        # UNCORRECTABLE. One code could only get one answer.
+        # kb/decisions/2026-09-11-wall-drag-reaches-the-bias-ledger.md
         return CheckResult(
-            "geometry.wall_drag",
-            INFO,
+            "geometry.wall_drag.trapped",
+            BIAS,
             MAX_MARGIN,
             "info",
             f"D is suppressed by at most {pct:.1f}% at {h:.1f} um from the "

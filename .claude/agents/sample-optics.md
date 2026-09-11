@@ -294,15 +294,29 @@ carefully:
   existed; ask for an estimate of *this preparation's* thickness, and only if the
   focal depth is more than a few µm.
 
-### G16c `geometry.wall_drag` — bias, and a **bound** rather than a model
+### G16c `geometry.wall_drag` / `.trapped` — bias, and a **bound** rather than a model
 
 ```
 h = imaging_depth_um          the depth past the coverslip IS the wall distance
 D_wall/D_bulk <= 1 - 9a/(16h)         parallel Faxen, truncated
 suppression   =  9a/(16h)             upper bound on the fractional D error
 margin        =  10% / suppression    order-of-magnitude screen
-trapped=True  ->  reported as INFO, not charged
+
+trapped=False -> code `geometry.wall_drag`,         severity warn past the limit
+trapped=True  -> code `geometry.wall_drag.trapped`, MAX_MARGIN, severity "info"
+                 -- ungraded HERE, but `kind: bias`, so lens 6 grades it
 ```
+
+**The trapped branch has its own code since 2026-09-11, and that is what makes
+it reviewable.** severity `"info"` (2026-09-10) stopped `_ok` from hiding the
+18.3% figure in `metrics`; it was only half the fix, because
+`validity.setup.bias_findings` filters on the result's **kind**, so an INFO-kind
+result reached a human reader and no gate. It is `kind: bias` now, at
+MAX_MARGIN so it still costs this lens nothing, under a distinct code so the
+two branches can get different answers from lens 6's registries:
+`geometry.wall_drag.trapped` is in `CORRECTIONS` (the in-situ calibration),
+`geometry.wall_drag` is in `UNCORRECTABLE` (no corner frequency without a
+trap). kb/decisions/2026-09-11-wall-drag-reaches-the-bias-ledger.md
 
 **This is the house example of `01-architecture.md §3 Principle 1b`** — bound the
 second-order term instead of demanding an exact model. Truncating the Faxén
@@ -314,12 +328,17 @@ h = 5 µm, +12.7% at 10, +6.0% at 20, +2.3% at 50). Quote it as a bound, always 
 **Direction**: `γ` up → `D = kT/γ` down → measured `D` **low**, inferred
 viscosity and moduli **stiff**.
 
-**The trap decides whether it costs anything.** This lab's measurements are
-mainly trapped, and D8's in-situ power-spectrum calibration at the working height
-returns κ and the wall-corrected drag together — so the bias is absorbed by
-measurement and G16c reports the bound as INFO. Say that plainly rather than
-alarming: the obligation that remains is **redo the calibration whenever the
-working height changes**.
+**The trap decides whether it costs anything HERE, and it no longer decides
+whether anyone reviews it.** This lab's measurements are mainly trapped, and
+D8's in-situ power-spectrum calibration at the working height returns κ and the
+wall-corrected drag together — so the bias is absorbable and G16c does not
+grade it. Say that plainly rather than alarming, with two obligations attached:
+**redo the calibration whenever the working height changes**, and **the
+absorption is a premise the experiment has to satisfy.** It holds where γ comes
+*out* of a fit (equipartition, a PSD corner frequency); it is **false where γ
+goes *in* as 6πηa**, which is exactly what a Stokes-drag velocity calibration
+does — there the bound lands undiminished on the result. Lens 6 decides which
+case this is, and it will hard-FAIL unless the correction is declared.
 
 Untrapped — free-diffusion MSD microrheology — there is no calibration step, so
 nothing absorbs it and the bound is the whole answer. That is the case to raise
