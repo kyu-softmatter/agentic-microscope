@@ -208,6 +208,36 @@ def evaluate(setup: TrapSetup) -> Verdict:
     evidence = "measured" if not assumed else "assumed"
 
     # ---- Phase 0 --------------------------------------------------------
+    # The measured curve refuses to extrapolate past its highest point, and
+    # before 2026-09-10 that refusal reached the operator as a traceback. A
+    # dial above the calibrated range is a perfectly ordinary thing to ask
+    # for and it deserves a verdict saying why not (KH: "앞으로 파워를 모를
+    # 일이 있나?" -- rarely; THIS is the case that replaces it).
+    try:
+        setup.weakest_power_w()
+    except ValueError as exc:
+        return Verdict(
+            status="BLOCKED",
+            feasibility="UNKNOWN",
+            evidence=evidence,
+            confidence="none",
+            assumed_inputs=assumed,
+            findings=[
+                Finding(
+                    "fail",
+                    "missing.power_at_this_dial",
+                    f"{exc} The 1064 curve was measured over 5-80 % "
+                    "(kb/calibrations/illumination-power.yaml); 100 % "
+                    "over-ranged the meter, which is why 80 % is the top row.",
+                    action="Run at or below 80 %, or measure the missing "
+                    "levels. That file's 1275 mW at 100 % is a linear "
+                    "extrapolation and `assumed`, and a diode driver's last "
+                    "20 % is exactly where a knee would sit -- so it is a "
+                    "safety figure, not a calibration point.",
+                )
+            ],
+        )
+
     blocking_findings = _blocking_findings(setup)
     facts = available_facts(setup)
     unrunnable = [

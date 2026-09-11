@@ -59,11 +59,35 @@ def test_passes_with_measured_calibration_and_temperature():
     assert v.advances is True
 
 
-def test_evidence_downgrades_to_assumed_with_placeholder_calibration():
-    v = evaluate(_setup(calibration=LaserCalibration(placeholder_max_w=0.03), temperature_measured=True))
-    assert v.status == "PASS"
-    assert v.evidence == "assumed"
-    assert v.advances is False
+def test_the_placeholder_now_blocks_instead_of_grading_fiction():
+    """RETARGETED 2026-09-10. It asserted PASS-with-assumed-evidence, which
+    meant two HARD gates were grading a stiffness derived from a dial -> mW
+    map nobody had measured. `confinement` and `trap_depth` had empty
+    `requires` and so always ran. They now need `stiffness` and
+    `laser.calibrated`, so the placeholder path refuses.
+    """
+    v = evaluate(
+        _setup(calibration=LaserCalibration(placeholder_max_w=0.03), temperature_measured=True)
+    )
+    assert v.status == "BLOCKED"
+    assert any(f.code.startswith("missing.") for f in v.findings)
+
+
+def test_a_measured_stiffness_alone_unblocks_the_kappa_checks():
+    """`stiffness` is satisfied by a measurement OR by a calibrated laser, so
+    a measured kappa gets confinement and G14c running even on the
+    placeholder. `trap_depth` still cannot run -- U comes from the power."""
+    v = evaluate(
+        _setup(
+            calibration=LaserCalibration(placeholder_max_w=0.03),
+            measured_stiffness_n_per_m=3.87e-6,
+            temperature_measured=True,
+            detector_fps=520.0,
+        )
+    )
+    assert v.status == "BLOCKED"
+    gaps = {f.code for f in v.findings if f.code.startswith("missing.")}
+    assert gaps == {"missing.laser.calibrated"}
 
 
 def test_evidence_downgrades_to_assumed_with_default_temperature():
@@ -191,8 +215,13 @@ def test_the_power_window_is_free_of_the_uncalibrated_dial_scale():
     """
     from trapping.dynamics import LaserCalibration
 
-    a = evaluate(_setup(detector_fps=520.0, calibration=LaserCalibration(placeholder_max_w=1.0)))
-    b = evaluate(_setup(detector_fps=520.0, calibration=LaserCalibration(placeholder_max_w=100.0)))
+    # Two MEASURED calibrations differing only by a 100x scale. Placeholders
+    # would BLOCK now, and the property under test is about the scale, not
+    # about the tier.
+    one = {0.0: 0.0, 50.0: 0.5, 100.0: 1.0}
+    hundred = {k: v * 100 for k, v in one.items()}
+    a = evaluate(_setup(detector_fps=520.0, calibration=LaserCalibration(points=one)))
+    b = evaluate(_setup(detector_fps=520.0, calibration=LaserCalibration(points=hundred)))
     ma = a.metrics["trap.power_window"]
     mb = b.metrics["trap.power_window"]
 

@@ -48,7 +48,7 @@ Durable expert judgment. Each carries a `Why` and a falsifier.
 - **[microrheology-standard-conditions](expertise/microrheology-standard-conditions.md)** · 2026-09-07
   What conditions does a microrheology run on this instrument default to, and which of them are choices rather than constants
 
-## `kb/decisions/` — 33 entries
+## `kb/decisions/` — 34 entries
 
 Dated design and scope choices, in the order they were made.
 
@@ -118,6 +118,8 @@ Dated design and scope choices, in the order they were made.
   Where may the focal plane actually sit, given that four gates each bound the imaging depth from a different side, and does G18 still earn a margin?
 - **[2026-09-10-lens-5-becomes-a-reporting-section](decisions/2026-09-10-lens-5-becomes-a-reporting-section.md)** · 2026-09-10
   Should lens 5 keep gating light-driving and dose, when the sample information those gates need is often absent and mitigations they cannot see are often present?
+- **[2026-09-10-lens-7-measured-stiffness-and-numbering](decisions/2026-09-10-lens-7-measured-stiffness-and-numbering.md)** · 2026-09-10
+  Why could lens 7 not be told a stiffness it had measured, why did two hard gates grade a placeholder, and what should the unnumbered hard checks be called?
 
 ## `kb/literature/` — 1 entries
 

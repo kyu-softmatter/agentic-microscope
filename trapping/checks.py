@@ -1,4 +1,13 @@
-"""Individual trapping checks.
+"""Individual trapping checks -- G14a (confinement), G14b (trap depth),
+G14c (sampling), plus two INFO reports that carry no number.
+
+G14 was one number covering two of these and silently omitting the third
+until 2026-09-10: `check_trap_depth` already called itself "G14's
+escape-resistance half", and `check_confinement` -- `hard`, and the first
+thing that fails -- had no number at all. Sub-lettered on lens 3's
+convention (G12a-c, G13a-d) rather than given new numbers, because they are
+one question asked three ways: can this trap hold this bead, deeply enough,
+and can the camera see it move.
 
 Mirrors optics.checks: independent margins (achieved / required), not
 booleans, for the same reasons -- the feasibility grade is the worst
@@ -67,6 +76,18 @@ def available_facts(setup: "TrapSetup") -> set[str]:
     facts: set[str] = set()
     if setup.medium.viscosity_pa_s is not None:
         facts.add("medium.viscosity")
+    # Added 2026-09-10. Until then `confinement` and `trap_depth` had EMPTY
+    # `requires`, so they always ran -- and with a placeholder dial -> mW map
+    # they graded a stiffness derived from a number nobody had measured. Two
+    # hard gates on fiction. Now:
+    #
+    #   laser.calibrated  the power is real, so the model can be evaluated
+    #   stiffness         kappa is knowable at all, from a measurement or
+    #                     from the model on a real power
+    if setup.calibration.measured:
+        facts.add("laser.calibrated")
+    if setup.calibration.measured or setup.measured_stiffness_n_per_m is not None:
+        facts.add("stiffness")
     return facts
 
 
@@ -141,13 +162,14 @@ def check_effective_na(setup: "TrapSetup") -> CheckResult:
 
 
 def check_confinement(setup: "TrapSetup") -> CheckResult:
-    """Does the trap actually restore toward the center at all?
+    """G14a: does the trap actually restore toward the center at all?
 
     Checked on the weakest trap when the beam is split across several --
-    that is the one that fails first.
+    that is the one that fails first. A measured stiffness wins over the
+    model (2026-09-10).
     """
     power = setup.weakest_power_w()
-    kappa = radial_stiffness_n_per_m(power, setup.bead, setup.medium, setup.beam)
+    kappa, kappa_from = setup.stiffness_n_per_m()
 
     if kappa <= 0:
         return CheckResult(
@@ -159,23 +181,51 @@ def check_confinement(setup: "TrapSetup") -> CheckResult:
             "configuration does not confine the bead at all.",
             action="Increase power, re-check the beam NA/wavelength against "
             "the bead size, or re-check the trap-splitting weights.",
-            numbers={"stiffness_n_per_m": kappa, "power_w": power},
+            numbers={
+                "stiffness_n_per_m": kappa,
+                "stiffness_source": kappa_from,
+                "power_w": power,
+            },
         )
     return _ok(
         "trap.confinement",
         HARD,
         MAX_MARGIN,
-        f"Radial stiffness {kappa:.3g} N/m (positive, restoring).",
+        f"Radial stiffness {kappa:.3g} N/m (positive, restoring), from the "
+        f"{kappa_from}.",
         stiffness_n_per_m=kappa,
+        stiffness_source=kappa_from,
         power_w=power,
     )
 
 
 def check_trap_depth(setup: "TrapSetup") -> CheckResult:
-    """G14's escape-resistance half: is the well deep enough against kT?"""
+    """G14b: is the well deep enough against kT?
+
+    **Stays on the model even when a stiffness has been measured** (KH,
+    2026-09-10). U comes from the power, not from kappa, so a measured kappa
+    does not supply it. It could be rescaled -- `U/kappa` is a constant of
+    this model, both being linear in power -- but that rescaling assumes the
+    model's error is in its response to power and not in its shape, which
+    nothing here establishes. So the depth is the model's, and the ratio is
+    REPORTED instead of applied.
+    """
     power = setup.weakest_power_w()
     u_kt = trap_depth_kt(power, setup.bead, setup.medium, setup.beam, setup.temperature_k)
     margin = u_kt / REQUIRED_TRAP_DEPTH_KT
+    over = setup.model_over_measured()
+    caveat = (
+        ""
+        if over is None or 0.5 < over < 2.0
+        else (
+            f" ⚠ The model's stiffness is {over:.0f}x the measured one at this "
+            f"dial, and this depth comes from the same model at the same "
+            f"power -- so treat it as carrying the same factor. It is not "
+            f"rescaled here: U/kappa is a model constant, but using it to "
+            f"correct U assumes the error is in the response to power rather "
+            f"than in the shape."
+        )
+    )
 
     if margin >= 1.0:
         return _ok(
@@ -183,10 +233,12 @@ def check_trap_depth(setup: "TrapSetup") -> CheckResult:
             HARD,
             margin,
             f"Trap depth (to the model's validity edge) is {u_kt:.1f} kT "
-            f"(need ~{REQUIRED_TRAP_DEPTH_KT:.0f} kT for stable confinement).",
+            f"(need ~{REQUIRED_TRAP_DEPTH_KT:.0f} kT for stable confinement)."
+            + caveat,
             trap_depth_kt=u_kt,
             power_w=power,
             temperature_k=setup.temperature_k,
+            model_over_measured_stiffness=over,
         )
     return CheckResult(
         "trap.shallow",
@@ -202,15 +254,14 @@ def check_trap_depth(setup: "TrapSetup") -> CheckResult:
 
 
 def check_sampling(setup: "TrapSetup") -> CheckResult:
-    """G14: f_s >= 10*f_c.
+    """G14c: f_s >= 10*f_c.
 
     Reports the corner frequency either way; only gates when lens 2
     (detection) has actually supplied an achieved frame rate. This lens
     does not own frame rate, so its absence is informational, not
     blocking -- see docs/01-architecture.md's 7<->2 cross-lens constraint.
     """
-    power = setup.weakest_power_w()
-    kappa = radial_stiffness_n_per_m(power, setup.bead, setup.medium, setup.beam)
+    kappa, kappa_from = setup.stiffness_n_per_m()
     f_c = corner_frequency_hz(kappa, setup.medium.viscosity_pa_s, setup.bead.radius_m)
     required_fps = REQUIRED_SAMPLING_RATIO * f_c
 
@@ -350,6 +401,19 @@ def check_power_window(setup: "TrapSetup") -> CheckResult:
         else None,
     )
 
+    km = setup.measured_stiffness_n_per_m
+    if km is None:
+        measured_note = ""
+    else:
+        inside = kappa_min <= km <= kappa_max
+        numbers["measured_stiffness_pn_per_um"] = round(km * 1e6, 3)
+        numbers["measured_inside_window"] = inside
+        measured_note = (
+            f" The MEASURED {km * 1e6:.2f} pN/um is "
+            f"{'inside' if inside else 'OUTSIDE'} the window, and it is what "
+            "G14c was judged on."
+        )
+
     if kappa_min > kappa_max:
         return CheckResult(
             "trap.power_window.empty",
@@ -374,9 +438,10 @@ def check_power_window(setup: "TrapSetup") -> CheckResult:
         f"{numbers['kappa_min_set_by']}, ceiling from "
         f"{numbers['kappa_max_set_by']} (corner frequency must stay under "
         f"{f_c_max:.1f} Hz). This dial computes to "
-        f"{kappa_ref * 1e6:.3f} pN/um. For a drag calibration prefer the SOFT "
-        "end -- x_eq = gamma*v/kappa, so a softer trap gives a bigger, more "
-        "measurable displacement at the same velocity.",
+        f"{kappa_ref * 1e6:.3f} pN/um." + measured_note + " For a drag "
+        "calibration prefer the SOFT end -- x_eq = gamma*v/kappa, so a softer "
+        "trap gives a bigger, more measurable displacement at the same "
+        "velocity.",
         action="The dial equivalents are placeholder arithmetic and not a "
         "setting to type in: the dial-to-mW map is uncalibrated and this "
         "laser's power is neither readable nor settable. Compare a MEASURED "
@@ -388,9 +453,12 @@ def check_power_window(setup: "TrapSetup") -> CheckResult:
 
 CHECKS: list[Check] = [
     Check("effective_na", INFO, (), check_effective_na),
-    Check("confinement", HARD, (), check_confinement),
-    Check("trap_depth", HARD, (), check_trap_depth),
-    Check("sampling", HARD, ("medium.viscosity",), check_sampling),
+    # G14a/b/c and their `requires`, both added 2026-09-10. Until then these
+    # two had EMPTY requires and so always ran -- grading a stiffness derived
+    # from a placeholder dial -> mW map. Two hard gates on fiction.
+    Check("confinement", HARD, ("stiffness",), check_confinement),
+    Check("trap_depth", HARD, ("laser.calibrated",), check_trap_depth),
+    Check("sampling", HARD, ("stiffness", "medium.viscosity"), check_sampling),
     # Proposes rather than judges -- see check_power_window.
     Check("power_window", INFO, ("medium.viscosity",), check_power_window),
 ]

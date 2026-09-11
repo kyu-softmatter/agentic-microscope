@@ -235,13 +235,16 @@ VACANT_GATES = ("G10", "G18", "G20", "G21", "G22")
 #: proposal from a gate that appears in no table in `docs/`.
 #: Whether to number them is an open decision (KH, 2026-09-09).
 UNNUMBERED_CHECKS: dict[str, tuple[str, ...]] = {
-    "optics": ("excitation", "blocking", "stokes", "collection", "centering", "crosstalk", "port"),
+    # `stokes` gained G3b on 2026-09-10 and left this list. G1-G4 still live
+    # only in docs/04 -- see test_optics_numbers_only_g3b_in_code.
+    "optics": ("excitation", "blocking", "collection", "centering", "crosstalk", "port"),
     "sample": ("depth_window",),
     # All three: photo is a reporting section, and a number here would mean
     # "this can fail", which none of them can.
     "photo": ("light_driving", "total_dose", "trap_heating"),
     "stability": ("convening", "vibration"),
-    "trapping": ("effective_na", "confinement", "power_window"),
+    # confinement gained G14a on 2026-09-10 and is no longer here.
+    "trapping": ("effective_na", "power_window"),
 }
 
 
@@ -297,18 +300,22 @@ def test_vacant_numbers_are_claimed_by_nothing() -> None:
             assert g not in claimed, f"{lens} claims the vacant gate {g}"
 
 
-def test_optics_carries_no_gate_numbers_in_code() -> None:
-    """Lens 1 is the one lens whose `checks.py` never names a gate number.
+def test_optics_numbers_only_g3b_in_code() -> None:
+    """Lens 1 names exactly one gate number in code, and only since
+    2026-09-10.
 
-    G1-G4 exist only in `docs/04`'s table, which is why CLAUDE.md and README
-    describe them as appearing "in no Python file". The CHECKS are implemented
-    and carry the documented thresholds -- see EXPECTED_LIMITS above, where
-    `excitation_ratio` 0.20, `spectral_collection` 0.15, `blocking_od` 5.0 and
-    `crosstalk` 0.05 are exactly G1-G4's criteria. So the gates are real and
-    only the numbering is absent; pinned here so that distinction stays
-    visible rather than being rediscovered as a miscount.
+    G1-G4 still live only in `docs/04`'s table, which is why CLAUDE.md and
+    README describe them as appearing "in no Python file". The CHECKS are
+    implemented and carry the documented thresholds -- see EXPECTED_LIMITS
+    above, where `excitation_ratio` 0.20, `spectral_collection` 0.15,
+    `blocking_od` 5.0 and `crosstalk` 0.05 are exactly G1-G4's criteria. So
+    the gates are real and only the numbering is absent, and that distinction
+    is pinned here rather than left to be rediscovered as a miscount.
+
+    `stokes` is the exception: it is `hard`, it decided the 2026-09-05
+    session, and it appeared in no table at all until it was given G3b.
     """
-    assert _docstring_gate_numbers("optics") == {}
+    assert _docstring_gate_numbers("optics") == {"check_stokes": "G3b"}
 
 
 def test_the_set_of_unnumbered_checks_does_not_grow_silently() -> None:

@@ -351,7 +351,20 @@ def check_filter_centering(channel: "Channel", others: list["Channel"]) -> Check
 
 
 def check_stokes(channel: "Channel", others: list["Channel"]) -> CheckResult:
-    """Are the excitation and detection bands actually separated?"""
+    """G3b: are the excitation and detection bands actually separated?
+
+    Numbered 2026-09-10. It is `hard` and it has decided a session -- the
+    2026-09-05 two-colour config went INFEASIBLE on `spectral.overlap 0.00`,
+    a Stokes headroom of -188 nm -- and until now it appeared in no gate
+    table, so a proposal could be stopped by something a reader could not
+    look up.
+
+    Sub-lettered under G3 because it is the same failure family, excitation
+    reaching the detector, by a different mechanism: G3 is the filter failing
+    to attenuate, this is the bands overlapping in the first place. G3's
+    action ("add a blocking filter") cannot fix it, which is why it needs its
+    own number rather than a branch of G3.
+    """
     head = channel.stokes_headroom_nm()
     if math.isnan(head):
         return _ok("spectral.separation", HARD, 1.0, "band edges undetermined")

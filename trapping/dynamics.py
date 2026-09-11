@@ -141,6 +141,12 @@ class TrapSetup:
     #: Achieved camera frame rate from lens 2 (detection), for the G14
     #: cross-check f_s >= 10*f_c. None if lens 2 hasn't run yet.
     detector_fps: float | None = None
+    #: A stiffness MEASURED on this bench, N/m, which overrides the model
+    #: wherever kappa is used directly. This lens could not be told one until
+    #: 2026-09-10, so the only kappa it ever had was the ray-optics model's --
+    #: and 2026-09-03 measured 3.65-4.5 pN/um three independent ways with
+    #: nowhere to put it. Supply it in N/m (3.87 pN/um = 3.87e-6).
+    measured_stiffness_n_per_m: float | None = None
     #: Which objective the beam goes through, as a key in data/objectives.yaml.
     #: The measured 1064 curve was taken at the 20x, so without this the power
     #: is the 20x's. Set it and the correction table applies
@@ -167,6 +173,42 @@ class TrapSetup:
         )
         r = self.objective_ratio
         return powers if r is None else [p * r.ratio for p in powers]
+
+    def stiffness_n_per_m(self) -> tuple[float, str]:
+        """(radial stiffness, where it came from).
+
+        A measured value wins. Otherwise the ray-optics model, whose own
+        docstring calls the result an upper bound: Fresnel transmission is
+        weighted fully to the critical angle and spherical aberration is not
+        modelled at all.
+        """
+        from .goa import radial_stiffness_n_per_m
+
+        if self.measured_stiffness_n_per_m is not None:
+            return self.measured_stiffness_n_per_m, "measured"
+        return (
+            radial_stiffness_n_per_m(
+                self.weakest_power_w(), self.bead, self.medium, self.beam
+            ),
+            "ray-optics model",
+        )
+
+    def model_over_measured(self) -> float | None:
+        """How much the model overstates the measured stiffness, or None.
+
+        The number that decides whether the model is validated or optimistic,
+        and it exists only once both are in hand.
+        """
+        if self.measured_stiffness_n_per_m is None:
+            return None
+        from .goa import radial_stiffness_n_per_m
+
+        modelled = radial_stiffness_n_per_m(
+            self.weakest_power_w(), self.bead, self.medium, self.beam
+        )
+        if self.measured_stiffness_n_per_m <= 0:
+            return None
+        return modelled / self.measured_stiffness_n_per_m
 
     def weakest_power_w(self) -> float:
         """The least-powered trap -- the binding constraint for confinement

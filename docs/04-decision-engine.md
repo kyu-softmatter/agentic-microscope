@@ -547,6 +547,7 @@ All decided in code. If even one fails, the proposal is void.
 | G1 | Excitation coupling | `ex_eff > 0`, ≥ 20% of ideal | dye absorption, source, excitation path | BLOCKED |
 | G2 | Emission collection | `spectral_collection ≥ 15%` | dye emission, emission path, QE | BLOCKED |
 | G3 | Excitation blocking | `≥ 5 OD`, **both evidence tiers** (was 7 OD for approximate spectra until 2026-09-09) | emission path curves | BLOCKED |
+| **G3b** | Band separation | Stokes headroom `≥ 5 nm`; negative means the excitation and detection bands overlap | source, dye emission, path | BLOCKED |
 | G4 | Crosstalk | `< 5%` | all channel spectra | BLOCKED |
 | G5 | Sampling | per task (§2) | NA, pixel pitch, magnification, **task kind** | ask |
 | G6 | Saturation margin | `peak < 0.7 × full well` | full well, photon budget | BLOCKED |
@@ -557,7 +558,7 @@ All decided in code. If even one fails, the proposal is void.
 | G11 | Statistical power | target error met | particle concentration, target precision | ask |
 | G12 | Data rate | a `< 0.7 ×` disk bandwidth (**reduce ROI *width*** — at the readout limit height cancels) · b `f` is achieved not requested, judged against lens 2's `fps_usable_max` · c container width is the one MM writes | measured disk bandwidth, achieved fps, confirmed bytes/px | measurement required |
 | G13 | Buffer · capacity · CPU · RAM | a `≥ 5 seconds' worth` · b fits free disk · c CPU/frame `< 1/f_total` · d RAM burst `≤` budget (**128 GB** authorized 2026-09-10, was 32) | RAM, frame size, duration, free disk | computable |
-| G14 | Tweezers sampling | `f_s ≥ 10 f_c` | κ, viscosity, particle radius | BLOCKED |
+| G14 | Tweezers | a **confinement** `κ > 0` · b **trap depth** `U ≥ 10 kT` · c **sampling** `f_s ≥ 10 f_c`. Sub-lettered 2026-09-10: `a` was `hard` and unnumbered, `b` already called itself "G14's escape-resistance half" | measured κ or a calibrated laser, viscosity, particle radius, achieved fps | BLOCKED |
 | G15 | NA feasibility | `NA ≤ n_immersion` | NA, immersion medium | BLOCKED |
 | G16 | Working distance | free WD `≥` imaging depth | WD, imaging depth, coverslip | BLOCKED |
 | G16b | Depth within chamber | chamber height `≥` imaging depth | chamber height, imaging depth | skipped (INFO) |
