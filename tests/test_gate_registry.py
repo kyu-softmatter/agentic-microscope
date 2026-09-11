@@ -151,6 +151,12 @@ EXPECTED_CHECKS: dict[str, tuple[tuple[str, str], ...]] = {
         # Proposes the stiffness window rather than judging a power
         # (2026-09-10). Both its ends escape the uncalibrated dial scale.
         ("power_window", "info"),
+        # Reports that the 20 C is the LAB SETPOINT and not a sample
+        # measurement (2026-09-11). It replaced an `assumed_inputs` entry that
+        # blocked `advances` on every trapping verdict -- the gap between room
+        # and focus IS trap heating, which is ungated by decision (E3), so
+        # blocking on it charged twice for one decision.
+        ("temperature_basis", "info"),
     ),
 }
 
@@ -282,7 +288,9 @@ UNNUMBERED_CHECKS: dict[str, tuple[str, ...]] = {
     # `vibration` was deleted outright on 2026-09-10 and left this list.
     "stability": ("convening", "drift_budget"),
     # confinement gained G14a on 2026-09-10 and is no longer here.
-    "trapping": ("effective_na", "power_window"),
+    # `temperature_basis` is unnumbered on purpose: it reports, it cannot fail,
+    # and a number would advertise it as a gate on something E3 does not gate.
+    "trapping": ("effective_na", "power_window", "temperature_basis"),
 }
 
 

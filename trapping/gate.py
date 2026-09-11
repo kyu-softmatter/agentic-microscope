@@ -180,8 +180,15 @@ def _assumed_inputs(setup: TrapSetup) -> list[str]:
                 f"'{r.tier}' (kb/calibrations/objective-transmittance.yaml) -- "
                 f"{basis}. The dial% -> mW curve itself is measured, at the 20x"
             )
-    if not setup.temperature_measured:
-        out.append(f"medium temperature ({setup.temperature_k:.1f} K default)")
+    # ⚠ TEMPERATURE IS DELIBERATELY NOT HERE ANY MORE (KH, 2026-09-11).
+    # It used to append "medium temperature (293.1 K default)", which pinned
+    # `evidence: assumed` and blocked `advances` on every trapping verdict.
+    # The 20 C is the lab's air-conditioning setpoint, so the room IS known;
+    # what is unknown is the sample at the focus, and that is trap heating,
+    # which is ungated by decision (CLAUDE.md E3). Blocking a verdict on a
+    # residual the committee has decided not to gate was charging twice for one
+    # decision. `check_temperature_basis` reports it as INFO instead -- KH:
+    # "인포에서 주의를 주는정도면 충분할 듯".
     if setup.beam.clipped_by_tir(setup.medium):
         # A TIR-clipped objective still traps, and check_effective_na reports
         # it rather than vetoing it (2026-08-18). But the same index step that
@@ -295,8 +302,10 @@ def evaluate(setup: TrapSetup) -> Verdict:
                 "info",
                 "evidence.assumed",
                 "This verdict used assumed values for: " + ", ".join(assumed) + ".",
-                action="Measure the laser dial calibration curve and/or "
-                "confirm the sample temperature, then re-run.",
+                action="Measure the laser dial calibration curve, then "
+                "re-run. (Temperature is no longer listed here -- see "
+                "trapping.temperature_basis for why the room's setpoint does "
+                "not settle the focus.)",
                 kind=INFO,
             )
         )

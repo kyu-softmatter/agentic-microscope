@@ -90,10 +90,43 @@ def test_a_measured_stiffness_alone_unblocks_the_kappa_checks():
     assert gaps == {"missing.laser.calibrated"}
 
 
-def test_evidence_downgrades_to_assumed_with_default_temperature():
+def test_the_room_setpoint_does_not_cost_the_evidence_tier():
+    """Changed 2026-09-11 (KH): "인포에서 주의를 주는정도면 충분할 듯".
+
+    The 20 C is the lab's air-conditioning setpoint, so the ROOM is known. What
+    is unknown is the sample at the focus, and that gap **is** trap heating,
+    which is ungated by decision (CLAUDE.md E3, docs/06 D6). Listing it in
+    `assumed_inputs` blocked `advances` on every trapping verdict, which
+    charged twice for one decision.
+
+    It is not silent, though -- `trapping.temperature_basis` reports it as INFO
+    on every run, and `temperature_measured` stays False on a setpoint."""
     v = evaluate(_setup(temperature_measured=False))
-    assert v.evidence == "assumed"
-    assert any("temperature" in i for i in v.assumed_inputs)
+    assert not any("temperature" in i for i in v.assumed_inputs)
+    f = next(f for f in v.findings if f.code == "trapping.temperature_basis")
+    assert f.severity == "info"
+    assert f.kind == "info"
+    assert "LAB SETPOINT" in f.message
+    assert "2.74" in f.message          # dD/D per kelvin, the reason to care
+    n = v.metrics["trapping.temperature_basis"]
+    assert n["measured"] is False
+    assert n["basis"] == "lab air-conditioning setpoint"
+    assert n["gated"] is False
+
+
+def test_a_measured_sample_temperature_changes_the_basis_it_reports():
+    v = evaluate(_setup(temperature_measured=True))
+    f = next(f for f in v.findings if f.code == "trapping.temperature_basis")
+    assert "declared MEASURED" in f.message
+    assert v.metrics["trapping.temperature_basis"]["basis"] == "sample measurement"
+
+
+def test_the_temperature_report_is_visible_rather_than_graded():
+    """An INFO check returning severity "ok" is dropped from findings by every
+    gate here. This one must be read, so it reports "info"."""
+    v = evaluate(_setup())
+    assert v.margins["trapping.temperature_basis"] == 10.0
+    assert v.bottleneck != "trapping.temperature_basis"
 
 
 def test_sampling_is_informational_without_a_detector_fps():

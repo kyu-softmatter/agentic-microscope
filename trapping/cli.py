@@ -226,11 +226,11 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--wavelength-nm", type=float, default=1064.0, help="laser wavelength (nm)")
     c.add_argument(
         "--temperature-c", type=float, default=20.0,
-        help="medium temperature in Celsius (default 20 -- this project's room-temperature default)",
+        help="medium temperature in Celsius (default 20 -- the lab's air-conditioning setpoint, KH 2026-09-11; it is the ROOM, not the sample)",
     )
     c.add_argument(
         "--temperature-measured", action="store_true",
-        help="mark --temperature-c as an actual measurement rather than the 20C default",
+        help="mark --temperature-c as a measurement OF THE SAMPLE; the 20C setpoint alone does not earn this, since the trap heats the focus",
     )
     c.add_argument(
         "--viscosity-pa-s", type=float, default=None,

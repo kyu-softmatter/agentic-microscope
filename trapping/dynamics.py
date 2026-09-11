@@ -133,10 +133,18 @@ class TrapSetup:
     dial_percent: float
     n_traps: int = 1
     weights: list[float] | None = None
-    #: 293.15 K (20 C) is this project's standing default when temperature
-    #: is not otherwise specified (2026-08-10 user decision). Still counts
-    #: as an assumed, not measured, input -- see temperature_measured.
+    #: 293.15 K (20 C) is **the lab's air-conditioning setpoint**, which KH
+    #: keeps at 20 C (2026-09-11). That is a sourced number, not the "standing
+    #: default when nothing is specified" this comment used to claim
+    #: (2026-08-10) -- but it is the temperature of the ROOM.
     temperature_k: float = 293.15
+    #: ⚠ STAYS False ON THE SETPOINT ALONE, BY DECISION (KH, 2026-09-11).
+    #: The physics wants the temperature of the sample AT THE FOCUS, and with a
+    #: 1064 nm trap on and an oil objective in contact with the coverslip that
+    #: is not the room's. Trap heating is ungated by decision (CLAUDE.md E3,
+    #: docs/06 D6), so the setpoint bounds the room and nothing bounds the
+    #: focus. Set this True only for a measurement of the sample.
+    #: kb/expertise/microrheology-standard-conditions.md
     temperature_measured: bool = False
     #: Achieved camera frame rate from lens 2 (detection), for the G14
     #: cross-check f_s >= 10*f_c. None if lens 2 hasn't run yet.

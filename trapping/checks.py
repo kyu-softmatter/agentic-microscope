@@ -467,6 +467,70 @@ def check_power_window(setup: "TrapSetup") -> CheckResult:
     )
 
 
+def check_temperature_basis(setup: "TrapSetup") -> CheckResult:
+    """Report what the temperature rests on. INFO, unnumbered, always visible.
+
+    The 20 C this lens computes with is **the lab's air-conditioning
+    setpoint** (KH, 2026-09-11), which makes it a sourced number rather than
+    the bare default it was documented as. It is also the temperature of the
+    ROOM, and every quantity here wants the sample's at the focus.
+
+    That gap is trap heating, and trap heating is **ungated by decision**
+    (CLAUDE.md E3, docs/06 D6, kb/decisions/2026-08-19-lens-7-scope.md). So
+    this reports and does not grade -- an INFO caution is what KH asked for,
+    and it replaces an `assumed_inputs` entry that used to block `advances` on
+    every trapping verdict. Blocking on a residual the committee has already
+    decided not to gate was charging twice for one decision.
+
+    Why it is worth saying at all: `dD/D = 2.74 %/K` in water
+    (kb/expertise/microrheology-standard-conditions.md), so a few K between the
+    room and the focus is a few percent on any diffusivity, viscosity or
+    stiffness inferred through kT or eta -- larger than most effects anyone is
+    chasing here.
+    """
+    t_c = setup.temperature_k - 273.15
+    numbers = {
+        "temperature_k": round(setup.temperature_k, 2),
+        "temperature_c": round(t_c, 2),
+        "measured": setup.temperature_measured,
+        "basis": "sample measurement" if setup.temperature_measured
+        else "lab air-conditioning setpoint",
+        "d_diffusivity_per_kelvin_pct": 2.74,
+        "gated": False,
+    }
+
+    if setup.temperature_measured:
+        return CheckResult(
+            "trapping.temperature_basis",
+            INFO,
+            MAX_MARGIN,
+            "info",
+            f"Temperature {t_c:.1f} C is declared MEASURED, so kT and the "
+            "viscosity rest on the sample rather than on the room.",
+            action=None,
+            numbers=numbers,
+        )
+
+    return CheckResult(
+        "trapping.temperature_basis",
+        INFO,
+        MAX_MARGIN,
+        "info",
+        f"Temperature {t_c:.1f} C is the LAB SETPOINT, not a sample "
+        "measurement. The room is known; the sample at the focus is not, and "
+        "with a 1064 nm trap on and an oil objective against the coverslip the "
+        "two differ. Water's dD/D is 2.74 %/K, so a few K is a few percent on "
+        "anything inferred through kT or eta -- kappa included.",
+        action="Ungated on purpose: the gap IS trap heating, which is ungated "
+        "by decision (CLAUDE.md E3). Treat this as a caution, not a blocker. "
+        "Set temperature_measured only for a measurement of the sample, and if "
+        "one is ever taken and differs by more than ~2 K, every stored kappa "
+        "and D needs rescaling rather than re-running "
+        "(kb/expertise/microrheology-standard-conditions.md).",
+        numbers=numbers,
+    )
+
+
 CHECKS: list[Check] = [
     Check("effective_na", INFO, (), check_effective_na),
     # G14a/b/c and their `requires`, both added 2026-09-10. Until then these
@@ -477,6 +541,7 @@ CHECKS: list[Check] = [
     Check("sampling", HARD, ("stiffness", "medium.viscosity"), check_sampling),
     # Proposes rather than judges -- see check_power_window.
     Check("power_window", INFO, ("medium.viscosity",), check_power_window),
+    Check("temperature_basis", INFO, (), check_temperature_basis),
 ]
 
 

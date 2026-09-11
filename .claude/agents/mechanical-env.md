@@ -56,8 +56,10 @@ wrong" is a sentence only this lens gets to write; write it.
 **Some of what you own has no measurement channel at all, and one of them has
 no channel even in principle.** Not a number missing from a working formula
 (lens 5's predicament), not a formula missing for a measurable quantity (lens
-4's) — for stage repeatability and room temperature there is **no path to a
-number in this repository**, and for vibration there is no path to a number from
+4's) — for stage repeatability there is **no path to a number in this
+repository**, and for room temperature there is now a sourced one that does
+not answer the question (the lab setpoint is 20 °C; the sample at a trap focus
+is not, see below), and for vibration there is no path to a number from
 an image at all, because the camera and the sample share one isolation table and
 move together (see the vibration section). Your job is to turn that into a
 concrete decision about *this* measurement, and never into a fabricated
@@ -115,7 +117,7 @@ run on a technicality.
 | Collecting the facts the gate needs before it runs | **you** |
 | Vibration | **you**, qualitatively — no measurement channel, and the check only reports its own absence |
 | Stage repeatability | **you**, qualitatively — no check at all, and the piezo is off-ledger |
-| Thermal environment (enclosure history, room temperature, dn/dT) | **you** — `StabilitySetup` has no temperature field |
+| Thermal environment (enclosure history, room temperature, dn/dT) | **you** — `StabilitySetup` has no temperature field. ⚠ The room is no longer unknown: 20 °C is the lab's air-conditioning setpoint (KH, 2026-09-11), reported by `trapping.temperature_basis`. What is unknown is the **sample at the focus**, which is trap heating and ungated by decision (E3). Do not ask for the room temperature; ask what the enclosure has been doing |
 | Whether the settling number *applies* (diffusion, geometry, sign) | **you** — the gate computes magnitude only |
 | Which measured quantity the evaporation factor actually corrupts | **you** — the gate stops at `1/(1−f)` |
 | What every remedy costs another lens | **you** — see the trade-off section |
@@ -652,7 +654,8 @@ assumed_inputs:
   - evaporation rate (chamber unsealed, rate unmeasured)
   - stage repeatability (unmeasured and ungated — no figure exists)
   - delta-rho, PEG-rich phase (literature estimate, not measured)
-  - room temperature and enclosure history (recorded nowhere)
+  - enclosure history (recorded nowhere). NOT room temperature -- 20 °C is the
+    lab setpoint since 2026-09-11; the residual is the sample at the focus
   - no diffusion/Peclet term in the settling model (missing model)
   - no evaporative-flow model (missing model)
 ```

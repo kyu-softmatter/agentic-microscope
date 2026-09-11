@@ -28,7 +28,7 @@ them every time is not carrying the expertise.
 | Excitation | Aura **GREEN**, ~80/1000, widefield epi (no DMD, disk bypassed) | |
 | Camera | Kinetix_red, 16-bit `Dynamic Range` port | |
 | ROI | frame 2–3× the particle, *not* the full chip, for the measurement | "just want to watch a single particle" |
-| Temperature | 20 °C assumed (`kT = 4.045e-3` pN·µm) | **assumed, never measured** — see below |
+| Temperature | **20 °C lab setpoint** (`kT = 4.045e-3` pN·µm) | sourced for the ROOM (KH, 2026-09-11); the **sample** is still unmeasured — see below |
 | Medium | water for calibration; viscoelastic (λ-DNA, glycerol-water) for the science | |
 
 ## Why
@@ -51,10 +51,30 @@ should not be "corrected" to 2×2 on SNR grounds.
 exposure as the period, so exposure *is* the frame rate, and 20.0 ms is the only
 value that lands on the assumption the analysis already makes.
 
-**Temperature is the standing hole.** `dD/D = 2.74 %/K`, so a 5 K room-vs-sample
-error is a 14 % diffusivity error — larger than most effects anyone is chasing —
-and it is currently an assumption (293 K) in both the acquisition scripts and
-`kT_um` in the MATLAB. Ask for it; do not infer it.
+**Temperature: the room is sourced, the sample is not.** The 20 °C is **the
+lab's air-conditioning setpoint**, which KH keeps there (2026-09-11). That
+retires half of what this entry used to call "the standing hole" — 293 K is no
+longer an unsourced assumption, and asking for the room temperature every
+session was asking for a constant.
+
+What remains is the half that matters more, and it is **not** a missing
+measurement so much as a named residual: the physics wants the sample
+temperature **at the focus**, and with a 1064 nm trap on and an oil objective in
+contact with the coverslip that is not the room's. `dD/D = 2.74 %/K`, so a few
+K between room and focus is a few percent on any D, viscosity or κ inferred
+through `kT` or `η` — and the direction is known, since the trap only heats.
+
+**That gap is trap heating, which is ungated by decision** (`CLAUDE.md` E3,
+`docs/06` D6, `kb/decisions/2026-08-19-lens-7-scope.md`). So it is reported,
+not gated: `trapping.temperature_basis` says so as INFO on every run, and
+`temperature_measured` stays `False` on the setpoint alone (KH, 2026-09-11:
+*"인포에서 주의를 주는정도면 충분할 듯"*). Setting it `True` is a claim about a
+measurement **of the sample**, not of the room.
+
+Two things this does not fix. The acquisition scripts and `kT_um` in the MATLAB
+still hardcode 293 K, which is now right for the room and still silent about the
+focus. And `StabilitySetup` has no temperature field at all, so lens 8 cannot
+see it.
 
 ## The three trap stiffnesses, and which are already implemented
 
@@ -77,10 +97,16 @@ why (3) being independent is worth the work.
 
 ## Falsifier
 
-A room-temperature measurement that differs from 20 °C by more than ~2 K
-invalidates the `kT` in every stored result, and the fix is not a re-run but a
-rescale. If someone measures the sample temperature and it is 24 °C, every κ and
-D on record from these scripts is out by ~11 % and this entry should say so.
+Somebody measures the sample temperature near the focus and it differs from
+20 °C by more than ~2 K. That would confirm this entry's scope limit — room ≠
+sample — and at the same time put every stored κ and D out by that much: the fix
+is **not a re-run but a rescale**. At 24 °C the error is ~11 %.
+
+⚠ Note which way the falsifier cuts. It does not threaten the 20 °C, which is
+the setpoint and is sourced; it threatens the *silent equation of the setpoint
+with the sample*, which is what every script and every `kT_um` currently does.
+A measurement that came back at 20.0 °C would be the more surprising result,
+because the trap only heats.
 
 Equally: if the achieved frame period is ever measured and found *not* to equal
 the exposure setting, the `frame_time` reasoning above collapses and every
