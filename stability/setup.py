@@ -25,17 +25,13 @@ class StabilitySetup:
     #: Explicit override, if the DOF is known some other way.
     depth_of_field_um: float | None = None
 
-    # -- drift (no measurement exists in the repo today) -------------------
-    #: Measured axial drift, nm/min. Nothing in kb/calibrations/ records this,
-    #: so the axial-drift gate BLOCKS until it is measured.
-    axial_drift_rate_nm_per_min: float | None = None
-    #: Measured lateral drift, nm/min.
-    lateral_drift_rate_nm_per_min: float | None = None
-    #: Lateral tolerance: how far the field may wander before the measurement
-    #: is affected. For tracking this is the search window, not the field.
-    lateral_tolerance_um: float | None = None
-
-    # -- PFS (docs/06 D7) --------------------------------------------------
+    # -- drift: NO FIELDS, ON PURPOSE --------------------------------------
+    # Three drift fields stood here (axial rate, lateral rate, lateral
+    # tolerance) and fed G29/G30. All three left on 2026-09-10: a drift rate is
+    # measured during a run, so it is not an input to a design. The depth of
+    # field and duration above are all `stability.drift_budget` needs to state
+    # what the run can tolerate. Do not add a rate field back without reading
+    # kb/decisions/2026-09-10-drift-is-not-a-design-element.md first.
 
     # -- sedimentation -----------------------------------------------------
     particle_radius_um: float | None = None

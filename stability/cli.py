@@ -1,21 +1,23 @@
 """Quick command-line verification of the mechanical/environmental gate (lens 8).
 
     python -m stability.cli check --duration-min 60 --objective 100x-Oil \\
-        --emission-nm 520 --axial-drift-nm-per-min 5 \\
+        --emission-nm 520 \\
         --particle-radius-um 0.5 --delta-density 50 --viscosity 1e-3
 
     # density-matched suspension: the settling term vanishes
     python -m stability.cli check --duration-min 60 --objective 100x-Oil \\
-        --emission-nm 520 --axial-drift-nm-per-min 5 \\
+        --emission-nm 520 \\
         --particle-radius-um 0.5 --delta-density 0 --viscosity 1e-3
 
-``check`` runs the committee-lens gate (stability.gate.evaluate): PFS lock
-axial drift (G29), lateral drift (G30), sedimentation (G31), evaporation
-(G32).
+``check`` runs the committee-lens gate (stability.gate.evaluate):
+sedimentation (G31) and evaporation (G32).
 
-There is no measured drift rate anywhere in the repo, so --axial-drift-nm-per-min
-has to be supplied and the gate BLOCKS without it. That is the honest state, not
-a CLI limitation: see the module docstring.
+THERE ARE NO DRIFT FLAGS AND THAT IS NOT AN OMISSION. G29 (axial drift) and
+G30 (lateral drift) left this lens on 2026-09-10, with G28 (PFS lock), because
+a drift rate is measured during a run and so cannot be an input to a design.
+What the run CAN be told in advance is how much drift it would tolerate, and
+`stability.drift_budget` reports that from the duration and the depth of field
+with no extra flag. kb/decisions/2026-09-10-drift-is-not-a-design-element.md
 """
 
 from __future__ import annotations
@@ -46,9 +48,6 @@ def cmd_check(args: argparse.Namespace) -> int:
         objective=objective,
         emission_nm=args.emission_nm,
         depth_of_field_um=args.depth_of_field_um,
-        axial_drift_rate_nm_per_min=args.axial_drift_nm_per_min,
-        lateral_drift_rate_nm_per_min=args.lateral_drift_nm_per_min,
-        lateral_tolerance_um=args.lateral_tolerance_um,
         particle_radius_um=args.particle_radius_um,
         delta_density_kg_m3=args.delta_density,
         viscosity_pa_s=args.viscosity,
@@ -101,22 +100,11 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="stability", description=__doc__)
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    c = sub.add_parser("check", help="run the committee-lens gate (G29-G32)")
+    c = sub.add_parser("check", help="run the committee-lens gate (G31-G32)")
     c.add_argument("--duration-min", type=float, required=True, help="acquisition length")
     c.add_argument("--objective", default=None, help="key from data/objectives.yaml, for the DOF")
     c.add_argument("--emission-nm", type=float, default=None)
     c.add_argument("--depth-of-field-um", type=float, default=None, help="override the computed DOF")
-
-    c.add_argument(
-        "--axial-drift-nm-per-min", type=float, default=None,
-        help="MEASURED axial drift rate; nothing in kb/calibrations/ has one",
-    )
-    c.add_argument("--lateral-drift-nm-per-min", type=float, default=None)
-    c.add_argument(
-        "--lateral-tolerance-um", type=float, default=None,
-        help="for tracking this is the search window, not the field",
-    )
-
 
     c.add_argument("--particle-radius-um", type=float, default=None)
     c.add_argument(

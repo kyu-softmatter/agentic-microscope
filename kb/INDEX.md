@@ -48,7 +48,7 @@ Durable expert judgment. Each carries a `Why` and a falsifier.
 - **[microrheology-standard-conditions](expertise/microrheology-standard-conditions.md)** · 2026-09-07
   What conditions does a microrheology run on this instrument default to, and which of them are choices rather than constants
 
-## `kb/decisions/` — 35 entries
+## `kb/decisions/` — 36 entries
 
 Dated design and scope choices, in the order they were made.
 
@@ -110,6 +110,8 @@ Dated design and scope choices, in the order they were made.
   Why did G5 report that a pixel finer than imaging-Nyquist hurts tracking precision, when CLAUDE.md H4 says the opposite?
 - **[2026-09-10-drag-calibration-operating-envelope](decisions/2026-09-10-drag-calibration-operating-envelope.md)** · 2026-09-10
   What frame rate, ROI and acquisition length can a Stokes-drag trap calibration on a 5 um DragonGreen bead actually use, and which constraint sets each one?
+- **[2026-09-10-drift-is-not-a-design-element](decisions/2026-09-10-drift-is-not-a-design-element.md)** · 2026-09-10
+  Can a planning gate judge a quantity that is only measurable while the experiment runs?
 - **[2026-09-10-g17-becomes-a-z-to-depth-converter](decisions/2026-09-10-g17-becomes-a-z-to-depth-converter.md)** · 2026-09-10
   Should G17 gate on a depth x mismatch product whose threshold is a checklist trigger, when the operator has imaged well past it?
 - **[2026-09-10-g28-moves-to-the-hardware-stage](decisions/2026-09-10-g28-moves-to-the-hardware-stage.md)** · 2026-09-10

@@ -19,6 +19,11 @@ G = 9.80665
 
 
 def total_drift_nm(rate_nm_per_min: float, duration_min: float) -> float:
+    # NO GATE IN THIS REPOSITORY CALLS THIS ANY MORE. G29 did, until 2026-09-10,
+    # when drift left the planning lens for the hardware/analysis stage (a rate
+    # is measured during a run, not designed before one). The formula stays
+    # because it is the analysis stage's, and it is where the stage should read
+    # it from. kb/decisions/2026-09-10-drift-is-not-a-design-element.md
     """Accumulated drift over the acquisition.
 
     Linear in time, which is the optimistic case: thermal drift is usually

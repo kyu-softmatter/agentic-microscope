@@ -97,6 +97,12 @@ CORRECTIONS: dict[str, str] = {
     "crosstalk": "linear unmixing from a measured mixing matrix",
     "motion_blur.biased": "Savin-Doyle blur correction (docs/04 §5)",
     "perturbation.photobleaching": "intensity-decay correction (docs/04 §6)",
+    # DORMANT since 2026-09-10: G30 left lens 8 for the hardware/analysis stage
+    # (a drift rate is measured during a run, not designed before one), so
+    # nothing emits this code at planning time. The entry stays because the
+    # remedy is unchanged and correct, and because that stage is where a drift
+    # verdict will come from once it reports back.
+    # kb/decisions/2026-09-10-drift-is-not-a-design-element.md
     "stability.lateral_drift": "drift correction from a fiducial or image registration",
 }
 
@@ -135,6 +141,7 @@ BIAS_SCOPE: dict[str, frozenset[str]] = {
     # PSF and near-interface geometry.
     "geometry.ri_mismatch": frozenset({"pixel_size"}),
     # Absolute position goes wrong and long-lag MSD points follow it.
+    # Dormant with the CORRECTIONS entry above -- no planning gate emits it.
     "stability.lateral_drift": frozenset({"pixel_size"}),
     # docs/04 §6 frames bleaching as an intensity decay. It costs a tracking
     # experiment statistics rather than accuracy -- particles vanish, which

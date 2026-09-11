@@ -115,7 +115,7 @@ design, not a gap.
 | | |
 |---|---|
 | **8 review lenses** | optics · detection · compute resources · sample geometry · photo-perturbation · measurement validity · optical tweezers · mechanical & environmental |
-| **26 deterministic gates** | G1–G32 less the vacant `G10`, `G18`, `G20`, `G21`, `G22` and `G28`, each classified `hard` / `bias` / `soft` by what its failure costs. **23 are implemented** — `G2`–`G4` carry a threshold and a default verdict in [04](docs/04-decision-engine.md) and appear in no Python file; `G10` and `G20` went on 2026-09-09, `G18`, `G21` and `G22` on 2026-09-10 — the last two when **lens 5 became a reporting section rather than a judging lens**; `G28` moved to the hardware execution stage on 2026-09-10; none of the six numbers is reused → [below](#two-more-axes-and-the-questions-neither-working-repo-asks) → [05 §2](docs/05-consensus-gate.md) |
+| **24 deterministic gates** | G1–G32 less the vacant `G10`, `G18`, `G20`, `G21`, `G22`, `G28`, `G29` and `G30`, each classified `hard` / `bias` / `soft` by what its failure costs. **21 are implemented** — `G2`–`G4` carry a threshold and a default verdict in [04](docs/04-decision-engine.md) and appear in no Python file; `G10` and `G20` went on 2026-09-09, `G18`, `G21` and `G22` on 2026-09-10 — the last two when **lens 5 became a reporting section rather than a judging lens**; `G28`, `G29` and `G30` moved to the hardware execution stage on 2026-09-10, the last two because a drift rate is measured *during* a run and so is not a design input; none of the eight numbers is reused → [below](#two-more-axes-and-the-questions-neither-working-repo-asks) → [05 §2](docs/05-consensus-gate.md) |
 | **Provenance on every input** | `measured` vs `assumed`, with a separate `advances` axis that only `measured` can satisfy. Literature values compute but never advance → [`kb/literature/`](kb/literature/) |
 | **2,343 prior acquisitions** | normalized out of Micro-Manager metadata into transferable physical quantities, across two schema generations |
 | **1,225 tests, 1,162 on CI** | offline; the instrument is not required to run any of them. The badge covers 1,162 — of the rest, 56 need a Micro-Manager device-adapter install and 7 need `opencv-python`, and `PYTEST_CI_EMULATE=ci` reproduces the runner's environment here → [running the tests](#running-the-tests) |
@@ -368,7 +368,7 @@ evidence back into it. `R` marks a read, `W` marks a write.
   +---------------------------------+---------------------------------+
                                     v
   +-------------------------------------------------------------------+
-  |  COMMITTEE          8 lenses . 26 gates (7 judging lenses)      |
+  |  COMMITTEE          8 lenses . 24 gates (7 judging lenses)      |
   |                                                                   |
   |    1 optics/     2 detection/    3 compute/     4 sample/         |
   |    5 photo/      6 validity/     7 trapping/    8 stability/      |
@@ -407,7 +407,7 @@ evidence back into it. `R` marks a read, `W` marks a write.
   +-------------------------------------------------------------------+
   |  [ a device-level standard would land HERE, or beside it ]        |
   |  It replaces the per-vendor half of the drivers below and the     |
-  |  discovery rung above. It does NOT touch the 26 gates, which sit  |
+  |  discovery rung above. It does NOT touch the 24 gates, which sit  |
   |  over any transport, and MCP is the layer above again -- how an   |
   |  agent reaches tools and context at all.                          |
   |                                                                   |
@@ -500,7 +500,7 @@ Lens-by-lens implementation status is in the **Code** table below.
 ## Current status
 
 **Design complete; all eight committee lenses are implemented.** Nine design
-documents, 26 gates (G1–G32 less G10, G18, G20, G21, G22, G28), 1,237 tests passing. The badge above reports
+documents, 24 gates (G1–G32 less G10, G18, G20, G21, G22, G28, G29, G30), 1,239 tests passing. The badge above reports
 1,162 of them — 56 need a Micro-Manager device-adapter install and run in a
 separate workflow, and 7 need `opencv-python`, which is stated at the top of each file in
 [`.github/workflows/`](.github/workflows/) and again under [running the
@@ -530,7 +530,7 @@ hardware measurements have runnable scripts in
 [`kb/calibrations/`](kb/calibrations/). → [Phase 0](docs/07-roadmap.md)
 
 **`BLOCKED` is the current default, not the permanent one.** One `UNKNOWN`
-among the 26 gates blocks the verdict today, which is the only defensible
+among the 24 gates blocks the verdict today, which is the only defensible
 setting while there is no record to check a verdict against. As experiments
 accumulate, strictness relaxes — but against the record rather than against
 confidence, by promoting an input's evidence tier rather than lowering a
@@ -1206,7 +1206,7 @@ produce a **stub**, not an answer:
 - **Write the stub, and stop.** A new `hardware/<device>/` with the description
   and the open questions. **Nothing is written into `kb/systems/` until a human
   confirms it** — that file is the wiring dossier every lens reads, and a guess
-  landing in it propagates into 26 gates.
+  landing in it propagates into 24 gates.
 - **Read-only.** Enumerate and read descriptors; issue no commands. Same rule as
   item 0b, and for the same reason.
 
@@ -2025,7 +2025,7 @@ make, not an oversight to correct.
 | [01 Architecture](docs/01-architecture.md) | Overall design, layers, 5 design principles, committee composition, folder structure |
 | [02 Knowledge base](docs/02-knowledge-base.md) | 3-tier normalization, **three-way device wiring cross-check**, off-ledger settings, SQLite schema |
 | [03 Cross-system transfer](docs/03-cross-system-transfer.md) | Current instrument ≠ past instrument. What transfers and what does not |
-| [04 Decision engine](docs/04-decision-engine.md) | Decision order, photon budget / SNR / sampling / timing formulas, the 26 gates |
+| [04 Decision engine](docs/04-decision-engine.md) | Decision order, photon budget / SNR / sampling / timing formulas, the 24 gates |
 | [05 Committee](docs/05-consensus-gate.md) | hard/bias/soft distinction, **difficulty grades**, **improvement proposals (sensitivity analysis)**, deadlock handling |
 | [06 Pitfalls](docs/06-pitfalls.md) | What actually goes wrong in this data and this science — grounded in measured evidence |
 | [07 Roadmap](docs/07-roadmap.md) | Phase 0 (secure the evidence) → 5 (automate manipulation) → 6 (join the simulation agent). Three things that pay off immediately |

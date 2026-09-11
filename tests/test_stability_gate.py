@@ -16,13 +16,10 @@ def _setup(**overrides) -> StabilitySetup:
         duration_min=60.0,
         objective=find_objective("100x-Oil"),
         emission_nm=520.0,
-        axial_drift_rate_nm_per_min=1.0,
         particle_radius_um=0.5,
         delta_density_kg_m3=0.0,  # density-matched by default, so G31 is quiet
         viscosity_pa_s=1.0e-3,
         chamber_sealed=True,
-        lateral_drift_rate_nm_per_min=1.0,
-        lateral_tolerance_um=1.0,
         vibration_measured=True,
     )
     defaults.update(overrides)
@@ -44,12 +41,16 @@ def test_blocked_without_a_depth_of_field():
     assert any(f.code == "missing.depth_of_field" for f in v.findings)
 
 
-def test_blocked_without_a_measured_drift_rate():
-    """Nothing in kb/calibrations/ records one, and a guessed rate would decide
-    the gate wrongly in whichever direction the guess leaned."""
-    v = evaluate(_setup(axial_drift_rate_nm_per_min=None))
-    assert v.status == "BLOCKED"
-    assert any(f.code == "missing.axial_drift_rate" for f in v.findings)
+def test_a_missing_drift_rate_no_longer_blocks_anything():
+    """It was Phase 0's most common refusal and it is gone. G29 needed a
+    measured rate, nothing in the repo had one, so every real acquisition
+    BLOCKED -- and because Phase 0 is all-or-nothing, that one absent number
+    took down G31 and G32, whose inputs were present. Removing the gate
+    removed the refusal."""
+    v = evaluate(_setup())
+    assert v.status != "BLOCKED"
+    assert not any("drift_rate" in f.code for f in v.findings)
+    assert v.margins["stability.sedimentation"] > 0.0
 
 
 def test_blocked_without_sedimentation_inputs():
@@ -98,27 +99,86 @@ def test_the_setup_no_longer_accepts_the_pfs_flags():
         _setup(pfs_enabled=True)
 
 
-def test_small_drift_stays_inside_the_focus_budget():
-    v = evaluate(_setup(axial_drift_rate_nm_per_min=1.0, duration_min=60.0))
-    assert v.margins["stability.axial_drift"] >= 1.0
+# ---------------- G29 and G30 removed 2026-09-10 -----------------------------
+#
+# Axial drift and lateral drift went the way G28 had gone hours earlier, on the
+# criterion KH gave when offered the choice of making G30 refuse like G29:
+#
+#     "실험 중 측정해야한다면 디자인 요소로는 적합하지 않은듯"
+#
+# Both rates ARE obtainable here -- `config/session/focus_monitor.py` samples
+# ZDrive and both cameras several times a second, and most of the beads in
+# data/particles.yaml are stuck to the coverslip and serve as lateral
+# fiducials -- but obtainable from the ACQUISITION is the wrong timing for a
+# gate that judges a PROPOSAL. `compute.drops` is the precedent for that work.
+# kb/decisions/2026-09-10-drift-is-not-a-design-element.md
+#
+# What is tested instead: the two gates are absent, the fields are absent, and
+# the half of the question that a plan CAN answer is reported.
 
 
-def test_drift_beyond_half_the_depth_of_field_fails():
-    """5 nm/min for 60 min = 0.3 um against a 0.1875 um budget."""
-    v = evaluate(_setup(axial_drift_rate_nm_per_min=5.0, duration_min=60.0))
-    assert v.status == "FAIL"
-    assert any(
-        f.code == "stability.axial_drift" and f.severity == "fail" for f in v.findings
+def test_neither_drift_gate_exists_any_more():
+    v = evaluate(_setup())
+    assert "stability.axial_drift" not in v.margins
+    assert "stability.lateral_drift" not in v.margins
+    assert not any(
+        f.code in {"stability.axial_drift", "stability.lateral_drift"}
+        for f in v.findings
     )
 
 
-def test_drift_scales_with_duration():
+def test_the_setup_no_longer_accepts_a_drift_rate():
+    """The fields are what made a caller able to assert a rate at planning
+    time. Removing them is the enforcement; the deleted checks were only the
+    consequence."""
+    for field in (
+        "axial_drift_rate_nm_per_min",
+        "lateral_drift_rate_nm_per_min",
+        "lateral_tolerance_um",
+    ):
+        with pytest.raises(TypeError):
+            _setup(**{field: 1.0})
+
+
+def test_the_drift_budget_reports_the_rate_the_run_can_absorb():
+    """Duration and depth of field are both planning inputs, so the tolerance
+    IS a design quantity even though the rate is not. The 100x oil's 0.375 um
+    DOF over 60 min is ~6.26 nm/min for one full DOF -- tighter than any drift
+    figure anyone would casually claim, which is the point of reporting it."""
+    s = _setup(duration_min=60.0)
+    expected = s.resolved_dof_um * 1000.0 / 60.0
+    n = evaluate(s).metrics["stability.drift_budget"]
+    assert n["axial_rate_for_one_dof_nm_per_min"] == pytest.approx(expected, rel=1e-3)
+    assert n["axial_rate_for_one_dof_nm_per_min"] == pytest.approx(6.26, rel=1e-2)
+    assert n["axial_rate_for_half_dof_nm_per_min"] == pytest.approx(
+        expected / 2, rel=1e-3
+    )
+    assert n["gated"] is False
+
+
+def test_the_drift_budget_tightens_with_duration():
     short = evaluate(_setup(duration_min=30.0))
     long_ = evaluate(_setup(duration_min=120.0))
     assert (
-        long_.metrics["stability.axial_drift"]["total_drift_um"]
-        == pytest.approx(4 * short.metrics["stability.axial_drift"]["total_drift_um"])
+        short.metrics["stability.drift_budget"]["axial_rate_for_one_dof_nm_per_min"]
+        == pytest.approx(
+            4
+            * long_.metrics["stability.drift_budget"][
+                "axial_rate_for_one_dof_nm_per_min"
+            ],
+            rel=1e-3,
+        )
     )
+
+
+def test_the_drift_budget_is_visible_rather_than_graded():
+    """An INFO check whose severity is "ok" is dropped from findings by every
+    gate in this repo. This one must be read, so it reports "info"."""
+    v = evaluate(_setup())
+    f = next(f for f in v.findings if f.code == "stability.drift_budget")
+    assert f.severity == "info"
+    assert f.kind == "info"
+    assert v.margins["stability.drift_budget"] == 10.0
 
 
 # ----------------------------------------------- G31 sedimentation -------
@@ -248,10 +308,14 @@ def test_unmeasured_vibration_downgrades_evidence():
     assert v.advances is False
 
 
-def test_unmeasured_lateral_drift_downgrades_evidence():
-    v = evaluate(_setup(lateral_drift_rate_nm_per_min=None))
+def test_drift_downgrades_evidence_unconditionally():
+    """The entry cannot be retired by any planning input, so this lens never
+    reports `measured`. Deliberate: drift is the dominant bias on a long
+    acquisition and planning it well does not discharge it -- the run's own
+    frames do."""
+    v = evaluate(_setup())
     assert v.evidence == "assumed"
-    assert any("lateral drift" in a for a in v.assumed_inputs)
+    assert any("drift" in a for a in v.assumed_inputs)
 
 
 def test_unsealed_chamber_without_a_rate_downgrades_evidence():
@@ -260,11 +324,14 @@ def test_unsealed_chamber_without_a_rate_downgrades_evidence():
     assert any("evaporation rate" in a for a in v.assumed_inputs)
 
 
-def test_fully_specified_setup_advances():
+def test_a_fully_specified_setup_passes_but_cannot_advance():
+    """It used to advance. Since the drift entry became unconditional it
+    cannot, and that is the intended reading: a long acquisition clears lens 8
+    on physics and still waits on a measurement taken while it runs."""
     v = evaluate(_setup())
-    assert v.evidence == "measured"
     assert v.status == "PASS"
-    assert v.advances is True
+    assert v.evidence == "assumed"
+    assert v.advances is False
 
 
 def test_verdict_serializes_with_the_lens_name():
@@ -292,6 +359,9 @@ def test_lens_6_can_review_this_lens_verdict():
 
     stability_verdict = evaluate(_setup(delta_density_kg_m3=50.0))
     assert stability_verdict.status == "PASS_WITH_CHANGES"
+    # Lens 6 reads `evidence` off the upstream verdicts, and lens 8's is now
+    # permanently "assumed". The interop has to hold with that, not despite it.
+    assert stability_verdict.evidence == "assumed"
 
     upstream = {name: _V() for name in STANDING_LENSES}
     upstream["stability"] = stability_verdict

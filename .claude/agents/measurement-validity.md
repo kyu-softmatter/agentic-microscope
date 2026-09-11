@@ -155,8 +155,8 @@ you hit it, say so and leave the design decision to the human.
 
 1. **Lens 8 is invisible to `validity/`.** The string `stability` does not
    appear anywhere in that package. `STANDING_LENSES` omits it — correctly, as
-   Lens 8 is conditional — but `stability/` implements G28–G32 and **two of them
-   are `kind: bias`** (`stability.lateral_drift`, `stability.evaporation`).
+   Lens 8 is conditional — but `stability/` implements G31–G32 and **both are
+   `kind: bias`** (`stability.sedimentation`, `stability.evaporation`).
    `gate.evaluate` picks those up if the caller puts a `"stability"` key in
    `upstream`, yet `validity/cli.py` rejects the name as unknown. So for any
    acquisition over 30 minutes, **make sure Lens 8's verdict is actually handed
@@ -359,7 +359,8 @@ prints the live tables.
 | Photobleaching (G10) | 5 photo | `perturbation.photobleaching` | intensity-decay correction | `FAIL` for time-series intensity quantification |
 | ~~Excited-state saturation (G20)~~ | — | — | **GATE REMOVED 2026-09-09** (`kb/decisions/2026-09-09-g20-saturation-removed.md`). Nothing emits `perturbation.saturation`, so this row can never appear | Do not expect it, and do not record it as `cleared`. Lens 1's and Lens 2's linearity assumption is now **unguarded** — say so when the path is confocal or spinning-disk, where the scale argument that excuses it for widefield does not hold |
 | Light-driving (G21/D2) | 5 photo | `perturbation.light_driving` | **none** | the measurement target itself has moved → `FAIL` |
-| Lateral drift (G30) | 8 stability | `stability.lateral_drift` | drift correction, if a fiducial or image registration works | `FAIL` for absolute position; MSD affected at long lags |
+| ~~Lateral drift (G30)~~ | — | — | **GATE REMOVED 2026-09-10** with G29 and G28 (`kb/decisions/2026-09-10-drift-is-not-a-design-element.md`): a drift rate is measured *during* a run, so it is not a design input. Nothing emits `stability.lateral_drift`, so **this row can never appear** | Do not expect it and do not record it as `cleared`. The bias did not go anywhere — lens 8 now carries an **unconditional** drift entry in `assumed_inputs`, so its `evidence` is permanently `assumed` and it never `advances`. Read that as the drift bias, uncorrected, and say so. Drift correction from a coverslip-stuck fiducial is still the remedy; it is applied after the run, not planned |
+| Sedimentation (G31) | 8 stability | `stability.sedimentation` | re-characterise the population at the end, or density-match | `FAIL` for any ensemble average — the end population is not the start population |
 | Evaporation (G32) | 8 stability | `stability.evaporation` | **none** | `FAIL` for concentration / viscosity over time |
 | Label perturbation (D3) | 5 photo (scope tension) | *no gate* | **none** short of changing the sample | the measurement target itself has changed → `FAIL` |
 

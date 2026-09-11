@@ -113,11 +113,18 @@ EXPECTED_CHECKS: dict[str, tuple[tuple[str, str], ...]] = {
     ),
     "stability": (
         ("convening", "info"),
-        # G28 (pfs_lock) moved to the hardware execution stage 2026-09-10.
-        ("axial_drift", "hard"),
-        ("lateral_drift", "bias"),
+        # THREE GATES LEFT THIS LENS ON 2026-09-10, all to the hardware /
+        # analysis stage: G28 (pfs_lock), G29 (axial_drift), G30
+        # (lateral_drift). G28 was reading the wrong property; G29 and G30 were
+        # reading the right one at the wrong time -- a drift rate is measured
+        # during a run, so it is not an input to a design.
+        # kb/decisions/2026-09-10-drift-is-not-a-design-element.md
         ("sedimentation", "bias"),
         ("evaporation", "bias"),
+        # Replaced the two drift gates: reports the rate the run can absorb
+        # (duration and DOF are both planning inputs) instead of gating on a
+        # rate nobody can supply in advance. INFO, and unnumbered.
+        ("drift_budget", "info"),
         ("vibration", "info"),
     ),
     "trapping": (
@@ -189,8 +196,11 @@ EXPECTED_LIMITS: dict[str, dict] = {
     # constant of its own. An entry appearing here is a new standing number.
     "photo": {},
     "validity": {"linearity_breaking_filters": ("despeckle",)},
+    # `axial_drift_dof_fraction` (0.5) went with G29 on 2026-09-10.
+    # `stability.drift_budget` replaced it and deliberately carries NO
+    # threshold: it quotes the rate for one full DOF, which is a definition,
+    # and halves it on the same line so a reader can pick their own fraction.
     "stability": {
-        "axial_drift_dof_fraction": 0.5,
         "evaporated_fraction_max": 0.05,
         "settling_dof_fraction": 1.0,
     },
@@ -228,7 +238,7 @@ def test_only_trapping_lacks_a_limits_dict() -> None:
 
 #: Numbers that are VACANT and must never be reused, so that every reference
 #: in the history stays unambiguous.
-VACANT_GATES = ("G10", "G18", "G20", "G21", "G22", "G28")
+VACANT_GATES = ("G10", "G18", "G20", "G21", "G22", "G28", "G29", "G30")
 
 #: Checks that carry NO gate number. Not an error -- but the set must not grow
 #: without somebody noticing, because two of them are `hard` and can stop a
@@ -242,7 +252,9 @@ UNNUMBERED_CHECKS: dict[str, tuple[str, ...]] = {
     # All three: photo is a reporting section, and a number here would mean
     # "this can fail", which none of them can.
     "photo": ("light_driving", "total_dose", "trap_heating"),
-    "stability": ("convening", "vibration"),
+    # `drift_budget` is unnumbered on purpose: it reports, it cannot fail, and
+    # a number would advertise it as a gate. G29/G30 are vacant, not reused.
+    "stability": ("convening", "vibration", "drift_budget"),
     # confinement gained G14a on 2026-09-10 and is no longer here.
     "trapping": ("effective_na", "power_window"),
 }

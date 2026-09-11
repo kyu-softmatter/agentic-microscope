@@ -6,6 +6,14 @@ schema, as the other lenses do.
 Conditional lens: docs/01 §4 convenes it for acquisitions longer than 30 min.
 The threshold is reported rather than enforced -- sedimentation and drift scale
 continuously with time and do not switch on at 30 minutes.
+
+Since 2026-09-10 this lens can never report ``evidence: measured``, because the
+drift entry in ``_assumed_inputs`` is unconditional. That is deliberate and it
+is not a bug: drift is the dominant bias on a long acquisition, it is only
+measurable while the acquisition runs, and there is no planning input that can
+honestly discharge it. A long run therefore does not ``advance`` on this lens's
+say-so alone; it advances once the run's own frames have been checked.
+kb/decisions/2026-09-10-drift-is-not-a-design-element.md
 """
 
 from __future__ import annotations
@@ -112,22 +120,6 @@ def _missing_inputs(setup: StabilitySetup) -> list[Finding]:
             )
         )
 
-    if setup.axial_drift_rate_nm_per_min is None:
-        out.append(
-            Finding(
-                "fail",
-                "missing.axial_drift_rate",
-                "No measured axial drift rate. Nothing in kb/calibrations/ "
-                "records one, so whether focus survives the acquisition is "
-                "undecidable -- and a guessed rate would decide it wrongly in "
-                "whichever direction the guess leaned.",
-                action="Measure it: park on a fixed feature, hold PFS off, and "
-                "record the focus position every few minutes for an hour "
-                "starting from a disturbed enclosure. Record the result in "
-                "kb/calibrations/. This cannot be computed.",
-            )
-        )
-
     if setup.settling_velocity_um_per_s is None:
         out.append(
             Finding(
@@ -147,8 +139,17 @@ def _missing_inputs(setup: StabilitySetup) -> list[Finding]:
 
 def _assumed_inputs(setup: StabilitySetup) -> list[str]:
     out: list[str] = []
-    if setup.lateral_drift_rate_nm_per_min is None or setup.lateral_tolerance_um is None:
-        out.append("lateral drift (not evaluated -- no rate and/or tolerance)")
+    #: Drift, both axes. Unconditional: G29 and G30 left on 2026-09-10 because
+    #: a drift rate is measured during a run, so no planning input can retire
+    #: this entry. It stays in the ledger because the bias is real and lens 6
+    #: registers it (validity/setup.py) -- a plan that does not evaluate drift
+    #: has not shown that drift is small, and `stability.drift_budget` reports
+    #: the rate the plan can absorb precisely so the runtime check has a number
+    #: to be judged against.
+    out.append(
+        "drift, axial and lateral (not gated here -- measured from the "
+        "acquisition, not from the plan; see stability.drift_budget)"
+    )
     if not setup.vibration_measured:
         out.append(
             "vibration and stage repeatability (unmeasured and ungated -- no "
@@ -229,8 +230,9 @@ def evaluate(setup: StabilitySetup) -> Verdict:
                 "info",
                 "evidence.assumed",
                 "This verdict used assumed values for: " + ", ".join(assumed) + ".",
-                action="Measure a lateral drift rate and an evaporation rate, "
-                "and seal the chamber if you can.",
+                action="Measure an evaporation rate and seal the chamber if "
+                "you can. The drift entry cannot be retired at planning time "
+                "by design -- judge it from the acquisition's own frames.",
                 kind=INFO,
             )
         )

@@ -324,14 +324,18 @@ python -m optics.cli check config/channels/proposed-2color.yaml
 
 Every lens has the same shape — `optics` · `detection` · `compute` · `sample` ·
 `photo` · `validity` · `stability` · `trapping`, each with `checks.py` ·
-`gate.py` · `setup.py` · `cli.py`. The formulas behind all 26 gates are
-collected in [04](docs/04-decision-engine.md); 23 are implemented, and `G2`–`G4`
-exist only as a threshold and a default verdict in that document. **`G10`, `G18`, `G20`, `G21`, `G22` and `G28` are vacant** — G10 and G20 on
-2026-09-09, G18/G21/G22 on 2026-09-10, G21/G22 when **lens 5 stopped being a judging
-lens** and became a reporting section, and G28 when the PFS check moved to
-the **hardware execution stage** — it was reading `PFS in Range` as the servo
-state and that property reports the coverslip. None of the six numbers is
-reused.
+`gate.py` · `setup.py` · `cli.py`. The formulas behind all 24 gates are
+collected in [04](docs/04-decision-engine.md); 21 are implemented, and `G2`–`G4`
+exist only as a threshold and a default verdict in that document. **`G10`, `G18`, `G20`, `G21`, `G22`, `G28`, `G29` and `G30` are vacant** — G10 and G20 on
+2026-09-09, the other six on 2026-09-10: G18 because the coverslip condition is
+checked elsewhere, G21/G22 when **lens 5 stopped being a judging lens** and
+became a reporting section, and G28/G29/G30 when PFS lock and both drift rates
+moved to the **hardware execution stage**. Those last three share a shape, and
+it is worth knowing before proposing a gate: **a planning gate must judge from
+what is known before the run starts.** G28 was reading `PFS in Range` as the
+servo state and that property reports the coverslip; G29 and G30 were reading
+the right quantity at the wrong time — *"실험 중 측정해야한다면 디자인 요소로는
+적합하지 않은듯"* (KH, 2026-09-10). None of the eight numbers is reused.
 
 ```bash
 python -m knowledge.cli write

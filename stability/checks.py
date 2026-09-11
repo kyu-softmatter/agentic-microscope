@@ -1,29 +1,42 @@
-"""Individual mechanical / environmental checks -- G29 (axial drift),
-G30 (lateral drift), G31 (sedimentation), G32 (evaporation).
+"""Individual mechanical / environmental checks -- G31 (sedimentation),
+G32 (evaporation).
 
 docs/05-consensus-gate.md "Lens 8".
 
-G29-G32 are new numbers (G1-G27 were taken by lenses 1-7). Lens 8 had no gate
-IDs because it had no implementation.
+G29-G32 were new numbers (G1-G27 were taken by lenses 1-7). Lens 8 had no gate
+IDs before it had an implementation.
 
-G28 (PFS lock) WAS HERE AND IS GONE -- moved to the hardware execution stage
-on 2026-09-10 (KH), and the number is vacant.
-kb/decisions/2026-09-10-g28-moves-to-the-hardware-stage.md
+THREE GATES HAVE LEFT THIS LENS, ALL ON 2026-09-10 (KH), AND NONE OF THE THREE
+NUMBERS IS REUSED: G28 (PFS lock), G29 (axial drift), G30 (lateral drift).
 
-It is not just a relocation. The gate read `PFS in Range` as if it meant "the
-servo is holding", and `hardware/focus.py::FocusAxis.pfs_state` records that
-that property reports **the coverslip, not the servo** -- `In Range` is the
-normal reading for a focused sample. The hardware stage asks MMCore's
-autofocus API instead (`isContinuousFocusEnabled` / `isContinuousFocusLocked`),
-which is the actual servo state. So the check moved to where the right
-property is read, and a planning-time gate on a runtime state was the wrong
-shape for it anyway.
+G28 went first, to the hardware execution stage. It is not just a relocation:
+the gate read `PFS in Range` as if it meant "the servo is holding", and
+`hardware/focus.py::FocusAxis.pfs_state` records that that property reports
+**the coverslip, not the servo** -- `In Range` is the normal reading for a
+focused sample. The hardware stage asks MMCore's autofocus API instead
+(`isContinuousFocusEnabled` / `isContinuousFocusLocked`), which is the actual
+servo state. kb/decisions/2026-09-10-g28-moves-to-the-hardware-stage.md
 
-Most of what this lens owns needs a measurement nobody has taken: there is no
-drift rate, no vibration spectrum and no stage-repeatability figure anywhere in
-the repo. Those gates BLOCK, and naming the missing measurement is the useful
-output. Sedimentation is the exception -- it follows from particle size, density
-contrast and viscosity.
+G29 and G30 followed, for the reason that generalises G28's:
+
+    "실험 중 측정해야한다면 디자인 요소로는 적합하지 않은듯"  -- KH, 2026-09-10
+    (if it has to be measured during the experiment, it is not suitable as a
+    design element)
+
+A drift rate is learned from a run. Both drift rates ARE obtainable on this
+instrument -- `config/session/focus_monitor.py` already samples ZDrive and both
+cameras several times a second, and 8 of the 21 beads in `data/particles.yaml`
+are stuck to the coverslip and serve as lateral fiducials -- but obtainable
+*from the acquisition* is exactly the wrong timing for a gate that judges a
+proposal. `compute.drops` is the precedent for where that work belongs: it
+reads an acquisition that already ran, from its own timestamps, and does not
+pretend to be a gate on a plan.
+kb/decisions/2026-09-10-drift-is-not-a-design-element.md
+
+What is left is what IS knowable before the run starts: what the sample does to
+itself over time, from the particle, the medium and the chamber. Sedimentation
+follows from particle size, density contrast and viscosity; evaporation from
+the chamber. Vibration remains INFO -- no measurement channel is set up for it.
 """
 
 from __future__ import annotations
@@ -37,7 +50,6 @@ from .drift import (
     concentration_factor,
     evaporated_fraction,
     settling_distance_um,
-    total_drift_nm,
 )
 from .setup import CONVENE_DURATION_MIN
 
@@ -52,10 +64,6 @@ INFO = "info"
 MAX_MARGIN = 10.0
 
 LIMITS = {
-    #: G29: accumulated axial drift must stay inside this fraction of the depth
-    #: of field. Half, because drift eats the focus budget from one side while
-    #: the sample's own thickness eats it from the other.
-    "axial_drift_dof_fraction": 0.5,
     #: G31: settling over the acquisition, as a fraction of the depth of field.
     #: The population must stay in the plane it was characterised in.
     "settling_dof_fraction": 1.0,
@@ -109,8 +117,6 @@ def available_facts(setup: "StabilitySetup") -> set[str]:
         facts.add("duration")
     if setup.resolved_dof_um is not None:
         facts.add("depth_of_field")
-    if setup.axial_drift_rate_nm_per_min is not None:
-        facts.add("axial_drift_rate")
     if setup.settling_velocity_um_per_s is not None:
         facts.add("settling_inputs")
     return facts
@@ -119,113 +125,6 @@ def available_facts(setup: "StabilitySetup") -> set[str]:
 # --------------------------------------------------------------------------
 # The checks
 # --------------------------------------------------------------------------
-
-
-def check_axial_drift(setup: "StabilitySetup") -> CheckResult:
-    """G29: does accumulated axial drift stay inside the depth of field?"""
-    dof = setup.resolved_dof_um
-    drift_um = total_drift_nm(
-        setup.axial_drift_rate_nm_per_min, setup.duration_min
-    ) / 1000.0
-    budget = LIMITS["axial_drift_dof_fraction"] * dof
-    margin = budget / drift_um if drift_um > 0 else MAX_MARGIN
-
-    numbers = {
-        "axial_drift_rate_nm_per_min": setup.axial_drift_rate_nm_per_min,
-        "duration_min": setup.duration_min,
-        "total_drift_um": round(drift_um, 3),
-        "depth_of_field_um": round(dof, 3),
-        "budget_um": round(budget, 3),
-    }
-
-    if margin >= 1.0:
-        return _ok(
-            "stability.axial_drift",
-            HARD,
-            margin,
-            f"Axial drift totals {drift_um:.2f} um over "
-            f"{setup.duration_min:.0f} min, inside the {budget:.2f} um budget "
-            f"(half of a {dof:.2f} um depth of field).",
-            **numbers,
-        )
-
-    return CheckResult(
-        "stability.axial_drift",
-        HARD,
-        margin,
-        "fail",
-        f"Axial drift totals {drift_um:.2f} um over "
-        f"{setup.duration_min:.0f} min, past the {budget:.2f} um budget for a "
-        f"{dof:.2f} um depth of field. The focal plane leaves the sample "
-        "during the acquisition.",
-        action="Enable focus maintenance, shorten the acquisition, let the "
-        "enclosure equilibrate before starting, or re-focus periodically and "
-        "record when. Note that drift is worst right after the enclosure is "
-        "disturbed, so a rate measured late understates the start of a run.",
-        numbers=numbers,
-    )
-
-
-def check_lateral_drift(setup: "StabilitySetup") -> CheckResult:
-    """G30: does lateral drift stay inside the tolerance?
-
-    BIAS rather than HARD: the field wandering does not destroy the data the
-    way losing focus does, but it biases tracking (features leave the search
-    window and links break) and any field-referenced measurement.
-    """
-    rate = setup.lateral_drift_rate_nm_per_min
-    tol = setup.lateral_tolerance_um
-
-    if rate is None or tol is None:
-        missing = [
-            n
-            for n, v in (
-                ("lateral_drift_rate_nm_per_min", rate),
-                ("lateral_tolerance_um", tol),
-            )
-            if v is None
-        ]
-        return _ok(
-            "stability.lateral_drift",
-            BIAS,
-            MAX_MARGIN,
-            "Lateral drift not evaluated (missing: " + ", ".join(missing) + ").",
-            evaluated=False,
-        )
-
-    drift_um = total_drift_nm(rate, setup.duration_min) / 1000.0
-    margin = tol / drift_um if drift_um > 0 else MAX_MARGIN
-    numbers = {
-        "lateral_drift_rate_nm_per_min": rate,
-        "total_drift_um": round(drift_um, 3),
-        "tolerance_um": tol,
-        "evaluated": True,
-    }
-
-    if margin >= 1.0:
-        return _ok(
-            "stability.lateral_drift",
-            BIAS,
-            margin,
-            f"Lateral drift totals {drift_um:.2f} um, inside the {tol:.2f} um "
-            "tolerance.",
-            **numbers,
-        )
-
-    return CheckResult(
-        "stability.lateral_drift",
-        BIAS,
-        margin,
-        "warn",
-        f"Lateral drift totals {drift_um:.2f} um over "
-        f"{setup.duration_min:.0f} min, past the {tol:.2f} um tolerance. "
-        "Features leave the tracking search window, so links break and "
-        "trajectories fragment — which biases any displacement statistic "
-        "toward short times.",
-        action="Correct drift in post-processing against a fixed fiducial, "
-        "widen the search window, or reduce the drift at source.",
-        numbers=numbers,
-    )
 
 
 def check_sedimentation(setup: "StabilitySetup") -> CheckResult:
@@ -383,6 +282,70 @@ def check_evaporation(setup: "StabilitySetup") -> CheckResult:
     )
 
 
+def check_drift_budget(setup: "StabilitySetup") -> CheckResult:
+    """Report the drift rate this run can tolerate. Not a gate; unnumbered.
+
+    G29 and G30 stood here and gated on a MEASURED drift rate. They left on
+    2026-09-10 because that number is learned from a run, not known before it
+    (see the module docstring). What survives the move is the half of the
+    question that IS answerable in advance: the plan's own duration and depth
+    of field fix how much drift it can absorb, so instead of gating on a
+    measurement that does not exist yet, this publishes the requirement the
+    plan places on the instrument.
+
+    The arithmetic is one division and carries no threshold -- the rate quoted
+    is the one that walks the focus through exactly one depth of field over the
+    acquisition. Any tolerance fraction scales it linearly: allow half a DOF
+    and halve the rate.
+    """
+    dof_um = setup.resolved_dof_um
+    duration = setup.duration_min
+
+    if dof_um is None or duration is None or duration <= 0:
+        return CheckResult(
+            "stability.drift_budget",
+            INFO,
+            MAX_MARGIN,
+            "info",
+            "Cannot state a drift budget without both a depth of field and a "
+            "duration. Drift itself is not gated here -- it is measured from "
+            "the acquisition -- but the tolerance is a property of the plan "
+            "and would be worth reporting.",
+            action="Supply duration_min and the objective plus emission_nm "
+            "(or depth_of_field_um) to get the budget.",
+            numbers={},
+        )
+
+    dof_nm = dof_um * 1000.0
+    rate_full_dof = dof_nm / duration
+
+    return CheckResult(
+        "stability.drift_budget",
+        INFO,
+        MAX_MARGIN,
+        "info",
+        f"Drift is not gated at planning time. This {duration:.0f} min run "
+        f"against a {dof_um:.3f} um depth of field can absorb an axial drift "
+        f"of {rate_full_dof:.1f} nm/min before the focus has walked one full "
+        f"DOF -- {rate_full_dof / 2:.1f} nm/min for half of it. That is the "
+        "requirement on the instrument; whether the instrument meets it is a "
+        "measurement, and it is taken during the acquisition, not before.",
+        action="Axial: config/session/focus_monitor.py already samples ZDrive "
+        "and both cameras several times a second, so the rate falls out of the "
+        "run's own focus scores. Lateral: data/particles.yaml records that most "
+        "of the bead population is stuck to the coverslip, so a stuck bead in "
+        "the same frames is the fiducial -- no extra acquisition either way. "
+        "Judge both after the fact, like compute.drops does.",
+        numbers={
+            "duration_min": duration,
+            "depth_of_field_um": dof_um,
+            "axial_rate_for_one_dof_nm_per_min": round(rate_full_dof, 3),
+            "axial_rate_for_half_dof_nm_per_min": round(rate_full_dof / 2, 3),
+            "gated": False,
+        },
+    )
+
+
 def check_vibration(setup: "StabilitySetup") -> CheckResult:
     """Report that vibration is not gated, rather than passing silently.
 
@@ -450,19 +413,13 @@ def check_convening(setup: "StabilitySetup") -> CheckResult:
 CHECKS: list[Check] = [
     Check("convening", INFO, ("duration",), check_convening),
     Check(
-        "axial_drift",
-        HARD,
-        ("duration", "depth_of_field", "axial_drift_rate"),
-        check_axial_drift,
-    ),
-    Check("lateral_drift", BIAS, ("duration",), check_lateral_drift),
-    Check(
         "sedimentation",
         BIAS,
         ("duration", "depth_of_field", "settling_inputs"),
         check_sedimentation,
     ),
     Check("evaporation", BIAS, ("duration",), check_evaporation),
+    Check("drift_budget", INFO, (), check_drift_budget),
     Check("vibration", INFO, (), check_vibration),
 ]
 

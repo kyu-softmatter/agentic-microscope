@@ -552,26 +552,51 @@ this instrument, and G8's action text says so explicitly.
 ### Lens 8 · Mechanical & environmental (conditional, >30 min) — implemented
 
 - **Owns**: drift (thermal, mechanical), PFS lock state, evaporation,
-  sedimentation, vibration, stage repeatability
-- **Gates**: G29 (axial drift) G30 (lateral drift)
-  **G28 (PFS lock) moved to the hardware execution stage 2026-09-10** and its
-  number is vacant — `kb/decisions/2026-09-10-g28-moves-to-the-hardware-stage.md`
-  G31 (sedimentation) G32 (evaporation)
+  sedimentation, vibration, stage repeatability — but **gates only the last
+  two of those it can judge before the run starts**
+- **Gates**: G31 (sedimentation) G32 (evaporation)
+- **⚠ THREE GATES LEFT THIS LENS ON 2026-09-10** and none of the numbers is
+  reused: G28 (PFS lock), G29 (axial drift), G30 (lateral drift). G28 was
+  reading the wrong property — `kb/decisions/2026-09-10-g28-moves-to-the-hardware-stage.md`.
+  G29 and G30 were reading the right one at the wrong time:
+
+  > **A planning gate judges a proposal from what is known before the run
+  > starts.** *"실험 중 측정해야한다면 디자인 요소로는 적합하지 않은듯"* — KH,
+  > 2026-09-10. If it has to be measured during the experiment, it is not a
+  > design element.
+
+  Both drift rates *are* obtainable here — `config/session/focus_monitor.py`
+  already logs `ZDrive` and both cameras several times a second, and most of the
+  beads in `data/particles.yaml` are stuck to the coverslip and serve as lateral
+  fiducials — which is why the answer was to move the judgement rather than
+  demand the data. `compute.drops` is the precedent: it reads an acquisition
+  that already ran, from its own timestamps.
+  `kb/decisions/2026-09-10-drift-is-not-a-design-element.md`
+- **What replaced them reports instead of gating.** `stability.drift_budget`
+  (INFO, unnumbered) inverts the question: duration and depth of field are both
+  planning inputs, so the lens publishes **the drift rate the run could
+  absorb** — 6.3 nm/min for one full DOF on the 100x oil over an hour, half
+  that for half a DOF — and leaves the measurement to the run. No threshold:
+  one DOF is a definition, not a limit
+- **Drift costs the evidence tier permanently.** The `assumed_inputs` entry for
+  it is unconditional, so **this lens can never report `evidence: measured`**
+  and a long acquisition never `advances` on lens 8 alone. Deliberate: the
+  dominant bias on a long run is not discharged by planning it well
 - The archive contains sessions where `PFS in Range` reads `Out of Range` — PFS
   can be on without being locked. **The hardware stage catches this; no gate does, and it needs no new
   measurement**: it is a state check on metadata that already exists, and an
   unrecorded range flag is itself a failure, because the on state alone cannot
   tell a held focus from a wandered one (docs/06 D7)
-- **G31 is the one gate here that works today.** Stokes settling follows from
+- **G31 is the gate that works entirely from the sample.** Stokes settling follows from
   particle radius, density contrast and viscosity — sample properties, not
   instrument measurements. It bites hard: a 1 µm polystyrene sphere in water
   settles ~98 µm in an hour against a 0.375 µm depth of field on the 100x oil,
   so the population in the focal plane at the end is not the one that started
   there. Density-matching removes the term entirely
-- **⚠ G29 BLOCKS.** No drift rate exists anywhere in the repo, and a guessed one
-  would decide the gate wrongly in whichever direction the guess leaned. The
-  measurement is cheap: park on a fixed feature with PFS off and log focus every
-  few minutes for an hour from a disturbed enclosure
+- **⚠ No hard-kind check remains in this lens.** Both HARD gates (G28, G29)
+  left on 2026-09-10, so **lens 8 cannot return FAIL on its own** — G31 and G32
+  are `bias` and cap out at PASS_WITH_CHANGES while dragging `feasibility` down.
+  A verdict here reading PASS_WITH_CHANGES · INFEASIBLE is not a contradiction
 - **⚠ Vibration and stage repeatability are ungated**, and the lens says so
   rather than passing quietly — there is no measurement channel for either. A
   quiet pass on that line is an absence of evidence, not evidence of stability
