@@ -97,6 +97,27 @@ def calibrations_for(quantity: str | None) -> tuple[str, ...]:
 #: through and `motion_blur.biased` on failure). The value names the correction,
 #: so a declaration in ``corrections_applied`` can be checked instead of taken
 #: on faith.
+#:
+#: ⚠ THESE TABLES AND THE ACTUAL EMITTERS HAVE DRIFTED APART IN BOTH
+#: DIRECTIONS -- **seven codes each way** -- AND THAT IS NOT TO BE RECONCILED
+#: BY HAND. Both failure modes are quiet: a registered code with no emitter is
+#: a dead row that a declaration matches against nothing, and an emitted code
+#: in neither table is accepted but pins ``evidence`` to ``assumed`` forever,
+#: because nobody has audited it.
+#:
+#: Note what decides whether a code reaches the ledger, because it is not the
+#: obvious thing: ``bias_findings`` reads the **result's** ``kind``, not the
+#: owning ``Check``'s registration. So three BIAS-kind results emitted from
+#: INFO-registered checks in lens 4 do arrive here, and two BIAS-registered
+#: codes at severity ``"ok"`` never do.
+#:
+#: **KH is building a layer that collects every emission (2026-09-11), and that
+#: is where the reconciliation belongs** -- a table hand-edited to match today's
+#: emitters would drift again on the next gate change, and it has twice
+#: already. `tests/test_gate_registry.py::test_the_bias_registry_drift_is_tracked`
+#: pins both sets meanwhile, so the drift is visible and that layer has a
+#: checklist rather than a discovery exercise. Do not "fix" the lists to make
+#: that test pass; update the snapshot and say what moved.
 CORRECTIONS: dict[str, str] = {
     "crosstalk": "linear unmixing from a measured mixing matrix",
     "motion_blur.biased": "Savin-Doyle blur correction (docs/04 §5)",

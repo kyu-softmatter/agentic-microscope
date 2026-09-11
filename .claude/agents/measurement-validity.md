@@ -207,15 +207,27 @@ here needs an input the plan may not have, that is the trap.
 2. **G24 is a boolean, not a provenance check.** `pixel_size_measured=True` says
    a measured value exists somewhere; it does not say this data was acquired with
    it. That question is C2, and it is yours.
-3. **G25 rests entirely on user declaration** (G26 did too, and was removed on
+3. **The registries have drifted from the emitters, seven codes each way, and
+   you are not to reconcile them.** KH is building a layer that collects every
+   emission (2026-09-11) and that is where it belongs;
+   `tests/test_gate_registry.py::test_the_bias_registry_drift_is_tracked` pins
+   both sets meanwhile. What it means for a review you run today: a declaration
+   naming one of the seven dead rows matches nothing and nobody is told, and
+   any of the seven unregistered emitters pins `evidence: assumed` no matter
+   what the experimenter did. **Lens 3's `fps_provenance.*` are the ones to
+   raise**, since frame-rate provenance biases every timing-derived quantity
+   including the drag calibration's velocity, and no table says whether it is
+   correctable after the fact.
+4. **G25 rests entirely on user declaration** (G26 did too, and was removed on
    2026-09-11 for it). `data/detectors.yaml` has
    no measured-background and no flat-field fields at all, and its
    `dark_e_per_s` entries are datasheet figures (`null` for `Kinetix`, a
    conservative across-mode maximum for `Kinetix22`) — never a measured dark
    frame. Only the `Prime95B` entry has a `post_processing:` block; **neither
    Kinetix entry has one** (all verified 2026-08-19). So
-   `despeckle_enabled=False` on the current system means "nobody has looked,"
-   not "it is off."
+   the current system's post-processing state means "nobody has looked," not
+   "it is off" — and with G26 gone there is no flag to set either way, so route
+   it through lens 2 (`detection/cli.py --despeckle-unchecked`).
 
 ## Output schema
 

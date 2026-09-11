@@ -338,6 +338,147 @@ def test_vacant_numbers_are_claimed_by_nothing() -> None:
             assert g not in claimed, f"{lens} claims the vacant gate {g}"
 
 
+# ----------------------------------------------------- bias registry drift --
+#
+# ⚠ THESE TWO SNAPSHOTS ARE NOT A TODO LIST TO BE CLEARED BY EDITING THE
+# REGISTRIES. KH is building a layer that collects every emission
+# (2026-09-11), and that is where the reconciliation belongs -- a table
+# hand-edited to match today's emitters would drift again on the next gate
+# change, and it has twice already. What is pinned here is the drift itself, so
+# it stays visible and that layer gets a checklist instead of a discovery
+# exercise.
+#
+# A note on what "reachable" means, because it is the subtlety that made an
+# earlier count of this wrong by two. `validity.setup.bias_findings` filters
+# upstream findings on the RESULT's `kind`, not on the owning `Check`'s
+# registration -- so a check registered INFO or SOFT can still emit a BIAS-kind
+# result, and three do: `geometry.depth_window.empty` and
+# `geometry.count_in_field.{crowded,jammed}` (INFO checks in lens 4) reach the
+# ledger, while `motion_blur` and `sampling.wrong_direction` carry severity
+# "ok" and never do. Registration tells you nothing here; the constructed
+# result does.
+
+#: Bias codes that `validity.setup.CORRECTIONS` / `UNCORRECTABLE` know about but
+#: which **no lens can emit into the ledger any more**. Every one lost its
+#: emitter to a gate removal or a gate becoming a report, in September 2026:
+#:
+#:   geometry.coverslip            G18 removed         2026-09-10
+#:   geometry.ri_mismatch          G17 became INFO     2026-09-10
+#:   perturbation.photobleaching   G10 removed         2026-09-09
+#:   perturbation.saturation       G20 removed         2026-09-09
+#:   perturbation.light_driving    G21 removed         2026-09-10
+#:   stability.evaporation         G32 became a report 2026-09-10
+#:   stability.lateral_drift       G30 removed         2026-09-10
+#:
+#: A dead row is quiet in a specific way: declaring it in
+#: ``corrections_applied`` matches nothing, so it neither clears a bias nor
+#: reads as a false claim. Nothing tells the declarer.
+REGISTERED_WITHOUT_EMITTER = (
+    "geometry.coverslip",
+    "geometry.ri_mismatch",
+    "perturbation.light_driving",
+    "perturbation.photobleaching",
+    "perturbation.saturation",
+    "stability.evaporation",
+    "stability.lateral_drift",
+)
+
+#: Bias codes a lens **does** put in front of the ledger that appear in neither
+#: registry. Quiet the other way round: `validity.checks.check_bias_ledger`
+#: accepts an unknown code -- refusing one would block work on gates the tables
+#: have not caught up with -- but an unaudited clearance costs the verdict its
+#: `measured` grade permanently.
+#:
+#: Lens 3's three matter most: frame-rate provenance is a real bias on every
+#: timing-derived quantity, including the drag calibration's velocity, and there
+#: is no table saying whether it can be corrected after the fact. Lens 4's three
+#: arrived by a different route -- they are BIAS-kind results emitted from
+#: INFO-registered checks, two of them rewritten in this same review.
+EMITTED_WITHOUT_REGISTRY = (
+    "fps_provenance.requested",
+    "fps_provenance.unmeasured",
+    "fps_provenance.unrealizable",
+    "geometry.count_in_field.crowded",
+    "geometry.count_in_field.jammed",
+    "geometry.depth_window.empty",
+    "pixel_container.unconfirmed",
+)
+
+#: Severity of a BIAS-kind result that keeps it out of the ledger entirely.
+#: Every gate drops `severity == "ok"` from `findings`, so those codes
+#: (`motion_blur`, `sampling.wrong_direction`) are unreachable regardless of
+#: what the registries say.
+_UNREACHABLE_SEVERITY = "ok"
+
+
+def _ledger_reachable_bias_codes() -> set[str]:
+    """Codes constructed as `CheckResult("code", BIAS, <margin>, "<sev>")` in an
+    upstream lens, excluding severity "ok".
+
+    That is exactly the set `validity.setup.bias_findings` can collect: BIAS by
+    the result's own kind, and a severity some gate will actually put in
+    `findings`. `validity` itself is excluded -- it does not feed its own
+    ledger, which reads `upstream` only.
+    """
+    out: set[str] = set()
+    for lens in LENSES:
+        if lens == "validity":
+            continue
+        src = (REPO / lens / "checks.py").read_text()
+        pattern = r'"([a-z_]+(?:\.[a-z_]+)*)",\s*\n\s*BIAS,\s*\n\s*[^,\n]+,\s*\n\s*"(\w+)"'
+        for m in re.finditer(pattern, src):
+            code, severity = m.groups()
+            if severity != _UNREACHABLE_SEVERITY:
+                out.add(code)
+    return out
+
+
+def test_the_bias_registry_drift_is_tracked() -> None:
+    """The registries and the emitters have drifted apart in BOTH directions,
+    seven codes each way.
+
+    ⚠ **This test is not asking for the lists to be reconciled** -- see the
+    comment above. If it fails, a gate was added, removed or re-kinded:
+    **update the snapshot and say what moved**, do not edit `CORRECTIONS` /
+    `UNCORRECTABLE` to make it pass.
+    """
+    from validity.setup import CORRECTIONS, UNCORRECTABLE
+
+    registered = set(CORRECTIONS) | set(UNCORRECTABLE)
+    emitted = _ledger_reachable_bias_codes()
+
+    assert sorted(registered - emitted) == sorted(REGISTERED_WITHOUT_EMITTER)
+    assert sorted(emitted - registered) == sorted(EMITTED_WITHOUT_REGISTRY)
+
+
+def test_the_codes_that_do_line_up_are_the_ones_that_matter() -> None:
+    """Four codes are both emitted and registered, and they are the only ones
+    whose declaration this repository can check. Both wall-drag branches landed
+    here on 2026-09-11
+    (kb/decisions/2026-09-11-wall-drag-reaches-the-bias-ledger.md)."""
+    from validity.setup import CORRECTIONS, UNCORRECTABLE
+
+    registered = set(CORRECTIONS) | set(UNCORRECTABLE)
+    assert sorted(registered & _ledger_reachable_bias_codes()) == [
+        "crosstalk",
+        "geometry.wall_drag",
+        "geometry.wall_drag.trapped",
+        "motion_blur.biased",
+    ]
+
+
+def test_an_ok_severity_bias_code_is_unreachable_whatever_the_registry_says() -> None:
+    """`detection.motion_blur` and `detection.sampling.wrong_direction` are
+    BIAS-kind at severity "ok", which every gate drops from `findings`. They
+    appear in neither snapshot above because they cannot reach the ledger at
+    all -- registering them would be dead rows on arrival."""
+    reachable = _ledger_reachable_bias_codes()
+    for code in ("motion_blur", "sampling.wrong_direction"):
+        assert code not in reachable
+        assert code not in REGISTERED_WITHOUT_EMITTER
+        assert code not in EMITTED_WITHOUT_REGISTRY
+
+
 def test_optics_numbers_only_g3b_in_code() -> None:
     """Lens 1 names exactly one gate number in code, and only since
     2026-09-10.
