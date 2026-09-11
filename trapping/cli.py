@@ -115,6 +115,11 @@ def cmd_check(args: argparse.Namespace) -> int:
         temperature_k=args.temperature_c + 273.15,
         temperature_measured=args.temperature_measured,
         objective_key=args.objective,
+        measured_stiffness_n_per_m=(
+            None if args.measured_kappa_pn_per_um is None
+            else args.measured_kappa_pn_per_um * 1e-6
+        ),
+        measured_stiffness_dial_percent=args.measured_kappa_dial,
         detector_fps=args.detector_fps,
     )
     v = evaluate(setup)
@@ -184,6 +189,18 @@ def main(argv: list[str] | None = None) -> int:
 
     c = sub.add_parser("check", help="run the committee-lens gate (confinement, U/kT, G14 sampling)")
     c.add_argument("--dial", type=float, default=100.0, help="laser dial setting, 0-100%%")
+    c.add_argument(
+        "--measured-kappa-pn-per-um", type=float, default=None,
+        help="a stiffness MEASURED on this bench, pN/um. Overrides the model "
+        "for G14a and G14c, which are the two checks that use kappa directly",
+    )
+    c.add_argument(
+        "--measured-kappa-dial", type=float, default=None,
+        help="the dial the measured stiffness was taken at. Without it the "
+        "model cannot be checked against the measurement at all -- the "
+        "comparison needs the model at the MEASUREMENT's power, not at this "
+        "proposal's",
+    )
     c.add_argument(
         "--objective", default=None,
         help="objective key from data/objectives.yaml (100x-Oil, 60x-Oil, "

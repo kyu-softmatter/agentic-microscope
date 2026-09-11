@@ -147,6 +147,16 @@ class TrapSetup:
     #: and 2026-09-03 measured 3.65-4.5 pN/um three independent ways with
     #: nowhere to put it. Supply it in N/m (3.87 pN/um = 3.87e-6).
     measured_stiffness_n_per_m: float | None = None
+    #: The dial the measured stiffness was taken at. **Without it the model
+    #: cannot be checked against the measurement at all** -- comparing them
+    #: needs the model evaluated at the measurement's own power, not at
+    #: whatever dial the current proposal happens to use.
+    #:
+    #: The 2026-09-03 measurement has no dial on record and KH does not
+    #: recall it (2026-09-10), which is exactly the case this field exists to
+    #: make visible rather than to paper over. Record it next time and the
+    #: model's accuracy is settled in one line.
+    measured_stiffness_dial_percent: float | None = None
     #: Which objective the beam goes through, as a key in data/objectives.yaml.
     #: The measured 1064 curve was taken at the 20x, so without this the power
     #: is the 20x's. Set it and the correction table applies
@@ -196,18 +206,36 @@ class TrapSetup:
     def model_over_measured(self) -> float | None:
         """How much the model overstates the measured stiffness, or None.
 
-        The number that decides whether the model is validated or optimistic,
-        and it exists only once both are in hand.
+        The number that decides whether the ray-optics model is validated or
+        badly optimistic -- and it needs THREE things, not two: the measured
+        kappa, the model, and **the dial the measurement was taken at**.
+
+        Without that dial there is nothing to compare. Evaluating the model at
+        the proposal's dial and dividing would answer "how does the model at
+        dial X compare to a measurement at some unknown dial Y", which is not
+        a statement about the model. Returns None in that case, and
+        `check_trap_depth` says so rather than quoting a ratio.
+
+        This is not hypothetical: the 2026-09-03 measurement is exactly that
+        case (KH, 2026-09-10: the dial is not recorded and not recalled).
         """
-        if self.measured_stiffness_n_per_m is None:
+        if (
+            self.measured_stiffness_n_per_m is None
+            or self.measured_stiffness_n_per_m <= 0
+            or self.measured_stiffness_dial_percent is None
+        ):
             return None
+        from dataclasses import replace
+
         from .goa import radial_stiffness_n_per_m
 
-        modelled = radial_stiffness_n_per_m(
-            self.weakest_power_w(), self.bead, self.medium, self.beam
+        # The model at the MEASUREMENT's dial, not at this proposal's.
+        at_measurement = replace(
+            self, dial_percent=self.measured_stiffness_dial_percent
         )
-        if self.measured_stiffness_n_per_m <= 0:
-            return None
+        modelled = radial_stiffness_n_per_m(
+            at_measurement.weakest_power_w(), self.bead, self.medium, self.beam
+        )
         return modelled / self.measured_stiffness_n_per_m
 
     def weakest_power_w(self) -> float:

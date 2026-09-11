@@ -214,7 +214,23 @@ def check_trap_depth(setup: "TrapSetup") -> CheckResult:
     u_kt = trap_depth_kt(power, setup.bead, setup.medium, setup.beam, setup.temperature_k)
     margin = u_kt / REQUIRED_TRAP_DEPTH_KT
     over = setup.model_over_measured()
-    caveat = (
+    if (
+        over is None
+        and setup.measured_stiffness_n_per_m is not None
+        and setup.measured_stiffness_dial_percent is None
+    ):
+        # The comparison is not merely absent, it is unanchored -- and the
+        # difference matters, because a reader who sees a measured stiffness
+        # in the setup will assume the model was checked against it.
+        caveat = (
+            " ⚠ A measured stiffness was supplied but not the dial it was "
+            "taken at, so this depth CANNOT be checked against it: comparing "
+            "them needs the model evaluated at the measurement's own power. "
+            "The depth below is the model's, unvalidated. Record the dial "
+            "with the next measurement and one line settles it."
+        )
+    else:
+        caveat = (
         ""
         if over is None or 0.5 < over < 2.0
         else (

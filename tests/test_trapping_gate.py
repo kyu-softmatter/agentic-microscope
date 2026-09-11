@@ -497,3 +497,55 @@ def test_the_evidence_text_matches_the_tier_it_reports():
     assert "operator's estimate, not a reading" in tenx_line
     assert "vendor plot at 1000 nm" not in tenx_line
     assert "vendor plot at 1000 nm" in oil_line
+
+
+def test_a_measured_stiffness_without_its_dial_cannot_check_the_model():
+    """The defect this test exists for was introduced and fixed the same day.
+
+    `model_over_measured` first divided the model AT THE PROPOSAL'S DIAL by
+    the measurement, which answers "how does the model at dial X compare to a
+    measurement at some unknown dial Y" -- not a statement about the model. I
+    quoted 53x from it before learning the 2026-09-03 dial is unrecorded
+    (KH, 2026-09-10: unknown, but NOT 50 %).
+
+    So the ratio needs three things, and without the third it is None and the
+    finding says the depth is unvalidated rather than quoting a number.
+    """
+    from trapping.laser import MEASURED_1064_20X_W, LaserCalibration
+
+    common = dict(
+        calibration=LaserCalibration(points=MEASURED_1064_20X_W),
+        dial_percent=50.0,
+        temperature_measured=True,
+        detector_fps=520.0,
+        measured_stiffness_n_per_m=3.87e-6,
+    )
+    unanchored = _setup(**common)
+    assert unanchored.model_over_measured() is None
+    f = next(
+        f
+        for f in evaluate(unanchored).findings
+        if f.code in ("trap.depth", "trap.shallow")
+    )
+    assert "CANNOT be checked against it" in f.message
+
+
+def test_the_comparison_uses_the_measurements_own_dial():
+    """Anchored, the ratio must not depend on what dial the PROPOSAL uses --
+    only on the dial the measurement was taken at."""
+    from trapping.laser import MEASURED_1064_20X_W, LaserCalibration
+
+    common = dict(
+        calibration=LaserCalibration(points=MEASURED_1064_20X_W),
+        temperature_measured=True,
+        measured_stiffness_n_per_m=3.87e-6,
+        measured_stiffness_dial_percent=1.0,
+    )
+    at_1 = _setup(dial_percent=1.0, **common).model_over_measured()
+    at_50 = _setup(dial_percent=50.0, **common).model_over_measured()
+    assert at_1 == pytest.approx(at_50)
+    assert at_1 > 0
+    # The VALUE belongs to the bead and beam, not to this property -- this
+    # fixture is a silica bead at a different NA, so it lands elsewhere.
+    # test_the_model_reproduces_the_measured_stiffness_near_dial_one_percent
+    # is where the 5 um PS bead's agreement is pinned.

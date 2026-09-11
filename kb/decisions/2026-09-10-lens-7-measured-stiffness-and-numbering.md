@@ -41,10 +41,49 @@ quietly rescaling:
 > comes from the same model at the same power — so treat it as carrying the
 > same factor.
 
-**That 53× is a number this lens could not produce until today**, because it
-needs both κs at once. It is the sharp form of the open question: at dial ~1 %
-the model agrees with the measurement to 14 %; at dial 50 % it is 53× high. The
-dial that session ran at is still unrecorded and still decides it.
+**That ratio is a number this lens could not produce until today**, because it
+needs both κs at once — and asking for it immediately exposed that it needs a
+**third** input, which is the correction below.
+
+### The dial the measurement was taken at, and the defect that surfaced
+
+I first computed the ratio as *model at the proposal's dial ÷ measurement*, and
+quoted **53×** from it. That is not a statement about the model: it answers
+"how does the model at dial X compare with a measurement at some unknown dial
+Y". The comparison needs the model evaluated at the **measurement's own**
+power.
+
+Asked for that dial, the answer was (KH, 2026-09-10):
+
+> **Unknown — and it was not 50 %.**
+
+Searched and confirmed unrecoverable: `2026-09-03-three-subsystems-first-light.md`
+has no dial, no laser level and no intensity for the trap; its one "hold power
+down" line is about camera saturation. And `2026-09-04-closed-loop-trapping-measured.md`
+records that the trap laser's power is *"neither settable nor readable"*, so it
+is a physical setting on the Aresis GUI that no log captured.
+
+So `measured_stiffness_dial_percent` is now a separate field, and
+`model_over_measured()` returns **None** without it. `check_trap_depth` then
+says the depth *cannot be checked* against the measurement rather than quoting
+a ratio — the gap is visible in every verdict instead of buried here.
+
+**What "not 50 %" buys**, which is the worst branch removed but not the
+question closed. At the 100x Oil, model κ against the measured 3.87 pN/µm:
+
+| dial | mW | model κ | model ÷ measured |
+|---|---|---|---|
+| 0.5 % | 6.1 | 2.09 | **0.54** |
+| 1 % | 12.2 | 4.18 | **1.08** |
+| 2 % | 24.3 | 8.37 | 2.16 |
+| 5 % | 60.8 | 20.9 | 5.40 |
+| 10 % | 120 | 41.2 | 10.6 |
+| 20 % | 240 | 82.7 | 21.4 |
+| ~~50 %~~ | ~~601~~ | ~~206~~ | ~~53~~ — **excluded** |
+
+Near 1 % the model is right. The plausible remainder still spans 0.5× to ~21×,
+so "not 50 %" narrows the answer by a lot and settles nothing. **Single digits
+or tens of percent** is the one further recollection that would close it.
 
 ## 2. Two hard gates were grading a placeholder
 
