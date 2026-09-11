@@ -340,38 +340,29 @@ the reason is worth carrying: the old margin read **0.00 for every real bead**.
 said INFEASIBLE to every experiment this instrument actually runs, including the
 ones that work. Two things were wrong with that reading:
 
-- **A trapped bead does not settle.** `StabilitySetup` has no `trapped` field,
-  so the free-settling velocity was applied to a bead held in a trap. Its axial
-  displacement under gravity is the buoyant weight over the **axial**
-  stiffness — **0.032 pN** for a 5 µm polystyrene bead, so 32 nm per pN/µm of
-  κ_z — **and you do not need κ_z to answer the question.** KH, 2026-09-11:
-  compare the *forces* instead. `trapping.goa.trap_force` returns `f_axial`
-  alongside the radial force at no extra cost, and it is **9.56 pN at 100 mW**
-  for this bead. Both displacements divide by the same κ_z, so:
+- **A trapped bead does not settle, and it is a force comparison that says
+  so** (KH, 2026-09-11). `StabilitySetup` has no `trapped` field, so the
+  free-settling velocity was applied to a bead held in a trap. Compare the two
+  axial forces instead — `trapping.goa.trap_force` returns the axial force
+  alongside the radial one at no extra cost:
 
   ```
-  gravity's share of the axial budget = mg / F_z = 0.032 / 9.56 = 0.34%   @ 100 mW
-                                                                  3.4%   @  10 mW
-                                             mg == F_z at        0.34 mW
+  buoyant weight    mg  = 0.032 pN      5 µm polystyrene in water
+  trap axial force  F_z = 9.56  pN      100 mW, effective NA 1.333
+  mg / F_z              = 0.34%         3.4% at 10 mW; equal at 0.34 mW
   ```
 
-  So **gravity displaces the bead by 0.34% of whatever the trap's own axial
-  force already displaces it**, and if the trap holds the bead inside the depth
-  of field at all — which the experiment working presupposes — gravity spends
-  0.34% of that budget. **κ_z cancels.** Quote the ratio, not a sag.
+  **Gravity is 0.34% of the axial force the trap is already applying**, so it is
+  not what decides where the bead sits. Quote that ratio; it is the whole
+  answer, and both numbers come out of code this repository already has.
 
-  ⚠ **Two traps in getting there.** First, κ_z genuinely does not exist here:
-  `radial_stiffness_n_per_m` is radial only and `trap_force` documents that it
-  *"assumes zero axial offset"*, so there is no z coordinate to difference.
-  **Do not close a sag with a κ_z/κ_xy ratio** — one was briefly written into
-  this file on 2026-09-10 and removed as unsourced. Second, **do not estimate
-  F_z as radiation pressure × the bead's cross-section.** The bead's 19.6 µm²
-  section against a ~250 nm waist means it intercepts the whole beam, so that
-  product collapses to `n·P/c` = **445 pN at 100 mW** — the total-momentum
-  bound, i.e. Q = 1. The GOA's Q_z here is **0.0215**, so the bound is **47×
-  the force**: a transparent sphere passes most of the light straight through,
-  and the forward-scattered light keeps most of its momentum. Use it as a
-  ceiling, never as the number.
+  ⚠ **Do not estimate F_z as radiation pressure × the bead's cross-section.**
+  The bead's 19.6 µm² section against a ~250 nm waist means it intercepts the
+  whole beam, so that product collapses to `n·P/c` = **445 pN at 100 mW** — the
+  total-momentum bound, i.e. Q = 1. The GOA's Q_z here is **0.0215**, so the
+  bound is **47× the force**: a transparent sphere passes most of the light
+  straight through, and the forward-scattered light keeps most of its momentum.
+  Use it as a ceiling, never as the number.
 
   One consequence worth carrying to lens 4: 9.56 pN with nothing restoring it
   at z = 0 means **the bead does not sit at the focus**, which is a depth-window

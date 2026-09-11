@@ -39,12 +39,11 @@ What it can and cannot do, honestly:
   compare a whole run's settling against the depth of field, which called every
   real bead INFEASIBLE -- 5 um polystyrene in water moves 41 um/min against
   0.375 um -- including the experiments that work, because **a trapped bead
-  does not settle**, and gravity is not what decides where it sits: the
+  does not settle**, and a force comparison says so (KH, 2026-09-11): the
   buoyant weight is 0.032 pN against the trap's own axial force of 9.56 pN at
-  100 mW (`trapping.goa.trap_force`), so gravity spends **0.34%** of the axial
-  budget. That ratio needs no kappa_z, because both displacements divide by it
-  (KH, 2026-09-11). This lens also has no `trapped` field to tell the two
-  cases apart. The
+  100 mW (`trapping.goa.trap_force`, returned beside the radial one), so
+  **gravity is 0.34% of the axial force already acting**. This lens also has no
+  `trapped` field to tell the two cases apart. The
   free-settling case is lens 4's G19, which *assumes* the settled state; what
   this reports is when that state arrives. 100 um chamber, 5 um bead: 2.4 min.
 - **G32 reports because sealing is declarable and a rate is not.** A sealed

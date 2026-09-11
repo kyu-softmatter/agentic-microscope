@@ -162,22 +162,19 @@ def check_sedimentation(setup: "StabilitySetup") -> CheckResult:
     to every experiment this instrument actually runs, including the ones that
     work. Two reasons that reading was wrong:
 
-    - **A trapped bead does not settle.** The lens has no `trapped` field, so
-      the gate applied the free-settling velocity to a bead held in a trap,
-      and gravity is not what decides where it sits. **The comparison that
-      closes this needs no kappa_z at all** (KH, 2026-09-11): both the
-      gravitational sag and the scattering-force offset divide by the SAME
-      axial stiffness, so their ratio is
+    - **A trapped bead does not settle, and it is a force comparison that
+      says so** (KH, 2026-09-11). The lens has no `trapped` field, so the gate
+      applied the free-settling velocity to a bead held in a trap. Compare the
+      two axial forces instead -- `trapping.goa.trap_force` already returns the
+      axial one beside the radial one, at no extra cost:
 
-          mg / F_z    = 0.032 pN / 9.56 pN = 0.34%   at 100 mW
+          buoyant weight  mg  = 0.032 pN      5 um polystyrene in water
+          trap axial force F_z = 9.56 pN      at 100 mW, effective NA 1.333
+          mg / F_z             = 0.34%
 
-      where F_z is `trapping.goa.trap_force`'s second return value, already
-      computed alongside the radial stiffness. So gravity displaces the bead by
-      **0.34% of whatever the trap's own axial force already displaces it** --
-      and if the trap holds the bead inside the depth of field at all, which
-      the experiment working presupposes, gravity spends 0.34% of that budget.
-      kappa_z cancels. It scales with power: 3.4% at 10 mW, and the two forces
-      are equal at 0.34 mW, far below any usable level.
+      **Gravity is 0.34% of the axial force the trap is already applying**, so
+      it is not what decides where the bead sits. It scales with power -- 3.4%
+      at 10 mW, and the two are equal at 0.34 mW, far below any usable level.
     - **The free-settling case is already lens 4's.** G19 rebuilt itself on a
       total-sedimentation premise on 2026-09-10: it assumes the population has
       reached the floor and works out the areal density there. Two lenses were
@@ -275,10 +272,9 @@ def check_sedimentation(setup: "StabilitySetup") -> CheckResult:
         "info",
         f"The population {direction} at {speed * 60.0:.2f} um/min "
         f"({speed:.4f} um/s), by Stokes.{clock}",
-        action="Not gated: a trapped bead does not settle (its axial sag is "
-        "0.34% of the trap's own axial force at 100 mW, and that ratio needs "
-        "no kappa_z because both displacements divide by it), and the "
-        "free-settling "
+        action="Not gated: a trapped bead does not settle (its buoyant weight "
+        "is 0.032 pN against the trap's own 9.56 pN of axial force at 100 mW, "
+        "so 0.34%), and the free-settling "
         "case belongs to lens 4's G19, which assumes the settled state this "
         "reports the arrival time of. Density-matching removes the term "
         "entirely; settling goes as radius squared.",
