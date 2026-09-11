@@ -52,7 +52,7 @@ class Medium:
     #: trapping.dynamics.water_viscosity_pa_s() for water; a different
     #: medium (an ATPS phase, a density-matched buffer) needs its own
     #: measured or literature value. Only trapping.checks.check_sampling
-    #: (corner frequency / G14) needs this; trap_force does not.
+    #: (corner frequency / L7.2–L7.4) needs this; trap_force does not.
     viscosity_pa_s: float | None = None
 
 
@@ -89,7 +89,7 @@ class ObjectiveBeam:
         * The index step that causes the clipping also causes depth-dependent
           **spherical aberration**, which this ray-optics model does not
           represent at all. The real focus is worse than the one computed here.
-          Lens 4's G17 prices the depth limit (docs/04 §9).
+          Lens 4's L4.5 prices the depth limit (docs/04 §9).
         """
         if medium.n <= 0:
             raise ValueError(f"medium.n must be positive, got {medium.n}")

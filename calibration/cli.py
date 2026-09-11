@@ -33,7 +33,7 @@ def cmd_disk_bandwidth(args: argparse.Namespace) -> int:
     print(f"sustained write bandwidth: {result.mb_per_s:.1f} MB/s")
     print(
         "\nrecord this in kb/systems/current.md (e.g. a `calibrations:` "
-        "block) -- G12 needs it as disk_bandwidth_mb_s to gate camera data "
+        "block) -- L3.1 needs it as disk_bandwidth_mb_s to gate camera data "
         "rate at 0.7x this value (docs/04-decision-engine.md §9)."
     )
     return 0
@@ -195,7 +195,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = p.add_subparsers(dest="cmd", required=True)
 
     d = sub.add_parser(
-        "disk-bandwidth", help="measure sustained sequential write bandwidth (G12)"
+        "disk-bandwidth", help="measure sustained sequential write bandwidth (L3.1–L3.3)"
     )
     d.add_argument("directory", help="folder on the target disk to write the test file into")
     d.add_argument(

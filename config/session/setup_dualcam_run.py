@@ -110,12 +110,12 @@ SETTINGS THIS DEFAULTS TO, AND WHERE THEY COME FROM
                               from 4,647 to 1,162 px (where the read-noise term
                               lives), and quarters the data rate.
     ROI       512 binned px   = 66.6 um field at 100x. Both cameras, both
-                              streams: 105 MB/s against the 145 MB/s G12
+                              streams: 105 MB/s against the 145 MB/s L3.1–L3.3
                               budget (compute.cli, 2026-09-06).
     exposure  1.8 ms          `detection.cli from-frame` at SNR 10, the only
-                              combination that reaches 100 fps: G8 caps duty
+                              combination that reaches 100 fps: L2.4 caps duty
                               cycle at 30%, i.e. 3 ms at 100 fps.
-    buffer    800 MB          G13 wants 5 s of buffer; at 200 frames/s across
+    buffer    800 MB          L3.4–L3.7 wants 5 s of buffer; at 200 frames/s across
                               two cameras that is 1,000 frames, and 552 frames
                               (the current setting) FAILS at margin 0.55.
 
@@ -535,7 +535,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--roi", type=int, default=512, help="centred square ROI in BINNED px")
     p.add_argument("--exposure-ms", type=float, default=1.8)
     p.add_argument("--buffer-mb", type=int, default=800,
-                   help="circular-buffer footprint; G13 wants 5 s = ~1000 frames")
+                   help="circular-buffer footprint; L3.4–L3.7 wants 5 s = ~1000 frames")
     p.add_argument("--light-device", default="Aura")
     p.add_argument("--cyan", type=int, default=200, help="CYAN per-mille (0-1000) for the green arm")
     p.add_argument("--green", type=int, default=500, help="GREEN per-mille (0-1000) for the red arm")

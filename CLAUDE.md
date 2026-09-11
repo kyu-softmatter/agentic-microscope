@@ -47,12 +47,12 @@ Standing values and the reasoning behind them:
   ⚠ **The fence is gone as of 2026-09-10.** This rule used to end "and lens 5's
   gates are the fence"; lens 5 is a reporting section now and has no gates, so
   nothing enforces H2 but the reader. The only remaining ceiling on light level
-  is lens 2's G6 saturation, which is about the camera and not about the sample
+  is lens 2's L2.2 saturation, which is about the camera and not about the sample
   → [`2026-09-10-lens-5-becomes-a-reporting-section.md`](kb/decisions/2026-09-10-lens-5-becomes-a-reporting-section.md).
 - **H3 · The hierarchy is a tie-break among `soft` and `bias` trade-offs. It
   never overrides a `hard` gate** → [05 §2](docs/05-consensus-gate.md). Rank 1
-  does not buy an oil objective past G17's RI-mismatch depth (~10 µm), and no
-  rank raises the disk's write bandwidth (G12a).
+  does not buy an oil objective past L4.5's RI-mismatch depth (~10 µm), and no
+  rank raises the disk's write bandwidth (L3.1).
 - **H4 · Do not "correct" a higher rank on lower-ranked grounds.** 1×1 is not
   the SNR-optimal choice and **must not be changed to 2×2 on SNR grounds** — a
   Mortensen-style variance argument favours 65 nm pixels for single-particle
@@ -76,7 +76,7 @@ ranking earns its keep, because each of them is a conflict with no single owner:
 | Light level vs light-driving | 1 ↔ 5 | 2 vs 4 | Raise intensity for SNR *inside* the working window; if it does not fit, H5 |
 | Motion blur in the MSD | 2 ↔ 6 | 2 vs 3 | Shorten exposure and pay for it in light (rank 4) before lengthening the frame period |
 | ROI vs statistics | 3 ↔ 6 | 1 vs 3 | A smaller ROI is the standing choice (2–3× the particle); the cost lands on lens 6's power, not on binning |
-| Requested vs achieved frame rate | 2 ↔ 3 | 3 | A requested rate is not evidence (G12b). Rank 3 is judged on the *achieved* period |
+| Requested vs achieved frame rate | 2 ↔ 3 | 3 | A requested rate is not evidence (L3.2). Rank 3 is judged on the *achieved* period |
 
 ### Relation to README to-do item 9
 
@@ -166,8 +166,8 @@ first**, and only within one kind does anything else apply
 | **4** | lens 6's review | it may refuse to advance what 1–3 cleared; it may not clear what they stopped |
 
 So §1's hierarchy is a tie-break **at level 3 and nowhere else** — H3, seen from
-the lens side. Rank 1 does not buy an oil objective past G17, and no rank raises
-the disk's write bandwidth (G12a). And underneath all of it, **`unevaluated` ≠
+the lens side. Rank 1 does not buy an oil objective past L4.5, and no rank raises
+the disk's write bandwidth (L3.1). And underneath all of it, **`unevaluated` ≠
 `cleared`** (§3): a lens that did not run has not agreed.
 
 ### Exceptions
@@ -187,14 +187,14 @@ the disk's write bandwidth (G12a). And underneath all of it, **`unevaluated` ≠
   bias ledger is `unevaluated`.
   ⚠ **Lens 8's row is now `unevaluated` even when it runs** (2026-09-10). It
   became a reporting section — every check INFO, `status: REPORT`,
-  `advances: None` — so it emits no `bias` code for G23 to collect, and its
+  `advances: None` — so it emits no `bias` code for L6.2 to collect, and its
   drift and evaporation notes sit in `assumed_inputs`, which lens 6's
   single-quantity path does not read. The drift bias reaches a human reader and
   no gate. **Open, and lens 6's to close**
   → [`2026-09-10-lens-8-becomes-a-reporting-section.md`](kb/decisions/2026-09-10-lens-8-becomes-a-reporting-section.md).
 - **E5 · Lenses 2 and 3 are convened together whenever frame rate is in play.**
   Lens 3 does not own the rate, and its arithmetic is only as good as the rate
-  handed to it. A *requested* rate is not evidence — G12b.
+  handed to it. A *requested* rate is not evidence — L3.2.
 - **E6 · Lenses 1 and 5 are convened together, and 1 and 4 likewise.** Light for
   SNR against the dose budget, and immersion against depth, run in opposite
   directions (01 §4).
@@ -233,7 +233,7 @@ the disk's write bandwidth (G12a). And underneath all of it, **`unevaluated` ≠
     trap 0.06445, agreeing to 0.24 % — so **0.06453** is recorded, agreeing
     with the spreadsheet's 0.065 to 0.73 %. Two independent measurements of the
     same cell.
-  - **G24 can now say `pixel_size_measured` at any objective**, where before
+  - **L6.3 can now say `pixel_size_measured` at any objective**, where before
     today the honest answer was nowhere. Every pixel-size-dependent quantity
     can `advance` at every magnification — so **a demotion is now the edit that
     needs justifying**, and `tests/test_pixel_size.py::test_every_row_is_measured`
@@ -254,7 +254,7 @@ the disk's write bandwidth (G12a). And underneath all of it, **`unevaluated` ≠
   transfer and should not be merged: lens 5's gates needed per-dye constants
   that are empty for every proprietary bead colourant here (a missing input),
   while lens 8's inputs arrive **during** the run (drift, PFS state, an
-  evaporation rate) or belong to another lens (free settling → lens 4's G19) —
+  evaporation rate) or belong to another lens (free settling → lens 4's L4.6) —
   a timing and ownership problem. **A lens whose numbers merely happen to be
   absent is `BLOCKED`, which is different and recoverable.**
   `tests/test_advances_rule.py` holds both to the opposite of the advances rule.
@@ -341,9 +341,17 @@ python -m optics.cli check config/channels/proposed-2color.yaml
 
 Every lens has the same shape — `optics` · `detection` · `compute` · `sample` ·
 `photo` · `validity` · `stability` · `trapping`, each with `checks.py` ·
-`gate.py` · `setup.py` · `cli.py`. The formulas behind all 22 gates are
-collected in [04](docs/04-decision-engine.md); 19 are implemented, and `G2`–`G4`
-exist only as a threshold and a default verdict in that document. **`G10`, `G11`, `G18`, `G20`, `G21`, `G22`, `G26`, `G28`, `G29` and `G30` are vacant** — G10 and G20 on
+`gate.py` · `setup.py` · `cli.py`. All **43 checks** are collected in
+[04](docs/04-decision-engine.md), addressed `L<lens>.<n>` since 2026-09-11 —
+the lens number from [01 §4](docs/01-architecture.md), then the check's
+position in it. **19 `hard` · 6 `bias` · 3 `soft` can fail; 15 `info` only
+report**, and the kind is printed beside the address, because an address is a
+location and not a claim that something can fail. That is what let the eleven
+previously unnumbered checks be documented at all — two of them `hard`, so a
+proposal could be stopped by something that appeared in no table.
+
+**Ten old numbers are retired, not translated** — `G10`, `G11`, `G18`, `G20`,
+`G21`, `G22`, `G26`, `G28`, `G29`, `G30` — G10 and G20 on
 2026-09-09, the other six on 2026-09-10: G18 because the coverslip condition is
 checked elsewhere, G21/G22 when **lens 5 stopped being a judging lens** and
 became a reporting section, and G28/G29/G30 when PFS lock and both drift rates

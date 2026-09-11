@@ -1,9 +1,9 @@
-"""Individual mechanical / environmental checks -- G31 (sedimentation),
-G32 (evaporation).
+"""Individual mechanical / environmental checks -- L8.2 (sedimentation),
+L8.3 (evaporation).
 
 docs/05-consensus-gate.md "Lens 8".
 
-G29-G32 were new numbers (G1-G27 were taken by lenses 1-7). Lens 8 had no gate
+G29-L8.3 were new numbers (L1.1-L6.1 were taken by lenses 1-7). Lens 8 had no gate
 IDs before it had an implementation.
 
 THREE GATES HAVE LEFT THIS LENS, ALL ON 2026-09-10 (KH), AND NONE OF THE THREE
@@ -34,11 +34,11 @@ pretend to be a gate on a plan.
 kb/decisions/2026-09-10-drift-is-not-a-design-element.md
 
 AND AS OF 2026-09-10 NOTHING HERE IS GRADED AT ALL: this is a reporting
-section, like lens 5 became the same day. G31 and G32 became INFO on KH's
-instruction -- G31 because it was comparing a whole run's free settling against
+section, like lens 5 became the same day. L8.2 and L8.3 became INFO on KH's
+instruction -- L8.2 because it was comparing a whole run's free settling against
 a depth of field and calling every real bead INFEASIBLE (5 um polystyrene in
 water moves 41 um/min against 0.375 um), when a TRAPPED bead does not settle at
-all and the free case is already lens 4's G19; G32 because sealing is
+all and the free case is already lens 4's L4.6; L8.3 because sealing is
 declarable and an evaporation rate is not, and its 0.5 stand-in margin was a
 number invented to mean "not quantified".
 
@@ -81,7 +81,7 @@ INFO = "info"
 MAX_MARGIN = 10.0
 
 #: EMPTY, AND THAT IS THE STATE OF THE LENS. Both entries went on 2026-09-10
-#: when G31 and G32 became reports: `settling_dof_fraction` (1.0) had nothing
+#: when L8.2 and L8.3 became reports: `settling_dof_fraction` (1.0) had nothing
 #: left to compare, and `evaporated_fraction_max` (0.05) was a threshold on a
 #: quantity the plan cannot supply. An entry appearing here again means a
 #: judging gate has come back, which is a decision and not a refactor.
@@ -152,7 +152,7 @@ def available_facts(setup: "StabilitySetup") -> set[str]:
 
 
 def check_sedimentation(setup: "StabilitySetup") -> CheckResult:
-    """G31: how fast does the population move, and how long until it stops?
+    """L8.2 (was G31): how fast does the population move, and how long until it stops?
 
     REPORTS, DOES NOT GATE, since 2026-09-10 (KH): *"침강 상승 속도와 평형에
     도달하는 시간 정도만 계산하고 인포로 남겨두자."* It used to compare the
@@ -175,13 +175,13 @@ def check_sedimentation(setup: "StabilitySetup") -> CheckResult:
       **Gravity is 0.34% of the axial force the trap is already applying**, so
       it is not what decides where the bead sits. It scales with power -- 3.4%
       at 10 mW, and the two are equal at 0.34 mW, far below any usable level.
-    - **The free-settling case is already lens 4's.** G19 rebuilt itself on a
+    - **The free-settling case is already lens 4's.** L4.6 rebuilt itself on a
       total-sedimentation premise on 2026-09-10: it assumes the population has
       reached the floor and works out the areal density there. Two lenses were
       charging the same fact against different thresholds.
 
     What is left is the pair of numbers that premise needs and nobody was
-    reporting: **the velocity, and the time until it is over.** G19 assumes the
+    reporting: **the velocity, and the time until it is over.** L4.6 assumes the
     settled state; this says when the settled state arrives.
     """
     v = setup.settling_velocity_um_per_s
@@ -249,13 +249,13 @@ def check_sedimentation(setup: "StabilitySetup") -> CheckResult:
                 f" -- {setup.duration_min / t_min:.0f}x inside the "
                 f"{setup.duration_min:.0f} min acquisition, so the suspension "
                 "is already settled out for most of it, which is the premise "
-                "lens 4's G19 works from."
+                "lens 4's L4.6 works from."
             )
         elif setup.duration_min:
             clock += (
                 f", longer than the {setup.duration_min:.0f} min acquisition, "
                 "so the population is still in transit when the run ends and "
-                "G19's settled-state premise does not hold yet."
+                "L4.6's settled-state premise does not hold yet."
             )
         else:
             clock += "."
@@ -275,7 +275,7 @@ def check_sedimentation(setup: "StabilitySetup") -> CheckResult:
         action="Not gated: a trapped bead does not settle (its buoyant weight "
         "is 0.032 pN against the trap's own 9.56 pN of axial force at 100 mW, "
         "so 0.34%), and the free-settling "
-        "case belongs to lens 4's G19, which assumes the settled state this "
+        "case belongs to lens 4's L4.6, which assumes the settled state this "
         "reports the arrival time of. Density-matching removes the term "
         "entirely; settling goes as radius squared.",
         numbers=numbers,
@@ -283,7 +283,7 @@ def check_sedimentation(setup: "StabilitySetup") -> CheckResult:
 
 
 def check_evaporation(setup: "StabilitySetup") -> CheckResult:
-    """G32: how much does the sample concentrate during the acquisition?
+    """L8.3 (was G32): how much does the sample concentrate during the acquisition?
 
     REPORTS, DOES NOT GATE, since 2026-09-10 (KH). The reason is in the input:
     **sealing is declarable, an evaporation rate is not.** A sealed chamber is
@@ -371,7 +371,11 @@ def check_evaporation(setup: "StabilitySetup") -> CheckResult:
 
 
 def check_drift_budget(setup: "StabilitySetup") -> CheckResult:
-    """Report the drift rate this run can tolerate. Not a gate; unnumbered.
+    """L8.4: Report the drift rate this run can tolerate. Not a gate.
+
+    ⚠ `L8.4` is an ADDRESS, not a gate number -- see the 2026-09-11 renumbering
+    in docs/04. Every check has an address now; the `info` kind beside it is
+    what says this one cannot fail.
 
     G29 and G30 stood here and gated on a MEASURED drift rate. They left on
     2026-09-10 because that number is learned from a run, not known before it
@@ -458,7 +462,7 @@ def check_drift_budget(setup: "StabilitySetup") -> CheckResult:
 
 
 def check_convening(setup: "StabilitySetup") -> CheckResult:
-    """Report whether the committee would convene this lens at all.
+    """L8.1: Report whether the committee would convene this lens at all.
 
     docs/01 §4 makes lens 8 conditional on acquisitions longer than 30 min.
     That threshold is reported, not enforced: sedimentation and drift scale

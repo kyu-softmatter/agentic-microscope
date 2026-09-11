@@ -74,11 +74,11 @@ from optics.components import Detector
 from .photometry import effective_read_noise_e, localization_variance_nm2, snr
 from .timing import readout_time_s
 
-#: G6, docs/04 §4. Peak electrons must stay under this fraction of full well.
+#: L2.2, docs/04 §4. Peak electrons must stay under this fraction of full well.
 SATURATION_FRACTION = 0.7
-#: G6's second half: peak ADU under this fraction of the digital ceiling.
+#: L2.2's second half: peak ADU under this fraction of the digital ceiling.
 ADU_FRACTION = 0.9
-#: G8, docs/04 §5. Duty cycle at or below this keeps the shortest-lag MSD bias
+#: L2.4, docs/04 §5. Duty cycle at or below this keeps the shortest-lag MSD bias
 #: under 10%.
 DUTY_CYCLE_MAX = 0.3
 #: Above this fraction of the digital ceiling the measured peak is untrustworthy
@@ -285,9 +285,9 @@ def exposure_ceiling_saturation(
     bit_depth: int,
     offset_adu: float,
 ) -> float:
-    """Exposure (s) at which G6 starts clipping.
+    """Exposure (s) at which L2.2 starts clipping.
 
-    Both halves of G6 are applied, and **background counts toward filling the
+    Both halves of L2.2 are applied, and **background counts toward filling the
     well** -- the pixel does not know which electrons were interesting. (Note
     ``checks.check_saturation`` currently omits the background term from its
     peak; on a camera whose full well is 1,000 e- that omission is not small.)
@@ -302,7 +302,7 @@ def exposure_ceiling_saturation(
 
 
 def exposure_ceiling_blur(target_fps: float) -> float:
-    """Exposure (s) that keeps G8's duty cycle at or below 30%.
+    """Exposure (s) that keeps L2.4's duty cycle at or below 30%.
 
     ``tau_min = 1/f``, so ``t_exp <= 0.3/f``. Tracking only -- morphology
     imaging has no MSD to bias.
@@ -349,7 +349,7 @@ class ModeOption:
     ceiling_blur_ms: float | None
     ceiling_frame_rate_ms: float | None
     #: The exposure this module would actually use: the smallest that meets the
-    #: SNR target, since anything longer only adds dose (lens 5) and blur (G8).
+    #: SNR target, since anything longer only adds dose (lens 5) and blur (L2.4).
     exposure_ms: float | None
     snr_achieved: float | None
     max_fps: float | None
@@ -430,11 +430,11 @@ def compare_modes(
         )
         t_fps = exposure_ceiling_frame_rate(target_fps) if target_fps else None
 
-        ceilings = {"saturation (G6)": t_sat}
+        ceilings = {"saturation (L2.2)": t_sat}
         if t_blur is not None:
-            ceilings["motion blur (G8)"] = t_blur
+            ceilings["motion blur (L2.4)"] = t_blur
         if t_fps is not None:
-            ceilings["frame period (G9)"] = t_fps
+            ceilings["frame period (L2.5)"] = t_fps
         binding, lowest = min(ceilings.items(), key=lambda kv: kv[1])
 
         # Readout is not an exposure ceiling -- no exposure can shorten it. If

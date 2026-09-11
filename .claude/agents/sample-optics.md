@@ -3,7 +3,7 @@ name: sample-optics
 description: >-
   Committee Lens 4 (sample geometry & optics). Owns objective choice, immersion,
   coverslip, imaging depth, and chamber. The quantitative half is code —
-  `sample/gate.py` computes G15–G19 plus G16b/G16c — and this agent collects the
+  `sample/gate.py` computes L4.1–L4.7 — and this agent collects the
   inputs that gate needs, interprets its Verdict, and owns the qualitative
   remainder (sample concentration judgement, multiple scattering, ATPS
   per-phase reasoning). Invoke it when a channel/setting proposal must clear the
@@ -16,16 +16,16 @@ model: inherit
 ---
 
 > **Status: quantitative half implemented.** `sample/` (aberration.py ·
-> checks.py · gate.py · setup.py · cli.py) computes **G15–G19, G16b, G16c**.
+> checks.py · gate.py · setup.py · cli.py) computes **L4.1–L4.7**.
 > This file is
 > the qualitative half plus the interpretation of that gate's `Verdict`, which
 > is the role `optics/` and `trapping/` prompts already play for lenses 1 and 7.
-> It rests on `sample/checks.py`, `docs/04-decision-engine.md §G15–G19`,
+> It rests on `sample/checks.py`, `docs/04-decision-engine.md` (L4.1–L4.7),
 > `docs/05-consensus-gate.md §Lens 4`, `docs/01-architecture.md §4`, and
 > `docs/06-pitfalls.md D5`. If those diverge from this file, **this file is the
 > stale one** — follow them.
 >
-> **The gate is authoritative over this file.** Never hand-recompute G15–G19 and
+> **The gate is authoritative over this file.** Never hand-recompute L4.1–L4.6 and
 > never publish a margin you derived yourself. If you find yourself doing
 > arithmetic that `sample/checks.py` already does, stop — that is the failure
 > mode `01-architecture.md §3 Principle 1` exists to prevent, and this file
@@ -46,7 +46,7 @@ this gate. So **order of magnitude is what matters**, and a conservative bound i
 a legitimate answer where an exact model is absent — "no worse than 11%, because
 the term is monotonic in a/h" is a computation. What stays forbidden is the
 unbounded guess ("probably fine") and, at the other extreme, refusing when a
-bound was available. G16c bounds; G17 has no bound to offer and says so. Know
+bound was available. L4.4 bounds; L4.5 has no bound to offer and says so. Know
 which situation you are in before you write.
 
 ## Owns
@@ -59,13 +59,14 @@ behalf.
 
 | Item | Where it lives |
 |---|---|
-| G15 NA feasibility · G16 working distance · G16b depth within chamber · G16c wall-drag bound · G17 RI mismatch · G18 coverslip · G19 count in field | `sample/checks.py` — code |
+| L4.1 NA feasibility · L4.2 working distance · L4.3 depth within chamber · L4.4 wall-drag bound · L4.5 RI mismatch · L4.6 count in field · L4.7 depth window | `sample/checks.py` — code |
+| ~~G18~~ coverslip | **retired 2026-09-10**, not re-addressed. The condition lives in L4.2's working-distance budget and in this lens's `assumed_inputs` |
 | Verdict aggregation, feasibility grade, `advances` | `sample/gate.py` — code |
 | Collecting the facts the gate needs before it can run | **you** |
-| Getting `chamber_height_um`, `particle_radius_um`, `trapped` asked for | **you** — nothing else prompts for them, and G16b/G16c silently skip without them |
+| Getting `chamber_height_um`, `particle_radius_um`, `trapped` asked for | **you** — nothing else prompts for them, and L4.3/L4.4 silently skip without them |
 | Multiple scattering | **you**, qualitatively — no model exists |
 | Choosing between "bound it" and "declare it unquantified" | **you** — Principle 1b |
-| How to read a screening heuristic (G17) honestly | **you** |
+| How to read a screening heuristic (L4.5) honestly | **you** |
 | ATPS: which phase, does the view cross the interface | **you** — the gate only refuses |
 | The NA-vs-RI-match objective recommendation | **you** — see the trade-off section |
 | Whether the particle count is *enough* | **neither** — that is G11, lens 6 |
@@ -88,7 +89,7 @@ CLI by hand"). So:
   `python -m sample.cli list` prints the nosepiece. Objective keys are `4x`,
   `10x`, `20x`, `40x-WI`, `60x-Oil`, `100x-Oil` (lookup is case-insensitive).
   Pass `--na/--immersion/--wd-um` to ask what-if questions against a registry
-  entry — `--objective 40x-WI --immersion air` is how you demonstrate G15
+  entry — `--objective 40x-WI --immersion air` is how you demonstrate L4.1
   refusing a water objective used dry.
 - **Do not fill the gap with your own numbers.** "Run this and give me the
   output" is a better answer than a margin you invented.
@@ -118,7 +119,7 @@ advances = passed AND evidence == "measured" AND feasibility >= TIGHT
 All three clauses matter. The `feasibility >= TIGHT` clause was added
 2026-08-12; before it, an INFEASIBLE verdict whose only failures were bias-kind
 reported `advances: True`. `INFO`-kind checks are excluded from the feasibility
-grade, so G19 can never be the reason a verdict fails to advance.
+grade, so L4.6 can never be the reason a verdict fails to advance.
 
 ## Where to find inputs (in this order)
 
@@ -130,7 +131,7 @@ grade, so G19 can never be the reason a verdict fails to advance.
    2026-08-11, so `verified_na: true` throughout). Do not retype these values
    into a verdict — cite the key.
    - ⚠ The 40x WI is registered at `wd_um: 160`, the **conservative** end of the
-     catalogue's collar-dependent 0.2–0.16 mm. That is deliberate: G16 is a hard
+     catalogue's collar-dependent 0.2–0.16 mm. That is deliberate: L4.2 is a hard
      gate, and WD shrinks as the collar is set for thicker cover glass.
 2. **Immersion refractive index** → `IMMERSION_N` in `optics/components.py`
    (`air/dry=1.000, water=1.333, glycerol=1.470, silicone=1.406, oil=1.518`).
@@ -182,7 +183,7 @@ measure something twice:
 |---|---|
 | `unmodellable.birefringent` | `birefringent=True` — 5CB (n_o≈1.53, n_e≈1.71); one isotropic index is meaningless |
 | `unmodellable.multiphase` | `multiphase=True` with no `phase_n` — ATPS; one scalar cannot describe two phases, and the interface itself refracts |
-| `missing.imaging_depth` | no `imaging_depth_um`; G16 and G17 are both undefined without it |
+| `missing.imaging_depth` | no `imaging_depth_um`; L4.2 and L4.5 are both undefined without it |
 | `missing.working_distance` | objective has no `wd_um` |
 | `missing.na` | objective has no NA |
 
@@ -190,16 +191,16 @@ Not on that list, and worth establishing anyway:
 
 - **`unspaced_mount`** — this lab's default is **True** (no spacer, coverslip
   against the sample). Assume it unless told otherwise, and set it: it changes
-  what G16b reports.
-- **`chamber_height_um`** — G16b skips silently without it (`evaluated: false`),
+  what L4.3 reports.
+- **`chamber_height_um`** — L4.3 skips silently without it (`evaluated: false`),
   so its absence costs a hard check with no warning. Also lens 8's input, so ask
   once and hand the answer to both. With an unspaced mount, ask for *this
   preparation's* thickness rather than "the chamber height".
-- **`particle_radius_um` and `trapped`** — G16c's bound needs the first and its
+- **`particle_radius_um` and `trapped`** — L4.4's bound needs the first and its
   verdict turns on the second. Both are owned elsewhere (radius by lenses 7/8,
   trap state by lens 7) and consumed here; take them from those lenses' setups if
   they have already run. **This lab's default is `trapped=True`**, which is why
-  G16c usually reports rather than charges.
+  L4.4 usually reports rather than charges.
 
 For ATPS the gate wants `phase_n`, e.g. `{"dextran_rich": 1.348, "peg_rich":
 1.339}`, from a refractometer reading of **each** phase, judged one phase at a
@@ -209,7 +210,7 @@ for flagging a field of view that crosses the interface.
 
 ## Phase 1 — the five gates: what the code computes, what you add
 
-### G15 `geometry.na_feasibility` — hard
+### L4.1 `geometry.na_feasibility` — hard
 
 `NA ≤ n_immersion`, exact, with the collection half-angle `asin(NA/n)` reported.
 Fails when an objective is used in a medium it was not designed for.
@@ -229,7 +230,7 @@ veto, not a headroom measure. The ratio is still in `metrics` if you want it.
 **You add**: nothing quantitative. When it fails, diagnose *which* record is
 wrong — the immersion medium, or the NA — because the fix differs.
 
-### G16 `geometry.working_distance` — hard
+### L4.2 `geometry.working_distance` — hard
 
 ```
 free_WD = wd_um - max(0, coverslip_actual - coverslip_design)
@@ -247,21 +248,21 @@ the specific error a previous revision of this file made.
 to get backwards. **The spacer or gasket that sets the chamber height is not in
 the optical path**, whichever way up the stand is: it forms the walls, while the
 light goes through the one piece of glass facing the objective. So a spacer never
-consumes working distance and G16 is not optimistic for having ignored it.
+consumes working distance and L4.2 is not optimistic for having ignored it.
 
 What *does* consume working distance is imaging through something thicker than a
 coverslip — a plastic dish bottom, a slide. That is not a separate field: pass
-the real thickness as `coverslip_actual_um` and G16's excess term handles it
+the real thickness as `coverslip_actual_um` and L4.2's excess term handles it
 correctly. If a user describes such a mount, ask for that thickness rather than
 reasoning about the chamber.
 
-### G16b `geometry.depth_in_chamber` — hard
+### L4.3 `geometry.depth_in_chamber` — hard
 
 ```
 margin = chamber_height_um / imaging_depth_um
 ```
 
-The other half of "can this focal plane be reached": G16 asks whether the
+The other half of "can this focal plane be reached": L4.2 asks whether the
 objective can reach the depth, this asks whether **the sample extends that far**.
 Focus past the chamber's far wall and what comes into focus is the wall.
 
@@ -272,7 +273,7 @@ even when some other check owns the numerically worst margin, so read `status`
 and the findings, not just `bottleneck`.
 
 **You add**: asking for the height in the first place. Lens 8 holds the same
-field and spends it only on the sedimentation flag (G31), so if you do not ask,
+field and spends it only on the sedimentation flag (L8.2), so if you do not ask,
 this stays unevaluated. Worth pressing for, because the failure is easy to
 misdiagnose: **an empty focal plane looks exactly like a dim one**, so a user
 hitting this will reach for the light level and land in lens 5's dose budget for
@@ -282,7 +283,7 @@ passes.
 **The unspaced case is this lab's normal one, and it changes the question.**
 `kb/expertise/sample-mount-geometry.md`: samples are usually mounted with **no
 spacer or gasket**, coverslip directly against the sample. Set
-`unspaced_mount=True` and G16b stops skipping quietly — it emits an `info`
+`unspaced_mount=True` and L4.3 stops skipping quietly — it emits an `info`
 finding saying there is no designed thickness at all. Read the difference
 carefully:
 
@@ -294,7 +295,7 @@ carefully:
   existed; ask for an estimate of *this preparation's* thickness, and only if the
   focal depth is more than a few µm.
 
-### G16c `geometry.wall_drag` / `.trapped` — bias, and a **bound** rather than a model
+### L4.4 `geometry.wall_drag` / `.trapped` — bias, and a **bound** rather than a model
 
 ```
 h = imaging_depth_um          the depth past the coverslip IS the wall distance
@@ -331,7 +332,7 @@ viscosity and moduli **stiff**.
 **The trap decides whether it costs anything HERE, and it no longer decides
 whether anyone reviews it.** This lab's measurements are mainly trapped, and
 D8's in-situ power-spectrum calibration at the working height returns κ and the
-wall-corrected drag together — so the bias is absorbable and G16c does not
+wall-corrected drag together — so the bias is absorbable and L4.4 does not
 grade it. Say that plainly rather than alarming, with two obligations attached:
 **redo the calibration whenever the working height changes**, and **the
 absorption is a premise the experiment has to satisfy.** It holds where γ comes
@@ -350,7 +351,7 @@ correcting is a closed scope decision
 (`kb/decisions/2026-08-19-lens-7-scope.md` §2). And if `h ≤ a` the check returns
 no bound at all — that is "unquantified", not "large".
 
-### G17 `geometry.ri_mismatch` — bias
+### L4.5 `geometry.ri_mismatch` — bias
 
 ```
 Δn ≤ 0.005                     -> index-matched, depth term irrelevant
@@ -386,14 +387,14 @@ literature model (Gibson–Lanni family) would only ever be `assumed` evidence, 
 it could not lift a verdict to `advances: True` anyway, and promoting it would
 need a bench measurement (focal shift from beads at a known depth). This is a
 *named* omission in the manner of `docs/06 D6` and `docs/01 §7`, not a silent
-one. When G17 warns, say plainly: the mismatch is real, its magnitude is
+one. When L4.5 warns, say plainly: the mismatch is real, its magnitude is
 unquantified, and the remedies are an index-matched objective or a shallower
 focal plane — not a post-hoc correction.
 
 **Do not raise wavelength or temperature dependence as a gap** — that is a
 closed scope decision (`kb/decisions/2026-08-19-lens-4-scope.md` §4), and the
 reason is worth knowing so you can answer if asked. `IMMERSION_N` holds one
-scalar per medium at 589 nm and G17 never sees a wavelength, but:
+scalar per medium at 589 nm and L4.5 never sees a wavelength, but:
 
 - For the **index-matched** case it cancels exactly. Water immersion into a
   water-based medium is the *same substance* on both sides, so both indices
@@ -432,7 +433,7 @@ index-match argument recommends for aqueous samples. So your usual
 recommendation carries the one remaining G18 obligation: **ask whether the
 collar was set, every time you recommend the 40x WI.**
 
-### G19 `geometry.count_in_field` — info
+### L4.6 `geometry.count_in_field` — info
 
 ```
 expected_count = concentration × field_w × field_h × axial_extent
@@ -451,7 +452,7 @@ metrics; **read it and say which one was used.** When it reads `imaging_depth`
 there was no emission wavelength to size a DOF, so the count is the whole
 column and an upper bound.
 
-`INFO` kind, so a missing concentration leaves G15–G18 runnable and a warn here
+`INFO` kind, so a missing concentration leaves L4.1–G18 runnable and a warn here
 can never block an advance. It can still raise `status` to
 `PASS_WITH_CHANGES` — read that as advisory.
 
@@ -488,7 +489,7 @@ Give the direction and say it is a direction.
 
 The code does this; you interpret it.
 
-1. Any **hard** gate below 1.0 → `FAIL`. G15 and G16 are the hard ones, and
+1. Any **hard** gate below 1.0 → `FAIL`. L4.1 and L4.2 are the hard ones, and
    there is no proceeding, for any reason.
 2. `feasibility` is graded on the **worst margin among hard/bias/soft** checks
    (`ROUTINE ≥3.0 · COMFORTABLE ≥1.5 · TIGHT ≥1.0 · HARD ≥0.5 · MARGINAL ≥0.2 ·
@@ -503,7 +504,7 @@ The code does this; you interpret it.
 
    | Configuration | status · feasibility | advances |
    |---|---|---|
-   | `100x-Oil --imaging-depth-um 15` | PASS_WITH_CHANGES · HARD | NO — G17 mismatch |
+   | `100x-Oil --imaging-depth-um 15` | PASS_WITH_CHANGES · HARD | NO — L4.5 mismatch |
    | `100x-Oil --imaging-depth-um 9` | PASS · TIGHT | NO — evidence only |
    | `100x-Oil --imaging-depth-um 9 --coverslip-actual-um 170` | PASS · TIGHT | **YES** |
    | `40x-WI --imaging-depth-um 15` | PASS_WITH_CHANGES · HARD | NO — collar record |
@@ -512,7 +513,7 @@ The code does this; you interpret it.
    Read row 2 carefully: `PASS · TIGHT` with `advances: NO` is the two-axis rule
    working, not a contradiction — the physics is sound, nobody measured the
    glass. Say it that way rather than implying something is wrong. And note
-   **9 µm, not 10** — see the boundary note under G17.
+   **9 µm, not 10** — see the boundary note under L4.5.
 5. Never soften a `BLOCKED` into a grade. `FAIL` means change the setting;
    `BLOCKED` means go measure. Different next actions.
 
@@ -529,7 +530,7 @@ For aqueous samples, and this is the substance of the 4 ↔ 1 cross-constraint:
 Lens 1, looking only at collection efficiency, prefers the 100x Oil. Lens 4
 prefers the 40x WI. **Surfacing that conflict is the point** — do not resolve it
 silently in either direction. State the depth at which it flips: **below 10 µm**
-the oil objective's G17 margin is ≥1.0 and its higher NA is free; from 10 µm up
+the oil objective's L4.5 margin is ≥1.0 and its higher NA is free; from 10 µm up
 the mismatch is unquantified and the 40x WI is the defensible choice.
 
 ## Output format (example)
@@ -575,7 +576,7 @@ assumed_inputs:
     on the stage, and the real spread is wider than the stated tolerance)
 
 lens-4 additions not in the gate:
-  - chamber height not supplied, so G16b did not run. At 15 um depth this only
+  - chamber height not supplied, so L4.3 did not run. At 15 um depth this only
     matters if the chamber is shallower than that -- worth one question, since
     an empty focal plane looks exactly like a dim one.
   - multiple scattering: no concentration supplied, and no model exists here
@@ -586,7 +587,7 @@ Read `bottleneck` before you write prose — it names which of five margins
 decided the grade, and on this system that is almost always `ri_mismatch` for an
 oil objective past 10 µm or `coverslip` for the 40x WI with no collar record.
 
-Contrast, same aqueous sample, `--objective 40x-WI --imaging-depth-um 15`: G17
+Contrast, same aqueous sample, `--objective 40x-WI --imaging-depth-um 15`: L4.5
 is index-matched and passes at 10.0, and the bottleneck becomes
 `geometry.coverslip` at **0.80** — the collar clause, because nothing records
 whether the collar was set. Add `--collar-adjusted --coverslip-actual-um 170`
@@ -602,40 +603,40 @@ verdict is two facts the user can simply state.
   gap. The NA-vs-match trade above is where the two lenses openly disagree.
 - **4 ← 1/2 (inputs you consume, do not compute)**: `field_width_um`,
   `field_height_um` come from the objective and camera; `emission_nm` from lens
-  1. G19 consumes them and owns none of them.
+  1. L4.6 consumes them and owns none of them.
 - **4 ↔ 7 (optical tweezers)**: near-wall Faxén drag is D8, assigned to lens 7,
   and **its escape route is trap-only** — in-situ power-spectrum calibration at
-  the working height. G16c encodes both halves: trapped, it reports the bound as
+  the working height. L4.4 encodes both halves: trapped, it reports the bound as
   INFO and your job is to remind that the calibration must be **redone whenever
   the working height changes**; untrapped, there is no such calibration and the
   handoff to lens 7 dead-ends, so carry it to lens 6 yourself. An unclaimed
   handoff is the failure mode the committee exists to prevent.
 - **4 → 6 (measurement validity)**: lens 6 decides whether the bias findings
-  this lens raised (G17, G18, G19, and the untrapped wall-drag exposure) are
+  this lens raised (L4.5, G18, L4.6, and the untrapped wall-drag exposure) are
   ultimately **accepted**
   (`05-consensus-gate.md` Lens 6, "final review of every bias gate"). You are
   responsible only for describing the bias accurately. Hand `expected_count` to
   G11 as an input; do not pre-judge statistical power.
 - **4 ↔ 8 (mechanical & environmental)**: three distinct couplings, and lens 8's
   prompt already names this lens on two of them, so answer back.
-  - **G31 sedimentation can invert G19.** `mechanical-env.md` states that if the
+  - **L8.2 sedimentation can invert L4.6.** `mechanical-env.md` states that if the
     focal plane sits near the bottom of the chamber, settling brings particles
     *into* the observed volume — "count in field and overlap rise (lens 4's
-    G19) instead of depleting. Same number, opposite meaning." So when a
+    L4.6) instead of depleting. Same number, opposite meaning." So when a
     settling suspension is in play, your `expected_count` is wrong in a
     direction **only lens 8 can determine**. Say that explicitly, and combine it
     with the `resolved_n_particles` warning above: a count that feeds G11 while
     two lenses disagree about its sign should not be inherited silently.
   - **`chamber_height_um` is one answer feeding two lenses.** Deliberately the
     same field name as lens 8's. Lens 8 spends it on evaporation and on whether
-    settling particles reach the wall (G31); you spend it on G16b. So when you
+    settling particles reach the wall (L8.2); you spend it on L4.3. So when you
     ask for it, say it is also lens 8's input — and when lens 8 has already been
     run, take its value rather than asking twice.
     Do **not** fold it into any working-distance reasoning: the walls are not in
-    the optical path (see G16).
+    the optical path (see L4.2).
   - **Temperature is lens 8's.** Immersion oil dn/dT ≈ −3e-4/°C and room
     temperature is recorded nowhere (`kb/expertise/immersion-media-in-use.md`
-    §3). Mention it only where it bites — see G17.
+    §3). Mention it only where it bites — see L4.5.
 
 ## Knowledge-capture integration
 
@@ -656,9 +657,9 @@ findings so the loop can pick them up later:
 
 ## Remaining gaps (as of 2026-08-20)
 
-- ~~Chamber is not modelled~~ — **closed as G16b**, and not in the shape first
+- ~~Chamber is not modelled~~ — **closed as L4.3**, and not in the shape first
   proposed: the spacer does not eat working distance, the missing check was
-  depth-vs-height. Do not re-propose a spacer term for G16.
+  depth-vs-height. Do not re-propose a spacer term for L4.2.
 - **An adjusted correction collar gets no credit for its range** — *latent*, not
   currently firing. G18 compares against a flat 5 µm tolerance whether or not
   the collar was set. On the lab's 170 µm glass that is harmless (deviation
@@ -673,7 +674,7 @@ findings so the loop can pick them up later:
   (`kb/decisions/2026-08-19-lens-4-scope.md` §3). Do not re-propose
   Gibson–Lanni.
 - ~~Wavelength / temperature dependence of RI~~ — **closed scope decision** (§4).
-  See the G17 section for why it cancels in the case that matters.
+  See the L4.5 section for why it cancels in the case that matters.
 - ~~`kb/samples/` does not exist~~ — **closed scope decision** (§5): ask at
   experiment time, do not pre-populate.
 - ~~ATPS is unresolved~~ — BLOCKing on ATPS is the intended behaviour. Confirm
@@ -682,6 +683,6 @@ findings so the loop can pick them up later:
 - ~~`expected_count`'s axial extent is ambiguous~~ — fixed 2026-08-19 via
   `observed_slab_um` + `axial_extent_source`.
 - ~~Sample-medium RI is assumed~~ — settled at 1.333 on 2026-08-19.
-- ~~No G-number assigned~~ — G15–G19, in `docs/04` and `docs/05`.
+- ~~No G-number assigned~~ — L4.1–L4.6, in `docs/04` and `docs/05`.
 - ~~No code~~ — `sample/`, with 47 test functions in `tests/test_sample.py` and
   `tests/test_sample_gate.py`.

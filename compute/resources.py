@@ -30,7 +30,7 @@ def bytes_per_pixel_for_bit_depth(bit_depth: int) -> int:
     PVCAM/Kinetix adapter -- an adapter is free to hand MMCore 16-bit
     pixels from an 8-bit sensor mode. The Kinetix's Speed mode is 8-bit at
     500 fps full frame (data/detectors.yaml), i.e. exactly the regime where
-    G12 binds, so getting this wrong moves the data rate by 2x in the one
+    L3.1–L3.3 binds, so getting this wrong moves the data rate by 2x in the one
     place it matters. ``compute.checks.check_pixel_container`` refuses to
     call an unconfirmed 8-bit container measured.
     """
@@ -96,7 +96,7 @@ def flush_seconds(total_bytes: float, disk_bandwidth_mb_s: float) -> float:
     """How long it takes to write a RAM-held burst out afterwards.
 
     The RAM-capture path (kb/decisions/2026-08-12-ram-buffer-detour-for-disk-
-    bandwidth.md) trades G12's real-time disk constraint for this one-off,
+    bandwidth.md) trades L3.1–L3.3's real-time disk constraint for this one-off,
     non-real-time write. It is not a gate -- nothing is lost if it is slow --
     but the number decides whether the microscope is tied up for one minute
     or for twenty.

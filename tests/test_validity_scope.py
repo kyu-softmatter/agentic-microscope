@@ -58,7 +58,7 @@ def _setup(**overrides) -> ValiditySetup:
     """A setup that passes cleanly, so a test only has to break one thing.
 
     The photometric calibrations are all in hand, which lets an intensity-based
-    quantity be judged without G25 clouding the result.
+    quantity be judged without L6.4 clouding the result.
     """
     defaults = dict(
         intended_quantity="diffusion",
@@ -78,7 +78,7 @@ def _ledger(verdict, quantity=None):
     return verdict.metrics[quantity][code] if quantity else verdict.metrics[code]
 
 
-# ------------------------------------- G23 the correction registry ------
+# ------------------------------------- L6.2 the correction registry ------
 
 
 def test_the_two_registries_are_disjoint():
@@ -150,7 +150,7 @@ def test_every_uncorrectable_entry_explains_what_to_do_instead():
         assert len(why) > 20, code
 
 
-# ------------------------------------------------ G23 bias scoping ------
+# ------------------------------------------------ L6.2 bias scoping ------
 
 
 def test_a_photometric_bias_does_not_touch_a_geometric_quantity():
@@ -266,7 +266,7 @@ def test_a_quantity_independent_finding_is_emitted_once_untagged():
 
     G11 was this test's example until 2026-09-11. `committee_coverage` is the
     only quantity-independent check left -- `bias_ledger` scopes by quantity,
-    and G24/G25 read the quantity's own requirement table."""
+    and L6.3/L6.4 read the quantity's own requirement table."""
     up = _upstream()
     del up["sample"]
     v = evaluate(_both(upstream=up))

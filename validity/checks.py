@@ -1,9 +1,9 @@
-"""Individual measurement-validity checks -- G23 (bias ledger), G24 (pixel
-calibration), G25 (photometric calibration), G27 (committee coverage).
+"""Individual measurement-validity checks -- L6.2 (bias ledger), L6.3 (pixel
+calibration), L6.4 (photometric calibration), L6.1 (committee coverage).
 
 docs/05-consensus-gate.md "Lens 6"; docs/06-pitfalls.md A1.
 
-G23-G27 were new numbers (G1-G22 were taken by lenses 1/2/3/4/5/7).
+L6.2-L6.1 were new numbers (L1.1-G22 were taken by lenses 1/2/3/4/5/7).
 
 TWO CHECKS LEFT THIS LENS ON 2026-09-11 (KH) AND NEITHER NUMBER IS REUSED.
 
@@ -108,8 +108,8 @@ def _ok(code, kind, margin, message, **numbers) -> CheckResult:
         A pass that rests on "you have it" is a FACT and may use `_ok`.**
 
     Four branches in this lens are decisions and do not come through here:
-    G23's out-of-scope ruling and its declaration-accepted ruling, and G24's
-    and G25's "not on the critical path" rulings. Each of those turned the
+    L6.2's out-of-scope ruling and its declaration-accepted ruling, and L6.3's
+    and L6.4's "not on the critical path" rulings. Each of those turned the
     check OFF on the strength of a lookup table -- `BIAS_SCOPE`,
     `CORRECTIONS`, `QUANTITY_REQUIREMENTS` -- and if the table is wrong, a
     silent pass is exactly how nobody finds out.
@@ -143,7 +143,7 @@ def available_facts(setup: "ValiditySetup") -> set[str]:
 
 
 def check_bias_ledger(setup: "ValiditySetup") -> CheckResult:
-    """G23: is every bias the committee found either absent or corrected?
+    """L6.2 (was G23): is every bias the committee found either absent or corrected?
 
     This is what docs/05 means by giving lens 6 "final review of every bias
     gate". It does not recompute any of them -- it decides whether the intended
@@ -344,7 +344,7 @@ def check_bias_ledger(setup: "ValiditySetup") -> CheckResult:
 
 
 def check_pixel_calibration(setup: "ValiditySetup") -> CheckResult:
-    """G24: is the pixel size measured, when the quantity depends on it?
+    """L6.3 (was G24): is the pixel size measured, when the quantity depends on it?
 
     docs/06 A1. A wrong pixel size scales every distance, velocity and
     diffusion coefficient by an unknown constant, and nothing downstream can
@@ -404,7 +404,7 @@ def check_pixel_calibration(setup: "ValiditySetup") -> CheckResult:
 
 
 def check_photometric_calibration(setup: "ValiditySetup") -> CheckResult:
-    """G25: background, dark current and flat-field, for intensity quantities."""
+    """L6.4 (was G25): background, dark current and flat-field, for intensity quantities."""
     required = [
         c
         for c in setup.required_calibrations
@@ -424,7 +424,7 @@ def check_photometric_calibration(setup: "ValiditySetup") -> CheckResult:
     }
 
     if not required:
-        # severity "info", NOT "ok" (KH, 2026-09-11), same reason as G24's
+        # severity "info", NOT "ok" (KH, 2026-09-11), same reason as L6.3's
         # branch above: the check turned itself off from a lookup table.
         return CheckResult(
             "validity.photometric_calibration",
@@ -469,7 +469,7 @@ def check_photometric_calibration(setup: "ValiditySetup") -> CheckResult:
 
 
 def check_committee_coverage(setup: "ValiditySetup") -> CheckResult:
-    """G27: did the committee actually convene, and did anyone refuse?
+    """L6.1 (was G27): did the committee actually convene, and did anyone refuse?
 
     docs/05 §6 has the computational lenses run before this one. There is no
     orchestrator in the codebase yet -- each lens is invoked separately by its

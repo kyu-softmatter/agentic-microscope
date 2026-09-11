@@ -117,7 +117,7 @@ def test_psf_sigma_matches_docs_worked_example():
 def test_detector_from_spec_parses_kinetix_modes():
     """data/detectors.yaml's Kinetix modes/frame_rate_by_roi_fps blocks
     exist but were silently ignored before -- detection (lens 2) needs
-    them for G7 (quantization noise) and G9 (row time)."""
+    them for L2.3 (quantization noise) and L2.5 (row time)."""
     from optics.components import detectors
 
     kinetix = detectors()["kinetix"]
@@ -267,7 +267,7 @@ def test_missing_emission_filter_fails_blocking():
 
 
 def test_blocking_bar_is_five_od_in_both_evidence_tiers():
-    """G3's threshold does not move with the evidence tier (KH, 2026-09-09).
+    """L1.2's threshold does not move with the evidence tier (KH, 2026-09-09).
 
     It used to rise 5 OD -> 7 OD for parametric spectra. Nothing pinned that,
     which is why removing it broke no test -- so the replacement behaviour is
@@ -298,7 +298,7 @@ def test_blocking_bar_is_five_od_in_both_evidence_tiers():
 
 
 def test_ablation_blocking_floor_does_not_move_with_the_evidence_tier():
-    """`ablate()` carried the same +2 OD penalty G3 did, and lost it the same
+    """`ablate()` carried the same +2 OD penalty L1.2 did, and lost it the same
     day (KH, 2026-09-09). Neither had a test, which is why both changes broke
     nothing -- so the floor is pinned by construction here.
 

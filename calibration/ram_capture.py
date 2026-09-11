@@ -5,7 +5,7 @@ This is the detour proposed in kb/decisions/2026-08-12-ram-buffer-detour-for-
 disk-bandwidth.md to route around the D: drive's measured sustained write
 bandwidth (kb/calibrations/disk-bandwidth.yaml, 206.8 MB/s) being far below
 what a high-fps / large-ROI dual-camera acquisition needs (docs/04-decision-
-engine.md §9, G12). Capture never touches disk; ``flush_to_disk`` is a
+engine.md §9, L3.1–L3.3). Capture never touches disk; ``flush_to_disk`` is a
 separate, non-real-time step the caller runs once the burst is done.
 
 Single camera only. The lab runs two physical cameras (Kinetix_red/

@@ -1,4 +1,4 @@
-"""Compute-resource setup: the facts G12-G13 need.
+"""Compute-resource setup: the facts L3.1–L3.3-L3.4–L3.7 need.
 
 One acquisition is a *set* of frame streams, not one frame size. The lab
 runs two cameras at once (Kinetix_red/Kinetix_blue, kb/systems/current.md),
@@ -68,7 +68,7 @@ class Stream:
         ``fps = timepoints/s * z * c * positions`` is the **average** frame
         rate. If the z/channel sweep is a burst that finishes well inside one
         timepoint interval, the instantaneous rate into the circular buffer is
-        higher than this and G13a comes out optimistic -- pass that burst rate
+        higher than this and L3.4 comes out optimistic -- pass that burst rate
         as ``fps`` directly instead of using this constructor.
         """
         return cls(
@@ -121,17 +121,17 @@ class AcquisitionResourceSetup:
     #: fastest stream. Cross-lens 2<->3: this lens does not own frame rate,
     #: so without lens 2's ceiling it can only warn, not gate (the same
     #: arrangement as trapping.checks.check_sampling's detector_fps).
-    #: Lens 2's **fps_usable_max** -- `min(readout ceiling, G8's duty
+    #: Lens 2's **fps_usable_max** -- `min(readout ceiling, L2.4's duty
     #: ceiling)`, not the bare hardware maximum (KH, 2026-09-10). Renamed from
     #: `detector_max_fps` because that name invited the hardware figure, and
-    #: passing it lets G12b clear a rate G8 would refuse: at the readout limit
+    #: passing it lets L3.2 clear a rate L2.4 would refuse: at the readout limit
     #: this camera takes the exposure as the period, so the fastest REALIZABLE
     #: rate and the fastest rate with an acceptable duty cycle are different
     #: numbers. Lens 2 reports both plus their min; this field wants the min.
     usable_fps_ceiling: float | None = None
     #: RAM-capture path: hold the whole burst in memory and flush afterwards,
-    #: which removes G12's real-time disk constraint and replaces it with
-    #: G13d. kb/decisions/2026-08-12-ram-buffer-detour-for-disk-bandwidth.md,
+    #: which removes L3.1–L3.3's real-time disk constraint and replaces it with
+    #: L3.7. kb/decisions/2026-08-12-ram-buffer-detour-for-disk-bandwidth.md,
     #: implemented in calibration/ram_capture.py.
     ram_capture: bool = False
     #: RAM the capture buffer may use. ``None`` falls back to the authorized

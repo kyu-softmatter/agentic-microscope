@@ -153,7 +153,7 @@ def test_duty_cycle_matches_the_archive_28_percent_example():
 
 def test_g9_accepts_a_frame_rate_that_exactly_meets_the_target():
     """t_frame is summed from exposure + overhead in floating point, so a camera
-    configured to hit the target exactly can land a few ulp under it. G9 used to
+    configured to hit the target exactly can land a few ulp under it. L2.5 used to
     report 'only 240 fps is realizable, below the 240 fps target'."""
     from detection.checks import check_frame_rate
     from detection.setup import Acquisition, Camera, DetectionSetup, PhotonBudget

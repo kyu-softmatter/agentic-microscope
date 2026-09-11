@@ -8,7 +8,7 @@ This gate judges a **proposed** acquisition. The lens's other half is
 post-hoc: compute.drops reads an acquisition that already happened and says
 whether it dropped frames. Nothing links them automatically -- the link is
 that ``drops`` is where an achieved frame rate comes from, and an achieved
-frame rate is what G12b demands.
+frame rate is what L3.2 demands.
 """
 
 from __future__ import annotations
@@ -119,7 +119,7 @@ def _missing_inputs(setup: AcquisitionResourceSetup) -> list[Finding]:
                 "fail",
                 "missing.disk_bandwidth",
                 "No measured sustained disk write bandwidth on record. Data "
-                "rate (G12) cannot be judged against a guess.",
+                "rate (L3.1–L3.3) cannot be judged against a guess.",
                 action="Run `python -m calibration.cli disk-bandwidth <dir>` "
                 "on the microscope PC's actual acquisition drive -- this "
                 "cannot be computed, only measured.",
@@ -131,7 +131,7 @@ def _missing_inputs(setup: AcquisitionResourceSetup) -> list[Finding]:
                 "fail",
                 "missing.buffer_frames",
                 "No circular buffer frame count on record. Buffer headroom "
-                "(G13a) is undefined without it.",
+                "(L3.4) is undefined without it.",
                 action="Read CircularBufferFrameCount from Micro-Manager, or "
                 "supply ram_budget_mb to derive it.",
             )
@@ -142,7 +142,7 @@ def _missing_inputs(setup: AcquisitionResourceSetup) -> list[Finding]:
                 "fail",
                 "missing.capacity_inputs",
                 "No planned acquisition duration and/or free disk space on "
-                "record. Total-capacity headroom (G13b) is undefined.",
+                "record. Total-capacity headroom (L3.5) is undefined.",
                 action="Supply acquisition_duration_s and free_disk_gb.",
             )
         )

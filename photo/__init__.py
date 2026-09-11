@@ -21,8 +21,11 @@ question. ``IlluminationSetup.from_channel`` is the preferred constructor: the
 bare fields make k_ex from epsilon and flux alone, with the spectral overlap
 lens 1 computes silently set to 1.
 
-Gates: G21 light-driving, G22 total dose. (G10 and G20 were removed
-2026-09-09; neither number is reused.)
+Reports (no gates at all -- this is a reporting section): L5.1 light-driving,
+L5.2 total dose, L5.3 trap-heating ownership. Addressed 2026-09-11; before
+that L5.1 and L5.2 were G21 and G22 and were gates, until lens 5 stopped
+judging on 2026-09-10. G10 and G20 were removed 2026-09-09. None of those
+three numbers is reused.
 
 **This lens computes as of 2026-09-09**, for the first time. Power is populated
 for nine lines across the Aura, Spectra and LUN-F-XL at three objectives, and

@@ -22,7 +22,7 @@ docs/05-consensus-gate.md "Lens 8"; docs/06-pitfalls.md D7.
         viscosity_pa_s=1.0e-3,
     ))
 
-Gate numbers: G31 (sedimentation) and G32 (evaporation) still name the two
+Gate numbers: L8.2 (sedimentation) and L8.3 (evaporation) still name the two
 reports, though neither grades any more. G28, G29 and G30 were here and are
 vacant -- see below.
 
@@ -35,7 +35,7 @@ What it can and cannot do, honestly:
 - **G28 (PFS lock) is gone**, to the hardware execution stage (2026-09-10).
   It read `PFS in Range` as the servo state and that property reports the
   coverslip; `hardware/focus.py` asks MMCore's autofocus API instead.
-- **G31 reports a velocity and a clock, and no longer a verdict.** It used to
+- **L8.2 reports a velocity and a clock, and no longer a verdict.** It used to
   compare a whole run's settling against the depth of field, which called every
   real bead INFEASIBLE -- 5 um polystyrene in water moves 41 um/min against
   0.375 um -- including the experiments that work, because **a trapped bead
@@ -44,9 +44,9 @@ What it can and cannot do, honestly:
   100 mW (`trapping.goa.trap_force`, returned beside the radial one), so
   **gravity is 0.34% of the axial force already acting**. This lens also has no
   `trapped` field to tell the two cases apart. The
-  free-settling case is lens 4's G19, which *assumes* the settled state; what
+  free-settling case is lens 4's L4.6, which *assumes* the settled state; what
   this reports is when that state arrives. 100 um chamber, 5 um bead: 2.4 min.
-- **G32 reports because sealing is declarable and a rate is not.** A sealed
+- **L8.3 reports because sealing is declarable and a rate is not.** A sealed
   chamber settles the question outright. Unsealed without a weighed rate, the
   old gate returned a stand-in margin of 0.5 -- a number invented to mean "not
   quantified", which graded HARD and blocked `advances` on an acquisition

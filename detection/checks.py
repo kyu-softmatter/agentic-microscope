@@ -1,5 +1,5 @@
-"""Individual detection checks -- G5 (sampling), G6 (saturation), G7 (SNR),
-G8 (motion blur), G9 (frame-rate realizability). docs/04-decision-engine.md
+"""Individual detection checks -- L2.1 (sampling), L2.2 (saturation), L2.3 (SNR),
+L2.4 (motion blur), L2.5 (frame-rate realizability). docs/04-decision-engine.md
 §2, §4, §5; docs/05-consensus-gate.md §5.
 
 Mirrors optics.checks / trapping.checks: independent margins
@@ -123,7 +123,7 @@ def available_facts(setup: "DetectionSetup") -> set[str]:
 
 
 def check_sampling(setup: "DetectionSetup") -> CheckResult:
-    """G5: task-dependent pixel-size direction (docs/04 §2).
+    """L2.1 (was G5): task-dependent pixel-size direction (docs/04 §2).
 
     Morphology imaging wants Nyquist (``p <= r/2``); tracking wants
     ``p`` near sigma_PSF, and mechanically applying Nyquist there makes
@@ -245,7 +245,7 @@ def check_sampling(setup: "DetectionSetup") -> CheckResult:
 
 
 def check_saturation(setup: "DetectionSetup") -> CheckResult:
-    """G6: peak electrons < 70% full well, peak ADU < 90% of 2**bits."""
+    """L2.2 (was G6): peak electrons < 70% full well, peak ADU < 90% of 2**bits."""
     cam = setup.camera
     photons = setup.photons
     full_well = cam.effective_full_well_e()
@@ -288,7 +288,7 @@ def check_saturation(setup: "DetectionSetup") -> CheckResult:
 
 
 def check_snr(setup: "DetectionSetup") -> CheckResult:
-    """G7: achieved SNR vs. target (docs/04 §4), including the quantization
+    """L2.3 (was G7): achieved SNR vs. target (docs/04 §4), including the quantization
     noise term that a 12-bit mode can let dominate read noise
     (docs/06-pitfalls.md §C2)."""
     cam = setup.camera
@@ -334,7 +334,7 @@ def check_snr(setup: "DetectionSetup") -> CheckResult:
 
 
 def check_motion_blur(setup: "DetectionSetup") -> CheckResult:
-    """G8: Savin-Doyle MSD bias, duty cycle <= 30% (docs/04 §5).
+    """L2.4 (was G8): Savin-Doyle MSD bias, duty cycle <= 30% (docs/04 §5).
 
     Only applies to tracking/dynamics measurements -- morphology imaging has
     no MSD to bias, so it is reported ``INFO``, not graded.
@@ -366,7 +366,7 @@ def check_motion_blur(setup: "DetectionSetup") -> CheckResult:
     ok = margin >= 1.0
 
     # THE FRAME-RATE WINDOW THIS GATE IMPLIES, so synthesis can take a min
-    # against G9's hardware ceiling instead of re-deriving it (KH, 2026-09-09).
+    # against L2.5's hardware ceiling instead of re-deriving it (KH, 2026-09-09).
     #
     #   duty = t_exp/t_frame <= 0.3  <=>  fps <= 0.3/t_exp
     #
@@ -394,7 +394,7 @@ def check_motion_blur(setup: "DetectionSetup") -> CheckResult:
         #: Longest exposure that meets the duty limit at the period in use.
         "exposure_max_ms": duty_max * t_frame * 1e3,
         #: Smallest ROI whose readout is long enough for this exposure to sit
-        #: under the duty limit. Below it, no frame rate satisfies G8.
+        #: under the duty limit. Below it, no frame rate satisfies L2.4.
         "roi_height_min_px": roi_min_px,
         #: What the camera can actually do, so the pair brackets the window.
         "fps_hardware_max": max_fps(t_frame_min),
@@ -466,7 +466,7 @@ def check_motion_blur(setup: "DetectionSetup") -> CheckResult:
 
 
 def check_frame_rate(setup: "DetectionSetup") -> CheckResult:
-    """G9: f <= 1/max(t_exp, t_readout) (docs/04 §5).
+    """L2.5 (was G9): f <= 1/max(t_exp, t_readout) (docs/04 §5).
 
     ``t_frame``/``max_fps`` are always computable from row time and ROI;
     grading against a target only happens once the experiment states one
@@ -487,7 +487,7 @@ def check_frame_rate(setup: "DetectionSetup") -> CheckResult:
 
     decided = acq.decided_fps
     if decided is None:
-        binding = "blur (G8)" if fps_at_duty_limit < fps else "readout (this gate)"
+        binding = "blur (L2.4)" if fps_at_duty_limit < fps else "readout (this gate)"
         return CheckResult(
             "frame_rate.unconfirmed",
             INFO,
@@ -495,13 +495,13 @@ def check_frame_rate(setup: "DetectionSetup") -> CheckResult:
             "info",
             f"Window, both ends: the camera reaches {fps:.0f} fps "
             f"(t_frame={t_frame * 1e3:.2f} ms, readout={readout_s * 1e3:.2f} ms) "
-            f"and G8's duty limit allows {fps_at_duty_limit:.0f} fps at this "
+            f"and L2.4's duty limit allows {fps_at_duty_limit:.0f} fps at this "
             f"{acq.exposure_ms:.3f} ms exposure, so **{min(fps, fps_at_duty_limit):.0f} fps** "
             f"is usable and {binding} is what binds. No rate decided yet, so "
             "nothing is graded.",
             action="Decide the rate in synthesis -- lens 3's bandwidth (at the "
             "readout limit the data rate depends only on ROI WIDTH) and lens "
-            "7's G14 (f_s >= 10 f_c) are the other two constraints on it.",
+            "7's L7.2–L7.4 (f_s >= 10 f_c) are the other two constraints on it.",
             numbers={
                 "max_fps": fps,
                 "fps_hardware_max": fps,

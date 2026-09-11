@@ -95,7 +95,7 @@ def _ok(code, kind, margin, message, **numbers) -> CheckResult:
     and the no-ceiling branch -- the only branch that ever runs, since no dye
     or bead here has a dose ceiling -- discarded it into `metrics`. Ungraded
     and invisible are different things, and only the first was intended
-    (2026-09-10, the same correction made in sample/checks.py's G16c).
+    (2026-09-10, the same correction made in sample/checks.py's L4.4).
     """
     return CheckResult(code, kind, margin, "info", message, None, numbers)
 
@@ -122,7 +122,7 @@ def available_facts(setup: "IlluminationSetup") -> set[str]:
 
 
 def check_light_driving(setup: "IlluminationSetup") -> CheckResult:
-    """Is the illumination driving the sample rather than measuring it?
+    """L5.1: Is the illumination driving the sample rather than measuring it?
 
     docs/06 D2. This is lens 5's reason to exist -- lens 1 says raise the light
     for SNR, and this is the only lens that can answer "that ruins the
@@ -213,7 +213,7 @@ def check_light_driving(setup: "IlluminationSetup") -> CheckResult:
 
 
 def check_total_dose(setup: "IlluminationSetup") -> CheckResult:
-    """Accumulated energy per unit area, and the duty cycle that sets it.
+    """L5.2: Accumulated energy per unit area, and the duty cycle that sets it.
 
     INFO, because a dose ceiling is sample-specific: without one supplied there
     is nothing to gate against, and inventing a limit would be exactly the
@@ -283,7 +283,7 @@ def check_total_dose(setup: "IlluminationSetup") -> CheckResult:
 
 
 def check_trap_heating_ownership(setup: "IlluminationSetup") -> CheckResult:
-    """Refuse to let the 5 -> 7 handoff for trap heating vanish silently.
+    """L5.3: Refuse to let the 5 -> 7 handoff for trap heating vanish silently.
 
     docs/06 D6 assigns 1064 nm trap heating to lens 7, which does not implement
     it (`trapping/` has confinement, trap_depth, sampling only) and **will not**

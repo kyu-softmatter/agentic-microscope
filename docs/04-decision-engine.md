@@ -125,7 +125,7 @@ gets better as p grows (1/p²) → in real conditions, where background exists, 
 finite optimal p exists."* That reading holds `b` fixed per pixel while varying
 `p`, which is only right if `b` is read-noise-like. An area-scaling background
 alone makes ever-finer pixels monotonically better and produces no optimum at
-all. `G5` had been computing it the old way; corrected in
+all. `L2.1` had been computing it the old way; corrected in
 [`kb/decisions/2026-09-09-g5-localization-variance-corrected.md`](../kb/decisions/2026-09-09-g5-localization-variance-corrected.md).
 
 All of this lab's microrheology still falls in the regime with a finite optimum,
@@ -135,7 +135,7 @@ choice sits essentially on it, and 2×2 costs about 7 %. That is the arithmetic
 behind [CLAUDE.md](../CLAUDE.md) H4, whose *"once background scales per pixel
 area"* is precisely the condition the gate had been omitting.
 
-**A counterfactual has to move `b` with `p`.** G5 grades by comparing the chosen
+**A counterfactual has to move `b` with `p`.** L2.1 grades by comparing the chosen
 pixel against the imaging-Nyquist pixel, and that comparison is only meaningful
 if the background is rescaled by `(p′/p)²` at the same time.
 
@@ -435,7 +435,7 @@ higher and the buffer gate below comes out optimistic.
 > container width moves the data rate by 2× exactly where this gate binds, and
 > in the direction that would call a feasible acquisition infeasible. Whether
 > this lab's PVCAM adapter really hands MMCore 8-bit pixels rather than
-> upconverting **has never been checked**: G12c reports both numbers and refuses
+> upconverting **has never been checked**: L3.3 reports both numbers and refuses
 > to call either measured until it is.
 
 ### Circular buffer (RAM)
@@ -457,43 +457,43 @@ data rate there are **frame drops**, and they happen silently — the only sign 
 
 | # | Criterion | Kind |
 |---|---|---|
-| G12a | `R < 0.7 ×` sustained disk write bandwidth | hard |
-| G12b | the `f` in `R` is an **achieved** rate, not a requested one | bias |
-| G12c | the `bytes/px` in `R` is the container MM actually writes | bias |
-| G13a | buffer `≥ 5 seconds'` worth of frames (to absorb transient stalls) | hard |
-| G13b | `total volume = R × acquisition time < free space` | hard |
-| G13c | with real-time processing attached, CPU time per frame `< 1/f_total` | hard |
-| G13d | on the RAM-capture path, whole burst `≤` the authorized RAM budget | hard |
+| **L3.1** (was G12a) | `R < 0.7 ×` sustained disk write bandwidth | hard |
+| **L3.2** (was G12b) | the `f` in `R` is an **achieved** rate, not a requested one | bias |
+| **L3.3** (was G12c) | the `bytes/px` in `R` is the container MM actually writes | bias |
+| **L3.4** (was G13a) | buffer `≥ 5 seconds'` worth of frames (to absorb transient stalls) | hard |
+| **L3.5** (was G13b) | `total volume = R × acquisition time < free space` | hard |
+| **L3.6** (was G13c) | with real-time processing attached, CPU time per frame `< 1/f_total` | hard |
+| **L3.7** (was G13d) | on the RAM-capture path, whole burst `≤` the authorized RAM budget | hard |
 
 MMCore counts its circular buffer in **images**, and shares it across cameras.
-So G13a's headroom is `N_buffered / N_arriving_per_second` and the frame
+So L3.4's headroom is `N_buffered / N_arriving_per_second` and the frame
 geometry cancels — which is what keeps it correct when two cameras run at
-different ROIs. G13c's budget is likewise set by the **total** arrival rate:
+different ROIs. L3.6's budget is likewise set by the **total** arrival rate:
 two cameras at 200 fps each leave 2.5 ms per frame, not 5 ms.
 
-### G12b — a requested frame rate is not evidence
+### L3.2 — a requested frame rate is not evidence
 
 Every quantity above scales linearly with `f`, and [§C4](06-pitfalls.md) is the
 measured case where that mattered: a ~85 Hz camera ceiling delivered 28 Hz, with
 MM overhead or the disk — *not* the camera — as the bottleneck. So clearing lens
-2's realizability ceiling (G9) is necessary and not sufficient; only an observed
-rate closes G12b, and the way to get one is the post-hoc analysis below.
+2's realizability ceiling (L2.5) is necessary and not sufficient; only an observed
+rate closes L3.2, and the way to get one is the post-hoc analysis below.
 
-G12b is graded **bias**, not hard: frame-rate realizability belongs to lens 2.
+L3.2 is graded **bias**, not hard: frame-rate realizability belongs to lens 2.
 When a requested rate exceeds lens 2's ceiling, lens 3 reports that its own
 arithmetic rests on a rate the camera cannot deliver, lets the feasibility grade
 collapse, and hands the setting back — it does not seize a verdict it does not
 own.
 
-### G13d — the RAM-capture path
+### L3.7 — the RAM-capture path
 
 Holding the whole burst in memory and flushing afterwards
 ([`kb/decisions/2026-08-12-ram-buffer-detour-for-disk-bandwidth.md`](../kb/decisions/2026-08-12-ram-buffer-detour-for-disk-bandwidth.md),
 implemented in `calibration/ram_capture.py`) removes the real-time disk
 constraint entirely — nothing is written while the camera runs — and replaces
-G12a with a hard capacity ceiling. G13a still applies: the pop loop draining the
+L3.1 with a hard capacity ceiling. L3.4 still applies: the pop loop draining the
 circular buffer into the capture array can stall too, just on CPU rather than
-disk. G13b still applies: the burst lands on disk eventually.
+disk. L3.5 still applies: the burst lands on disk eventually.
 
 The budget is **32 GB** (user, 2026-08-19). The machine has 255.65 GB, but what
 the OS, MM, and the DMD/piezo/tweezers control processes hold *during* an
@@ -542,55 +542,96 @@ Two cautions the real archive taught, both now handled in code (verified
 
 All decided in code. If even one fails, the proposal is void.
 
-| # | Gate | Criterion | Required input | If missing |
-|---|---|---|---|---|
-| G1 | Excitation coupling | `ex_eff > 0`, ≥ 20% of ideal | dye absorption, source, excitation path | BLOCKED |
-| G2 | Emission collection | `spectral_collection ≥ 15%` | dye emission, emission path, QE | BLOCKED |
-| G3 | Excitation blocking | `≥ 5 OD`, **both evidence tiers** (was 7 OD for approximate spectra until 2026-09-09) | emission path curves | BLOCKED |
-| **G3b** | Band separation | Stokes headroom `≥ 5 nm`; negative means the excitation and detection bands overlap | source, dye emission, path | BLOCKED |
-| G4 | Crosstalk | `< 5%` | all channel spectra | BLOCKED |
-| G5 | Sampling | per task (§2) | NA, pixel pitch, magnification, **task kind** | ask |
-| G6 | Saturation margin | `peak < 0.7 × full well` | full well, photon budget | BLOCKED |
-| G7 | SNR | at or above target | measured light level, measured background | BLOCKED |
-| G8 | Motion blur | duty `= t_exp/t_frame ≤ 0.3` at the **decided** rate; reports a bound while the rate is undecided, plus `fps_at_duty_limit`, `exposure_max_ms` and `roi_height_min_px` | D or τ_c, **decided frame rate** | ask |
-| G9 | Frame-rate realizability | `f ≤ 1/max(t_exp, t_readout)`, graded against the **decided** rate; reports `fps_usable_max` = min(readout ceiling, G8's duty ceiling) and which binds | row time, ROI, **decided frame rate** | computable |
-| ~~G10~~ | *vacant* — photobleaching, **removed 2026-09-09**. Formulas kept in §6; number not reused | — | — |
-| ~~G11~~ | *vacant* — statistical power, **removed 2026-09-11**. `1/sqrt(N_p × N_f)` counts *independent* samples; one trapped bead at 520 fps has 6.3 correlated frames per relaxation time (τ = γ/κ = 12.1 ms), so it read 0.566% where ~2.0% is defensible — **3.5× optimistic**, a margin of 78× where ~6× is real. A drag calibration's precision comes from the number of velocity steps instead. The arithmetic survives as a calculator: `python -m validity.cli power`. Number not reused | — | — |
-| G12 | Data rate | a `< 0.7 ×` disk bandwidth (**reduce ROI *width*** — at the readout limit height cancels) · b `f` is achieved not requested, judged against lens 2's `fps_usable_max` · c container width is the one MM writes | measured disk bandwidth, achieved fps, confirmed bytes/px | measurement required |
-| G13 | Buffer · capacity · CPU · RAM | a `≥ 5 seconds' worth` · b fits free disk · c CPU/frame `< 1/f_total` · d RAM burst `≤` budget (**128 GB** authorized 2026-09-10, was 32) | RAM, frame size, duration, free disk | computable |
-| G14 | Tweezers | a **confinement** `κ > 0` · b **trap depth** `U ≥ 10 kT` · c **sampling** `f_s ≥ 10 f_c`. Sub-lettered 2026-09-10: `a` was `hard` and unnumbered, `b` already called itself "G14's escape-resistance half" | measured κ or a calibrated laser, viscosity, particle radius, achieved fps | BLOCKED |
-| G15 | NA feasibility | `NA ≤ n_immersion` | NA, immersion medium | BLOCKED |
-| G16 | Working distance | free WD `≥` imaging depth | WD, imaging depth, coverslip | BLOCKED |
-| G16b | Depth within chamber | chamber height `≥` imaging depth | chamber height, imaging depth | skipped (INFO) |
-| G16c | Near-wall drag bound | `9a/(16h) ≤ 10%`, **upper bound** (absorbed if trapped). Inverted it is the depth **floor**: `h ≥ 9a/(16 × 0.10)` | particle radius, imaging depth, trap state | skipped (INFO) |
-| — | **Depth window** | reports G16/G16b/G16c's bounds as one band, and the **empty-window** case no single margin can express. G17 stopped contributing a ceiling on 2026-09-10 | G16, G16b, G16c | INFO |
-| G17 | Refractive-index mismatch | **INFO since 2026-09-10** — the mechanical-z → optical-depth converter, `h = Δz · n_s/n_i`, both directions. The old `depth × \|Δn\| ≤ 1.85 µm` screen is gone: 1.85 was `10 × 0.185`, a checklist trigger, and the operator has imaged past it | immersion n, medium n, depth | reported (INFO) |
-| ~~G18~~ | *vacant* — coverslip thickness, **removed 2026-09-10**. The coverslip stays in G16's working-distance budget and in lens 4's `assumed_inputs`; the collar moved to the evidence axis. Number not reused | — | — |
-| G19 | Count in field · overlap | nearest neighbour `≥ 3 ×` resolution | concentration, field size, λ_em | skipped (INFO) |
-| ~~G20~~ | *vacant* — saturation / triplet shelving, **removed 2026-09-09**. Formula kept in §5; number not reused | — | — |
-| ~~G21~~ | *vacant* — light-driving, **removed 2026-09-10** when lens 5 became a reporting section. The comparison still runs, as `INFO`. Number not reused | — | — |
-| ~~G22~~ | *vacant* — total dose, **removed 2026-09-10** with G21. The dose is still computed and now actually *reported*; it was being discarded by `_ok`. Number not reused | — | — |
-| G23 | Bias ledger | every bias that damages this quantity is absent, or cleared by a correction that exists | other lenses' verdicts, declared corrections | BLOCKED |
-| G24 | Pixel calibration | measured, when the quantity needs it | measured pixel size | BLOCKED |
-| G25 | Photometric calibration | background · dark · flat-field measured | those frames | BLOCKED |
-| ~~G26~~ | *vacant* — post-processing, **removed 2026-09-11**. It gated on a self-declared `despeckle` boolean nobody verifies, while `detection/recommend.py` already refuses a reference frame shot with despeckle on — *"the ADU→electron conversion is invalid, full stop"* — at the point where the filter destroys something computable. docs/06 C1 is unchanged as a pitfall; what changed is which code owns it. Number not reused | — | — |
-| G27 | Committee coverage | every standing lens returned, none BLOCKED | other lenses' verdicts | BLOCKED |
-| ~~G28~~ | *vacant* — PFS lock, **moved to the hardware execution stage 2026-09-10**. It read `PFS in Range` as the servo state, and that property reports the coverslip; `hardware/focus.py` asks MMCore's autofocus API instead. Number not reused | — | — |
-| ~~G29~~ | *vacant* — axial drift, **moved to the hardware execution stage 2026-09-10**, with G30. A drift rate is measured while a run happens, so it is not an input to a design: *"실험 중 측정해야한다면 디자인 요소로는 적합하지 않은듯"* (KH). Number not reused | — | — |
-| ~~G30~~ | *vacant* — lateral drift, same move, same day, same reason. Both rates **are** obtainable here (`config/session/focus_monitor.py` for axial; the coverslip-stuck beads in `data/particles.yaml` as lateral fiducials) — obtainable *from the acquisition*, which is the wrong timing for a gate on a proposal. `compute.drops` is the precedent. Number not reused | — | — |
-| G31 | Sedimentation | **reports only** — velocity, and the time to reach the floor | radius, Δρ, viscosity, chamber height | INFO |
-| G32 | Evaporation | **reports only** — evaporated fraction and concentration factor | sealed, or a measured rate | INFO |
+**Addresses, not gate numbers, since 2026-09-11.** `L<lens>.<n>` — the lens
+number from [01 §4](01-architecture.md), then the check's position in that
+lens. Every check has one, `info` ones included: **an address is a location,
+not a claim that something can fail**, and the `kind` column is what says that.
+The `was` column is the old flat number, for anything written before the change
+→ [`kb/decisions/2026-09-11-per-lens-check-addresses.md`](../kb/decisions/2026-09-11-per-lens-check-addresses.md).
 
-G15–G19 are lens 4's, G23–G27 lens 6's, G31–G32 lens 8's; **lens 5 has no gate
-numbers at all** since 2026-09-10 — it is a reporting section. The
-numbers are new. This table previously stopped at G14 because lenses 4 and 8 had
-no gate IDs at all, lens 5 had only G10 (removed 2026-09-09) and lens 6 only G11
-(removed 2026-09-11).
+| addr | kind | Gate / report | Criterion | Required input | If missing | was |
+|---|---|---|---|---|---|---|
+| **L1.1** | `hard` | Excitation coupling | `ex_eff > 0`, ≥ 20% of ideal | dye absorption, source, excitation path | BLOCKED | L1.1 |
+| **L1.2** | `hard` | Excitation blocking | `≥ 5 OD`, **both evidence tiers** (was 7 OD for approximate spectra until 2026-09-09) | emission path curves | BLOCKED | L1.2 |
+| **L1.3** | `hard` | Band separation | Stokes headroom `≥ 5 nm`; negative means the excitation and detection bands overlap | source, dye emission, path | BLOCKED | L1.3 |
+| **L1.4** | `soft` | Emission collection | `spectral_collection ≥ 15%` | dye emission, emission path, QE | BLOCKED | L1.4 |
+| **L1.5** | `info` | Filter centering | of the emission the detector could see, how much the filters pass — reports the fraction, never vetoes | dye emission, emission path | skipped (INFO) | — |
+| **L1.6** | `bias` | Crosstalk | `< 5%` | all channel spectra | BLOCKED | L1.6 |
+| **L1.7** | `info` | Detection port | the collected light is actually routed to this camera | channel port assignment | skipped (INFO) | — |
+| **L2.1** | `soft` | Sampling | per task (§2) | NA, pixel pitch, magnification, **task kind** | ask | L2.1 |
+| **L2.2** | `hard` | Saturation margin | `peak < 0.7 × full well` | full well, photon budget | BLOCKED | L2.2 |
+| **L2.3** | `soft` | SNR | at or above target | measured light level, measured background | BLOCKED | L2.3 |
+| **L2.4** | `bias` | Motion blur | duty `= t_exp/t_frame ≤ 0.3` at the **decided** rate; reports a bound while the rate is undecided, plus `fps_at_duty_limit`, `exposure_max_ms` and `roi_height_min_px` | D or τ_c, **decided frame rate** | ask | L2.4 |
+| **L2.5** | `hard` | Frame-rate realizability | `f ≤ 1/max(t_exp, t_readout)`, graded against the **decided** rate; reports `fps_usable_max` = min(readout ceiling, L2.4's duty ceiling) and which binds | row time, ROI, **decided frame rate** | computable | L2.5 |
+| **L3.1** | `hard` | Data rate | `< 0.7 ×` disk bandwidth (**reduce ROI *width*** — at the readout limit height cancels) | measured disk bandwidth | measurement required | L3.1 |
+| **L3.2** | `bias` | Frame-rate provenance | `f` is achieved, not requested, judged against lens 2's `fps_usable_max` | achieved fps | measurement required | L3.2 |
+| **L3.3** | `bias` | Pixel container | the bytes/pixel in `R` is the one MM actually writes | confirmed bytes/px | measurement required | L3.3 |
+| **L3.4** | `hard` | Circular buffer | `≥ 5 seconds' worth` at the achieved rate | RAM, frame size | computable | L3.4 |
+| **L3.5** | `hard` | Disk capacity | total acquisition size fits free disk | frame size, duration, free disk | computable | L3.5 |
+| **L3.6** | `hard` | Real-time CPU | CPU per frame `< 1/f_total`, only when real-time processing is on | per-frame cost, f_total | computable | L3.6 |
+| **L3.7** | `hard` | RAM capacity | RAM burst `≤` budget (**128 GB** authorized 2026-09-10, was 32) | RAM, frame size, duration | computable | L3.7 |
+| **L4.1** | `hard` | NA feasibility | `NA ≤ n_immersion` | NA, immersion medium | BLOCKED | L4.1 |
+| **L4.2** | `hard` | Working distance | free WD `≥` imaging depth | WD, imaging depth, coverslip | BLOCKED | L4.2 |
+| **L4.3** | `hard` | Depth within chamber | chamber height `≥` imaging depth | chamber height, imaging depth | skipped (INFO) | L4.3 |
+| **L4.4** | `bias` | Near-wall drag bound | `9a/(16h) ≤ 10%`, **upper bound** (absorbed if trapped). Inverted it is the depth **floor**: `h ≥ 9a/(16 × 0.10)` | particle radius, imaging depth, trap state | skipped (INFO) | L4.4 |
+| **L4.5** | `info` | Refractive-index mismatch | **INFO since 2026-09-10** — the mechanical-z → optical-depth converter, `h = Δz · n_s/n_i`, both directions. The old `depth × \|Δn\| ≤ 1.85 µm` screen is gone: 1.85 was `10 × 0.185`, a checklist trigger, and the operator has imaged past it | immersion n, medium n, depth | reported (INFO) | L4.5 |
+| **L4.6** | `info` | Count in field · overlap | nearest neighbour `≥ 3 ×` resolution | concentration, field size, λ_em | skipped (INFO) | L4.6 |
+| **L4.7** | `info` | **Depth window** | reports L4.2/L4.3/L4.4's bounds as one band, and the **empty-window** case no single margin can express. L4.5 stopped contributing a ceiling on 2026-09-10 | L4.2, L4.3, L4.4 | INFO | — |
+| **L5.1** | `info` | Light-driving | **reports only** — irradiance against a per-sample measured threshold; was G21 until 2026-09-10 | irradiance, sample threshold | INFO | — |
+| **L5.2** | `info` | Total dose | **reports only** — accumulated J/cm² and the duty cycle that sets it; was G22 | irradiance, duty, duration | INFO | — |
+| **L5.3** | `info` | Trap-heating ownership | **reports only** — refuses to let the lens 5 → 7 handoff vanish silently (E3) | whether the trap is on | INFO | — |
+| **L6.1** | `hard` | Committee coverage | every standing lens returned, none BLOCKED | other lenses' verdicts | BLOCKED | L6.1 |
+| **L6.2** | `hard` | Bias ledger | every bias that damages this quantity is absent, or cleared by a correction that exists | other lenses' verdicts, declared corrections | BLOCKED | L6.2 |
+| **L6.3** | `hard` | Pixel calibration | measured, when the quantity needs it | measured pixel size | BLOCKED | L6.3 |
+| **L6.4** | `bias` | Photometric calibration | background · dark · flat-field measured | those frames | BLOCKED | L6.4 |
+| **L7.1** | `info` | Effective NA | **reports only** — design NA clipped to `n_sample` by TIR, and the three limits that ride along | NA, medium index | INFO | — |
+| **L7.2** | `hard` | Trap confinement | `κ > 0` — the trap restores toward the centre at all | measured κ, or a calibrated laser | BLOCKED | L7.2 |
+| **L7.3** | `hard` | Trap depth | `U ≥ 10 kT` | calibrated laser power, bead, medium | BLOCKED | L7.3 |
+| **L7.4** | `hard` | Trap sampling | `f_s ≥ 10 f_c` | κ, viscosity, particle radius, achieved fps | BLOCKED | L7.4 |
+| **L7.5** | `info` | Power window | **reports only** — proposes the laser power as a **stiffness** window, since the dial is uncalibrated | κ floor from depth, f_c ceiling from lens 2 | INFO | — |
+| **L7.6** | `info` | Temperature basis | **reports only** — the 20 °C is the lab setpoint, not the sample at the focus; `dD/D = 2.74 %/K` | temperature, whether it was measured | INFO | — |
+| **L8.1** | `info` | Convening | **reports only** — whether docs/01 §4 would convene lens 8 at all (30 min), reported not enforced | duration | INFO | — |
+| **L8.2** | `info` | Sedimentation | **reports only** — velocity, and the time to reach the floor | radius, Δρ, viscosity, chamber height | INFO | L8.2 |
+| **L8.3** | `info` | Evaporation | **reports only** — evaporated fraction and concentration factor | sealed, or a measured rate | INFO | L8.3 |
+| **L8.4** | `info` | Drift budget | **reports only** — the drift rate this run could absorb, `DOF/duration`; assumes monotonic drift | duration, depth of field | INFO | — |
 
-G23–G27 read **other lenses' verdicts** rather than hardware facts, which is
-why lens 6 has to run last.
+### Retired gate numbers
 
-**G23 is not a count.** Two tables in `validity/setup.py` do the work the count
+Ten of the old thirty-two named a gate that no longer exists. **They are not
+reused and they are not translated** — a reference to `G20` points at something
+that was removed, and the reason is the useful part.
+
+| number | what it was |
+|---|---|
+| ~~G10~~ | photobleaching, removed 2026-09-09 |
+| ~~G11~~ | statistical power, removed 2026-09-11 |
+| ~~G18~~ | coverslip thickness, removed 2026-09-10 |
+| ~~G20~~ | saturation / triplet shelving, removed 2026-09-09 |
+| ~~G21~~ | light-driving, became a report 2026-09-10 (now L5.1) |
+| ~~G22~~ | total dose, became a report 2026-09-10 (now L5.2) |
+| ~~G26~~ | post-processing, removed 2026-09-11 |
+| ~~G28~~ | PFS lock, moved to the hardware stage 2026-09-10 |
+| ~~G29~~ | axial drift, moved to the hardware stage 2026-09-10 |
+| ~~G30~~ | lateral drift, moved to the hardware stage 2026-09-10 |
+
+⚠ **`kb/` still uses the old numbers throughout, on purpose.** Its entries are
+dated records — one is *named* `2026-09-09-g20-saturation-removed.md` — so
+rewriting them would falsify the history they exist to hold. The `was` column
+above and this table are the bridge. New writing uses addresses.
+
+**Which lens owns what is now in the address**, which is the point of the
+scheme: the flat numbers had to be learned (L4.1–L4.6 were lens 4's, L6.2–L6.1
+lens 6's) and they ran out of contiguous room every time a gate moved.
+
+**Eleven checks appear in this table for the first time.** They existed, two of
+them `hard`, and had no number — so a proposal could be stopped by something
+documented nowhere. Numbering them used to imply gatehood, which is why they
+were left out; the `kind` column removes that objection.
+
+**Lens 6's four read other lenses' verdicts** rather than hardware facts, which
+is why it has to run last. Since 2026-09-11 it computes nothing at all.
+
+**L6.2 (bias ledger) is not a count.** Two tables in `validity/setup.py` do the work the count
 cannot:
 
 - `BIAS_SCOPE` says which calibrations a bias damages, so the FAIL lands on the
@@ -627,15 +668,15 @@ next step, but the action differs: FAIL means change the setting, BLOCKED means
 | §2 diffraction · collection | `Objective.resolution_nm`, `collection_efficiency`, `depth_of_field_nm` | ✅ covered by tests |
 | §3 photon budget | `Channel.detected_e_per_s` (`None` without a light level) | ✅ covered by tests |
 | §3 spectra | excitation efficiency · collection · blocking · crosstalk | ✅ covered by tests |
-| G1–G4 | `optics.gate.evaluate` | ✅ covered by tests |
-| §2 sampling gate (G5) | task-dependent branch, `detection.gate.evaluate` | ✅ covered by tests (2026-08-11) |
-| §4 SNR · saturation (G6, G7) | `detection.gate.evaluate` | ✅ covered by tests (2026-08-11) |
-| §5 timing · blur (G8, G9) | `detection.gate.evaluate` | ✅ covered by tests (2026-08-11) |
-| §6 bleaching (G10) | — | **Removed 2026-09-09.** The gate, its tests and its plumbing are gone; §6 keeps the formulas and says why |
-| §5 dose · light-driving | `photo.gate.evaluate` | ✅ covered by tests, but **not gates**: G20 went 2026-09-09, G21 and G22 on 2026-09-10 when lens 5 became a reporting section |
-| §7 statistical power | ~~`validity.gate.evaluate`~~ → `validity/power.py` | ⚠ **no longer a gate** (G11 removed 2026-09-11). The formulas are tested and reachable as `python -m validity.cli power`; nothing certifies against them. §7's ROI-vs-statistics trade (docs/01 §4's 3↔6 constraint) therefore **has no code left** — shrinking the ROI to buy frame rate still cuts the particle count by the same factor, and no gate notices |
-| bias ledger · calibrations · post-processing (G23–G27) | `validity.gate.evaluate` | ✅ covered by tests (2026-08-12); bias scoping + correction registry + per-quantity verdicts added 2026-08-20 |
-| settling · evaporation (G31–G32) | `stability.gate.evaluate` | ✅ covered by tests (2026-08-12) — but **lens 8 became a reporting section on 2026-09-10** and grades nothing: G28/G29/G30 moved to the hardware execution stage, G31/G32 became INFO reports, `vibration` was deleted. `status: REPORT`, `advances: None`. `stability.drift_budget` (INFO, unnumbered) reports the drift rate the run can absorb |
-| §8 compute resources (G12, G13) | `compute.gate.evaluate` | ✅ covered by tests (2026-08-11) |
-| §9 tweezers (G14) | `trapping.gate.evaluate` (corner frequency → required fps) | ✅ covered by tests |
-| sample geometry (G15–G19) | `sample.gate.evaluate` (RI mismatch, WD, coverslip, overlap) | ✅ covered by tests (2026-08-12) |
+| L1.1–L1.7 | `optics.gate.evaluate` | ✅ covered by tests. **L1.5 and L1.7 are new to the tables** (2026-09-11); they always ran |
+| §2 sampling gate (L2.1) | task-dependent branch, `detection.gate.evaluate` | ✅ covered by tests (2026-08-11) |
+| §4 SNR · saturation (L2.2, L2.3) | `detection.gate.evaluate` | ✅ covered by tests (2026-08-11) |
+| §5 timing · blur (L2.4, L2.5) | `detection.gate.evaluate` | ✅ covered by tests (2026-08-11) |
+| §6 bleaching (~~G10~~, retired) | — | **Removed 2026-09-09.** The gate, its tests and its plumbing are gone; §6 keeps the formulas and says why |
+| §5 dose · light-driving | `photo.gate.evaluate` | ✅ covered by tests, but **not gates**: G20 went 2026-09-09, G21 and G22 on 2026-09-10 when lens 5 became a reporting section. The three reports are now L5.1–L5.3 |
+| §7 statistical power | ~~`validity.gate.evaluate`~~ → `validity/power.py` | ⚠ **no longer a gate** (~~G11~~ retired 2026-09-11). The formulas are tested and reachable as `python -m validity.cli power`; nothing certifies against them. §7's ROI-vs-statistics trade (docs/01 §4's 3↔6 constraint) therefore **has no code left** — shrinking the ROI to buy frame rate still cuts the particle count by the same factor, and no gate notices |
+| bias ledger · calibrations · post-processing (L6.2–L6.1) | `validity.gate.evaluate` | ✅ covered by tests (2026-08-12); bias scoping + correction registry + per-quantity verdicts added 2026-08-20 |
+| settling · evaporation (L8.2–L8.3) | `stability.gate.evaluate` | ✅ covered by tests (2026-08-12) — but **lens 8 became a reporting section on 2026-09-10** and grades nothing: G28/G29/G30 moved to the hardware execution stage, L8.2/L8.3 became INFO reports, `vibration` was deleted. `status: REPORT`, `advances: None`. `L8.4 drift_budget` reports the drift rate the run can absorb |
+| §8 compute resources (L3.1–L3.7) | `compute.gate.evaluate` | ✅ covered by tests (2026-08-11) |
+| §9 tweezers (L7.2–L7.4) | `trapping.gate.evaluate` (corner frequency → required fps) | ✅ covered by tests |
+| sample geometry (L4.1–L4.6) | `sample.gate.evaluate` (RI mismatch, WD, coverslip, overlap) | ✅ covered by tests (2026-08-12) |

@@ -16,7 +16,7 @@ from .aberration import COVERSLIP_DESIGN_UM
 #:
 #: Ordinary buffer (PBS and similar) runs 1.334-1.337 depending on salt load.
 #: That spread sits inside LIMITS["matched_ri_tolerance"] = 0.005, which is
-#: why confirming the water value does not weaken G17's "index-matched"
+#: why confirming the water value does not weaken L4.5's "index-matched"
 #: verdict for the 40x WI -- the tolerance was sized for exactly this.
 #:
 #: The exclusions in that KB entry still stand: ATPS, glycerol/sucrose, high
@@ -94,7 +94,7 @@ class SampleSetup:
     #: field contributes and the two coincide; for a confocal / spinning-disk
     #: section the slab is the section thickness and is far smaller.
     #:
-    #: G19's expected_count used to reuse imaging_depth_um unconditionally,
+    #: L4.6's expected_count used to reuse imaging_depth_um unconditionally,
     #: which mattered because validity/setup.py::resolved_n_particles feeds
     #: that count into lens 6's G11 -- an over-generous extent became an
     #: overestimate of statistical power. Left None this falls back to the
@@ -105,7 +105,7 @@ class SampleSetup:
     #: of the coverslip. Same field name as stability.setup.SampleSetup so the
     #: two lenses can be fed from one answer.
     #:
-    #: G16b needs it. Note what it is *not*: the spacer or gasket that sets this
+    #: L4.3 needs it. Note what it is *not*: the spacer or gasket that sets this
     #: height forms the chamber walls and is not in the optical path, whichever
     #: way up the stand is, so it does not consume working distance. The only
     #: glass in the path is the coverslip facing the objective, and
@@ -114,10 +114,10 @@ class SampleSetup:
     chamber_height_um: float | None = None
     #: Particle radius, um. Owned by lens 8 (stability.setup uses the same field
     #: name for settling) and lens 7 (Bead.radius_m); lens 4 consumes it only to
-    #: bound the near-wall drag in G16c.
+    #: bound the near-wall drag in L4.4.
     particle_radius_um: float | None = None
     #: Is the optical trap holding the particle? Owned by lens 7; consumed here
-    #: because it decides whether G16c's bound has an absorption route. With a
+    #: because it decides whether L4.4's bound has an absorption route. With a
     #: trap, docs/06 D8's in-situ power-spectrum calibration at the working
     #: height returns kappa and the wall-corrected gamma together, so the bias
     #: is absorbed by measurement. Untrapped -- free-diffusion MSD -- there is
@@ -133,7 +133,7 @@ class SampleSetup:
     #: coverslip's own weight -- uncontrolled, varying between preparations, and
     #: wedge-shaped across a squashed drop. So an absent height here is not an
     #: unasked question but a statement that no designed thickness exists, and
-    #: G16b says so out loud instead of skipping quietly.
+    #: L4.3 says so out loud instead of skipping quietly.
     unspaced_mount: bool = False
     #: Was the correction collar actually adjusted for this coverslip?
     #: docs/05 Lens 4 checklist asks precisely this. Having a collar and
@@ -198,7 +198,7 @@ class SampleSetup:
         """Observed axial extent and where it came from.
 
         Returns ``(um, source)`` with source in ``explicit`` /
-        ``depth_of_field`` / ``imaging_depth``. The source is reported in G19's
+        ``depth_of_field`` / ``imaging_depth``. The source is reported in L4.6's
         numbers so lens 6 can see whether the count it inherits rests on a
         stated slab or on a widefield-column assumption nobody confirmed.
 

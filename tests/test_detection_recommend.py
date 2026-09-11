@@ -214,14 +214,14 @@ def test_at_20_fps_read_noise_orders_the_modes(kinetix22):
         "Speed",
     ]
     binding = {o.mode: o.binding_constraint for o in options}
-    assert binding["Speed"] == "saturation (G6)"
-    assert binding["Sensitivity"] == "motion blur (G8)"
+    assert binding["Speed"] == "saturation (L2.2)"
+    assert binding["Sensitivity"] == "motion blur (L2.4)"
 
 
 def test_at_100_fps_motion_blur_kills_every_mode(kinetix22):
     """The interesting failure: the answer is not "pick another mode".
 
-    G8's ceiling at 100 fps is 3.0 ms and no mode reaches SNR 5 that fast, so
+    L2.4's ceiling at 100 fps is 3.0 ms and no mode reaches SNR 5 that fast, so
     the fix is upstream -- more light, a brighter label, or a lower frame rate.
     A recommender that answered with a mode here would be lying.
     """
@@ -270,7 +270,7 @@ def test_motion_blur_ceiling_only_applies_to_tracking(kinetix22):
 
 
 def test_chosen_exposure_is_the_minimum_that_meets_the_target(kinetix22):
-    """Longer only adds dose (lens 5) and blur (G8), so it is never chosen."""
+    """Longer only adds dose (lens 5) and blur (L2.4), so it is never chosen."""
     options = compare_modes(
         FrameMeasurement(**SENS_FRAME),
         kinetix22,

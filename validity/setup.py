@@ -149,7 +149,7 @@ CORRECTIONS: dict[str, str] = {
 
 #: Bias findings with **no** post-hoc correction: the setting or the sample has
 #: to change instead. Declaring one of these in ``corrections_applied`` is a
-#: false claim, and G23 says so rather than clearing the bias -- which is what
+#: false claim, and L6.2 says so rather than clearing the bias -- which is what
 #: it used to do, since the declaration was matched against nothing at all.
 UNCORRECTABLE: dict[str, str] = {
     "geometry.ri_mismatch": "no aberration model is implemented (docs/06 D5) -- "
@@ -236,18 +236,18 @@ BIAS_SCOPE: dict[str, frozenset[str]] = {
 #: bias reviewed here says so with BIAS; one that wants to narrate says INFO.
 _BIAS_SEVERITIES = frozenset({"info", "warn", "fail"})
 
-#: The lenses G27 requires a verdict from. `photo` left on 2026-09-10 when it
+#: The lenses L6.1 requires a verdict from. `photo` left on 2026-09-10 when it
 #: became a reporting section rather than a judging lens -- it has no gate to
 #: return a verdict from, so demanding one would BLOCK every review forever.
 #: kb/decisions/2026-09-10-lens-5-becomes-a-reporting-section.md
 #:
 #: ⚠ THE CONDITIONAL LENSES (7 trapping, 8 stability) ARE NOT HERE AND CANNOT
 #: BE, AND THAT HOLE IS KNOWN AND DEFERRED. **Do not "fix" it by adding the two
-#: names** -- every trap-less, short acquisition would then FAIL G27.
+#: names** -- every trap-less, short acquisition would then FAIL L6.1.
 #:
 #: The defect is an asymmetry, verified 2026-09-11: hand a conditional lens's
 #: verdict in and it is judged (`blocked_lenses` / `failed_lenses` catch it),
-#: forget it entirely and `missing_standing` is empty, G27 reports 10.00 and the
+#: forget it entirely and `missing_standing` is empty, L6.1 reports 10.00 and the
 #: review PASSES. On a drag calibration that means lens 7 -- which owns kappa,
 #: the trap depth and the f_s >= 10 f_c sampling requirement, i.e. the measuring
 #: instrument itself -- can never have run and lens 6 still says
@@ -293,7 +293,7 @@ class ValiditySetup:
     #
     # Note what else went with it: `missing.target_error` and
     # `missing.sample_size` were two of this lens's four Phase 0 refusals, and
-    # `resolved_n_particles` was its only consumer of lens 4's G19 estimate.
+    # `resolved_n_particles` was its only consumer of lens 4's L4.6 estimate.
 
     # -- calibrations in hand ---------------------------------------------
     #: Measured pixel size at the sample. docs/06 A1: without it every

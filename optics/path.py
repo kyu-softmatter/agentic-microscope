@@ -327,7 +327,7 @@ def ablate(
     follow.
 
     ⚠ It no longer *raises the blocking floor*. That was a `+2.0 OD` penalty
-    here, matching G3's old 5 → 7 escalation, and both were removed on
+    here, matching L1.2's old 5 → 7 escalation, and both were removed on
     2026-09-09 (KH): the approximation is charged once, on the evidence axis,
     not twice. Downgrading the verdict to ``candidate`` is what carries it in
     this function. See

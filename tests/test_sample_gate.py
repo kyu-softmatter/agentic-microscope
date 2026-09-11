@@ -85,7 +85,7 @@ def test_birefringent_sample_blocks():
     assert any(f.code == "unmodellable.birefringent" for f in v.findings)
 
 
-# ------------------------------------------------- G15 NA feasibility -----
+# ------------------------------------------------- L4.1 NA feasibility -----
 
 
 def test_na_feasibility_fails_for_a_water_objective_used_dry():
@@ -112,7 +112,7 @@ def test_na_feasibility_does_not_drag_the_grade_for_a_correct_high_na_setup():
     assert v.feasibility == "ROUTINE"
 
 
-# ------------------------------------------------ G16 working distance -----
+# ------------------------------------------------ L4.2 working distance -----
 
 
 def test_working_distance_fails_when_the_depth_exceeds_it():
@@ -130,7 +130,7 @@ def test_coverslip_excess_eats_into_the_working_distance():
     assert thick.margins["geometry.working_distance"] == pytest.approx(1.667, abs=1e-3)
 
 
-# --------------------------------------------------- G17 RI mismatch -------
+# --------------------------------------------------- L4.5 RI mismatch -------
 
 
 def test_water_objective_in_aqueous_medium_is_index_matched():
@@ -144,7 +144,7 @@ def test_g17_reports_and_no_longer_gates():
     """RETARGETED 2026-09-10. The screening product `depth x dn <= 1.85 um`
     was anchored circularly -- 1.85 IS 10 x 0.185, the checklist trigger
     evaluated at the oil-into-water case -- and the operator has imaged well
-    past it. G17 is now the mechanical-z to optical-depth converter.
+    past it. L4.5 is now the mechanical-z to optical-depth converter.
     kb/decisions/2026-09-10-g17-becomes-a-z-to-depth-converter.md
     """
     v = evaluate(_setup(imaging_depth_um=30.0))
@@ -170,13 +170,13 @@ def test_g17_converts_z_travel_to_depth_both_ways():
 
 def test_the_depth_window_no_longer_has_a_g17_ceiling():
     """The direct consequence, and the reason this was a conscious choice:
-    the oil objective's window was EMPTY only because G17 capped it at 10 um
-    against G16c's 13.9 um floor. It is now bounded by reach and extent."""
+    the oil objective's window was EMPTY only because L4.5 capped it at 10 um
+    against L4.4's 13.9 um floor. It is now bounded by reach and extent."""
     v = evaluate(
         _setup(imaging_depth_um=20.0, particle_radius_um=2.475, chamber_height_um=100.0)
     )
     m = v.metrics["geometry.depth_window"]
-    assert "G17 index mismatch" not in m["upper_bounds_um"]
+    assert "L4.5 index mismatch" not in m["upper_bounds_um"]
     assert m["depth_min_um"] == pytest.approx(13.92, abs=0.01)
     assert m["depth_max_um"] == pytest.approx(100.0)
 
@@ -198,12 +198,12 @@ def test_water_objective_beats_oil_on_mismatch_at_the_same_depth():
     preference -- the trade the committee exists to surface."""
     oil = evaluate(_setup(imaging_depth_um=30.0))
     water = evaluate(_setup(objective_kw=WATER_40X, imaging_depth_um=30.0))
-    # Since G17 became INFO the trade shows in the conversion, not a margin.
+    # Since L4.5 became INFO the trade shows in the conversion, not a margin.
     assert oil.metrics["geometry.ri_mismatch"]["axial_scaling_error_pct"] == 12.2
     assert water.metrics["geometry.ri_mismatch"]["axial_scaling_error_pct"] == 0.0
 
 
-# --------------------------------------------- G16b depth in chamber -------
+# --------------------------------------------- L4.3 depth in chamber -------
 
 
 def test_depth_in_chamber_is_skipped_without_a_chamber_height():
@@ -222,7 +222,7 @@ def test_focusing_past_the_chamber_wall_fails_hard():
     it only on the sedimentation flag.
 
     Note the status is FAIL even though `bottleneck` names ri_mismatch (0.25 at
-    40 um beats G16b's 0.50). That is the hard-gate rule: any HARD check under
+    40 um beats L4.3's 0.50). That is the hard-gate rule: any HARD check under
     1.0 forces FAIL regardless of which margin is numerically worst.
     """
     v = evaluate(_setup(imaging_depth_um=40.0, chamber_height_um=20.0))
@@ -235,7 +235,7 @@ def test_focusing_past_the_chamber_wall_fails_hard():
 
 
 def test_the_chamber_can_be_the_bottleneck_on_an_index_matched_objective():
-    """With G17 out of the way, G16b is what decides the grade."""
+    """With L4.5 out of the way, L4.3 is what decides the grade."""
     v = evaluate(
         _setup(objective_kw=WATER_40X, imaging_depth_um=40.0, chamber_height_um=20.0)
     )
@@ -282,12 +282,12 @@ def test_focusing_exactly_at_the_far_wall_is_allowed():
     assert not any(f.code == "geometry.depth_in_chamber" for f in v.findings)
 
 
-# ------------------------------------------------ G16c near-wall drag -------
+# ------------------------------------------------ L4.4 near-wall drag -------
 
 
 def test_wall_drag_bound_reproduces_the_pitfall_table():
     """docs/06 D8 tabulates the Faxen drag penalty for a 4 um bead (a = 2 um).
-    G16c must land on the same numbers, or one of the two is wrong."""
+    L4.4 must land on the same numbers, or one of the two is wrong."""
     expected = {5.0: 0.290, 10.0: 0.127, 20.0: 0.060, 50.0: 0.023}
     for h, penalty in expected.items():
         v = evaluate(_setup(imaging_depth_um=h, particle_radius_um=2.0))
@@ -412,7 +412,7 @@ def test_wall_drag_is_skipped_without_a_particle_radius():
 # The four tests that graded `geometry.coverslip` went with the gate. What the
 # coverslip still does in this lens is asserted below instead, because those
 # two effects are the reason removing the margin was safe:
-#   * G16 keeps subtracting coverslip excess from the working-distance budget
+#   * L4.2 keeps subtracting coverslip excess from the working-distance budget
 #   * an unmeasured coverslip is still an `assumed_input` and still withholds
 #     `advances`
 # and the collar condition moved to the evidence axis rather than vanishing.
@@ -426,7 +426,7 @@ def test_no_check_grades_the_coverslip_any_more():
 
 
 def test_coverslip_excess_still_comes_off_the_working_distance():
-    """G16's budget is the geometric half of what G18 used to cover, and it is
+    """L4.2's budget is the geometric half of what G18 used to cover, and it is
     why the removal loses no reach constraint. 190 um glass against a 170 um
     design costs 20 um of working distance."""
     thin = evaluate(_setup(coverslip_actual_um=170.0))
@@ -463,7 +463,7 @@ def test_adjusted_correction_collar_is_not_an_assumption():
     assert not any("correction collar" in i for i in v.assumed_inputs)
 
 
-# ------------------------------------------------- G19 count in field ------
+# ------------------------------------------------- L4.6 count in field ------
 
 
 def test_count_in_field_is_skipped_without_a_concentration():
@@ -472,7 +472,7 @@ def test_count_in_field_is_skipped_without_a_concentration():
 
 
 def test_settled_areal_density_replaces_the_volume_count():
-    """REWRITTEN 2026-09-10. G19 used to count particles in an observed
+    """REWRITTEN 2026-09-10. L4.6 used to count particles in an observed
     volume, whose default extent was the depth of field -- 377 nm against a
     4950 nm bead. Now it assumes total sedimentation, so there is no slab to
     guess: sigma = c * H.
@@ -598,7 +598,7 @@ def test_a_jammed_monolayer_says_the_spacing_is_meaningless():
 
 
 def test_count_in_field_never_blocks_the_gate():
-    """INFO kind: a missing concentration must not stop G15-G18."""
+    """INFO kind: a missing concentration must not stop L4.1-G18."""
     v = evaluate(_setup(concentration_per_ml=None))
     assert v.status != "BLOCKED"
 

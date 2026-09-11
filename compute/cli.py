@@ -16,8 +16,8 @@
     python -m compute.cli scan "D:\\data" --contaminated-only
 
 ``check`` runs the committee-lens gate (compute.gate.evaluate): data rate
-(G12a-c), circular buffer / capacity / real-time CPU / RAM capture
-(G13a-d). ``drops`` and ``scan`` run the post-hoc half (compute.drops),
+(L3.1-c), circular buffer / capacity / real-time CPU / RAM capture
+(L3.4-d). ``drops`` and ``scan`` run the post-hoc half (compute.drops),
 which needs no hardware and works on the existing archive.
 """
 
@@ -135,7 +135,7 @@ def cmd_check(args: argparse.Namespace) -> int:
         # A check that is WARNING at the top of the scale has no headroom to
         # report -- MAX_MARGIN there means "no threshold was crossed", because
         # its penalty is on the evidence axis rather than against a limit
-        # (G12b, G12c). Printing 10.00 for it reads as cleared, which is the
+        # (L3.2, L3.3). Printing 10.00 for it reads as cleared, which is the
         # one thing this repo refuses to let a margin do. So it prints as
         # `ungraded` (KH, 2026-09-10).
         flagged = {f.code for f in (v.findings or []) if f.severity in {"warn", "fail"}}
@@ -319,7 +319,7 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="compute", description=__doc__)
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    c = sub.add_parser("check", help="run the committee-lens gate (G12a-c, G13a-d)")
+    c = sub.add_parser("check", help="run the committee-lens gate (L3.1-c, L3.4-d)")
     c.add_argument(
         "--stream", action="append", default=[],
         help="label:WIDTHxHEIGHT@FPS[:BITS], repeatable -- one per camera",
@@ -333,15 +333,15 @@ def main(argv: list[str] | None = None) -> int:
     )
     c.add_argument(
         "--fps-source", choices=("measured", "requested"), default="requested",
-        help="is the frame rate an achieved rate or a requested one (G12b)",
+        help="is the frame rate an achieved rate or a requested one (L3.2)",
     )
     c.add_argument(
         "--container-confirmed", action="store_true",
-        help="MM's bytes/pixel for this bit depth has been confirmed on the real adapter (G12c)",
+        help="MM's bytes/pixel for this bit depth has been confirmed on the real adapter (L3.3)",
     )
     c.add_argument(
         "--usable-fps", type=float, default=None,
-        help="lens 2's realizable frame rate (detection.timing.max_fps), for the G12b cross-check",
+        help="lens 2's realizable frame rate (detection.timing.max_fps), for the L3.2 cross-check",
     )
     c.add_argument(
         "--disk-bandwidth-mb-s", type=float, default=None,
@@ -362,7 +362,7 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--realtime-processing", action="store_true")
     c.add_argument(
         "--ram-capture", action="store_true",
-        help="hold the burst in RAM and flush afterwards (G13d instead of G12a)",
+        help="hold the burst in RAM and flush afterwards (L3.7 instead of L3.1)",
     )
     c.add_argument(
         "--ram-capture-budget-mb", type=float, default=None,

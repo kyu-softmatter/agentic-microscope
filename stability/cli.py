@@ -10,7 +10,7 @@
         --particle-radius-um 0.5 --delta-density 0 --viscosity 1e-3
 
 ``check`` runs stability.gate.evaluate, which since 2026-09-10 is a REPORT and
-not a verdict: G31 (settling velocity and the time to reach the floor), G32
+not a verdict: L8.2 (settling velocity and the time to reach the floor), L8.3
 (evaporative concentration, or that it is unquantified) and `drift_budget` (the
 drift rate this run could absorb). Every check is INFO, so **every margin reads
 10.00 and none of them means anything** -- `status: REPORT`,

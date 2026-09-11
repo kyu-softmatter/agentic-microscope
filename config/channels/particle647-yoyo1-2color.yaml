@@ -36,7 +36,7 @@
 #
 # What remains open is not the datasheet but the CHOICE: which of the four modes
 # this acquisition runs in. That choice is not a detail -- full well swings 75x
-# across the modes, so G6 (saturation) can pass in DynamicRange and clip in
+# across the modes, so L2.2 (saturation) can pass in DynamicRange and clip in
 # Speed on the identical light level. detection.setup.Camera.mode must name it,
 # and detection.gate BLOCKs on `missing.detector_mode` if it does not.
 # The one measured data point so far (kb/calibrations/camera-readout.yaml) was

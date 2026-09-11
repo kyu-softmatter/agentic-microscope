@@ -131,7 +131,7 @@ signal.
    instruction until confirmed on the bench)
 
 ⚠ **There used to be a third guard and it is gone (2026-09-09, KH):** with
-approximated spectra the blocking floor rose 5 OD → 7 OD, here and in G3
+approximated spectra the blocking floor rose 5 OD → 7 OD, here and in L1.2
 alike. Both are now a flat 5 OD. The approximation is charged **once**, on the
 evidence axis — `advances` requires `evidence == "measured"`, so a channel
 built on parametric curves cannot advance regardless — and charging it again in
@@ -209,9 +209,9 @@ The camera is not the bottleneck. It is MM overhead, disk, or the circular
 buffer.
 
 **The KB must record `measured_fps`.** Keep only the requested value and
-precedent lies. → Gate G12b (frame-rate provenance)
+precedent lies. → Gate L3.2 (frame-rate provenance)
 
-**Now caught (2026-08-19)**: `compute.checks.check_fps_provenance` (G12b) will
+**Now caught (2026-08-19)**: `compute.checks.check_fps_provenance` (L3.2) will
 not treat a requested rate as evidence — it warns, pins the verdict to
 `assumed`, and if lens 2's realizability ceiling says the rate is unreachable it
 lets the feasibility grade collapse. `compute.drops` supplies the achieved rate
@@ -262,7 +262,7 @@ The background term goes as `1/p²`, so **larger pixels make it better.** There
 is a finite optimum. Apply Nyquist mechanically to a tracking experiment and
 precision gets worse.
 
-→ Gate G5. **With no task type given, do not fall back to a default — ask.**
+→ Gate L2.1. **With no task type given, do not fall back to a default — ask.**
 
 ---
 
@@ -373,7 +373,7 @@ fails the gate, not just an out-of-range one.
 A trapped bead held close to the coverslip feels more drag than Stokes'
 unbounded-medium `γ₀ = 6πηa`. The Faxén parallel-to-wall correction is
 `γ/γ₀ = 1/(1 − 9a/(16h))`, and it bites hardest exactly where an oil objective
-pins you (G17 caps oil-on-water at ~10 µm):
+pins you (L4.5 caps oil-on-water at ~10 µm):
 
 | bead | h = 5 µm | h = 10 µm | h = 20 µm | h = 50 µm |
 |---|---|---|---|---|
@@ -386,12 +386,12 @@ automatically and the bias lands directly on any force inferred from a
 commanded velocity. The sanctioned route is to **calibrate in situ at the
 working height** — a power-spectrum corner frequency returns κ and the
 wall-corrected γ together, absorbing the bias by measurement instead of
-correcting it by formula. G14 requires that calibration anyway, so it is not
+correcting it by formula. L7.2–L7.4 require that calibration anyway, so it is not
 extra work; it must be redone whenever the working height changes.
 → [`kb/expertise/oil-objective-trapping-in-water.md`](../kb/expertise/oil-objective-trapping-in-water.md)
 
-**Bounded by lens 4's G16c, and the escape route is trap-only.** Since
-2026-08-20 `sample` G16c reports the size of this: `D` is low by at most
+**Bounded by lens 4's L4.4, and the escape route is trap-only.** Since
+2026-08-20 `sample` L4.4 reports the size of this: `D` is low by at most
 `9a/(16h)`, which is an upper bound because truncating the Faxén series
 over-states the drag ([01 §3 Principle 1b](01-architecture.md)). It reproduces
 the table above exactly, and the imaging depth *is* `h`, so lens 4 already holds
@@ -400,11 +400,11 @@ one input.
 Two cases, and the trap decides which:
 
 - **Trapped** — the ordinary case here. The in-situ calibration above absorbs
-  the bias, so G16c reports the bound as `INFO`. The standing obligation is only
+  the bias, so L4.4 reports the bound as `INFO`. The standing obligation is only
   to redo that calibration when the working height changes.
 - **Untrapped** — free diffusion, MSD-based microrheology. No calibration step
   exists, so nothing absorbs the wall term: measured `D` comes out low and any
-  viscosity or modulus inferred from it comes out **stiff**. G16c goes `bias`
+  viscosity or modulus inferred from it comes out **stiff**. L4.4 goes `bias`
   past a 10% screening limit, and **Lens 6 rules** on whether the bound is
   acceptable.
 
@@ -456,8 +456,8 @@ Switching to 16-bit improves it ×3.4." → [05](05-consensus-gate.md)
 ### E5. An improvement has to pass the gates again 🟡
 
 - 2× light → SNR ×1.4, **2× bleaching dose** (ungated — G10 removed 2026-09-09)
-- 2×2 binning → SNR ×2, **effective pixel 110→220 nm** (destroys G5 if tracking)
-- switch to 16-bit → noise ×0.29, **max fps drops** (recheck G9)
+- 2×2 binning → SNR ×2, **effective pixel 110→220 nm** (destroys L2.1 if tracking)
+- switch to 16-bit → noise ×0.29, **max fps drops** (recheck L2.5)
 
 **No improvement is free.** A sensitivity analysis must always report the side
 effects along with the gain.
@@ -479,12 +479,12 @@ those rows say so, and being named here is what keeps them from being forgotten:
 
 | Item | Owner |
 |---|---|
-| ~~A1 missing pixel calibration~~ | ~~Lens 6~~ — now caught: `validity.gate` G24 (2026-08-12), but only for quantities that depend on pixel size |
+| ~~A1 missing pixel calibration~~ | ~~Lens 6~~ — now caught: `validity.gate` L6.3 (2026-08-12), but only for quantities that depend on pixel size |
 | ~~C1 despeckle post-processing~~ | ~~Lens 6~~ → **Lens 2, since 2026-09-11.** `validity.gate` G26 caught it from 2026-08-12 and was removed: it read a self-declared boolean nobody verifies. `detection/recommend.py` refuses a reference frame shot with despeckle on — *"the ADU→electron conversion is invalid, full stop"* — which is where the filter destroys something computable. Still only refuses *future* acquisitions; archive data taken with despeckle on is not recoverable |
 | ~~D2 light-driven perturbation~~ | ~~Lens 5~~ — now caught: `photo.gate` G21 (2026-08-12), which BLOCKs rather than guessing the threshold. And since 2026-08-19 the *unasked* case warns instead of passing: `photoresponsive` is tri-state, because the accident here is the question never being put |
 | D3 sample perturbation by the label | Lens 5 — checked by the subagent and tagged `scope_tension`, but no gate. docs 05 and 06 disagree on why it belongs here ([kb/decisions/2026-08-19-lens-5-hardening](../kb/decisions/2026-08-19-lens-5-hardening.md)) |
 | Phototoxicity (living samples) | Lens 5 — no gate, absent from the 32-gate table. Needs a per-sample dose ceiling; a literature citation every time |
 | Illumination-driven local heating | Lens 5 — needs the medium's absorption coefficient, unrecorded. Distinct from D6, which is the 1064 nm trap |
-| ~~D5 refractive-index mismatch~~ | ~~Lens 4~~ — now caught: `sample.gate` G17 (2026-08-12) |
+| ~~D5 refractive-index mismatch~~ | ~~Lens 4~~ — now caught: `sample.gate` L4.5 (2026-08-12) |
 | D6 tweezers heating | Lens 7 — **ungated by decision** (2026-08-19), not a gap. No heating check is planned |
 | D8 near-wall (Faxén) drag | Lens 7 — **uncorrected by decision** (2026-08-19). Absorbed by in-situ trap calibration at the working height, not by formula |

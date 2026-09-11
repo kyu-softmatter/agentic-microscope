@@ -140,7 +140,7 @@ def test_evidence_downgrades_to_assumed_with_unmeasured_dark_current():
 
 
 def test_frame_rate_is_informational_without_a_target_fps():
-    """G9's max_fps is always computable; grading only happens once a
+    """L2.5's max_fps is always computable; grading only happens once a
     target frame rate is stated (mirrors trapping.checks.check_sampling's
     treatment of detector_fps)."""
     v = evaluate(_setup())
@@ -189,7 +189,7 @@ def test_check_sampling_tracking_is_informational_without_photon_facts():
 
 
 def test_the_legacy_pixel_is_at_the_optimum_not_past_it():
-    """RETARGETED 2026-09-09. This asserted the opposite until G5's
+    """RETARGETED 2026-09-09. This asserted the opposite until L2.1's
     counterfactual was corrected, and the old assertion was an artifact.
 
     The legacy 100x/1.5x pixel is 73.3 nm and the optimum for this camera and
@@ -229,7 +229,7 @@ def test_motion_blur_biased_at_full_duty_cycle():
     well past the 30% limit (docs/04 §5).
 
     ``achieved_fps`` is now required for this to grade at all: with no rate
-    decided G8 reports a bound instead of failing (KH, 2026-09-09). 100 fps is
+    decided L2.4 reports a bound instead of failing (KH, 2026-09-09). 100 fps is
     the camera's own floor here, so the duty is the same ~100% the test always
     meant -- what changed is that somebody now has to say so.
     """
@@ -261,7 +261,7 @@ def test_motion_blur_reports_a_bound_when_no_rate_is_decided():
 def test_g8_and_g9_report_the_same_window_from_both_ends():
     """The frame-rate window is one thing seen from two sides (KH, 2026-09-09).
 
-    G8's end is the duty limit (fps <= 0.3/t_exp); G9's is the readout
+    L2.4's end is the duty limit (fps <= 0.3/t_exp); L2.5's is the readout
     ceiling. Both report `fps_at_duty_limit` and both report the camera
     maximum, so synthesis can take a min without re-deriving either -- and if
     the two ever disagree about the same number, that is the bug this catches.
@@ -324,7 +324,7 @@ def test_g8s_maximum_exposure_is_the_other_form_of_the_same_bound():
 def test_detection_and_compute_share_the_fps_vocabulary():
     """lens 2 and lens 3 name the same distinction, so the tokens must match.
 
-    G12b (compute) and G8/G9 (detection) are the same requested-vs-achieved
+    L3.2 (compute) and L2.4/L2.5 (detection) are the same requested-vs-achieved
     question seen from the data-rate and the timing side. `undecided` is lens
     2's only addition -- lens 3 cannot compute a data rate without a rate.
     """

@@ -1,4 +1,4 @@
-"""Detection-lens setup: the facts G5-G9 need, bundled the way
+"""Detection-lens setup: the facts L2.1-L2.5 need, bundled the way
 ``optics.path.Channel`` and ``trapping.dynamics.TrapSetup`` bundle theirs.
 """
 
@@ -63,10 +63,10 @@ class Camera:
 class Acquisition:
     exposure_ms: float
     #: "imaging" (morphology/structure) or "tracking" (single-particle) --
-    #: G5 and G8 go in opposite directions depending on which (docs/04 §2).
+    #: L2.1 and L2.4 go in opposite directions depending on which (docs/04 §2).
     task_kind: str | None = None
     #: Desired frame rate, from decision step (2) upstream of this lens.
-    #: G9 only grades against this when it is supplied.
+    #: L2.5 only grades against this when it is supplied.
     target_fps: float | None = None
     #: OBSERVED frame rate, from an acquisition's own timestamps. Outranks
     #: ``target_fps`` everywhere: docs/06 §C4 measured a 3x gap between a
@@ -77,8 +77,8 @@ class Acquisition:
     def decided_fps(self) -> float | None:
         """The frame rate to judge against, or ``None`` if nobody has decided.
 
-        Neither G8 nor G9 owns the frame period. G9 asks whether a rate is
-        realizable (hardware, ``hard``); G8 asks whether the exposure is a
+        Neither L2.4 nor L2.5 owns the frame period. L2.5 asks whether a rate is
+        realizable (hardware, ``hard``); L2.4 asks whether the exposure is a
         small enough fraction of the period actually run (measurement,
         ``bias``). Both consume this, and when it is ``None`` both report
         instead of grading -- the rate is settled later, in synthesis with the
@@ -92,7 +92,7 @@ class Acquisition:
 
         Derived rather than stored so it cannot disagree with the fields it
         describes. ``measured`` and ``requested`` are deliberately the same two
-        tokens as ``compute.setup.FPS_SOURCES`` -- lens 3's G12b is the same
+        tokens as ``compute.setup.FPS_SOURCES`` -- lens 3's L3.2 is the same
         distinction seen from the data-rate side, and
         ``tests/test_detection_gate.py`` fails if the two vocabularies drift
         apart. ``undecided`` is lens 2's only addition: lens 3 always has a
@@ -156,7 +156,7 @@ class DetectionSetup:
             no row for this combination; the formula stands alone.
 
         **A ``nominal`` hit is not evidence.** Lens 6 owns pixel calibration
-        (G23-G27) and grades on ``measured`` vs ``assumed``; promoting eleven
+        (L6.2-L6.1) and grades on ``measured`` vs ``assumed``; promoting eleven
         quotients to measurements because they happen to sit in a file called
         `calibration` is the failure this repository is built against. See the
         header of ``data/pixel_size.yaml``.

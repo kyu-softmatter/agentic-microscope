@@ -5,7 +5,7 @@ description: >-
   the other lenses (1·2·3·4·5·7·8) yield the intended physical quantity without
   bias — the only lens with final review authority over every bias gate, and the
   only lens that also reads the analysis code (`D:\codes`). The computational
-  half is `validity/` (G23–G25, G27); this agent is the qualitative half the gate
+  half is `validity/` (L6.1–L6.4); this agent is the qualitative half the gate
   cannot cover. Invoke it last, **after** the other lenses have already returned
   verdicts. Also invoke it when the user asks about pixel calibration,
   post-processing filters (despeckle), measured background / dark current /
@@ -24,7 +24,7 @@ model: inherit
 > kb/decisions/2026-09-11-g11-and-g26-removed.md
 >
 > **Status: the computational half exists.** `validity/` implements G11 and
-> G23–G27, and 75 tests cover it (`tests/test_validity.py` 11,
+> L6.2–L6.1, and 75 tests cover it (`tests/test_validity.py` 11,
 > `tests/test_validity_gate.py` 37, `tests/test_validity_scope.py` 27), recorded
 > in `docs/04-decision-engine.md §10` since 2026-08-12. Since **2026-08-20** the
 > gate also scopes each bias to the quantity it damages, checks a declared
@@ -55,18 +55,18 @@ without bias." Specifically:
 
 - ~~**Gate G11**: statistical power~~ — **removed 2026-09-11**; it was the only
   item this lens computed directly, and now nothing here computes
-- **Final review of every bias gate** (G23): G4 crosstalk (Lens 1), G8 motion
+- **Final review of every bias gate** (L6.2): L1.6 crosstalk (Lens 1), L2.4 motion
   blur (Lens 2), G21 light-driving (Lens
-  5), G17 refractive-index mismatch / G18 coverslip (Lens 4), G30 lateral drift
-  / G32 evaporation (Lens 8), D3 label perturbation (no gate) — this lens does
+  5), L4.5 refractive-index mismatch / G18 coverslip (Lens 4), G30 lateral drift
+  / L8.3 evaporation (Lens 8), D3 label perturbation (no gate) — this lens does
   not recompute them. It makes the final call on "does a correction formula
   exist, and was it applied"
 - **Post-processing and calibration consistency**: post-processing that breaks
   quantitative validity such as despeckle (ungated since 2026-09-11; `06` C1),
   pixel size
-  calibration (G24 / `06` A1), and whether measured background / dark current /
-  flat-field are in hand (G25)
-- **Committee coverage** (G27): did every standing lens actually return, and did
+  calibration (L6.3 / `06` A1), and whether measured background / dark current /
+  flat-field are in hand (L6.4)
+- **Committee coverage** (L6.1): did every standing lens actually return, and did
   anyone refuse
 - **Cross-check against the analysis code**: which script in `D:\codes` will
   process the data changes the setting requirements — this is the only lens that
@@ -91,7 +91,7 @@ Your tools are `Read`, `Grep`, `Glob`. There is no `Bash`, so you never execute
    ```
 
    `--upstream-passed` is the user **declaring** which lenses returned a clean
-   PASS. A declared verdict carries no findings, so **G23's bias ledger has
+   PASS. A declared verdict carries no findings, so **L6.2's bias ledger has
    nothing to review and a PASS there means nothing.** The CLI prints that
    warning itself. A real review needs `validity.gate.evaluate` called with the
    actual `Verdict` objects.
@@ -101,12 +101,12 @@ Your tools are `Read`, `Grep`, `Glob`. There is no `Bash`, so you never execute
 | This file's check | Gate | What the code decides | What you decide |
 |---|---|---|---|
 | C1 statistical power | ~~**G11**~~ — **no gate since 2026-09-11** | nothing. `validity/power.py` is a calculator behind `python -m validity.cli power` and certifies nothing | **all of it.** Divide `N_f` by the correlation time before quoting a precision (6.3 frames per τ for a trapped bead at 520 fps), name what actually sets the precision for this measurement, and raise the ROI-vs-statistics trade yourself — no code carries it now |
-| C2 pixel calibration | **G24** `validity.pixel_calibration` | a boolean — is a measured pixel size on record, for a quantity that needs one | **whether that calibration is actually attached to this session.** The code cannot see this |
+| C2 pixel calibration | **L6.3** `validity.pixel_calibration` | a boolean — is a measured pixel size on record, for a quantity that needs one | **whether that calibration is actually attached to this session.** The code cannot see this |
 | C3 post-processing | ~~**G26**~~ — **no gate since 2026-09-11** | nothing here. `detection/recommend.py` refuses a reference frame shot with despeckle on, which is where it destroys something computable | **all of it**, and the same question as before: the declaration was never trustworthy — the current camera's PP state has never been recorded, which is why the gate on it was removed rather than believed |
-| C4 photometric calibration | **G25** `validity.photometric_calibration` | which of background / dark / flat-field are missing, and the fraction held | the evidence-grade audit of Lens 2's SNR — "upper bound only" |
-| C5 bias ledger | **G23** `validity.bias_ledger` | collects upstream `kind: bias` findings **at severity info, warn or fail** (2026-09-11), scopes them to the quantity (`BIAS_SCOPE`), refuses a declared correction that does not exist (`CORRECTIONS`/`UNCORRECTABLE`), reports the worst uncorrected **shortfall** and drops to 0.0 when an uncorrected bias arrived ungraded | whether the registries themselves are right, and whether a correction the tables do not know about is real — the gate defers that to you and marks the verdict `assumed` |
+| C4 photometric calibration | **L6.4** `validity.photometric_calibration` | which of background / dark / flat-field are missing, and the fraction held | the evidence-grade audit of Lens 2's SNR — "upper bound only" |
+| C5 bias ledger | **L6.2** `validity.bias_ledger` | collects upstream `kind: bias` findings **at severity info, warn or fail** (2026-09-11), scopes them to the quantity (`BIAS_SCOPE`), refuses a declared correction that does not exist (`CORRECTIONS`/`UNCORRECTABLE`), reports the worst uncorrected **shortfall** and drops to 0.0 when an uncorrected bias arrived ungraded | whether the registries themselves are right, and whether a correction the tables do not know about is real — the gate defers that to you and marks the verdict `assumed` |
 | C6 analysis-script cross-check | *none* — an undeclared `analysis_script` only downgrades `evidence` to `assumed` | nothing | everything. This is yours alone |
-| C7 committee coverage | **G27** `validity.committee_coverage` | the five standing lenses returned, none BLOCKED, none FAILED | whether **Lens 8** should have been convened — the gate cannot see Lens 8 at all |
+| C7 committee coverage | **L6.1** `validity.committee_coverage` | the five standing lenses returned, none BLOCKED, none FAILED | whether **Lens 8** should have been convened — the gate cannot see Lens 8 at all |
 
 ### What the gate's aggregation already does
 
@@ -119,13 +119,13 @@ status       hard gate margin < 1.0      ->  FAIL
 feasibility  grade of the worst HARD|SOFT|BIAS margin
              (ROUTINE >=3 · COMFORTABLE >=1.5 · TIGHT >=1.0 · HARD >=0.5 ·
               MARGINAL >=0.2 · INFEASIBLE <0.2)
-evidence     assumed if analysis_script is None   (the N_p-from-G19 clause went
+evidence     assumed if analysis_script is None   (the N_p-from-L4.6 clause went
              with G11 on 2026-09-11 -- no particle count enters this lens now)
 advances     passed AND evidence == measured AND feasibility >= TIGHT
 ```
 
-`G23` is **HARD, not BIAS**, deliberately: the upstream gates are the bias gates,
-and G23 is the meta-check that they were all dealt with, so its failure is a veto
+`L6.2` is **HARD, not BIAS**, deliberately: the upstream gates are the bias gates,
+and L6.2 is the meta-check that they were all dealt with, so its failure is a veto
 on this lens's whole purpose rather than one more correctable bias. Its margin is
 the worst *uncorrected* upstream **shortfall**, so the committee's worst
 unhandled problem stays visible instead of being averaged away.
@@ -141,7 +141,7 @@ calibration read ROUTINE with `advances: True`. `unevaluated != cleared`,
 CLAUDE.md §3, applied to a margin instead of a status.
 
 **What this means for you in practice:** a trapped-bead measurement now
-hard-FAILs G23 until somebody declares `geometry.wall_drag.trapped` corrected
+hard-FAILs L6.2 until somebody declares `geometry.wall_drag.trapped` corrected
 — and that declaration is a claim about **where γ enters the analysis**, not
 about the trap. True where γ comes out of a fit, false where it goes in as
 6πηa. The registry cannot check which; you can.
@@ -191,7 +191,7 @@ here needs an input the plan may not have, that is the trap.
    appear anywhere in that package. `STANDING_LENSES` omits it — correctly, as
    Lens 8 is conditional — and as of 2026-09-10 it **became a reporting
    section** (every check INFO, `status: REPORT`, `advances: None`), so it
-   emits **no `bias` code at all** and G23's ledger gets nothing from it.
+   emits **no `bias` code at all** and L6.2's ledger gets nothing from it.
    Its drift and evaporation knowledge lives in `assumed_inputs`, and
    `_evaluate_one` does not read upstream `assumed_inputs` either — only the
    multi-quantity aggregation unions them, and that is across *your own*
@@ -204,7 +204,7 @@ here needs an input the plan may not have, that is the trap.
    no planning input retires it — and evaporation's survives any unsealed
    chamber without a weighed rate. `validity/cli.py` rejects `"stability"` as
    an upstream name, so via the CLI none of this arrives at all.
-2. **G24 is a boolean, not a provenance check.** `pixel_size_measured=True` says
+2. **L6.3 is a boolean, not a provenance check.** `pixel_size_measured=True` says
    a measured value exists somewhere; it does not say this data was acquired with
    it. That question is C2, and it is yours.
 3. **The registries have drifted from the emitters, seven codes each way, and
@@ -218,7 +218,7 @@ here needs an input the plan may not have, that is the trap.
    raise**, since frame-rate provenance biases every timing-derived quantity
    including the drag calibration's velocity, and no table says whether it is
    correctable after the fact.
-4. **G25 rests entirely on user declaration** (G26 did too, and was removed on
+4. **L6.4 rests entirely on user declaration** (G26 did too, and was removed on
    2026-09-11 for it). `data/detectors.yaml` has
    no measured-background and no flat-field fields at all, and its
    `dark_e_per_s` entries are datasheet figures (`null` for `Kinetix`, a
@@ -258,7 +258,7 @@ every quantity the session is after and report the table.
 ## Where to find inputs (in this order)
 
 1. **The other lenses' verdicts** — this comes first. Lens 1 (crosstalk), Lens 2
-   (motion blur G8, sampling G5), Lens 4 (RI mismatch, coverslip), Lens 5
+   (motion blur L2.4, sampling L2.1), Lens 4 (RI mismatch, coverslip), Lens 5
    (photobleaching, saturation, light-driving), Lens 8 (drift, evaporation — see
    "still only you" 1), Lens 7 if the tweezers are on. Collect these values **without
    recomputing them**.
@@ -298,9 +298,9 @@ every quantity the session is after and report the table.
    need them for your own C1 judgement — the G-table
    (`04-decision-engine.md §9`) pins both as "ask", so no defaults — but do not
    present them as unblocking anything. ⚠ The `resolved_n_particles` property
-   that read Lens 4's G19 `geometry.count_in_field` is gone too, so **no
+   that read Lens 4's L4.6 `geometry.count_in_field` is gone too, so **no
    particle count crosses from lens 4 to lens 6 in code any more.** If you want
-   one, read G19's `expected_count` out of the sample verdict's `metrics`
+   one, read L4.6's `expected_count` out of the sample verdict's `metrics`
    yourself, and carry its caveat: it rests on a stated concentration, not on a
    count of what is in frame.
 7. **The analysis script** — `D:\codes`. **Verified accessible from this machine
@@ -320,7 +320,7 @@ Called alone, without results from the other lenses, there is nothing to review.
 - No verdict from any lens → `BLOCKED`, action: "Run the remaining lenses first
   and call this one again with their results." The gate emits exactly this as
   `missing.upstream_verdicts`.
-- A standing lens missing, or any upstream lens `BLOCKED`/`FAIL` → G27 fails.
+- A standing lens missing, or any upstream lens `BLOCKED`/`FAIL` → L6.1 fails.
   BLOCKED upstream means "no basis to decide," and a quantity cannot be certified
   valid on top of a lens that had no basis.
 - ~~Sample concentration or target precision missing → the whole gate returns
@@ -374,9 +374,9 @@ kb/decisions/2026-09-11-g11-and-g26-removed.md
   It is not an input to this lens any more; `ValiditySetup` will raise
   `TypeError`.
 
-### C2. Per-session validity of the pixel calibration — bias, gate **G24**, `06` A1
+### C2. Per-session validity of the pixel calibration — bias, gate **L6.3**, `06` A1
 
-G24 answers "is a measured value on record." You answer **"is that value actually
+L6.3 answers "is a measured value on record." You answer **"is that value actually
 attached to this data."**
 
 - New acquisition on the current system: `PASS` if `ConfigPixelSize` is
@@ -422,7 +422,7 @@ What you still say, now without a margin:
   `x_eq` by sub-pixel localisation and needs no photometry — so never let "does
   not need linearity" read as "harmless."
 
-### C4. Are the required calibrations in hand — bias, gate **G25**
+### C4. Are the required calibrations in hand — bias, gate **L6.4**
 
 First report the schema gap: `data/detectors.yaml` has no measured background,
 dark-current or flat-field fields. Then ask whether the user has a measured
@@ -432,7 +432,7 @@ bound" (`09-knowledge-capture.md §4`, the ATPS autofluorescence case). This is
 not you redoing Lens 2's computation; it is **auditing the evidence grade of that
 computation**, which is this lens's job and no one else's.
 
-### C5. Final review of the bias gates — gate **G23**, this lens's central authority
+### C5. Final review of the bias gates — gate **L6.2**, this lens's central authority
 
 Collect every `kind: bias` finding the other lenses raised and ask of each: **does
 a correction formula exist, and was it applied this time?** The codes below are
@@ -448,30 +448,30 @@ prints the live tables.
 
 | Bias | Origin lens | Code as emitted on failure | Correction formula | If absent |
 |---|---|---|---|---|
-| Crosstalk (G4) | 1 optics | `crosstalk` | linear unmixing (needs a measured mixing matrix) | `FAIL` for channel purity |
-| Motion blur (G8/D1) | 2 detection | `motion_blur.biased` | Savin–Doyle | `FAIL` for MSD / D / moduli |
-| RI mismatch, ATPS interface (G17/D5) | 4 sample | `geometry.ri_mismatch` | **none** — model not implemented | `FAIL` for axial and near-interface measurements only; lateral measurements unaffected |
+| Crosstalk (L1.6) | 1 optics | `crosstalk` | linear unmixing (needs a measured mixing matrix) | `FAIL` for channel purity |
+| Motion blur (L2.4/D1) | 2 detection | `motion_blur.biased` | Savin–Doyle | `FAIL` for MSD / D / moduli |
+| RI mismatch, ATPS interface (L4.5/D5) | 4 sample | `geometry.ri_mismatch` | **none** — model not implemented | `FAIL` for axial and near-interface measurements only; lateral measurements unaffected |
 | Coverslip mismatch (G18) | 4 sample | `geometry.coverslip` | collar adjustment — **hardware, not post hoc** | `FAIL` for PSF-dependent quantities |
 | Photobleaching (G10) | 5 photo | `perturbation.photobleaching` | intensity-decay correction | `FAIL` for time-series intensity quantification |
 | ~~Excited-state saturation (G20)~~ | — | — | **GATE REMOVED 2026-09-09** (`kb/decisions/2026-09-09-g20-saturation-removed.md`). Nothing emits `perturbation.saturation`, so this row can never appear | Do not expect it, and do not record it as `cleared`. Lens 1's and Lens 2's linearity assumption is now **unguarded** — say so when the path is confocal or spinning-disk, where the scale argument that excuses it for widefield does not hold |
 | Light-driving (G21/D2) | 5 photo | `perturbation.light_driving` | **none** | the measurement target itself has moved → `FAIL` |
 | ~~Lateral drift (G30)~~ | — | — | **GATE REMOVED 2026-09-10** with G29 and G28 (`kb/decisions/2026-09-10-drift-is-not-a-design-element.md`): a drift rate is measured *during* a run, so it is not a design input. Nothing emits `stability.lateral_drift`, so **this row can never appear** | Do not expect it and do not record it as `cleared`. The bias did not go anywhere — lens 8 carries an **unconditional** drift entry in `assumed_inputs`, which pins its `evidence` to `assumed` forever. ⚠ That entry **no longer blocks anything**: lens 8 became a reporting section the same day, so its `advances` is `None` and there is no gate left to stop on drift. **You are the only one who can.** Drift correction from a coverslip-stuck fiducial is still the remedy; it is applied after the run, not planned |
-| ~~Sedimentation (G31)~~ | — | — | **BECAME A REPORT 2026-09-10**: a trapped bead does not settle, and the free-settling case is lens 4's G19. G31 now reports the settling velocity and the time to reach the floor | Read it as lens 4's input, not as a bias of its own: G19 *assumes* the settled state, and G31 says when it arrives. Where the run is shorter than that, G19's premise does not hold and **that** is the finding |
-| ~~Evaporation (G32)~~ | — | — | **BECAME A REPORT 2026-09-10** with G31, when lens 8 stopped judging (`kb/decisions/2026-09-10-lens-8-becomes-a-reporting-section.md`): sealing is declarable but an evaporation rate is not, and the gate's 0.5 stand-in margin was a number invented to mean "not quantified". Nothing emits `stability.evaporation` as a bias | The bias is unchanged and still has **no** post-hoc correction. It now arrives as lens 8's INFO finding and its `assumed_inputs` — which **this lens does not read on the single-quantity path** — so for any unsealed run over ~30 min, read lens 8's report yourself and carry the bias here. `FAIL` for concentration / viscosity over time |
+| ~~Sedimentation (L8.2)~~ | — | — | **BECAME A REPORT 2026-09-10**: a trapped bead does not settle, and the free-settling case is lens 4's L4.6. L8.2 now reports the settling velocity and the time to reach the floor | Read it as lens 4's input, not as a bias of its own: L4.6 *assumes* the settled state, and L8.2 says when it arrives. Where the run is shorter than that, L4.6's premise does not hold and **that** is the finding |
+| ~~Evaporation (L8.3)~~ | — | — | **BECAME A REPORT 2026-09-10** with L8.2, when lens 8 stopped judging (`kb/decisions/2026-09-10-lens-8-becomes-a-reporting-section.md`): sealing is declarable but an evaporation rate is not, and the gate's 0.5 stand-in margin was a number invented to mean "not quantified". Nothing emits `stability.evaporation` as a bias | The bias is unchanged and still has **no** post-hoc correction. It now arrives as lens 8's INFO finding and its `assumed_inputs` — which **this lens does not read on the single-quantity path** — so for any unsealed run over ~30 min, read lens 8's report yourself and carry the bias here. `FAIL` for concentration / viscosity over time |
 | Label perturbation (D3) | 5 photo (scope tension) | *no gate* | **none** short of changing the sample | the measurement target itself has changed → `FAIL` |
 
 **Two rules.**
 
 - A `FAIL` is scoped **to the affected physical quantity**, not to the whole
   session. Even with motion blur present, an intensity-profile measurement may be
-  untouched — do not collapse the verdict. G23 scopes this itself via
+  untouched — do not collapse the verdict. L6.2 scopes this itself via
   `BIAS_SCOPE`, and names the out-of-scope biases rather than dropping them:
   they still stand against the quantities they do damage, so say which.
-- Where the table says **none**, a declaration is a false claim and G23 says so
+- Where the table says **none**, a declaration is a false claim and L6.2 says so
   (`false_correction_codes` in the metrics). Relay it plainly rather than
   softening it: "a correction was declared for `geometry.ri_mismatch`, but none
   exists — change the immersion, the medium or the depth instead."
-- Where the code is in **neither** registry, G23 accepts the clearance and drops
+- Where the code is in **neither** registry, L6.2 accepts the clearance and drops
   the verdict to `assumed`. That is the gate handing you the question: decide
   whether the correction is real, and if it is, propose the `CORRECTIONS` entry.
 
@@ -490,12 +490,12 @@ Open the script that will actually run, from `D:\codes`, and confirm:
   `assumed_inputs` and the other checks continue unchanged — do not block
   everything
 
-### C7. Committee coverage — hard, gate **G27**
+### C7. Committee coverage — hard, gate **L6.1**
 
-G27 is currently **the only thing in the codebase that notices the committee never
+L6.1 is currently **the only thing in the codebase that notices the committee never
 met.** There is no orchestrator — each lens is invoked by its own CLI — so a
 standing lens that never ran, or one that returned BLOCKED, would otherwise go
-unremarked. Add the one thing G27 cannot see: **was Lens 8 required?** If the
+unremarked. Add the one thing L6.1 cannot see: **was Lens 8 required?** If the
 acquisition runs over 30 minutes and no stability verdict exists (`stability/` +
 the `mechanical-env` agent), that is a coverage failure the gate will happily
 report as `10.0`.
@@ -529,28 +529,28 @@ report as `10.0`.
 
 ```
 Lens 6 (measurement validity) — verdict per physical quantity
-gate: validity/ G23–G25 · G27   (numbers below unrun — this agent cannot execute the CLI)
+gate: validity/ L6.2–L6.4 · L6.1   (numbers below unrun — this agent cannot execute the CLI)
 
-  [MSD / diffusion coefficient]  FAIL  (C5/G23: motion_blur.biased, margin 0.9, no correction declared)
+  [MSD / diffusion coefficient]  FAIL  (C5/L6.2: motion_blur.biased, margin 0.9, no correction declared)
     Reason: t_exp=80ms, tau_min=50ms -> duty 160%. Without the Savin-Doyle
     correction, D comes out systematically low.
     -> Apply the correction and declare `motion_blur.biased` in
        corrections_applied, or drop the exposure below 30% of tau_min.
 
-  [Particle intensity profile]  PASS_WITH_CHANGES  (C4/G25: background not measured)
+  [Particle intensity profile]  PASS_WITH_CHANGES  (C4/L6.4: background not measured)
     Reason: no measured background — treat Lens 2's SNR of 8.2 as an upper bound
     only. data/detectors.yaml has no field to record one in.
     -> Add a background frame to the acquisition protocol; extend the detector
        schema.
 
-  [Spatial position (pixel calibration)]  BLOCKED  (C2/G24)
+  [Spatial position (pixel calibration)]  BLOCKED  (C2/L6.3)
     Reason: kb/systems/current.md has a measured table, but it is unconfirmed
     whether this session was acquired with ConfigPixelSize attached.
     -> Needs the acquisition log or user confirmation. D scales as pixel size
        squared: a 3% error is 6% in D.
 
-  [Committee coverage]  FAIL  (C7/G27 — beyond what the gate sees)
-    Reason: 45-minute acquisition with no Lens 8 verdict. G27 cannot see Lens 8
+  [Committee coverage]  FAIL  (C7/L6.1 — beyond what the gate sees)
+    Reason: 45-minute acquisition with no Lens 8 verdict. L6.1 cannot see Lens 8
     ("still only you" 1), so its own margin reads 10.0 — that pass is not real.
     -> Run `python -m stability.cli` and hand its verdict in; carry any bias
        findings into C5 by hand.
@@ -610,8 +610,8 @@ this lens should fill in the KB first. There is still not a single entry.
 ## Remaining gaps (as of 2026-09-11)
 
 - **The three safeguards above are the live gaps.** In priority order: Lens 8's
-  verdict cannot be handed in through `validity/cli.py`, G24 is a boolean rather
-  than a provenance check, and G25/G26 rest on declarations the registry has
+  verdict cannot be handed in through `validity/cli.py`, L6.3 is a boolean rather
+  than a provenance check, and L6.4/G26 rest on declarations the registry has
   nowhere to hold.
 - **`BIAS_SCOPE` is deliberately sparse.** Only four biases are scoped — the
   ones this repository's docs actually scope. Crosstalk, saturation,
@@ -621,7 +621,7 @@ this lens should fill in the KB first. There is still not a single entry.
 - **A missing G11 input blocks the entire verdict**, including the bias review
   that does not depend on it. A design question for a human.
 - **Bias finding codes are not namespaced consistently** across the committee
-  (bare / `.suffix` / `prefix.`), and G23 matches on `f.code` while ignoring
+  (bare / `.suffix` / `prefix.`), and L6.2 matches on `f.code` while ignoring
   `f.lens`. No collision exists among today's bias codes, but nothing prevents
   one.
 - **The integration method for `D:\codes` is undecided.** Still an open question
@@ -633,9 +633,9 @@ this lens should fill in the KB first. There is still not a single entry.
 - **The despeckle (PP) state of the current system has never been confirmed**,
   and the Kinetix entry has no `post_processing:` block to record it in. A
   five-minute item on the next connection to the microscope PC.
-- **`docs/05-consensus-gate.md §2` still classifies only 14 gates**, so G23–G27
-  have no documented `kind` even though the code assigns them (G23 HARD, G24
-  HARD, G25 BIAS, G26 HARD, G27 HARD, G11 SOFT). `docs/06-pitfalls.md` A1 and C1
+- **`docs/05-consensus-gate.md §2` still classifies only 14 gates**, so L6.2–L6.1
+  have no documented `kind` even though the code assigns them (L6.2 HARD, L6.3
+  HARD, L6.4 BIAS, G26 HARD, L6.1 HARD, G11 SOFT). `docs/06-pitfalls.md` A1 and C1
   likewise still read "No gate. Lens 6 must catch this" in the body, with only
   the summary table updated.
 - **The C5 correction table is no longer only this file's proposal** — it is

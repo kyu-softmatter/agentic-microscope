@@ -1,20 +1,20 @@
-"""Individual sample-geometry checks -- G15 (NA feasibility), G16 (working
-distance), G16b (depth within chamber), G16c (near-wall drag bound),
-G17 (refractive-index mismatch), G19 (count in field), plus the depth window
-that reports G16/G16b/G16c/G17's bounds as one band.
+"""Individual sample-geometry checks -- L4.1 (NA feasibility), L4.2 (working
+distance), L4.3 (depth within chamber), L4.4 (near-wall drag bound),
+L4.5 (refractive-index mismatch), L4.6 (count in field), plus the depth window
+that reports L4.2/L4.3/L4.4/L4.5's bounds as one band.
 
 G18 (coverslip thickness) was REMOVED 2026-09-10 and its number is not reused
 -- kb/decisions/2026-09-10-lens-4-depth-window-and-g18-removed.md. The
-coverslip is still in this lens twice: G16 subtracts its excess over design
+coverslip is still in this lens twice: L4.2 subtracts its excess over design
 from the working-distance budget, and an unmeasured coverslip is still an
 `assumed_input` that withholds `advances`. What went is the graded margin.
 docs/05-consensus-gate.md "Lens 4";
 docs/06-pitfalls.md D5.
 
-G15-G19 are new numbers: docs assigned lens 4 no gate IDs, and G1-G14 were
-taken by lenses 1/2/3/5/6/7. G16b follows lens 3's convention of suffixing an
-extra criterion onto its nearest gate (G12a-c, G13a-d) rather than extending
-the top of the range: it pairs with G16, which asks whether the objective can
+L4.1-L4.6 are new numbers: docs assigned lens 4 no gate IDs, and L1.1-L7.2–L7.4 were
+taken by lenses 1/2/3/5/6/7. L4.3 follows lens 3's convention of suffixing an
+extra criterion onto its nearest gate (L3.1-c, L3.4-d) rather than extending
+the top of the range: it pairs with L4.2, which asks whether the objective can
 *reach* the depth, by asking whether the sample *extends* that far.
 
 Mirrors optics.checks / detection.checks / compute.checks / trapping.checks:
@@ -51,7 +51,7 @@ INFO = "info"
 MAX_MARGIN = 10.0
 
 LIMITS = {
-    #: G17: depth x |dn| product beyond which spherical aberration must be
+    #: L4.5: depth x |dn| product beyond which spherical aberration must be
     #: quantified rather than tolerated, um. Anchored on docs/05 Lens 4's own
     #: checklist trigger -- "does the imaging depth exceed 10 um" -- evaluated
     #: at the oil-into-water mismatch of 0.185: 10 * 0.185 = 1.85.
@@ -60,17 +60,17 @@ LIMITS = {
     #: whether a real aberration calculation is owed; it does not substitute
     #: for one.
     "aberration_depth_mismatch_um": 1.85,
-    #: G17: below this mismatch the media count as index-matched and the
+    #: L4.5: below this mismatch the media count as index-matched and the
     #: depth term is irrelevant. Covers water-immersion into a water-based
     #: medium (mismatch 0.000) and ordinary buffer-vs-water differences.
     "matched_ri_tolerance": 0.005,
-    #: G19: mean nearest-neighbour distance must exceed this multiple of the
+    #: L4.6: mean nearest-neighbour distance must exceed this multiple of the
     #: Rayleigh resolution for particles to be separable.
     "overlap_resolution_multiple": 3.0,
-    #: G16c: fractional suppression of D by the nearby wall that an untrapped
+    #: L4.4: fractional suppression of D by the nearby wall that an untrapped
     #: measurement may carry unabsorbed. An **order-of-magnitude screen**, not a
     #: precision threshold (docs/01 §3 Principle 1b): 10% sits with this repo's
-    #: other bias limits (G10 bleaching at 20%, G8 blur at 0.3 tau) and just
+    #: other bias limits (G10 bleaching at 20%, L2.4 blur at 0.3 tau) and just
     #: above docs/06 D8's tabulated 12.7% for a 4 um bead at h = 10 um, the case
     #: D8 considered worth writing down. Past it, say so; do not pretend the
     #: boundary is sharp.
@@ -132,7 +132,7 @@ def available_facts(setup: "SampleSetup") -> set[str]:
 
 
 def check_na_feasibility(setup: "SampleSetup") -> CheckResult:
-    """G15: ``NA <= n_immersion``. Exact, not an approximation.
+    """L4.1 (was G15): ``NA <= n_immersion``. Exact, not an approximation.
 
     Catches an objective used in the wrong medium -- the 40x WI's NA 1.25 is
     unreachable dry (n=1.0). optics.components.Objective.collection_efficiency
@@ -186,7 +186,7 @@ def check_na_feasibility(setup: "SampleSetup") -> CheckResult:
 
 
 def check_working_distance(setup: "SampleSetup") -> CheckResult:
-    """G16: free working distance must cover the imaging depth.
+    """L4.2 (was G16): free working distance must cover the imaging depth.
 
     Vendor WD is quoted past the design coverslip, so only coverslip excess
     over design is subtracted -- see aberration.free_working_distance_um.
@@ -232,24 +232,24 @@ def check_working_distance(setup: "SampleSetup") -> CheckResult:
 
 
 def check_depth_in_chamber(setup: "SampleSetup") -> CheckResult:
-    """G16b: is there any sample at the depth being focused to?
+    """L4.3 (was G16b): is there any sample at the depth being focused to?
 
-    G16 asks whether the objective can *reach* the depth. This asks whether the
+    L4.2 asks whether the objective can *reach* the depth. This asks whether the
     sample *extends* that far. Focus past the chamber's far wall and you image
     the wall, and nothing else in the committee notices: lens 8 holds
     ``chamber_height_um`` but spends it only on the sedimentation flag
-    (``stability/checks.py`` G31), and lens 4 owned the imaging depth without
+    (``stability/checks.py`` L8.2), and lens 4 owned the imaging depth without
     ever seeing the height.
 
     HARD in character -- past the far wall the data is not biased, it is of
     something else -- but registered with **no** ``requires``, so an absent
     chamber height skips the check instead of BLOCKing the whole gate. Same
-    reasoning as G19: a fact the user often does not have to hand must not take
+    reasoning as L4.6: a fact the user often does not have to hand must not take
     the rest of the lens down with it.
 
     Note what this check does not need: the spacer or gasket setting the height
     is not in the optical path (either orientation of stand), so it never enters
-    the working-distance budget. Only the coverslip does, via G16.
+    the working-distance budget. Only the coverslip does, via L4.2.
     """
     depth = setup.imaging_depth_um
     height = setup.chamber_height_um
@@ -343,7 +343,7 @@ def check_depth_in_chamber(setup: "SampleSetup") -> CheckResult:
 
 
 def check_wall_drag(setup: "SampleSetup") -> CheckResult:
-    """G16c: bound the near-wall drag bias on D, rather than merely naming it.
+    """L4.4 (was G16c): bound the near-wall drag bias on D, rather than merely naming it.
 
     The imaging depth *is* the wall distance -- ``h`` is measured from the
     coverslip's inner surface, which is the wall. So lens 4 already holds one of
@@ -485,21 +485,21 @@ def check_wall_drag(setup: "SampleSetup") -> CheckResult:
 
 
 def check_depth_window(setup: "SampleSetup") -> CheckResult:
-    """The usable band of focal depths, both ends, in one place.
+    """L4.7: The usable band of focal depths, both ends, in one place.
 
-    G16, G16b, G16c and G17 each bound the imaging depth, and until 2026-09-10
+    L4.2, L4.3, L4.4 and L4.5 each bound the imaging depth, and until 2026-09-10
     a reader had to collect four margins and invert them by hand to learn where
     the focal plane may actually sit. Requested by KH: report the window.
 
     Which gate owns which end:
 
-        LOWER  G16c  near-wall drag. Working close to the coverslip is the
+        LOWER  L4.4  near-wall drag. Working close to the coverslip is the
                      thing to avoid, so this is a floor: 9a/(16h) <= limit
                      gives h >= 9a/(16*limit).
-        UPPER  G16   free working distance -- how far the objective reaches.
-              G16b   chamber height -- how far the SAMPLE extends. The spacer
+        UPPER  L4.2   free working distance -- how far the objective reaches.
+              L4.3   chamber height -- how far the SAMPLE extends. The spacer
                      correction on the same budget.
-              G17    depth x |dn| screening limit, when the media are
+              L4.5    depth x |dn| screening limit, when the media are
                      mismatched. Not a reach limit; an aberration one.
 
     INFO, and deliberately so: every bound it restates is already graded by the
@@ -519,11 +519,11 @@ def check_depth_window(setup: "SampleSetup") -> CheckResult:
         setup.design_coverslip_um,
     )
     if free_wd is not None:
-        uppers.append((free_wd, "G16 free working distance"))
+        uppers.append((free_wd, "L4.2 free working distance"))
     if setup.chamber_height_um is not None:
-        uppers.append((setup.chamber_height_um, "G16b chamber height"))
+        uppers.append((setup.chamber_height_um, "L4.3 chamber height"))
 
-    # G17 used to cap this at 1.85/dn -- 10 um for oil into water. It stopped
+    # L4.5 used to cap this at 1.85/dn -- 10 um for oil into water. It stopped
     # gating on 2026-09-10 (its threshold was anchored on a checklist trigger,
     # and the operator has imaged well past it), so the ceiling is now reach
     # and sample extent only. The mismatch is still reported, as the z-to-depth
@@ -536,7 +536,7 @@ def check_depth_window(setup: "SampleSetup") -> CheckResult:
 
     numbers = {
         "depth_min_um": None if lower is None else round(lower, 2),
-        "depth_min_set_by": None if lower is None else "G16c near-wall drag",
+        "depth_min_set_by": None if lower is None else "L4.4 near-wall drag",
         "upper_bounds_um": {name: round(v, 2) for v, name in uppers},
         "ri_mismatch": round(dn, 4),
         "unspaced_mount": setup.unspaced_mount,
@@ -565,7 +565,7 @@ def check_depth_window(setup: "SampleSetup") -> CheckResult:
             "info",
             f"Focal plane may sit anywhere up to {upper:.1f} um above the "
             f"coverslip ({upper_by}). No lower bound computed -- "
-            "particle_radius_um is what sets it, via G16c.",
+            "particle_radius_um is what sets it, via L4.4.",
             numbers=numbers,
         )
 
@@ -599,14 +599,14 @@ def check_depth_window(setup: "SampleSetup") -> CheckResult:
         "so.",
         action="Use a smaller particle (the floor scales with radius), or an "
         "objective whose ceiling is higher -- an index-matched one removes the "
-        "G17 term entirely. Otherwise accept the wall bias with its bound "
+        "L4.5 term entirely. Otherwise accept the wall bias with its bound "
         "stated and hand it to lens 6.",
         numbers=numbers,
     )
 
 
 def check_ri_mismatch(setup: "SampleSetup") -> CheckResult:
-    """G17: the mechanical-z to optical-depth conversion. **INFO since
+    """L4.5 (was G17): the mechanical-z to optical-depth conversion. **INFO since
     2026-09-10** -- it reports, it does not gate.
 
     Why it stopped gating (KH, 2026-09-10): the screening product
@@ -629,7 +629,7 @@ def check_ri_mismatch(setup: "SampleSetup") -> CheckResult:
     ways.
 
     ``SampleSetup.imaging_depth_um`` is defined as the **real** depth past the
-    coverslip, so nothing downstream needs adjusting -- G16c's wall distance
+    coverslip, so nothing downstream needs adjusting -- L4.4's wall distance
     and the depth window are already in the right units. What this check does
     is tell the operator which number to put there.
 
@@ -699,7 +699,7 @@ def check_ri_mismatch(setup: "SampleSetup") -> CheckResult:
 
 
 def check_count_in_field(setup: "SampleSetup") -> CheckResult:
-    """G19: how crowded the coverslip gets once **everything** has sedimented.
+    """L4.6 (was G19): how crowded the coverslip gets once **everything** has sedimented.
 
     REWRITTEN 2026-09-10 (KH). It used to count particles in an observed
     *volume*, and that was unreliable for two reasons the operator named: bulk
@@ -846,13 +846,13 @@ def check_count_in_field(setup: "SampleSetup") -> CheckResult:
 CHECKS: list[Check] = [
     Check("na_feasibility", HARD, ("na",), check_na_feasibility),
     Check("working_distance", HARD, ("imaging_depth", "working_distance"), check_working_distance),
-    # G16b: HARD, but `requires` is empty on purpose. A missing chamber height
+    # L4.3: HARD, but `requires` is empty on purpose. A missing chamber height
     # must skip the check, not BLOCK the gate -- see check_depth_in_chamber.
     Check("depth_in_chamber", HARD, (), check_depth_in_chamber),
-    # G16c: BIAS, no `requires` -- an absent particle radius skips the bound
-    # rather than BLOCKing, same as G16b and G19.
+    # L4.4: BIAS, no `requires` -- an absent particle radius skips the bound
+    # rather than BLOCKing, same as L4.3 and L4.6.
     Check("wall_drag", BIAS, (), check_wall_drag),
-    # G17: INFO since 2026-09-10 -- a z-to-depth converter, not a gate.
+    # L4.5: INFO since 2026-09-10 -- a z-to-depth converter, not a gate.
     Check("ri_mismatch", INFO, (), check_ri_mismatch),
     Check("count_in_field", INFO, (), check_count_in_field),
     Check("depth_window", INFO, (), check_depth_window),

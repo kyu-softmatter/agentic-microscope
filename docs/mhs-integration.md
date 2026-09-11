@@ -62,7 +62,7 @@ architecture diagram marks the middle one directly above
    hardware/      three hand-written translators + one clock.
                   What occupies the MHS layer today, per vendor.
 
-   22 gates       whether the setting is a good idea at all.
+   28 gates       whether the setting is a good idea at all.
                   Above any transport, unaffected either way.
 ```
 
@@ -75,7 +75,7 @@ cannot say much about whether the layer is worth having. It can say, in detail,
 **what the layer would have to survive**, which is the rest of this file.
 
 One consequence worth stating because it cuts against adopting MHS eagerly:
-**the 22 gates are indifferent to it.** They consume physical quantities —
+**the 28 gates are indifferent to it.** They consume physical quantities —
 irradiance at the sample, effective pixel size, τ_c, κ — and no transport
 produces those. A standard that made every device on this bench reachable
 tomorrow would not move a single gate from `BLOCKED` to `PASS`, because what
@@ -360,7 +360,7 @@ sample class is why the distinction had to exist.
 
 ### 2.3 The sample's own timescale sets the settings, and it moves
 
-τ_c drives the frame rate (G9) and the motion-blur ceiling (G8); it used to
+τ_c drives the frame rate (L2.5) and the motion-blur ceiling (L2.4); it used to
 drive the target precision through G11, which was removed 2026-09-11 for
 counting independent samples where the frames are correlated. For an active sample τ_c is a function of activity, which is a
 function of illumination, fuel and crowding — so it can change **during** the
@@ -453,7 +453,7 @@ asserts a full device state in application order and generates the matching
 bug. `setup_dualcam_run.py --verify-splitter` identifies an unreadable element
 *by measurement* — one excitation line at a time, both cameras, four numbers the
 other two positions cannot fake. `focus_monitor.py` reports focus without ever
-writing `ZDrive`. And **G27 is the only thing that notices the committee never
+writing `ZDrive`. And **L6.1 is the only thing that notices the committee never
 convened**, which is the state-check failure that matters most.
 
 **4 · Agents for exploration; verified procedures fixed in deterministic code.**
@@ -461,7 +461,7 @@ This is the repository's central split, and it is a table in the README rather
 than an aspiration: physical calculations, hardware limits, evidence and
 provenance, and hard gates are **deterministic code**; the LLM supplies
 qualitative judgment with no closed form and **originates no numerical value**
-and cannot override a failed gate. 22 gates, none of which need the
+and cannot override a failed gate. 28 gates, none of which need the
 instrument.
 
 **5 · Operation logs and reproducible evaluation for auditing.** Partly.
@@ -473,7 +473,7 @@ by decision* rather than by omission; 2,343 prior acquisitions are normalized
 into physical quantities. **What is missing is the live half**: the closed loop
 advances on a keypress and **no per-frame record of its decisions exists**, and
 the repository's own rule for item 5 says that record has to be written *before*
-the first loop closes, or lens 6's bias ledger (G23) is judging a session that
+the first loop closes, or lens 6's bias ledger (L6.2) is judging a session that
 no longer exists.
 
 **6 · A physical-safety assessment and misuse roadmap developed with partners
@@ -507,7 +507,7 @@ Active and dynamic samples are the hardest instance of it: *"the particles
 started moving differently"* has candidate causes spanning a real change in
 activity, focus drift, laser-power drift and a bug, and they are not separable
 from the images alone. The answer implemented here is not that the model will
-tell them apart — it is lens 6's bias ledger (G23) carrying every effect that
+tell them apart — it is lens 6's bias ledger (L6.2) carrying every effect that
 damages the specific quantity being measured, a **falsifier** on every stored
 prior, and a refusal when the ledger cannot be closed. The 2026-09-04 result is
 that mechanism working: a number was extracted, and the verdict was *report no
@@ -596,7 +596,7 @@ interface v71, `power_at_sample_mw` still needs a power meter, and no standard
 tells anyone that a temperature stage is sitting on the bench. **A standard makes
 an integration cheap; it does not document an undocumented protocol, and it does
 not perform a measurement.** It also moves only *how* a device is reached, never
-*whether the setting is a good idea* — the 22 gates sit above any transport and
+*whether the setting is a good idea* — the 28 gates sit above any transport and
 are unaffected either way.
 
 ---

@@ -126,7 +126,7 @@
 #                  (b) ~11.9x dimmer per pixel than the 4x the photometry was
 #                  measured at, and ~2x dimmer than the 40x WI, on the
 #                  extended-object epi scaling (NA/M)^2. (c) 156 um field
-#                  against 260 um. (d) G17 pins the working depth to
+#                  against 260 um. (d) L4.5 pins the working depth to
 #                  1.85/|dn| ~ 10 um, and at h ~ 5 um the Faxen wall-drag bias
 #                  on a 5 um bead is +39%.
 #   what it does
@@ -138,7 +138,7 @@
 #
 # The (d) consequence is the one to plan around, not argue with: calibrate the
 # trap IN SITU at the actual working height, where a power-spectrum corner
-# frequency gives kappa and the wall-corrected drag together. G14 requires that
+# frequency gives kappa and the wall-corrected drag together. L7.2–L7.4 requires that
 # calibration anyway.
 #
 # ── Detection, measured then scaled ─────────────────────────────────────
@@ -147,7 +147,7 @@
 # 50/1000, 33.33 ms, through FF01-595/31: peak 14,443.8 ADU above local
 # background, kb/calibrations/frame-photometry.yaml). Scaled to 100x by the
 # (NA/M)^2 factor of 11.891x it becomes ~1,215 ADU, and `detection.cli
-# from-frame` then says NO MODE WORKS at SNR 10 — because G8 caps the exposure
+# from-frame` then says NO MODE WORKS at SNR 10 — because L2.4 caps the exposure
 # by DUTY CYCLE (Savin-Doyle MSD bias, <= 30%), which at 100 fps is 3 ms, while
 # SNR 10 over a 4,647 px bead disc needs 137 ms.
 #

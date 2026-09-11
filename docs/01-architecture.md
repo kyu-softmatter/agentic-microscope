@@ -127,15 +127,15 @@ So the committee's job is to catch **order-of-magnitude** problems and to
 | "about 10%, probably fine" | ❌ Principle 1 — an unbounded guess |
 | "at most 11%, because the term is monotonic in a/h and h ≥ 10 µm" | ✅ a computation |
 | "there is no exact model, so BLOCKED" | ❌ over-refusal, when a bound exists |
-| "no exact model, and no bound either — say so" | ✅ honest (G17's position) |
+| "no exact model, and no bound either — say so" | ✅ honest (L4.5's position) |
 
 A bound must be **directional and stated as such**: name which way it errs and
 why it is the worst case. `evidence` still tracks whether its *inputs* were
 measured — a bound computed from nominal values is still `assumed`.
 
-Two consequences already in the code. `sample` G16c bounds near-wall drag with
+Two consequences already in the code. `sample` L4.4 bounds near-wall drag with
 the truncated Faxén factor, which overestimates the drag and therefore gives a
-genuine upper limit on the error. G17 stays the counter-example: mismatch has no
+genuine upper limit on the error. L4.5 stays the counter-example: mismatch has no
 bound available in this repository, so it reports the screening product and
 refuses to quantify — the difference between "bounded generously" and
 "unbounded" is the whole point.
@@ -239,17 +239,17 @@ FAIL is already a fix instruction.
 |---|---|---|---|---|
 | 1 | **Optics** | Filters, dichroics, mirrors, ND, objective, light path | Spectral integration → fully deterministic | `optics/` ✅ |
 | 2 | **Detection** | Exposure, binning, ROI, readout, gain, frame interval | Photon budget, SNR, sampling → deterministic | `detection/` ✅ |
-| 3 | **Compute resources** | Frame rate, buffer, storage, processing | Bandwidth and capacity arithmetic → deterministic | `compute/` ✅ (G12a–c, G13a–d) + `compute/drops.py` for the post-hoc half + `.claude/agents/compute-resources.md` for the interpretive half |
-| 4 | **Sample geometry & optics** | Objective choice, immersion, coverslip, focal depth | Refractive index, WD, aberration → semi-deterministic | `sample/` ✅ (G15–G19 less the vacant `G18`, removed 2026-09-10) + a **depth window** reporting all four depth bounds as one band + `.claude/agents/sample-optics.md` for the qualitative half |
+| 3 | **Compute resources** | Frame rate, buffer, storage, processing | Bandwidth and capacity arithmetic → deterministic | `compute/` ✅ (L3.1–L3.7) + `compute/drops.py` for the post-hoc half + `.claude/agents/compute-resources.md` for the interpretive half |
+| 4 | **Sample geometry & optics** | Objective choice, immersion, coverslip, focal depth | Refractive index, WD, aberration → semi-deterministic | `sample/` ✅ (L4.1–L4.7; `G18` was retired 2026-09-10 and is not translated) + **L4.7 depth window**, reporting all the depth bounds as one band + `.claude/agents/sample-optics.md` for the qualitative half |
 | 5 | **Photo-perturbation** — ⚠ **a REPORTING SECTION, not a judging lens** (2026-09-10) | Light level, illumination duty, total dose | Reports irradiance, dose, light-driving and trap heating. **No gates**: G10/G20 went 2026-09-09, G21/G22 on 2026-09-10, and it is out of `STANDING_LENSES` — it cannot block or bless | `photo/` ✅ (every check `INFO`) + `.claude/agents/photo-perturbation.md` |
-| 6 | **Measurement validity** | Whether all of the above yields the intended physical quantity without bias | Bias computation + qualitative | `validity/` ✅ (G23–G25, G27) + `.claude/agents/measurement-validity.md` for the qualitative half. **Computes nothing since 2026-09-11** — G11 and G26 removed, `LIMITS` empty |
+| 6 | **Measurement validity** | Whether all of the above yields the intended physical quantity without bias | Bias computation + qualitative | `validity/` ✅ (L6.1–L6.4) + `.claude/agents/measurement-validity.md` for the qualitative half. **Computes nothing since 2026-09-11** — G11 and G26 removed, `LIMITS` empty |
 
 ### Conditional (2)
 
 | # | Lens | Convened when | Basis of verdict | Implementation |
 |---|---|---|---|---|
 | 7 | **Optical tweezers** | Tweezers in use | Trap stiffness κ, U/kT, corner frequency f_c → computed | `trapping/` ✅ (no heating check — [06 D6](06-pitfalls.md)) |
-| 8 | **Mechanical & environmental** | Long experiments (>30 min) | Drift, vibration, evaporation, PFS lock | `stability/` ✅ (G29–G32; **G28 moved to the hardware execution stage 2026-09-10**) + `.claude/agents/mechanical-env.md` for the qualitative half. Vibration and stage repeatability remain ungated — no measurement channel exists |
+| 8 | **Mechanical & environmental** | Long experiments (>30 min) | Drift, vibration, evaporation, PFS lock | `stability/` ✅ (G29–L8.3; **G28 moved to the hardware execution stage 2026-09-10**) + `.claude/agents/mechanical-env.md` for the qualitative half. Vibration and stage repeatability remain ungated — no measurement channel exists |
 
 ### Why 4 and 5 are separate
 
@@ -267,11 +267,11 @@ This is the real reason for having a committee.
 | Trap stiffness vs sampling | 7 ↔ 2 | Power-spectrum calibration needs `f_s ≳ 10·f_c`. Raising laser power raises f_c, which raises the frame-rate requirement |
 | Light level vs light-driving | 1 ↔ 5 | The extra light needed for SNR drives active particles |
 | ROI vs statistics | 3 ↔ 6 | Shrinking the ROI for speed reduces the particle count in the field, weakening statistical power |
-| Requested vs achieved frame rate | 2 ↔ 3 | Every lens-3 number scales linearly with `f`, but lens 2 owns `f`. A requested rate is not an achieved one — [06 C4](06-pitfalls.md) measured a 3× gap with the camera *not* the bottleneck. Lens 3's G12b refuses to treat a requested rate as evidence |
+| Requested vs achieved frame rate | 2 ↔ 3 | Every lens-3 number scales linearly with `f`, but lens 2 owns `f`. A requested rate is not an achieved one — [06 C4](06-pitfalls.md) measured a 3× gap with the camera *not* the bottleneck. Lens 3's L3.2 refuses to treat a requested rate as evidence |
 | Pixel size | 2 ↔ 6 | Morphology wants Nyquist; tracking is optimal at σ_PSF ≈ pixel. **Opposite directions** |
 | Immersion vs depth | 4 ↔ 1 | Refractive-index mismatch grows spherical aberration in proportion to depth. In ATPS the two phases have different RI |
-| Chamber | 4 ↔ 8 | **`chamber_height_um` is asked once and used by both**, for different things: lens 8 for evaporation and whether settling particles reach the wall (G31), lens 4 for whether the requested focal plane still has sample in it (G16b). **Note what the chamber does *not* affect**: the spacer or gasket setting the height forms the walls and is not in the optical path, either orientation of stand, so it never enters the working-distance budget. The only glass in the path is the coverslip facing the objective, which G16 already carries |
-| Particle count | ~~4 → 6~~, 8 → 4 | ⚠ **THE 4 → 6 HALF IS GONE.** G19's `expected_count` fed `validity.setup.resolved_n_particles` → G11, so lens 4's choice of axial extent landed on lens 6's statistical power. G11 and that property were removed 2026-09-11, so **nothing carries a particle count between lenses now** and docs/01 §4's ROI-vs-statistics trade (3 ↔ 6) has no code. Lens 8 can still invert the sign qualitatively: with the focal plane near the chamber floor, settling (G31, now a report) brings particles *into* the observed volume instead of depleting it |
+| Chamber | 4 ↔ 8 | **`chamber_height_um` is asked once and used by both**, for different things: lens 8 for evaporation and whether settling particles reach the wall (L8.2), lens 4 for whether the requested focal plane still has sample in it (L4.3). **Note what the chamber does *not* affect**: the spacer or gasket setting the height forms the walls and is not in the optical path, either orientation of stand, so it never enters the working-distance budget. The only glass in the path is the coverslip facing the objective, which L4.2 already carries |
+| Particle count | ~~4 → 6~~, 8 → 4 | ⚠ **THE 4 → 6 HALF IS GONE.** L4.6's `expected_count` fed `validity.setup.resolved_n_particles` → G11, so lens 4's choice of axial extent landed on lens 6's statistical power. G11 and that property were removed 2026-09-11, so **nothing carries a particle count between lenses now** and docs/01 §4's ROI-vs-statistics trade (3 ↔ 6) has no code. Lens 8 can still invert the sign qualitatively: with the focal plane near the chamber floor, settling (L8.2, now a report) brings particles *into* the observed volume instead of depleting it |
 
 ---
 
@@ -287,7 +287,7 @@ experimentalist/
 │   ├── 01-architecture.md        (this file)
 │   ├── 02-knowledge-base.md      KB schema · three-way wiring cross-check · off-ledger settings
 │   ├── 03-cross-system-transfer.md   transferring settings between systems
-│   ├── 04-decision-engine.md     decision order · formulas · the 22 gates
+│   ├── 04-decision-engine.md     decision order · formulas · the 43 addressed checks
 │   ├── 05-consensus-gate.md      committee · difficulty grades · improvement proposals
 │   ├── 06-pitfalls.md            pitfall list grounded in measured evidence
 │   ├── 07-roadmap.md             Phase 0–5
@@ -311,18 +311,18 @@ experimentalist/
 │   ├── recommend.py              setting recommendation
 │   └── cli.py                    `python -m optics.cli check <config>`
 │
-├── detection\                    ← lens 2 (detection, G5–G9)
+├── detection\                    ← lens 2 (detection, L2.1–L2.5)
 │   ├── photometry.py             photon budget, SNR
 │   ├── timing.py                 frame timing, rolling shutter
 │   ├── checks.py  gate.py  setup.py  cli.py
 │
-├── compute\                      ← lens 3 (compute resources, G12a–c · G13a–d)
+├── compute\                      ← lens 3 (compute resources, L3.1–c · L3.4–d)
 │   ├── resources.py              data rate, buffer, capacity, container width, flush
 │   ├── mm_metadata.py            streaming ElapsedTime-ms reader (MM 1.4 + 2.0)
 │   ├── drops.py                  post-hoc frame-drop detection — the archive half
 │   ├── checks.py  gate.py  setup.py  cli.py
 │
-├── sample\                       ← lens 4 (sample geometry & optics, G15–G19)
+├── sample\                       ← lens 4 (sample geometry & optics, L4.1–L4.6)
 │   ├── aberration.py             RI mismatch, focal shift, WD budget, overlap
 │   ├── checks.py  gate.py  setup.py  cli.py
 │
@@ -330,17 +330,17 @@ experimentalist/
 │   ├── dose.py                   irradiance, bleaching, saturation, total dose
 │   ├── checks.py  gate.py  setup.py  cli.py
 │
-├── validity\                     ← lens 6 (measurement validity, G23–G25 · G27)
+├── validity\                     ← lens 6 (measurement validity, L6.2–L6.4 · L6.1)
 │   ├── power.py                  statistical power, the ROI/speed tradeoff
 │   ├── checks.py  gate.py  setup.py  cli.py
 │                                 reviews the other lenses' verdicts — call last
 │
-├── stability\                    ← lens 8 (mechanical & environmental, G29–G32)
+├── stability\                    ← lens 8 (mechanical & environmental, G29–L8.3)
 │   ├── drift.py                  drift, Stokes settling, evaporation
 │   ├── checks.py  gate.py  setup.py  cli.py
 │                                 conditional: acquisitions over 30 min
 │
-├── trapping\                     ← lens 7 (optical tweezers, G14)
+├── trapping\                     ← lens 7 (optical tweezers, L7.2–L7.4)
 │   ├── laser.py                  laser and beam
 │   ├── dynamics.py               trap stiffness, corner frequency
 │   ├── goa.py                    generalized optical approach

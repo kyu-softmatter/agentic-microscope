@@ -69,7 +69,7 @@ def test_only_the_40x_wi_has_a_correction_collar():
 
 
 def test_the_40x_wi_working_distance_is_the_conservative_end():
-    """The catalogue gives 0.2-0.16 mm, collar dependent. G16 is a hard gate,
+    """The catalogue gives 0.2-0.16 mm, collar dependent. L4.2 is a hard gate,
     so the registry records the shorter end -- budgeting against 200 um would
     pass configurations that fail in practice."""
     assert find_objective("40x-WI").wd_um == 160
@@ -101,7 +101,7 @@ def test_oil_and_water_objectives_disagree_straight_from_the_registry():
     )
     assert oil.metrics["geometry.ri_mismatch"]["ri_mismatch"] == pytest.approx(0.185)
     assert water.metrics["geometry.ri_mismatch"]["ri_mismatch"] == 0.0
-    # G17 stopped grading on 2026-09-10, so the disagreement shows in the
+    # L4.5 stopped grading on 2026-09-10, so the disagreement shows in the
     # CONVERSION rather than in a margin: oil needs one, water does not.
     assert oil.metrics["geometry.ri_mismatch"][
         "paraxial_focal_shift_ratio"

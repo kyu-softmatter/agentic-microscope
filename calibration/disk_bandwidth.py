@@ -1,6 +1,6 @@
 """Sustained sequential write bandwidth of an acquisition disk.
 
-Feeds the G12 hard gate (docs/04-decision-engine.md §9: camera data rate
+Feeds the L3.1–L3.3 hard gate (docs/04-decision-engine.md §9: camera data rate
 must stay under 0.7x measured disk bandwidth) and the "Disk sustained-write
 bandwidth" line item in docs/07-roadmap.md Phase 0. Point it at the actual
 folder Micro-Manager streams multi-page TIFFs into -- bandwidth to a

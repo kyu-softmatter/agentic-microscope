@@ -183,7 +183,7 @@ filters:
   # which recorded the effect without the reason.
   #
   # NO EXTRA GATE IS NEEDED for "LUN-F-XL with the multiband in". Modelled on
-  # the real path -- `excitation: ["MXR00724-EM", "MXR00724-DM"]` -- G1 returns
+  # the real path -- `excitation: ["MXR00724-EM", "MXR00724-DM"]` -- L1.1 returns
   # `excitation.none` at margin 0.00 and 0.0 % coupling, which is hard, so the
   # committee already refuses it.
   #

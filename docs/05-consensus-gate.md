@@ -35,32 +35,32 @@ it is hard to notice after the fact. The motion blur case in
 [04 §5](04-decision-engine.md) is the canonical example — MSD comes out as a
 straight line with the wrong slope.
 
-### Classification of gates G1–G14
+### Classification of gates L1.1–L7.2–L7.4
 
-G12 and G13 each cover several independent criteria, listed separately here
-because they differ in **kind** — the two bias rows under G12 are evidence
+L3.1–L3.3 and L3.4–L3.7 each cover several independent criteria, listed separately here
+because they differ in **kind** — the two bias rows under L3.1–L3.3 are evidence
 conditions on the same arithmetic the hard rows gate.
 
 | Gate | Kind | If it falls short |
 |---|---|---|
-| G1 Excitation coupling | hard | No signal |
-| G2 Emission collection | soft | Increase exposure (dose rises) |
-| G3 Excitation blocking | hard | Background swamps signal |
-| G4 Crosstalk | bias | Channel contamination without unmixing |
-| G5 Sampling | soft/bias | Morphology = soft, tracking = **bias** (localization bias) |
-| G6 Saturation | hard | Values clip → unrecoverable |
-| G7 SNR | soft | Merely noisy |
-| G8 Motion blur | **bias** | MSD underestimated. Correction formula exists |
-| G9 Frame-rate realizability | hard | Does not run as requested |
+| L1.1 Excitation coupling | hard | No signal |
+| L1.4 Emission collection | soft | Increase exposure (dose rises) |
+| L1.2 Excitation blocking | hard | Background swamps signal |
+| L1.6 Crosstalk | bias | Channel contamination without unmixing |
+| L2.1 Sampling | soft/bias | Morphology = soft, tracking = **bias** (localization bias) |
+| L2.2 Saturation | hard | Values clip → unrecoverable |
+| L2.3 SNR | soft | Merely noisy |
+| L2.4 Motion blur | **bias** | MSD underestimated. Correction formula exists |
+| L2.5 Frame-rate realizability | hard | Does not run as requested |
 | ~~G11 Statistical power~~ | — | **removed 2026-09-11**: it counted independent samples and the frames of one trapped bead are correlated. `soft` survives elsewhere (optics.collection, detection.sampling, detection.snr), so §2's level-3 tie-break still has work |
-| G12a Data rate | hard | **Silent frame drops** |
-| G12b Frame-rate provenance | bias | Every lens-3 number scales with a rate nobody observed |
-| G12c Pixel container | bias | Data rate off by 2× in the 8-bit mode, where it binds |
-| G13a Buffer | hard | **Silent frame drops** |
-| G13b Capacity | hard | Acquisition stops partway |
-| G13c Real-time CPU | hard | Falls behind, then drops |
-| G13d RAM capture | hard | Burst does not fit; MemoryError or a truncated run |
-| G14 Tweezers sampling | bias | κ calibration value is wrong |
+| L3.1 Data rate | hard | **Silent frame drops** |
+| L3.2 Frame-rate provenance | bias | Every lens-3 number scales with a rate nobody observed |
+| L3.3 Pixel container | bias | Data rate off by 2× in the 8-bit mode, where it binds |
+| L3.4 Buffer | hard | **Silent frame drops** |
+| L3.5 Capacity | hard | Acquisition stops partway |
+| L3.6 Real-time CPU | hard | Falls behind, then drops |
+| L3.7 RAM capture | hard | Burst does not fit; MemoryError or a truncated run |
+| L7.2–L7.4 Tweezers sampling | bias | κ calibration value is wrong |
 
 ---
 
@@ -92,12 +92,12 @@ has `m < 1`, stop regardless of the grade.
 ### Output format
 
 ```
-feasibility:  HARD  (m = 0.64, deciding gate: G7 SNR)
+feasibility:  HARD  (m = 0.64, deciding gate: L2.3 SNR)
 
   hard gates   all pass ✅
-  bias gates   G8 motion blur m=0.9 → correction mandatory (Savin-Doyle)
-  soft gates   G7 SNR m=0.64  ← bottleneck
-               G23 bias ledger       m=1.8
+  bias gates   L2.4 motion blur m=0.9 → correction mandatory (Savin-Doyle)
+  soft gates   L2.3 SNR m=0.64  ← bottleneck
+               L6.2 bias ledger       m=1.8
 
 This experiment is possible but hard.
 · Expected SNR 3.2 (target 5). Localization precision 16 nm (target 10 nm)
@@ -136,11 +136,11 @@ improvement candidates — computed gains
 
 tier 0 (free)
   200MHz 12bit → 100MHz 16bit        ×3.4   effective noise 4.65→1.35 e-
-                                            but check max fps (revisit G9)
+                                            but check max fps (revisit L2.5)
   2× light level                      ×1.4   √2 (shot-noise limited)
                                             ⚠ 2× bleaching dose (ungated since 2026-09-09)
   2x2 binning                         ×2.0   but effective pixel 110→220 nm
-                                            ⚠ G5 bias if tracking → not advised
+                                            ⚠ L2.1 bias if tracking → not advised
 
 tier 1 (parts or free)
   emission filter 692/40 → 685/70     ×1.4   collection 21% → 30%
@@ -220,7 +220,7 @@ class LensVerdict:
 
 - **Owns**: excitation filter, dichroic, emission filter, ND, polarizer,
   mirrors, light-path port, objective
-- **Gates**: G1 G2 G3 G4
+- **Gates**: L1.1 L1.4 L1.2 L1.6
 - **Specialty**: ablation analysis — actually remove each element from the
   product, recompute, and decide whether it can be dropped
 - **Implementation**: `optics/gate.py`
@@ -229,7 +229,7 @@ class LensVerdict:
 
 - **Owns**: exposure, binning, ROI, readout mode, gain, bit depth, frame
   interval, trigger
-- **Gates**: G5 G6 G7 G8 G9
+- **Gates**: L2.1 L2.2 L2.3 L2.4 L2.5
 - **Key questions**
   - Is the frame rate sufficient relative to the system's characteristic time
   - How far does the sample move during the exposure (motion blur)
@@ -250,8 +250,8 @@ class LensVerdict:
 
 - **Owns**: data rate, circular buffer, storage capacity, real-time processing,
   CPU/RAM
-- **Gates**: G12a (disk budget) G12b (frame-rate provenance) G12c (pixel
-  container) · G13a (buffer) G13b (capacity) G13c (real-time CPU) G13d
+- **Gates**: L3.1 (disk budget) L3.2 (frame-rate provenance) L3.3 (pixel
+  container) · L3.4 (buffer) L3.5 (capacity) L3.6 (real-time CPU) L3.7
   (RAM-capture capacity)
 - **Key questions**
   - Is `R = Σ_streams W·H·bytes·f` below 70% of sustained disk write bandwidth —
@@ -285,22 +285,22 @@ class LensVerdict:
 
 - **Owns**: objective choice, immersion, coverslip thickness, imaging depth,
   chamber
-- **Gates**: G15 (NA feasibility) G16 (working distance) **G16b (depth within
-  chamber)** **G16c (near-wall drag bound)** G17 (refractive-index mismatch)
-  G18 (coverslip thickness) G19 (count in field · overlap)
-- **G16c is the worked example of [01 §3 Principle 1b](01-architecture.md)** —
+- **Gates**: L4.1 (NA feasibility) L4.2 (working distance) **L4.3 (depth within
+  chamber)** **L4.4 (near-wall drag bound)** L4.5 (refractive-index mismatch)
+  G18 (coverslip thickness) L4.6 (count in field · overlap)
+- **L4.4 is the worked example of [01 §3 Principle 1b](01-architecture.md)** —
   bound the second-order term instead of demanding an exact model for it. The
   truncated Faxén factor `9a/(16h)` over-states the drag, so "D is low by at
   most this" is a computation, not a guess, and it reproduces `06 D8`'s
   tabulated penalties exactly. With the trap on, D8's in-situ power-spectrum
   calibration absorbs the bias and the bound is reported as INFO; untrapped,
   nothing absorbs it and it goes `bias`
-- **G16 and G16b are the two halves of "can this focal plane be reached"**:
-  G16 asks whether the objective can reach the depth, G16b whether the sample
+- **L4.2 and L4.3 are the two halves of "can this focal plane be reached"**:
+  L4.2 asks whether the objective can reach the depth, L4.3 whether the sample
   extends that far. Focus past the chamber's far wall and the image is of the
   wall — an empty focal plane looks exactly like a dim one, which is why this
   is worth a gate. Lens 8 holds `chamber_height_um` but spends it only on the
-  sedimentation flag (G31), so nothing compared it to the imaging depth before
+  sedimentation flag (L8.2), so nothing compared it to the imaging depth before
 - **Key questions**
   - Refractive-index matching: immersion / coverslip / medium / sample
   - Imaging depth × RI mismatch → spherical aberration, focal shift
@@ -314,11 +314,11 @@ class LensVerdict:
   - [ ] Is this an objective with a correction collar, and was it adjusted
   - [ ] Does the imaging depth exceed 10 µm (if so, aberration must be
         quantified)
-- **Specialty**: catches a physical impossibility nothing else does — G15 refuses
+- **Specialty**: catches a physical impossibility nothing else does — L4.1 refuses
   an objective used in the wrong immersion medium.
   `optics.components.Objective.collection_efficiency` clamps that case with
   `min(na/n, 1.0)` and returns a plausible collection efficiency instead
-- **⚠ G17 is a screening heuristic**, not wave optics. It gates on the
+- **⚠ L4.5 is a screening heuristic**, not wave optics. It gates on the
   `depth × |Δn|` product (limit 1.85 µm, anchored on this checklist's own 10 µm
   trigger at the oil-into-water mismatch of 0.185) and reports the paraxial
   focal-shift ratio. It decides whether a real aberration calculation is owed;
@@ -329,7 +329,7 @@ class LensVerdict:
   the lab mounts 170 µm, which matches every objective's design, so G18 passes
   at margin 10.0 and only the reading itself is missing
   ([`kb/expertise/coverslip-thickness-in-use.md`](../kb/expertise/coverslip-thickness-in-use.md)).
-  What holds an oil objective past ~10 µm depth is G17's mismatch, and what
+  What holds an oil objective past ~10 µm depth is L4.5's mismatch, and what
   holds the 40x WI is the unrecorded collar. Per-phase RI for ATPS still
   BLOCKs by design, and is asked at experiment time rather than pre-populated
   ([`kb/decisions/2026-08-19-lens-4-scope.md`](../kb/decisions/2026-08-19-lens-4-scope.md))
@@ -337,32 +337,32 @@ class LensVerdict:
   `.claude/agents/sample-optics.md` for the qualitative half (chamber, sample
   concentration judgement, multiple scattering)
 
-### ⚠ Neither G8 nor G9 owns the frame period (2026-09-09)
+### ⚠ Neither L2.4 nor L2.5 owns the frame period (2026-09-09)
 
 The frame period is an input to both and a decision belonging to neither, so
 `Acquisition` carries it explicitly with a provenance:
 
-| `fps_source` | set by | G9 | G8 |
+| `fps_source` | set by | L2.5 | L2.4 |
 |---|---|---|---|
 | `undecided` | neither field supplied | INFO — reports the realizable rate | **INFO — reports the duty at the camera's floor as an upper bound, ungraded** |
 | `requested` | `target_fps` | grades realizability (`hard`) | grades duty at that period, labelled requested |
 | `measured` | `achieved_fps` | grades against the observed rate | grades duty at the observed period |
 
 `measured` and `requested` are the same two tokens as lens 3's
-`compute.setup.FPS_SOURCES`, because **G12b is this same distinction seen from
+`compute.setup.FPS_SOURCES`, because **L3.2 is this same distinction seen from
 the data-rate side**; `undecided` is lens 2's addition, since lens 3 cannot
 compute a data rate without a rate at all.
 
 **Why the two do not merge.** They share `t_frame` and conflict over it, which
-makes it a cross-gate constraint rather than one gate. G9 asks a hardware
-question and is `hard`; G8 asks a measurement question and is `bias`. Merging
+makes it a cross-gate constraint rather than one gate. L2.5 asks a hardware
+question and is `hard`; L2.4 asks a measurement question and is `bias`. Merging
 them would force a single kind, and [05 §2](#2-three-kinds-of-gate)'s precedence
 runs on that kind — a merged gate would either stop a proposal over a
 correctable MSD bias or wave through a physically unreachable frame rate.
 
 **Why `undecided` reports instead of failing.** A gate that fails on a period
 nobody has chosen is failing a decision that has not been made. The rate is
-settled in synthesis, with lens 3's bandwidth arithmetic and lens 7's `G14`
+settled in synthesis, with lens 3's bandwidth arithmetic and lens 7's `L7.2–L7.4`
 sampling requirement in hand (KH, 2026-09-09) —
 [`kb/decisions/2026-09-09-frame-period-is-not-a-gate-input.md`](../kb/decisions/2026-09-09-frame-period-is-not-a-gate-input.md).
 
@@ -371,18 +371,18 @@ synthesis takes a `min` instead of re-deriving either:
 
 | number | from | meaning |
 |---|---|---|
-| `fps_hardware_max` | G9 | `1/t_frame` — the readout ceiling at this ROI |
+| `fps_hardware_max` | L2.5 | `1/t_frame` — the readout ceiling at this ROI |
 | `fps_at_duty_limit` | **both** | `0.3/t_exp` — the fastest rate this exposure keeps duty ≤ 30% at |
-| `fps_usable_max` | G9 | the `min` of the two, and which one binds |
-| `exposure_max_ms` | G8 | `0.3 × t_frame` — the longest exposure at the period in use |
-| `roi_height_min_px` | G8 | the smallest ROI whose readout is long enough for this exposure |
+| `fps_usable_max` | L2.5 | the `min` of the two, and which one binds |
+| `exposure_max_ms` | L2.4 | `0.3 × t_frame` — the longest exposure at the period in use |
+| `roi_height_min_px` | L2.4 | the smallest ROI whose readout is long enough for this exposure |
 
 ⚠ **`roi_height_min_px` exists because there is no minimum frame rate to give.**
 The period is `max(t_exp, t_readout)` and this camera has no interval control, so
 *slowing down means lengthening the exposure*, which drives duty toward 100 %
 rather than away from it. ROI height is the only lever that buys a longer period
 at a fixed exposure. A gate that answered "run slower" here would be wrong on
-this instrument, and G8's action text says so explicitly.
+this instrument, and L2.4's action text says so explicitly.
 
 ### Lens 5 · Photo-perturbation — implemented
 
@@ -448,8 +448,8 @@ this instrument, and G8's action text says so explicitly.
 
 - **Owns**: whether the result of all of the above yields the intended physical
   quantity without bias
-- **Gates**: G23 (bias ledger) G24 (pixel calibration) G25 (photometric
-  calibration) G27 (committee coverage)
+- **Gates**: L6.2 (bias ledger) L6.3 (pixel calibration) L6.4 (photometric
+  calibration) L6.1 (committee coverage)
 - **⚠ G11 and G26 left on 2026-09-11** and neither number is reused. **G11 was
   the only quantity this lens computed**, so the lens now computes nothing at
   all — every check reads another lens's verdict or a declaration, and `LIMITS`
@@ -478,7 +478,7 @@ this instrument, and G8's action text says so explicitly.
   does not require `feasibility` even though all eight now have it: `trapping`
   lacked the field until 2026-08-12, and the protocol should not start
   depending on it just because the asymmetry was fixed
-- **G23 is HARD, not BIAS.** The upstream gates are the bias gates; G23 is the
+- **L6.2 is HARD, not BIAS.** The upstream gates are the bias gates; L6.2 is the
   meta-check that they were all dealt with, so its failure means the intended
   quantity does not survive — a veto on this lens's whole purpose. Its margin
   is the worst *uncorrected* upstream bias **shortfall** — and **0.0 when an
@@ -486,7 +486,7 @@ this instrument, and G8's action text says so explicitly.
   origin lens declined to grade it rather than that it is small (2026-09-11;
   `unevaluated ≠ cleared`, §3). So the committee's worst
   unhandled problem stays visible rather than being averaged away
-- **G23 checks the declaration, it does not believe it.**
+- **L6.2 checks the declaration, it does not believe it.**
   `validity.setup.CORRECTIONS` names the biases a correction exists for
   (crosstalk → unmixing, motion blur → Savin–Doyle, photobleaching → decay
   correction, lateral drift → registration) and `UNCORRECTABLE` the ones it does
@@ -508,10 +508,10 @@ this instrument, and G8's action text says so explicitly.
   `metrics["validity.per_quantity"]` and each finding tagged with the quantity
   it belongs to. Out-of-scope biases are named rather than dropped — they still
   stand against the quantities they do damage
-- **G27 is currently the only thing that notices the committee never met.**
+- **L6.1 is currently the only thing that notices the committee never met.**
   There is no orchestrator: each lens is invoked by its own CLI, so a standing
   lens that never ran, or one that returned BLOCKED, would otherwise go
-  unremarked. A BLOCKED upstream lens fails G27 — validity cannot sit on top of
+  unremarked. A BLOCKED upstream lens fails L6.1 — validity cannot sit on top of
   a lens that had no basis to decide
 - **Which calibrations matter depends on the quantity.** A wrong pixel size
   ruins a diffusion coefficient and is irrelevant to a stoichiometry;
@@ -525,7 +525,7 @@ this instrument, and G8's action text says so explicitly.
 
 ### Lens 7 · Optical tweezers (conditional) — implemented; heating ungated by decision
 
-- **Gates**: G14
+- **Gates**: L7.2–L7.4
 - **Inputs**: particle radius, particle refractive index, medium refractive
   index, wavelength, NA, power at sample, viscosity, temperature, number of
   traps
@@ -550,7 +550,7 @@ this instrument, and G8's action text says so explicitly.
   the unbounded-medium Stokes drag, so a bead held near the coverslip carries an
   uncorrected bias (+12.7% for a 4 µm bead at h = 10 µm). The sanctioned route
   is in-situ power-spectrum calibration at the actual working height, which
-  returns κ and the wall-corrected γ together — and G14 requires that
+  returns κ and the wall-corrected γ together — and L7.2–L7.4 require that
   calibration regardless
 - **Scope**: water-based media only for now (user, 2026-08-19). A non-water
   medium needs its own measured viscosity passed explicitly
@@ -572,8 +572,8 @@ this instrument, and G8's action text says so explicitly.
 - **Owns**: drift (thermal, mechanical), PFS lock state, evaporation,
   sedimentation, vibration, stage repeatability — and **reports on two of
   them**
-- **Reports** (numbers kept, grading gone): G31 (settling velocity and the time
-  to equilibrium) G32 (evaporative concentration) plus `drift_budget` (the
+- **Reports** (numbers kept, grading gone): L8.2 (settling velocity and the time
+  to equilibrium) L8.3 (evaporative concentration) plus `drift_budget` (the
   drift rate the run could absorb) and `convening`
 - **⚠ THREE GATES LEFT THIS LENS ON 2026-09-10** and none of the numbers is
   reused: G28 (PFS lock), G29 (axial drift), G30 (lateral drift). G28 was
@@ -607,7 +607,7 @@ this instrument, and G8's action text says so explicitly.
   measurement**: it is a state check on metadata that already exists, and an
   unrecorded range flag is itself a failure, because the on state alone cannot
   tell a held focus from a wandered one (docs/06 D7)
-- **G31 reports a velocity and a clock.** Stokes settling follows from particle
+- **L8.2 reports a velocity and a clock.** Stokes settling follows from particle
   radius, density contrast and viscosity — sample properties, not instrument
   measurements — and 5 µm polystyrene in water moves **41 µm/min**, reaching the
   bottom of a 100 µm chamber in **2.4 min**. It stopped comparing that to the
@@ -617,10 +617,10 @@ this instrument, and G8's action text says so explicitly.
   100 mW** — `trapping.goa.trap_force`'s second return value, already computed
   beside the radial one — so **gravity is 0.34% of the axial force already
   acting**, 3.4% at 10 mW, and the two are equal only at 0.34 mW. This lens
-  also has no `trapped` field), and the free-settling case is **lens 4's G19**,
+  also has no `trapped` field), and the free-settling case is **lens 4's L4.6**,
   which assumes the settled state this now reports the arrival time of.
   Density-matching removes the term entirely
-- **⚠ Lens 8 contributes nothing to lens 6's bias ledger.** G23 collects
+- **⚠ Lens 8 contributes nothing to lens 6's bias ledger.** L6.2 collects
   `bias`-kind findings and lens 8 has none left. Its drift and evaporation
   notes live in `assumed_inputs`, and lens 6's single-quantity path does not
   read upstream `assumed_inputs` — only the multi-quantity aggregation unions
@@ -810,8 +810,8 @@ relaxes — **gradually, against the record, and never against confidence.**
 
 | Relaxes | Stays |
 |---|---|
-| **What counts as sufficient evidence for an input.** The ladder already exists: `BLOCKED` → a literature value that lets the gate compute but never advance ([`kb/literature/`](../kb/literature/)) → measured once → measured repeatedly with a known spread, at which point it becomes a default carrying its own tolerance | **A hard gate's threshold.** Trust does not raise the disk's write bandwidth. If G12a is exceeded the frames drop, on run 1 and on run 500 |
-| **Whether a gate is asked at all.** An input that has come back the same on N consecutive runs on this instrument can default instead of prompting | **The bias gates.** A bias gate fails by producing data that looks right, so a record of successful runs is precisely the evidence that cannot detect it. G8, G12b/c, G23–G25 do not loosen on accumulated success |
+| **What counts as sufficient evidence for an input.** The ladder already exists: `BLOCKED` → a literature value that lets the gate compute but never advance ([`kb/literature/`](../kb/literature/)) → measured once → measured repeatedly with a known spread, at which point it becomes a default carrying its own tolerance | **A hard gate's threshold.** Trust does not raise the disk's write bandwidth. If L3.1 is exceeded the frames drop, on run 1 and on run 500 |
+| **Whether a gate is asked at all.** An input that has come back the same on N consecutive runs on this instrument can default instead of prompting | **The bias gates.** A bias gate fails by producing data that looks right, so a record of successful runs is precisely the evidence that cannot detect it. L2.4, L3.2/c, L6.2–L6.4 do not loosen on accumulated success |
 | **The treatment of "never asked".** Sample photoresponsiveness warns on every run today; a system with a recorded answer should stop being asked | **Saying what was relaxed.** Every loosening is a dated [`kb/decisions/`](../kb/decisions/) entry naming the evidence that bought it, and is revertible — the falsifier field is what makes it revertible |
 
 The promotion target already exists: a value that graduates lands in

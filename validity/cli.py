@@ -17,7 +17,7 @@ has 6.3 correlated frames per relaxation time, so the gate was 3.5x optimistic
 about the measurement this instrument actually makes. The floor is still worth
 consulting, which is what this subcommand is for; it certifies nothing.
 ``corrections`` prints which biases have a correction, which do not, and which
-quantity each one damages -- the tables G23 checks a declaration against.
+quantity each one damages -- the tables L6.2 checks a declaration against.
 
 ``--quantity`` takes several names comma-separated, and then the verdict's unit
 is the physical quantity rather than the channel: a session can come out with a
@@ -185,7 +185,7 @@ def cmd_check(args: argparse.Namespace) -> int:
     if declared:
         print(
             f"\n  ! upstream verdicts for {', '.join(declared)} were DECLARED on "
-            "the command line,\n    not computed. G23's bias ledger has nothing "
+            "the command line,\n    not computed. L6.2's bias ledger has nothing "
             "to review because a declared\n    verdict carries no findings — so "
             "a PASS here does not mean the biases were\n    checked. Call "
             "validity.gate.evaluate with real Verdict objects for that."
@@ -235,7 +235,7 @@ def main(argv: list[str] | None = None) -> int:
     pw.add_argument("--target-error", type=float, default=None, help="e.g. 0.05 for 5%%")
     pw.set_defaults(func=cmd_power)
 
-    c = sub.add_parser("check", help="run the committee-lens gate (G11, G23-G27)")
+    c = sub.add_parser("check", help="run the committee-lens gate (G11, L6.2-L6.1)")
     c.add_argument(
         "--quantity",
         default=None,

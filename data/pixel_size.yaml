@@ -40,7 +40,7 @@
 # from a real 20.078x objective. Reading it that way makes the table internally
 # coherent: five objectives near nominal, one measurably off.
 #
-# CONSEQUENCE. G24 (lens 6, pixel calibration) takes `pixel_size_measured` as a
+# CONSEQUENCE. L6.3 (lens 6, pixel calibration) takes `pixel_size_measured` as a
 # claim the caller makes. Callers may now make it at ANY objective, where before
 # 2026-09-09 the honest answer was nowhere and then 100x only. Every
 # pixel-size-dependent quantity can now `advance` at every magnification.

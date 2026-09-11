@@ -16,7 +16,7 @@ dial and power-splitting across simultaneous traps.
     beam = ObjectiveBeam(na=1.33, wavelength_m=1064e-9)
 
     setup = TrapSetup(bead=bead, medium=medium, beam=beam, calibration=cal, dial_percent=50)
-    verdict = evaluate(setup)   # confinement, trap depth (U/kT), G14 sampling
+    verdict = evaluate(setup)   # L7.2 confinement, L7.3 depth (U/kT), L7.4 sampling
 
 Committee-gate schema (``Check`` / ``CheckResult`` / ``Verdict``) now mirrors
 ``optics.gate`` (docs/08 "The same structure is used for the other lenses").

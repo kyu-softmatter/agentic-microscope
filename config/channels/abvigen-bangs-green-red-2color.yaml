@@ -100,7 +100,7 @@
 # which grows with bead radius and so is at its worst for these 5 um beads.
 #
 # ⚠ CAMERA MODE IS UNSET. detection.setup must name which of the Kinetix22's
-# four modes this runs in; full well swings 75x across them, so G6 (saturation)
+# four modes this runs in; full well swings 75x across them, so L2.2 (saturation)
 # can pass in DynamicRange and clip in Speed at the identical light level. This
 # file is the optics half only.
 #

@@ -65,7 +65,7 @@ def corner_frequency_hz(stiffness_n_per_m: float, viscosity_pa_s: float, radius_
     coverslip proximity). This is the standard power-spectrum trap
     calibration relation (Berg-Sorensen & Flyvbjerg, Rev. Sci. Instrum. 75,
     594, 2004): a trapped bead's position power spectral density is a
-    Lorentzian with this corner frequency. G14 (docs/04-decision-engine.md
+    Lorentzian with this corner frequency. L7.2–L7.4 (docs/04-decision-engine.md
     Section 9) requires the camera's sampling rate f_s >= 10*f_c to resolve
     it without aliasing bias.
 
@@ -146,7 +146,7 @@ class TrapSetup:
     #: focus. Set this True only for a measurement of the sample.
     #: kb/expertise/microrheology-standard-conditions.md
     temperature_measured: bool = False
-    #: Achieved camera frame rate from lens 2 (detection), for the G14
+    #: Achieved camera frame rate from lens 2 (detection), for the L7.2–L7.4
     #: cross-check f_s >= 10*f_c. None if lens 2 hasn't run yet.
     detector_fps: float | None = None
     #: A stiffness MEASURED on this bench, N/m, which overrides the model

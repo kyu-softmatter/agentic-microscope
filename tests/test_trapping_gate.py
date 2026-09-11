@@ -75,7 +75,7 @@ def test_the_placeholder_now_blocks_instead_of_grading_fiction():
 
 def test_a_measured_stiffness_alone_unblocks_the_kappa_checks():
     """`stiffness` is satisfied by a measurement OR by a calibrated laser, so
-    a measured kappa gets confinement and G14c running even on the
+    a measured kappa gets confinement and L7.4 running even on the
     placeholder. `trap_depth` still cannot run -- U comes from the power."""
     v = evaluate(
         _setup(
@@ -227,7 +227,7 @@ def test_a_passing_check_still_reports_its_number():
     """`_ok` set severity "ok", which trapping/gate.py drops from findings --
     so on a configuration where everything passed, the only visible finding
     was the TIR notice. The numbers ARE this lens: stiffness, trap depth in
-    kT, corner frequency. Same correction as sample/ G16c and photo/ today.
+    kT, corner frequency. Same correction as sample/ L4.4 and photo/ today.
     """
     v = evaluate(_setup(detector_fps=520.0))
     codes = {f.code for f in v.findings}
@@ -290,7 +290,7 @@ def test_the_measured_stiffness_sits_inside_the_window():
 
 
 def test_no_ceiling_without_a_frame_rate_from_lens_2():
-    """G14 sets the ceiling, and G14 needs an achieved frame rate this lens
+    """L7.4 sets the ceiling, and it needs an achieved frame rate this lens
     does not own."""
     v = evaluate(_setup())
     m = v.metrics["trap.power_window"]
@@ -300,7 +300,7 @@ def test_no_ceiling_without_a_frame_rate_from_lens_2():
 
 
 def test_a_slow_camera_can_empty_the_window():
-    """At a low enough frame rate G14's ceiling drops below the trap-depth
+    """At a low enough frame rate L7.2–L7.4's ceiling drops below the trap-depth
     floor and no stiffness works -- the same shape as lens 4's empty depth
     window, and a case no single margin can express."""
     v = evaluate(_setup(detector_fps=1e-4))

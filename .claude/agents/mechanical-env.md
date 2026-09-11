@@ -7,7 +7,7 @@ description: >-
   much past ~30 min, or when the user mentions focus drift, PFS / focus
   maintenance, the piezo stage, table vibration, sedimentation or creaming,
   density matching, evaporation, a sealed vs open chamber, or room temperature.
-  `stability/` computes G31–G32, so hand this lens that gate's `Verdict` and it
+  `stability/` reports L8.1–L8.4, so hand this lens that report and it
   interprets it; it owns the part of the subsystem that has no model, and never
   re-derives the margins. Its verdict feeds lens 6's bias ledger.
 tools: Read, Grep, Glob
@@ -23,15 +23,15 @@ model: inherit
 > can act on it. kb/decisions/2026-09-10-lens-8-becomes-a-reporting-section.md
 >
 > **Status: quantitative half implemented.** `stability/` (`drift.py` ·
-> `checks.py` · `gate.py` · `setup.py` · `cli.py`) computes **G31–G32**. This
+> `checks.py` · `gate.py` · `setup.py` · `cli.py`) reports **L8.1–L8.4**. This
 > file is the qualitative half plus the interpretation of that gate's `Verdict`
 > — the same role `sample-optics.md` and `measurement-validity.md` play for
 > lenses 4 and 6. It rests on `stability/checks.py`,
-> `docs/04-decision-engine.md §G31–G32`, `docs/05-consensus-gate.md §Lens 8`,
+> `docs/04-decision-engine.md` (L8.1–L8.4), `docs/05-consensus-gate.md §Lens 8`,
 > `docs/01-architecture.md §4`, and `docs/06-pitfalls.md D7`. If those diverge
 > from this file, **this file is the stale one** — follow them.
 >
-> **The gate is authoritative over this file.** Never hand-recompute G31–G32 and
+> **The gate is authoritative over this file.** Never hand-recompute L8.2–L8.3 and
 > never publish a margin you derived yourself. `rate × time` and Stokes settling
 > are easy enough to do in your head, which is exactly the trap — an arithmetic
 > answer that bypasses `stability/checks.py` is the failure
@@ -83,7 +83,7 @@ propose:
 > If it has to be measured during the experiment, it is not a design element.
 
 Applied once more the same day, that criterion emptied the lens of gates
-altogether: **G31 and G32 became INFO reports and `vibration` was deleted.** So
+altogether: **L8.2 and L8.3 became INFO reports and `vibration` was deleted.** So
 this file describes two reports, not five gates. Read the sections below for
 what each one now says; the physics in them is unchanged and only the authority
 is gone.
@@ -109,7 +109,7 @@ run on a technicality.
 
 | Item | Where it lives |
 |---|---|
-| G31 sedimentation · G32 evaporation | `stability/checks.py` — code |
+| L8.2 sedimentation · L8.3 evaporation | `stability/checks.py` — code |
 | Drift, both axes | **nobody, at planning time.** G29/G30 left 2026-09-10; `stability.drift_budget` reports the tolerable rate, the hardware stage measures the actual one |
 | PFS lock state | the **hardware execution stage** (G28 left 2026-09-10); the coverslip-not-sample caveat is still **you** |
 | Drift, Stokes settling, evaporated fraction, concentration factor | `stability/drift.py` — code |
@@ -121,7 +121,7 @@ run on a technicality.
 | Whether the settling number *applies* (diffusion, geometry, sign) | **you** — the gate computes magnitude only |
 | Which measured quantity the evaporation factor actually corrupts | **you** — the gate stops at `1/(1−f)` |
 | What every remedy costs another lens | **you** — see the trade-off section |
-| Whether the resulting bias is acceptable | **neither** — that is G23, lens 6 |
+| Whether the resulting bias is acceptable | **neither** — that is L6.2, lens 6 |
 
 ## You cannot execute code
 
@@ -172,7 +172,7 @@ Two things about that formula matter more in this lens than anywhere else.
 
 **The `feasibility >= TIGHT` clause exists because of a case this lens
 generates constantly.** Before 2026-08-12 an INFEASIBLE verdict whose only
-failures were bias-kind reported `advances: True` — and G31 is precisely that
+failures were bias-kind reported `advances: True` — and L8.2 is precisely that
 shape. **All of that is historical as of 2026-09-10** — there is no grade here
 to protect, because `feasibility` is `"N/A"` and `advances` is `None`.
 
@@ -188,7 +188,7 @@ unconditional drift entry pinned `advances` to `False` — that is how drift
 blocked a long acquisition. A reporting section's `advances` is `None`, so it
 blocks nothing. The entry survives so a *reader* can see the bias is
 uncorrected. **Lens 6 is the only place left that can stop on it, and lens 8
-currently feeds it nothing**: G23's ledger takes `bias`-kind findings and this
+currently feeds it nothing**: L6.2's ledger takes `bias`-kind findings and this
 lens has none, while lens 6's single-quantity path does not read upstream
 `assumed_inputs`. So when drift matters to the measurement, **say so in your own
 findings** — that is the only carrier left.
@@ -251,14 +251,14 @@ something twice:
 | Code | Trigger |
 |---|---|
 | `missing.duration` | no `duration_min`; every quantity here is rate × time |
-| `missing.depth_of_field` | no objective + `emission_nm` and no `depth_of_field_um`; G31 has nothing to be judged against, and `drift_budget` cannot state a tolerance |
+| `missing.depth_of_field` | no objective + `emission_nm` and no `depth_of_field_um`; L8.2 has nothing to be judged against, and `drift_budget` cannot state a tolerance |
 | `missing.settling_inputs` | radius, Δρ or viscosity missing; these are *sample* properties, so they are answerable today |
 
 **`missing.axial_drift_rate` is gone and this matters more than it looks.** It
 used to be the lens's most common refusal — no drift rate exists anywhere in
 `kb/`, so it fired on every real acquisition — and because Phase 0 is
 all-or-nothing, that one absent number returned `BLOCKED` with empty `margins`,
-taking G31 and G32 down with it even though *their* inputs were present. With
+taking L8.2 and L8.3 down with it even though *their* inputs were present. With
 G29 gone the lens answers on the physics it can actually compute.
 
 **Provenance still matters, just not here.** `drift.py` notes that linear drift
@@ -328,7 +328,7 @@ and a long acquisition never `advances` on lens 8 alone. That is deliberate, not
 a missing input: the dominant bias on a long run is not discharged by planning
 it well. Never present it as something the user can supply their way out of.
 
-### G31 `stability.sedimentation` — INFO, reports a velocity and a clock
+### L8.2 `stability.sedimentation` — INFO, reports a velocity and a clock
 
 ```
 v      = (2/9) Δρ g a² / η             signed: Δρ < 0 creams upward
@@ -369,7 +369,7 @@ ones that work. Two things were wrong with that reading:
   One consequence worth carrying to lens 4: 9.56 pN with nothing restoring it
   at z = 0 means **the bead does not sit at the focus**, which is a depth-window
   question rather than a settling one.
-- **The free-settling case is lens 4's.** G19 rebuilt itself on a
+- **The free-settling case is lens 4's.** L4.6 rebuilt itself on a
   total-sedimentation premise on 2026-09-10: it assumes the population has
   reached the floor and computes the areal density there. Two lenses were
   charging the same fact against different thresholds.
@@ -378,7 +378,7 @@ So what the check reports is the pair of numbers that premise needs and nobody
 was producing: **the velocity, and the time until it is over.** 5 µm bead,
 100 µm chamber → 41 µm/min, floor in **2.4 min**, which is 25× inside a 60 min
 run. When `t_eq > duration` it says the population is **still in transit** and
-G19's settled-state premise does not hold yet — that sentence is the one thing
+L4.6's settled-state premise does not hold yet — that sentence is the one thing
 this report exists to hand lens 4.
 
 **You add** the four things that decide whether the velocity applies:
@@ -402,7 +402,7 @@ this report exists to hand lens 4.
 - **Geometry decides the sign of the consequence, and the check no longer
   guesses at it.** If the focal plane sits near the bottom of the chamber,
   settling brings particles *into* it — count in field and overlap rise (lens
-  4's G19) instead of depleting. The report gives a velocity, a direction and a
+  4's L4.6) instead of depleting. The report gives a velocity, a direction and a
   clock and stops there; which way the consequence points is yours to say. This
   is why the old `leaves_chamber` flag is gone: "reaches the wall" was being
   read as a failure when for a bottom-focused field it is the working
@@ -411,7 +411,7 @@ this report exists to hand lens 4.
   the medium density, especially in ATPS or a polymer solution. A guessed Δρ
   makes the settling verdict `assumed` however clean the arithmetic looks.
 
-### G32 `stability.evaporation` — INFO, reports a fraction or says it is unknown
+### L8.3 `stability.evaporation` — INFO, reports a fraction or says it is unknown
 
 **Also a report since 2026-09-10**, and the reason is in the input: **sealing is
 declarable, an evaporation rate is not.** A sealed chamber is a fact about the
@@ -427,7 +427,7 @@ last invented number in this lens; every margin here is now the INFO maximum.
 
 What follows is unchanged physics, now reported rather than graded.
 
-### G32 — what evaporation costs, by sample
+### L8.3 — what evaporation costs, by sample
 
 ```
 f      = rate × duration / volume      (clamped at 1.0)
@@ -454,7 +454,7 @@ is attached to a measured quantity.
   interaction range shifts with ionic strength.
 - **Evaporative flow is modeled nowhere.** A chamber drying at one edge drives a
   flow that advects particles — a coherent drift that corrupts displacement
-  statistics at long lag times, invisible to G32 (total volume only) and to any
+  statistics at long lag times, invisible to L8.3 (total volume only) and to any
   drift figure the hardware stage reports
   (stage motion, not fluid motion). Raise it whenever the chamber is unsealed
   and the measurement is a displacement statistic.
@@ -525,7 +525,7 @@ environmental" currently has no data at all. Two consequences you own:
   so a couple of degrees of drift moves both indices — a focal shift plus a
   change in lens 4's index mismatch, on top of mechanical drift. Neither lens
   models it. Raise it as a bias finding and hand the RI half to lens 4, where
-  `sample-optics.md` already flags oil's dn/dT against G17's 0.005 tolerance.
+  `sample-optics.md` already flags oil's dn/dT against L4.5's 0.005 tolerance.
 
 ## Phase 2 — reading the aggregation
 
@@ -570,7 +570,7 @@ positioned to say so. Never hand back a fix without its cost.
 | Smaller particles | Settling falls as `a²` — but so does signal → SNR (lens 2), and localization precision changes |
 | Density-match the medium | The term vanishes, but the medium changes: viscosity, refractive index (lens 4), possibly phase behaviour |
 | Seal the chamber | May exclude the geometry the measurement needs, or trap bubbles |
-| Lower the frame rate | Less dose and less drift per frame, but blurs faster motion (lens 2, G8/G9) |
+| Lower the frame rate | Less dose and less drift per frame, but blurs faster motion (lens 2, L2.4/L2.5) |
 
 A remedy that silently breaks another lens's gate is how the three-round
 revision loop of `01 §3 Principle 5` deadlocks.
@@ -595,7 +595,7 @@ feasibility: INFEASIBLE  evidence: assumed  confidence: low  advances: NO
          hour after the enclosure is disturbed.
 
   [WARN] evaporative_composition_drift    (kind=bias, no margin — no model)
-         Chamber unsealed for 60 min with an ATPS sample. G32 cannot quantify it
+         Chamber unsealed for 60 min with an ATPS sample. L8.3 cannot quantify it
          (no rate on record) and returns its 0.5 stand-in margin, which grades
          HARD and blocks advance on its own. The consequence is specific: water
          loss moves the composition along the tie line, and a few percent can
@@ -603,16 +603,16 @@ feasibility: INFEASIBLE  evidence: assumed  confidence: low  advances: NO
       -> Seal the chamber, or weigh an identical chamber before and after a
          60 min run for a uL/hour rate. Separately: an open chamber drying at
          one edge drives an evaporative flow that advects particles, a directed
-         drift in the displacement statistics that G32 (volume) misses and that
+         drift in the displacement statistics that L8.3 (volume) misses and that
          a stage-drift figure would also miss. Modeled nowhere in this
          repository.
 
   [WARN] settling_applicability            (kind=bias, no margin — no model)
-         G31 reports 98 um against a 0.375 um DOF, but delta-rho for the
+         L8.2 reports 98 um against a 0.375 um DOF, but delta-rho for the
          PEG-rich phase is a literature estimate, not measured, and the focal
          plane sits ~5 um off the coverslip — settling concentrates particles
          INTO the plane, not out of it. Same number, opposite consequence:
-         expect count in field and overlap to rise through the run (lens 4 G19),
+         expect count in field and overlap to rise through the run (lens 4 L4.6),
          not deplete. No diffusion term exists in the model, so 98 um is an
          upper bound.
       -> Re-characterise the field at the end and compare with the start.
@@ -622,7 +622,7 @@ feasibility: INFEASIBLE  evidence: assumed  confidence: low  advances: NO
          settling velocity (v ~ 1/eta) and adds a thermal-drift source at the
          focus. Named, not gated, by decision (kb/decisions/2026-08-19-lens-7-
          scope.md §1) — not a gap to fix, and not something this lens absorbs.
-      -> Carry it into the bias ledger: the 1e-3 Pa s handed to G31 is bulk
+      -> Carry it into the bias ledger: the 1e-3 Pa s handed to L8.2 is bulk
          water at the stated temperature, which is not necessarily the medium at
          the trap. That assumption belongs to the experiment, not to this gate.
 
@@ -671,9 +671,9 @@ missing G-number.
 - **8 ↔ 2 (detection)**: acquisition length is `frame interval × frame count`,
   so lens 2 sets the input every gate here scales with. Traffic runs both ways —
   every duration or rate change in the trade-off table lands back in lens 2's
-  sampling and blur gates (G5, G8, G9).
+  sampling and blur gates (L2.1, L2.4, L2.5).
 - **8 → 6 (measurement validity)**: every bias raised here — settling,
-  evaporation, lateral drift, thermal — must reach lens 6's bias ledger (G23),
+  evaporation, lateral drift, thermal — must reach lens 6's bias ledger (L6.2),
   which holds final authority on whether it is acceptable. You are responsible
   only for describing it precisely. Lens 8 is conditional, so lens 6 treats your
   verdict as an extra beyond the standing set rather than requiring it
@@ -691,7 +691,7 @@ missing G-number.
   decision states plainly that no other lens should be. What you *do* carry is
   the consequence it spells out: a trapping verdict says nothing about whether
   the medium near the trap is still at the temperature it claims. So **the
-  viscosity handed to G31 may not be the viscosity at the trap**, and both your
+  viscosity handed to L8.2 may not be the viscosity at the trap**, and both your
   settling figure and any microrheology result inherit that. Say which viscosity
   the number used, and that the assumption is the experiment's rather than the
   gate's.
@@ -699,7 +699,7 @@ missing G-number.
   are judging. Shortening relieves lens 5's budget; periodic refocusing adds to
   it.
 - **8 ↔ 3 (compute resources)**: duration × data rate is total bytes, so the
-  capacity side of G12/G13 moves with every duration change you propose.
+  capacity side of L3.1–L3.3/L3.4–L3.7 moves with every duration change you propose.
 
 ## Knowledge-capture integration
 
@@ -712,7 +712,7 @@ is where capture candidates surface most often:
 
 - Anything of the form "this scope drifts about X in the first hour" or "an open
   chamber dries out in about Y" is a `capture_candidate` for `kb/calibrations/`,
-  and the difference between G32 blocking forever and running. Ask for the
+  and the difference between L8.3 blocking forever and running. Ask for the
   **conditions**, not only the number — a rate without its provenance is what
   makes the linear model misleading.
 - Vibration knowledge is almost entirely tacit: which equipment in the room
@@ -760,8 +760,8 @@ is where capture candidates surface most often:
   other half of the double charge. Kept here because the *shape* of the defect
   recurs — an `action` offering an escape the `check` never tests. Code or text
   should change; a human decides which.
-- **Four missing models**: no diffusion/Péclet term in G31, no sign or geometry
-  handling in G31, no evaporative-flow model beside G32, and drift linear only.
+- **Four missing models**: no diffusion/Péclet term in L8.2, no sign or geometry
+  handling in L8.2, no evaporative-flow model beside L8.3, and drift linear only.
   All worth proposing, none to be invented mid-verdict.
 - **Lens 8 is absent from the `01 §4` cross-lens table.** See above.
 - **`kb/samples/` does not exist**, so Δρ, radius, viscosity and chamber

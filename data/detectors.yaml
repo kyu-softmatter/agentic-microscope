@@ -279,7 +279,7 @@ detectors:
         cooling_c: 0
         line_time_us: 0.625
         frame_rate_fps_full_frame: {pcie: 664, usb: 142}
-        note: "Fastest (664 fps full frame on PCIe) but the ~200 e- full well leaves ~140 e- usable under the 0.7 rule — G6 will clip on anything bright."
+        note: "Fastest (664 fps full frame on PCIe) but the ~200 e- full well leaves ~140 e- usable under the 0.7 rule — L2.2 will clip on anything bright."
       Sensitivity:
         bit_depth: 12
         read_noise_e: 1.2
@@ -335,7 +335,7 @@ detectors:
     #     <= 16 rows   6-650% optimistic (worst: Speed at 2 rows, 800k vs 107k)
     #                                                 -> DO NOT use; the camera
     #                                                    caps near 107 kfps
-    # G9 has no such envelope today and will happily report 800 kfps for a
+    # L2.5 has no such envelope today and will happily report 800 kfps for a
     # 2-row ROI. Microrheology ROIs (~100-400 rows) sit safely inside the good
     # region.
     readout_model_validity:

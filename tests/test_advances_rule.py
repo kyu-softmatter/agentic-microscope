@@ -181,7 +181,7 @@ def test_the_two_reporting_sections_got_there_differently():
     empty for every proprietary bead colourant this instrument images -- a
     missing-input problem. Lens 8 stopped judging because its inputs arrive
     DURING the run (drift, PFS state, an evaporation rate) or belong to another
-    lens (free settling, to lens 4's G19) -- a timing and ownership problem.
+    lens (free settling, to lens 4's L4.6) -- a timing and ownership problem.
     A lens whose numbers merely happen to be absent is not a reporting section;
     it is BLOCKED, which is a different and recoverable state.
     """

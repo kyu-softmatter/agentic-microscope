@@ -38,7 +38,7 @@ rework the light path should happen once.
 
 **(2) The difficulty grade cannot be produced.**
 The `ROUTINE`/`TIGHT`/`HARD` grades of [05 §3](05-consensus-gate.md) require
-**the margin of every gate**. Return at G1 and the margins of G2–G4 are unknown.
+**the margin of every gate**. Return at L1.1 and the margins of L1.4–L1.6 are unknown.
 "How hard is this experiment" cannot be answered.
 
 **(3) Improvement proposals cannot be produced.**

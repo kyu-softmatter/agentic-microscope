@@ -8,7 +8,7 @@
 displacement -- the same sweep GOA_ab.m plots, but as a table, and with the
 laser dial and trap-splitting the MATLAB script does not model. ``check``
 runs the committee-lens gate (trapping.gate.evaluate): confinement, trap
-depth (U/kT), and G14 sampling (corner frequency).
+depth (U/kT), and L7.2–L7.4 sampling (corner frequency).
 """
 
 from __future__ import annotations
@@ -187,12 +187,12 @@ def main(argv: list[str] | None = None) -> int:
     f.add_argument("--n-points", type=int, default=15, help="number of displacement steps")
     f.set_defaults(func=cmd_force_curve)
 
-    c = sub.add_parser("check", help="run the committee-lens gate (confinement, U/kT, G14 sampling)")
+    c = sub.add_parser("check", help="run the committee-lens gate (confinement, U/kT, L7.2–L7.4 sampling)")
     c.add_argument("--dial", type=float, default=100.0, help="laser dial setting, 0-100%%")
     c.add_argument(
         "--measured-kappa-pn-per-um", type=float, default=None,
         help="a stiffness MEASURED on this bench, pN/um. Overrides the model "
-        "for G14a and G14c, which are the two checks that use kappa directly",
+        "for L7.2 and L7.4, which are the two checks that use kappa directly",
     )
     c.add_argument(
         "--measured-kappa-dial", type=float, default=None,
@@ -239,7 +239,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     c.add_argument(
         "--detector-fps", type=float, default=None,
-        help="achieved camera frame rate from lens 2, to gate G14 sampling directly",
+        help="achieved camera frame rate from lens 2, to gate L7.2–L7.4 sampling directly",
     )
     c.set_defaults(func=cmd_check)
 

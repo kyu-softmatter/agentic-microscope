@@ -82,7 +82,7 @@ class Verdict:
         A judging lens advances or refuses to. This section does neither: it
         cannot block a proposal and it cannot bless one, so answering ``False``
         would read as a refusal and answering ``True`` would claim an
-        endorsement it has no gate to base on. Lens 6's G27 no longer looks for
+        endorsement it has no gate to base on. Lens 6's L6.1 no longer looks for
         this section at all -- it left ``STANDING_LENSES`` on 2026-09-10.
         """
         return None

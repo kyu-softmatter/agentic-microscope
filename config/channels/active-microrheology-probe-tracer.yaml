@@ -16,7 +16,7 @@
 #   1. Photon efficiency. At 1.5 ms on a 0.5 um tracer we are photon-starved,
 #      and the CSU disk's pinhole array throws away most of the emission.
 #   2. Free choice of exposure. A spinning disk quantizes exposure to the disk
-#      scan period; G8 needs exposure set to 22-30% duty, not to a disk
+#      scan period; L2.4 needs exposure set to 22-30% duty, not to a disk
 #      multiple. (Disk speed / arm count are not in the KB, so that multiple
 #      cannot even be computed today.)
 #   3. The cube in this path is characterized. MXR00724-EX/DM/EM are all
@@ -58,7 +58,7 @@
 # ⚠ AND THE MODE NOW MATTERS MORE THAN THE EXPOSURE. This channel runs 1.5 ms on
 # a 0.5 um tracer, i.e. photon-starved, which argues for Sensitivity (12-bit,
 # 1.2 e- read noise). But Sensitivity's full well is only 1,000 e- -- 700 e-
-# usable under G6's 0.7 rule -- and the 5 um probe in the other arm is ~1000x
+# usable under L2.2's 0.7 rule -- and the 5 um probe in the other arm is ~1000x
 # brighter than a tracer. Dynamic Range (16-bit) gives 15,000 e-, 15x the
 # headroom, for 111 vs 118 fps: essentially free here. The two arms may need
 # different modes, which the single-camera DetectionSetup cannot yet express.

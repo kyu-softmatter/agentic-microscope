@@ -5,13 +5,13 @@
     python -m sample.cli check --objective 100x-Oil --imaging-depth-um 15
     python -m sample.cli check --objective 40x-WI   --imaging-depth-um 15
 
-    # "what if this water objective were used dry" -- G15 refuses
+    # "what if this water objective were used dry" -- L4.1 refuses
     python -m sample.cli check --objective 40x-WI --immersion air \\
         --imaging-depth-um 10
 
 ``check`` runs the committee-lens gate (sample.gate.evaluate): NA
-feasibility (G15), working distance (G16), refractive-index mismatch (G17),
-coverslip thickness (G18), count in field (G19), plus G16b (is there
+feasibility (L4.1), working distance (L4.2), refractive-index mismatch (L4.5),
+coverslip thickness (G18), count in field (L4.6), plus L4.3 (is there
 sample at the requested depth) when --chamber-height-um is given.
 
 ``--objective`` reads NA, immersion, working distance, design coverslip and
@@ -159,7 +159,7 @@ def main(argv: list[str] | None = None) -> int:
         func=cmd_list
     )
 
-    c = sub.add_parser("check", help="run the committee-lens gate (G15-G19, G16b)")
+    c = sub.add_parser("check", help="run the committee-lens gate (L4.1-L4.6, L4.3)")
     c.add_argument(
         "--objective", default=None,
         help="key from data/objectives.yaml, e.g. 100x-Oil or 40x-WI (see `list`). "
@@ -184,7 +184,7 @@ def main(argv: list[str] | None = None) -> int:
         "--chamber-height-um",
         type=float,
         default=None,
-        help="how far the sample extends past the coverslip (G16b). Omitted, "
+        help="how far the sample extends past the coverslip (L4.3). Omitted, "
         "the depth-within-chamber check is skipped",
     )
     c.add_argument(
@@ -204,21 +204,21 @@ def main(argv: list[str] | None = None) -> int:
         "--unspaced-mount",
         action="store_true",
         help="no spacer or gasket -- the coverslip sits directly against the "
-        "sample, so the thickness is uncontrolled (G16b says so rather than "
+        "sample, so the thickness is uncontrolled (L4.3 says so rather than "
         "skipping quietly)",
     )
     c.add_argument(
         "--particle-radius-um",
         type=float,
         default=None,
-        help="bead radius, for G16c's near-wall drag bound. Owned by lenses 7/8; "
+        help="bead radius, for L4.4's near-wall drag bound. Owned by lenses 7/8; "
         "consumed here only for that bound",
     )
     c.add_argument(
         "--trapped",
         action="store_true",
         help="the optical trap is holding the particle, so D8's in-situ "
-        "power-spectrum calibration absorbs the wall drag (G16c reports it as "
+        "power-spectrum calibration absorbs the wall drag (L4.4 reports it as "
         "INFO rather than a bias)",
     )
     c.add_argument("--multiphase", action="store_true", help="ATPS or other multi-phase sample")

@@ -74,7 +74,7 @@ def test_total_capacity_scales_linearly_with_duration():
 )
 def test_container_width_by_bit_depth(bit_depth, expected):
     """Kinetix Speed mode is 8-bit (data/detectors.yaml) -- one byte, not
-    two, which halves the data rate in the one mode fast enough for G12a to
+    two, which halves the data rate in the one mode fast enough for L3.1 to
     bind."""
     assert bytes_per_pixel_for_bit_depth(bit_depth) == expected
 
@@ -120,7 +120,7 @@ def test_frames_per_s_counts_every_stream():
 
 
 def test_mean_frame_bytes_reconstructs_the_data_rate():
-    """The weighting is what keeps G13a right when the streams differ in
+    """The weighting is what keeps L3.4 right when the streams differ in
     size -- mean_frame_bytes * frames_per_s must be the total rate."""
     setup = AcquisitionResourceSetup(
         streams=[Stream("red", 2400, 2400, 200.0), Stream("blue", 512, 512, 50.0)]

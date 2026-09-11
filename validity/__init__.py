@@ -12,8 +12,8 @@ docs/05-consensus-gate.md "Lens 6"; docs/06-pitfalls.md A1, C1.
         pixel_size_measured=True,
     ))
 
-Gates: G23 bias ledger, G24 pixel calibration, G25 photometric calibration,
-G27 committee coverage.
+Gates: L6.2 bias ledger, L6.3 pixel calibration, L6.4 photometric calibration,
+L6.1 committee coverage.
 
 **G11 AND G26 LEFT ON 2026-09-11 (KH) and neither number is reused.** G11 was
 the only quantity this lens computed, and `1/sqrt(N_p x N_f)` counts
@@ -50,7 +50,7 @@ Two consequences worth knowing:
   ``Verdict``/``Finding`` and ``trapping``'s has no ``feasibility`` field.
   That duplication is a known gap; structural typing is what lets this lens
   review all six without any lens importing another's types.
-- G27 is currently the only place anything notices that the committee never
+- L6.1 is currently the only place anything notices that the committee never
   convened. There is no orchestrator in the codebase -- each lens is invoked
   by its own CLI -- so a standing lens that never ran, or one that returned
   BLOCKED, would otherwise go unremarked.

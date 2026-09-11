@@ -520,7 +520,7 @@ def recorded_pixel_um(
     ``"nominal"`` and reproduce
     :func:`detection.photometry.effective_pixel_nm` exactly, so a caller that
     treats a ``nominal`` hit as a measurement has invented provenance rather
-    than found it (``data/pixel_size.yaml`` header, and lens 6's G23-G27).
+    than found it (``data/pixel_size.yaml`` header, and lens 6's L6.2-L6.1).
     """
     table = pixel_size_table().get("table") or {}
     row = table.get(str(int(mag_objective))) if float(mag_objective).is_integer() else None

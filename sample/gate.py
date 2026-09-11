@@ -124,8 +124,8 @@ def _missing_inputs(setup: SampleSetup) -> list[Finding]:
             Finding(
                 "fail",
                 "missing.imaging_depth",
-                "No imaging depth on record. Working-distance headroom (G16) "
-                "and depth-dependent aberration (G17) are both undefined "
+                "No imaging depth on record. Working-distance headroom (L4.2) "
+                "and depth-dependent aberration (L4.5) are both undefined "
                 "without it.",
                 action="Supply imaging_depth_um -- how far past the coverslip "
                 "the focal plane must reach.",
@@ -138,7 +138,7 @@ def _missing_inputs(setup: SampleSetup) -> list[Finding]:
                 "fail",
                 "missing.working_distance",
                 f"No working distance on record for "
-                f"'{setup.objective.label}'. G16 cannot be judged against a "
+                f"'{setup.objective.label}'. L4.2 cannot be judged against a "
                 "guess.",
                 action="Add wd_um to the objective entry. "
                 "kb/systems/current.md > objectives has the catalogue values "
@@ -152,7 +152,7 @@ def _missing_inputs(setup: SampleSetup) -> list[Finding]:
                 "fail",
                 "missing.na",
                 f"Objective '{setup.objective.label}' has no NA. Neither NA "
-                "feasibility (G15) nor resolution is computable.",
+                "feasibility (L4.1) nor resolution is computable.",
                 action="Add the engraved NA to the objective entry.",
             )
         )
@@ -182,7 +182,7 @@ def _assumed_inputs(setup: SampleSetup) -> list[str]:
         out.append(f"NA of '{setup.objective.label}' (not marked verified)")
     if setup.objective.correction_collar and not setup.collar_adjusted:
         # G18 used to grade this. It was removed 2026-09-10 because the
-        # coverslip is already budgeted by G16, but the collar is not a
+        # coverslip is already budgeted by L4.2, but the collar is not a
         # coverslip fact -- it is a knob whose setting nothing else records,
         # and the 40x WI is the only objective on the nosepiece that has one.
         # So the condition moves to the evidence axis rather than vanishing:

@@ -455,7 +455,7 @@ Once these accumulate, gate thresholds can be tuned empirically.
       here ("absent from the datasheet itself, needs its own measurement") is
       retired. What is still missing is only the **choice**, and it is not a
       detail: full well runs 200 / 1000 / 1000 / 15000 e- across the modes, so
-      G6 can pass in one mode and clip in another at the identical light level.
+      L2.2 can pass in one mode and clip in another at the identical light level.
       The one measured data point, `kb/calibrations/camera-readout.yaml`, was
       taken in Sensitivity — identified from its row time, not from a setting
       anyone recorded.

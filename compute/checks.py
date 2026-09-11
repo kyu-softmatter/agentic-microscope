@@ -1,4 +1,4 @@
-"""Individual compute-resource checks -- G12 (data rate) and G13 (buffer /
+"""Individual compute-resource checks -- L3.1–L3.3 (data rate) and L3.4–L3.7 (buffer /
 capacity / real-time CPU / RAM capture). docs/04-decision-engine.md §8;
 docs/05-consensus-gate.md §5.
 
@@ -8,13 +8,13 @@ docstring.
 
 Sub-check numbering, as used in the messages below:
 
-    G12a  data_rate       R < 0.7 x measured disk bandwidth
-    G12b  fps_provenance  the f in R is an achieved rate, not a requested one
-    G12c  pixel_container the bytes/pixel in R is the one MM actually writes
-    G13a  buffer          circular buffer holds >= 5 s
-    G13b  capacity        total volume fits in free disk
-    G13c  realtime_cpu    per-frame processing < 1/f
-    G13d  ram_capacity    RAM-capture path: whole burst fits in the RAM budget
+    L3.1  data_rate       R < 0.7 x measured disk bandwidth
+    L3.2  fps_provenance  the f in R is an achieved rate, not a requested one
+    L3.3  pixel_container the bytes/pixel in R is the one MM actually writes
+    L3.4  buffer          circular buffer holds >= 5 s
+    L3.5  capacity        total volume fits in free disk
+    L3.6  realtime_cpu    per-frame processing < 1/f
+    L3.7  ram_capacity    RAM-capture path: whole burst fits in the RAM budget
 """
 
 from __future__ import annotations
@@ -41,12 +41,12 @@ INFO = "info"
 MAX_MARGIN = 10.0
 
 LIMITS = {
-    #: G12a: never plan to sustain more than 70% of measured disk bandwidth.
+    #: L3.1: never plan to sustain more than 70% of measured disk bandwidth.
     "disk_bandwidth_fraction": 0.7,
-    #: G13a: buffer must absorb at least this many seconds of transient
+    #: L3.4: buffer must absorb at least this many seconds of transient
     #: disk latency before frames start dropping.
     "buffer_seconds_min": 5.0,
-    #: G13d: RAM the capture path may claim, in MB. The machine has 255.65 GB
+    #: L3.7: RAM the capture path may claim, in MB. The machine has 255.65 GB
     #: total (kb/decisions/2026-08-12-ram-buffer-detour-for-disk-bandwidth.md)
     #: but how much of it the OS, MM, and the DMD/piezo/tweezers control
     #: processes actually hold during an acquisition has **still** never been
@@ -126,11 +126,11 @@ def available_facts(setup: "AcquisitionResourceSetup") -> set[str]:
 
 
 def check_data_rate(setup: "AcquisitionResourceSetup") -> CheckResult:
-    """G12a: R < 0.7 * measured disk bandwidth. Exceeding it is a silent
+    """L3.1 (was G12a): R < 0.7 * measured disk bandwidth. Exceeding it is a silent
     frame drop, not an error (docs/06-pitfalls.md §C5).
 
     On the RAM-capture path nothing is written while the camera runs, so
-    this stops being a gate and G13d takes over.
+    this stops being a gate and L3.7 takes over.
     """
     #: The 0.7 multiplies a REAL measurement -- random-data write plus fsync,
     #: so OS write-behind cannot inflate it, 4 GB in 19.3 s = 206.8 MB/s on the
@@ -149,7 +149,7 @@ def check_data_rate(setup: "AcquisitionResourceSetup") -> CheckResult:
             MAX_MARGIN,
             f"Data rate {rate / 1e6:.0f} MB/s ({_stream_summary(setup)}), but "
             "the RAM-capture path writes nothing during acquisition -- the "
-            f"{budget / 1e6:.0f} MB/s disk budget does not gate here. G13d "
+            f"{budget / 1e6:.0f} MB/s disk budget does not gate here. L3.7 "
             "(ram_capacity) is the binding constraint instead.",
             data_rate_mb_s=rate / 1e6,
             disk_budget_mb_s=budget / 1e6,
@@ -183,22 +183,22 @@ def check_data_rate(setup: "AcquisitionResourceSetup") -> CheckResult:
         "512x256 and 512x128 all sit at the same MB/s, because halving the "
         "height doubles the rate. Height is lens 2's frame-rate knob and buys "
         "nothing here. Otherwise: lengthen the exposure (which lowers f but "
-        "costs duty cycle, G8), drop a stream, write to faster storage, or "
+        "costs duty cycle, L2.4), drop a stream, write to faster storage, or "
         "switch to the RAM-capture path (ram_capture=True, "
-        "calibration/ram_capture.py), which trades this gate for G13d.",
+        "calibration/ram_capture.py), which trades this gate for L3.7.",
         numbers={"data_rate_mb_s": rate / 1e6, "disk_budget_mb_s": budget / 1e6},
     )
 
 
 def check_fps_provenance(setup: "AcquisitionResourceSetup") -> CheckResult:
-    """G12b: the ``f`` in ``R = W*H*bytes*f`` has to be an **achieved** rate.
+    """L3.2 (was G12b): the ``f`` in ``R = W*H*bytes*f`` has to be an **achieved** rate.
 
     docs/06-pitfalls.md §C4: a 176-row ROI at 10 ms exposure has a ~85 Hz
     camera ceiling and delivered 28 Hz -- a 3x gap, and the camera was not
     the bottleneck. Every number this lens produces scales linearly with f,
     so a requested rate makes the whole verdict a rehearsal.
 
-    This lens does not own frame rate (that is lens 2, G9), so without lens
+    This lens does not own frame rate (that is lens 2, L2.5), so without lens
     2's ``usable_fps_ceiling`` it can only warn. With it, the shortfall gets a
     margin -- the same arrangement as trapping.checks.check_sampling.
     """
@@ -228,7 +228,7 @@ def check_fps_provenance(setup: "AcquisitionResourceSetup") -> CheckResult:
             "overhead or the disk -- not the camera -- as the bottleneck. "
             "Every number below scales linearly with it.",
             action="Supply usable_fps_ceiling from lens 2 -- its **fps_usable_max**, "
-            "the min of the readout ceiling and G8's duty ceiling, not the bare "
+            "the min of the readout ceiling and L2.4's duty ceiling, not the bare "
             "hardware maximum -- to gate realizability, "
             "and get an achieved rate from a comparable past acquisition with "
             "`python -m compute.cli drops <metadata.txt>` (its cadence_fps), "
@@ -245,7 +245,7 @@ def check_fps_provenance(setup: "AcquisitionResourceSetup") -> CheckResult:
             "warn",
             f"Lens 2 puts the usable ceiling at {setup.usable_fps_ceiling:.0f} "
             f"fps, so the camera can deliver the {worst.fps:g} fps requested "
-            f"for {labels}. That clears G9, but not §C4: there the camera was "
+            f"for {labels}. That clears L2.5, but not §C4: there the camera was "
             "not the bottleneck either, and the delivered rate still came in "
             "3x low.",
             action="Confirm with an achieved rate before treating this verdict "
@@ -261,7 +261,7 @@ def check_fps_provenance(setup: "AcquisitionResourceSetup") -> CheckResult:
         margin,
         "fail",
         f"{worst.fps:g} fps is requested for {labels}, but lens 2 caps the "
-        f"usable rate at {setup.usable_fps_ceiling:.0f} fps (G9 and G8). The "
+        f"usable rate at {setup.usable_fps_ceiling:.0f} fps (L2.5 and L2.4). The "
         "acquisition will not fail -- it will quietly run slower, which makes "
         "every data-rate and capacity number below an overestimate and every "
         "lag time in the analysis wrong (§C5).",
@@ -276,13 +276,13 @@ def check_fps_provenance(setup: "AcquisitionResourceSetup") -> CheckResult:
 
 
 def check_pixel_container(setup: "AcquisitionResourceSetup") -> CheckResult:
-    """G12c: the bytes/pixel in R must be what MM actually writes.
+    """L3.3 (was G12c): the bytes/pixel in R must be what MM actually writes.
 
     MM puts 9..16-bit data in a 16-bit container, so a 12-bit mode still
     costs 2 bytes/pixel (docs/04 §8). At 8 bit MMCore reports 1 byte -- but
     whether this lab's PVCAM/Kinetix adapter hands MMCore 8-bit pixels or
     upconverts has never been checked, and the Kinetix's 8-bit Speed mode
-    (500 fps full frame, data/detectors.yaml) is exactly where G12a binds.
+    (500 fps full frame, data/detectors.yaml) is exactly where L3.1 binds.
     """
     assumed = setup.assumed_container_streams()
     if not assumed:
@@ -307,7 +307,7 @@ def check_pixel_container(setup: "AcquisitionResourceSetup") -> CheckResult:
         "confirmed against this lab's PVCAM/Kinetix adapter. If the adapter "
         f"upconverts to the 16-bit container the real rate is "
         f"{if_upconverted / 1e6:.0f} MB/s -- 2x, in the one mode fast enough "
-        "for G12a to bind.",
+        "for L3.1 to bind.",
         action="On the microscope PC, load the config and read "
         "`core.getBytesPerPixel()` in that mode (or divide a written frame's "
         "file size by its pixel count); then set container_confirmed=True.",
@@ -319,7 +319,7 @@ def check_pixel_container(setup: "AcquisitionResourceSetup") -> CheckResult:
 
 
 def check_buffer(setup: "AcquisitionResourceSetup") -> CheckResult:
-    """G13a: circular buffer must absorb >= 5 s of data at the achieved rate.
+    """L3.4 (was G13a): circular buffer must absorb >= 5 s of data at the achieved rate.
 
     MMCore's buffer is counted in images and shared across cameras, so the
     headroom is ``N_buffered / N_arriving_per_second`` and the frame geometry
@@ -367,7 +367,7 @@ def check_buffer(setup: "AcquisitionResourceSetup") -> CheckResult:
 
 
 def check_capacity(setup: "AcquisitionResourceSetup") -> CheckResult:
-    """G13b: total acquisition size must fit in free disk space.
+    """L3.5 (was G13b): total acquisition size must fit in free disk space.
 
     Applies on the RAM-capture path too -- the burst still lands on disk,
     just later.
@@ -399,7 +399,7 @@ def check_capacity(setup: "AcquisitionResourceSetup") -> CheckResult:
 
 
 def check_realtime_cpu(setup: "AcquisitionResourceSetup") -> CheckResult:
-    """G13c: per-frame processing time < 1/f, only when real-time
+    """L3.6 (was G13c): per-frame processing time < 1/f, only when real-time
     processing is actually attached (docs/04 §8's fourth condition).
 
     The budget is set by the **total** frame arrival rate across streams:
@@ -451,20 +451,20 @@ def check_realtime_cpu(setup: "AcquisitionResourceSetup") -> CheckResult:
 
 
 def check_ram_capacity(setup: "AcquisitionResourceSetup") -> CheckResult:
-    """G13d: on the RAM-capture path, the whole burst must fit in RAM.
+    """L3.7 (was G13d): on the RAM-capture path, the whole burst must fit in RAM.
 
     kb/decisions/2026-08-12-ram-buffer-detour-for-disk-bandwidth.md: holding
     the acquisition in memory and flushing afterwards removes the real-time
-    disk constraint (G12a) and replaces it with a hard capacity ceiling. That
+    disk constraint (L3.1) and replaces it with a hard capacity ceiling. That
     decision log ends with "decide whether to encode this approach in
-    compute.checks as a new check (e.g. G13d RAM capacity)" -- this is it.
+    compute.checks as a new check (e.g. L3.7 RAM capacity)" -- this is it.
     """
     if not setup.ram_capture:
         return _ok(
             "ram_capacity",
             INFO,
             MAX_MARGIN,
-            "Streaming to disk during acquisition; the RAM-capture path (G13d) "
+            "Streaming to disk during acquisition; the RAM-capture path (L3.7) "
             "does not apply.",
         )
 

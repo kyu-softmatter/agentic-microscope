@@ -101,7 +101,7 @@ def test_the_setup_no_longer_accepts_the_g11_inputs():
             _setup(**{field: 1.0})
 
 
-# ------------------------------------------- G27 committee coverage ------
+# ------------------------------------------- L6.1 committee coverage ------
 
 
 def test_missing_standing_lens_fails():
@@ -116,7 +116,7 @@ def test_missing_standing_lens_fails():
 
 def test_photo_is_no_longer_a_standing_lens():
     """It became a reporting section on 2026-09-10, so it has no verdict to
-    return and G27 must not demand one -- doing so would BLOCK every review
+    return and L6.1 must not demand one -- doing so would BLOCK every review
     forever. Its absence is not a hole in the sense E4 means; it is not a
     lens."""
     from validity.setup import STANDING_LENSES
@@ -151,7 +151,7 @@ def test_extra_conditional_lens_is_allowed():
     assert v.margins["validity.committee_coverage"] == 10.0
 
 
-# ------------------------------------------------- G23 bias ledger ------
+# ------------------------------------------------- L6.2 bias ledger ------
 
 
 def test_no_upstream_bias_findings_passes():
@@ -323,7 +323,7 @@ def test_an_info_KIND_finding_is_still_not_a_bias():
 
 
 def test_a_pass_that_turns_a_gate_off_is_visible() -> None:
-    """G24 and G25 on a quantity they do not apply to. docs/06 A1 is that a
+    """L6.3 and L6.4 on a quantity they do not apply to. docs/06 A1 is that a
     wrong pixel size is undetectable downstream, so "it does not matter here"
     is the one claim worth printing."""
     v = evaluate(
@@ -485,7 +485,7 @@ def test_wall_drag_does_not_touch_a_photometric_quantity():
     assert m["out_of_scope_codes"] == ["geometry.wall_drag.trapped"]
 
 
-# --------------------------------------------- G24 pixel calibration ----
+# --------------------------------------------- L6.3 pixel calibration ----
 
 
 def test_geometric_quantity_without_measured_pixel_size_fails():
@@ -509,7 +509,7 @@ def test_intensity_quantity_does_not_need_pixel_size():
     assert v.margins["validity.pixel_calibration"] == 10.0
 
 
-# --------------------------------------- G25 photometric calibration ----
+# --------------------------------------- L6.4 photometric calibration ----
 
 
 def test_intensity_quantity_needs_photometric_calibration():
@@ -626,7 +626,7 @@ def test_the_power_calculator_still_works_outside_the_gate():
 
 
 def test_lens_4s_particle_count_is_no_longer_consumed_here():
-    """G19 fed G11, and that was the computational half of docs/01 §4's
+    """L4.6 fed G11, and that was the computational half of docs/01 §4's
     'ROI vs statistics' 3 <-> 6 constraint. With G11 gone **the constraint has
     no code left**: shrinking the ROI to buy frame rate still cuts the particle
     count by the same factor, and nothing in the committee now notices."""
@@ -677,7 +677,7 @@ def test_reviews_a_real_sample_lens_verdict():
     from sample.gate import evaluate as sample_evaluate
     from sample.setup import SampleSetup
 
-    # Retargeted 2026-09-10 onto G16c. This used G17's mismatch bias until
+    # Retargeted 2026-09-10 onto L4.4. This used L4.5's mismatch bias until
     # that check became INFO, and lens 4's remaining bias sources are the
     # near-wall drag bound and settled crowding. An untrapped 2.475 um-radius
     # particle 9 um from the coverslip is 15.5% suppressed -- past the 10%

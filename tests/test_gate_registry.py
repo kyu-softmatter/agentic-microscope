@@ -44,6 +44,23 @@ LENSES = (
     "trapping",
 )
 
+#: The same eight in COMMITTEE order, which is what the `L<lens>.<n>` addresses
+#: are numbered from. `LENSES` above is the import order this file has always
+#: used and puts stability before trapping; the address scheme follows docs/01
+#: §4's lens numbers, where trapping is 7 and stability is 8. Two orderings for
+#: one set is worth the explicitness -- deriving the lens number from `LENSES`
+#: would have silently numbered every trapping check L8.x.
+LENSES_IN_COMMITTEE_ORDER = (
+    "optics",
+    "detection",
+    "compute",
+    "sample",
+    "photo",
+    "validity",
+    "trapping",
+    "stability",
+)
+
 REPO = pathlib.Path(__file__).resolve().parent.parent
 
 
@@ -263,87 +280,218 @@ def test_only_trapping_lacks_a_limits_dict() -> None:
     assert missing == ["trapping"]
 
 
-# ------------------------------------------------------- gate numbering ----
+# ---------------------------------------------------- check addressing ----
+#
+# RENUMBERED 2026-09-11 (KH): flat gate numbers G1-G32 became per-lens
+# addresses `L<lens>.<n>`. The reason was structural, not cosmetic -- a flat
+# number space made a gate number a GLOBAL resource, so removing lens 5's
+# gates punched holes that lenses 6 and 8 then had to document, and by the end
+# of that review ten of thirty-two numbers were vacant and five gates carried
+# letter suffixes (G12a-c, G13a-d, G16b/c, G14a-c, G3b). Per-lens addressing
+# makes a removal local and absorbs the letters into ordinary numbers.
+#
+# Two consequences worth stating because they are easy to get wrong:
+#
+#   * **Every check has an address, `info` ones included.** An address is a
+#     LOCATION, not a claim that something can fail; the `kind` printed beside
+#     it is what says that. That is what resolved the standing tension over the
+#     eleven previously unnumbered checks -- numbering them used to imply
+#     gatehood, and `L8.4 info` cannot.
+#   * **The address lives in the check's docstring, not in its list position.**
+#     So inserting or reordering a check does not renumber its neighbours: a
+#     new check takes the next free number in its lens. The map below is what
+#     holds that.
+#
+# kb/decisions/2026-09-11-per-lens-check-addresses.md
 
-#: Numbers that are VACANT and must never be reused, so that every reference
-#: in the history stays unambiguous.
-VACANT_GATES = (
-    "G10", "G11", "G18", "G20", "G21", "G22", "G26", "G28", "G29", "G30",
-)
+#: Every check's address, keyed by lens, in address order. The authoritative
+#: map -- docs/04's table and the agent briefs are derived from it, not the
+#: other way round.
+EXPECTED_ADDRESSES: dict[str, tuple[tuple[str, str], ...]] = {
+    "optics": (
+        ("L1.1", "excitation"),
+        ("L1.2", "blocking"),
+        ("L1.3", "stokes"),
+        ("L1.4", "collection"),
+        ("L1.5", "centering"),
+        ("L1.6", "crosstalk"),
+        ("L1.7", "port"),
+    ),
+    "detection": (
+        ("L2.1", "sampling"),
+        ("L2.2", "saturation"),
+        ("L2.3", "snr"),
+        ("L2.4", "motion_blur"),
+        ("L2.5", "frame_rate"),
+    ),
+    "compute": (
+        ("L3.1", "data_rate"),
+        ("L3.2", "fps_provenance"),
+        ("L3.3", "pixel_container"),
+        ("L3.4", "buffer"),
+        ("L3.5", "capacity"),
+        ("L3.6", "realtime_cpu"),
+        ("L3.7", "ram_capacity"),
+    ),
+    "sample": (
+        ("L4.1", "na_feasibility"),
+        ("L4.2", "working_distance"),
+        ("L4.3", "depth_in_chamber"),
+        ("L4.4", "wall_drag"),
+        ("L4.5", "ri_mismatch"),
+        ("L4.6", "count_in_field"),
+        ("L4.7", "depth_window"),
+    ),
+    "photo": (
+        ("L5.1", "light_driving"),
+        ("L5.2", "total_dose"),
+        ("L5.3", "trap_heating"),
+    ),
+    "validity": (
+        ("L6.1", "committee_coverage"),
+        ("L6.2", "bias_ledger"),
+        ("L6.3", "pixel_calibration"),
+        ("L6.4", "photometric_calibration"),
+    ),
+    "trapping": (
+        ("L7.1", "effective_na"),
+        ("L7.2", "confinement"),
+        ("L7.3", "trap_depth"),
+        ("L7.4", "sampling"),
+        ("L7.5", "power_window"),
+        ("L7.6", "temperature_basis"),
+    ),
+    "stability": (
+        ("L8.1", "convening"),
+        ("L8.2", "sedimentation"),
+        ("L8.3", "evaporation"),
+        ("L8.4", "drift_budget"),
+    ),
+}
 
-#: Checks that carry NO gate number. Not an error -- but the set must not grow
-#: without somebody noticing, because two of them are `hard` and can stop a
-#: proposal from a gate that appears in no table in `docs/`.
-#: Whether to number them is an open decision (KH, 2026-09-09).
-UNNUMBERED_CHECKS: dict[str, tuple[str, ...]] = {
-    # `stokes` gained G3b on 2026-09-10 and left this list. G1-G4 still live
-    # only in docs/04 -- see test_optics_numbers_only_g3b_in_code.
-    "optics": ("excitation", "blocking", "collection", "centering", "crosstalk", "port"),
-    "sample": ("depth_window",),
-    # All three: photo is a reporting section, and a number here would mean
-    # "this can fail", which none of them can.
-    "photo": ("light_driving", "total_dose", "trap_heating"),
-    # `drift_budget` is unnumbered on purpose: it reports, it cannot fail, and
-    # a number would advertise it as a gate. G29/G30 are vacant, not reused.
-    # `vibration` was deleted outright on 2026-09-10 and left this list.
-    "stability": ("convening", "drift_budget"),
-    # confinement gained G14a on 2026-09-10 and is no longer here.
-    # `temperature_basis` is unnumbered on purpose: it reports, it cannot fail,
-    # and a number would advertise it as a gate on something E3 does not gate.
-    "trapping": ("effective_na", "power_window", "temperature_basis"),
+#: Old flat number -> new address, for every G-number that named a live check
+#: on 2026-09-11. Docs carry this table; **`kb/` is left alone**, because its
+#: entries are dated records and rewriting them would falsify the history they
+#: exist to hold.
+GATE_TO_ADDRESS: dict[str, str] = {
+    "G1": "L1.1", "G3": "L1.2", "G3b": "L1.3", "G2": "L1.4", "G4": "L1.6",
+    "G5": "L2.1", "G6": "L2.2", "G7": "L2.3", "G8": "L2.4", "G9": "L2.5",
+    "G12a": "L3.1", "G12b": "L3.2", "G12c": "L3.3",
+    "G13a": "L3.4", "G13b": "L3.5", "G13c": "L3.6", "G13d": "L3.7",
+    "G15": "L4.1", "G16": "L4.2", "G16b": "L4.3", "G16c": "L4.4",
+    "G17": "L4.5", "G19": "L4.6",
+    "G23": "L6.2", "G24": "L6.3", "G25": "L6.4", "G27": "L6.1",
+    "G14a": "L7.2", "G14b": "L7.3", "G14c": "L7.4",
+    "G31": "L8.2", "G32": "L8.3",
+}
+
+#: G-numbers that named a gate and now name nothing. They are NOT reused and
+#: they are NOT translated: a reference to one of these in `kb/` points at
+#: something that was removed, and the reason is the useful part.
+RETIRED_GATES: dict[str, str] = {
+    "G10": "photobleaching, removed 2026-09-09",
+    "G11": "statistical power, removed 2026-09-11",
+    "G18": "coverslip thickness, removed 2026-09-10",
+    "G20": "saturation / triplet shelving, removed 2026-09-09",
+    "G21": "light-driving, became the L5.1 report 2026-09-10",
+    "G22": "total dose, became the L5.2 report 2026-09-10",
+    "G26": "post-processing, removed 2026-09-11",
+    "G28": "PFS lock, moved to the hardware stage 2026-09-10",
+    "G29": "axial drift, moved to the hardware stage 2026-09-10",
+    "G30": "lateral drift, moved to the hardware stage 2026-09-10",
 }
 
 
-def _docstring_gate_numbers(lens: str) -> dict[str, str]:
-    """Which check claims which gate number, read from its own docstring."""
+def _docstring_addresses(lens: str) -> dict[str, str]:
+    """Which check claims which address, read from its own docstring."""
     src = (REPO / lens / "checks.py").read_text()
     out: dict[str, str] = {}
-    for m in re.finditer(r'def (check_\w+)\([^)]*\)[^:]*:\s*(?:r?"""|\'\'\')\s*(G\d+[a-d]?)', src):
+    for m in re.finditer(
+        r'def (check_\w+)\([^)]*\)[^:]*:\s*(?:r?"""|\'\'\')(L\d+\.\d+)', src
+    ):
         out[m.group(1)] = m.group(2)
     return out
 
 
-def _documented_gate_numbers() -> tuple[set[str], set[str]]:
-    """(live, vacant) gate IDs from docs/04's gate table."""
-    live: set[str] = set()
-    vacant: set[str] = set()
-    for line in (REPO / "docs" / "04-decision-engine.md").read_text().splitlines():
-        m = re.match(r"\|\s*(~~)?(G\d+[a-d]?)(~~)?\s*\|", line)
-        if not m:
-            continue
-        (vacant if (m.group(1) or "vacant" in line.lower()) else live).add(m.group(2))
-    return live, vacant
-
-
-def test_every_gate_number_in_code_is_documented() -> None:
-    """A number a check claims must exist in docs/04's table.
-
-    docs/04 numbers G12 and G13 as single rows covering their sub-letters, so
-    `G12a` is satisfied by a `G12` row.
+@pytest.mark.parametrize("lens", LENSES)
+def test_every_check_has_the_address_it_is_supposed_to(lens: str) -> None:
+    """An address is part of a check's identity. If this fails, either a check
+    moved lens, or somebody renumbered rather than taking the next free number.
     """
-    live, vacant = _documented_gate_numbers()
-    assert live, "failed to parse docs/04's gate table at all"
+    by_fn = _docstring_addresses(lens)
+    codes = {c.run.__name__: c.code for c in _checks(lens).CHECKS}
+    actual = tuple(
+        sorted(
+            ((addr, codes[fn]) for fn, addr in by_fn.items()),
+            key=lambda t: int(t[0].split(".")[1]),
+        )
+    )
+    assert actual == EXPECTED_ADDRESSES[lens]
 
+
+def test_every_check_in_every_lens_is_addressed() -> None:
+    """The eleven previously unnumbered checks included two `hard` ones that
+    appeared in no table anywhere. Nothing is unaddressed now, and this is what
+    keeps it that way."""
     for lens in LENSES:
-        for fn, gate in _docstring_gate_numbers(lens).items():
-            base = re.sub(r"[a-d]$", "", gate)
-            assert gate in live or base in live, (
-                f"{lens}.{fn} claims {gate}, which is not a live row in "
-                "docs/04's gate table"
-            )
-            assert gate not in vacant and base not in vacant, (
-                f"{lens}.{fn} claims {gate}, which docs/04 marks VACANT"
-            )
+        addressed = {
+            codes for codes in (c.code for c in _checks(lens).CHECKS)
+        }
+        mapped = {code for _, code in EXPECTED_ADDRESSES[lens]}
+        assert addressed == mapped, f"lens {lens}: {addressed ^ mapped} unaddressed"
+    assert sum(len(v) for v in EXPECTED_ADDRESSES.values()) == 43
 
 
-def test_vacant_numbers_are_claimed_by_nothing() -> None:
-    live, vacant = _documented_gate_numbers()
-    for g in VACANT_GATES:
-        assert g in vacant, f"{g} should be marked vacant in docs/04's table"
-        assert g not in live
-        for lens in LENSES:
-            claimed = set(_docstring_gate_numbers(lens).values())
-            assert g not in claimed, f"{lens} claims the vacant gate {g}"
+def test_addresses_are_dense_and_lens_numbered() -> None:
+    """`L<lens>.<n>` with n from 1, no gaps -- that density is the whole point
+    of moving off the flat space, which ended with ten holes in thirty-two."""
+    order = {name: i + 1 for i, name in enumerate(LENSES_IN_COMMITTEE_ORDER)}
+    for lens, rows in EXPECTED_ADDRESSES.items():
+        want = [f"L{order[lens]}.{i}" for i in range(1, len(rows) + 1)]
+        assert [a for a, _ in rows] == want
+
+
+def test_no_retired_gate_number_is_reused_or_translated() -> None:
+    """A retired number must not reappear as an address's alias, and must not
+    be silently mapped to a live check -- a `kb/` reference to G20 points at
+    something that was removed, and that is the information."""
+    assert not (set(RETIRED_GATES) & set(GATE_TO_ADDRESS))
+    assert len(RETIRED_GATES) == 10
+    src = "".join(
+        (REPO / lens / "checks.py").read_text() for lens in LENSES
+    )
+    for gate in RETIRED_GATES:
+        assert f"(was {gate})" not in src, f"{gate} is retired, not renamed"
+
+
+def test_the_old_numbers_are_still_recoverable_from_the_code() -> None:
+    """Each carried-forward address says which gate it was, so a reader coming
+    from `kb/` or from a commit message can land in the right place."""
+    found = {}
+    for lens in LENSES:
+        src = (REPO / lens / "checks.py").read_text()
+        for m in re.finditer(r"(L\d+\.\d+) \(was (G\d+[a-d]?)\)", src):
+            found[m.group(2)] = m.group(1)
+    assert found == GATE_TO_ADDRESS
+
+
+# ---------------- three numbering tests retired 2026-09-11 -------------------
+#
+# `test_every_gate_number_in_code_is_documented`,
+# `test_vacant_numbers_are_claimed_by_nothing` and
+# `test_optics_numbers_only_g3b_in_code` all existed to police the flat gate
+# space: that a claimed number appeared in docs/04, that a vacant one was
+# claimed by nothing, and that lens 1 had exactly one number in code while
+# G1-G4 lived only in the document. The address scheme dissolves all three --
+# every check is addressed, addresses are dense per lens, and there is no
+# vacancy to guard. What replaced them is above:
+# `test_every_check_has_the_address_it_is_supposed_to`,
+# `test_every_check_in_every_lens_is_addressed`,
+# `test_addresses_are_dense_and_lens_numbered` and
+# `test_no_retired_gate_number_is_reused_or_translated`.
+#
+# `test_the_set_of_unnumbered_checks_does_not_grow_silently` went too: there
+# are no unnumbered checks.
 
 
 # ----------------------------------------------------- bias registry drift --
@@ -485,42 +633,3 @@ def test_an_ok_severity_bias_code_is_unreachable_whatever_the_registry_says() ->
         assert code not in reachable
         assert code not in REGISTERED_WITHOUT_EMITTER
         assert code not in EMITTED_WITHOUT_REGISTRY
-
-
-def test_optics_numbers_only_g3b_in_code() -> None:
-    """Lens 1 names exactly one gate number in code, and only since
-    2026-09-10.
-
-    G1-G4 still live only in `docs/04`'s table, which is why CLAUDE.md and
-    README describe them as appearing "in no Python file". The CHECKS are
-    implemented and carry the documented thresholds -- see EXPECTED_LIMITS
-    above, where `excitation_ratio` 0.20, `spectral_collection` 0.15,
-    `blocking_od` 5.0 and `crosstalk` 0.05 are exactly G1-G4's criteria. So
-    the gates are real and only the numbering is absent, and that distinction
-    is pinned here rather than left to be rediscovered as a miscount.
-
-    `stokes` is the exception: it is `hard`, it decided the 2026-09-05
-    session, and it appeared in no table at all until it was given G3b.
-    """
-    assert _docstring_gate_numbers("optics") == {"check_stokes": "G3b"}
-
-
-def test_the_set_of_unnumbered_checks_does_not_grow_silently() -> None:
-    """Two of these are `hard`, so a proposal can be stopped by something that
-    appears in no gate table. Numbering them is an open decision; letting more
-    of them appear unnoticed is not.
-    """
-    for lens in LENSES:
-        numbered = set(_docstring_gate_numbers(lens).values())
-        codes = {c.code for c in _checks(lens).CHECKS}
-        # A check is "numbered" if its module docstring maps some check_* to a
-        # gate; map back by name to keep this readable.
-        by_fn = _docstring_gate_numbers(lens)
-        numbered_codes = {fn.removeprefix("check_") for fn in by_fn}
-        unnumbered = sorted(c for c in codes if c not in numbered_codes)
-        expected = sorted(UNNUMBERED_CHECKS.get(lens, ()))
-        assert unnumbered == expected, (
-            f"lens {lens}'s unnumbered checks changed: {unnumbered} != "
-            f"{expected}. Either give the new check a gate number in its "
-            "docstring, or add it here deliberately."
-        )

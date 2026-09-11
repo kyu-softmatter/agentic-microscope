@@ -98,7 +98,7 @@ def test_every_row_is_measured():
     operator's ruling, and 100x additionally by two length standards driven at
     it in 2026-09-03. A DEMOTION is now the edit that needs justifying, and it
     would silently cost `advances` on every pixel-size-dependent quantity --
-    G24 takes ``pixel_size_measured`` as the caller's claim, so nothing in code
+    L6.3 takes ``pixel_size_measured`` as the caller's claim, so nothing in code
     would object.
     """
     table = pixel_size_table()["table"]

@@ -694,7 +694,7 @@ def main(argv: list[str] | None = None) -> int:
         # registries in validity/setup.py have no category for either of these.
         "committee": {
             "wall_drag_is_measurand": (
-                "sample G16c margin 0.19 is signal, not risk. "
+                "sample L4.4 margin 0.19 is signal, not risk. "
                 "LIMITS['wall_drag_suppression'] = 0.10 is a screening limit "
                 "for nuisance drag; this experiment measures the drag. "
                 "docs/06-pitfalls.md D8 grants lens 6 the ruling."
@@ -706,7 +706,7 @@ def main(argv: list[str] | None = None) -> int:
                 "Goldman-Cox-Brenner or the full Faxen series."
             ),
             "sampling_wrong_direction_out_of_domain": (
-                "detection G5's tracking branch applies a point-emitter "
+                "detection L2.1's tracking branch applies a point-emitter "
                 "localization model to a 46-px resolved sphere. Withdrawn; "
                 "sigma comes from the fitted MSD intercept and the stuck-bead "
                 "plateau instead."

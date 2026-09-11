@@ -1,11 +1,12 @@
-"""Individual trapping checks -- G14a (confinement), G14b (trap depth),
-G14c (sampling), plus two INFO reports that carry no number.
+"""Individual trapping checks -- L7.2 (confinement), L7.3 (trap depth),
+L7.4 (sampling), plus two INFO reports that carry no number.
 
-G14 was one number covering two of these and silently omitting the third
+**G14** was one number covering two of these and silently omitting the third
 until 2026-09-10: `check_trap_depth` already called itself "G14's
 escape-resistance half", and `check_confinement` -- `hard`, and the first
-thing that fails -- had no number at all. Sub-lettered on lens 3's
-convention (G12a-c, G13a-d) rather than given new numbers, because they are
+thing that fails -- had no number at all. It was sub-lettered G14a/b/c that
+day, and re-addressed L7.2/L7.3/L7.4 on 2026-09-11 when the flat numbers
+became per-lens addresses. They stayed three rather than one because they are
 one question asked three ways: can this trap hold this bead, deeply enough,
 and can the camera see it move.
 
@@ -37,7 +38,7 @@ MAX_MARGIN = 10.0
 #: Rule of thumb (Ashkin 1992; Neuman & Block 2004), not a derived cutoff --
 #: see trapping.dynamics.trap_depth_kt.
 REQUIRED_TRAP_DEPTH_KT = 10.0
-#: Berg-Sorensen & Flyvbjerg power-spectrum calibration convention (G14).
+#: Berg-Sorensen & Flyvbjerg power-spectrum calibration convention (L7.2–L7.4).
 REQUIRED_SAMPLING_RATIO = 10.0
 
 
@@ -98,14 +99,14 @@ def _ok(code, kind, margin, message, **numbers) -> CheckResult:
     computed its number and threw it away -- and the numbers ARE this lens:
     stiffness, trap depth in kT, corner frequency. On a configuration where
     everything passed, the only visible finding was the TIR notice. Same
-    correction as sample/checks.py's G16c and photo/checks.py the same day:
+    correction as sample/checks.py's L4.4 and photo/checks.py the same day:
     ungraded and invisible are different things.
     """
     return CheckResult(code, kind, margin, "info", message, None, numbers)
 
 
 def check_effective_na(setup: "TrapSetup") -> CheckResult:
-    """Is the objective's design NA actually reaching the sample?
+    """L7.1: Is the objective's design NA actually reaching the sample?
 
     Informational, never a veto: an oil objective focusing into an aqueous
     sample traps perfectly well at the clipped NA, and for beads well above
@@ -142,7 +143,7 @@ def check_effective_na(setup: "TrapSetup") -> CheckResult:
         "the outermost surviving rays carry vanishing power; (2) spherical "
         "aberration from the same index step is NOT modelled here, so the real "
         "focus is worse than the computed one; (3) that index step also pins "
-        "how deep you may work -- lens 4's G17 limits depth to "
+        "how deep you may work -- lens 4's L4.5 limits depth to "
         f"1.85/|dn| um, about {1.85 / abs(1.518 - medium.n):.0f} um for an oil "
         "objective, and being pinned near the coverslip adds a Faxen wall-drag "
         "bias that this lens does not correct.",
@@ -162,7 +163,7 @@ def check_effective_na(setup: "TrapSetup") -> CheckResult:
 
 
 def check_confinement(setup: "TrapSetup") -> CheckResult:
-    """G14a: does the trap actually restore toward the center at all?
+    """L7.2 (was G14a): does the trap actually restore toward the center at all?
 
     Checked on the weakest trap when the beam is split across several --
     that is the one that fails first. A measured stiffness wins over the
@@ -200,7 +201,7 @@ def check_confinement(setup: "TrapSetup") -> CheckResult:
 
 
 def check_trap_depth(setup: "TrapSetup") -> CheckResult:
-    """G14b: is the well deep enough against kT?
+    """L7.3 (was G14b): is the well deep enough against kT?
 
     **Stays on the model even when a stiffness has been measured** (KH,
     2026-09-10). U comes from the power, not from kappa, so a measured kappa
@@ -270,7 +271,7 @@ def check_trap_depth(setup: "TrapSetup") -> CheckResult:
 
 
 def check_sampling(setup: "TrapSetup") -> CheckResult:
-    """G14c: f_s >= 10*f_c.
+    """L7.4 (was G14c): f_s >= 10*f_c.
 
     Reports the corner frequency either way; only gates when lens 2
     (detection) has actually supplied an achieved frame rate. This lens
@@ -288,7 +289,7 @@ def check_sampling(setup: "TrapSetup") -> CheckResult:
             MAX_MARGIN,
             "info",
             f"Corner frequency {f_c:.0f} Hz -> needs >= {required_fps:.0f} fps "
-            "to sample without aliasing bias (G14), but no achieved frame "
+            "to sample without aliasing bias (L7.2–L7.4), but no achieved frame "
             "rate from the detection lens has been supplied yet.",
             action="Pass detector_fps once lens 2 (detection) has a "
             "realized frame rate, to gate this directly.",
@@ -302,7 +303,7 @@ def check_sampling(setup: "TrapSetup") -> CheckResult:
             HARD,
             margin,
             f"{setup.detector_fps:.0f} fps clears the {required_fps:.0f} fps "
-            f"G14 requirement (corner frequency {f_c:.0f} Hz).",
+            f"L7.2–L7.4 requirement (corner frequency {f_c:.0f} Hz).",
             corner_frequency_hz=f_c,
             required_fps=required_fps,
             detector_fps=setup.detector_fps,
@@ -313,7 +314,7 @@ def check_sampling(setup: "TrapSetup") -> CheckResult:
         margin,
         "fail",
         f"{setup.detector_fps:.0f} fps is below the {required_fps:.0f} fps "
-        f"G14 needs to resolve a {f_c:.0f} Hz corner frequency without "
+        f"L7.4 needs to resolve a {f_c:.0f} Hz corner frequency without "
         "aliasing bias.",
         action="Raise the frame rate (lens 2), or lower power / use a "
         "softer trap to bring the corner frequency down.",
@@ -326,14 +327,14 @@ def check_sampling(setup: "TrapSetup") -> CheckResult:
 
 
 def check_power_window(setup: "TrapSetup") -> CheckResult:
-    """Propose the laser power, as a STIFFNESS window (KH, 2026-09-10).
+    """L7.5: Propose the laser power, as a STIFFNESS window (KH, 2026-09-10).
 
     The two hard checks judge a power the operator already chose. This one
     answers the question they actually have: what power should I use? The
     bounds are the same two physical facts, inverted --
 
         FLOOR    trap depth >= 10 kT, or thermal motion kicks the bead out.
-        CEILING  G14's f_s >= 10 f_c, so the corner frequency stays resolvable
+        CEILING  L7.2–L7.4's f_s >= 10 f_c, so the corner frequency stays resolvable
                  at the frame rate lens 2 achieved: kappa <= 2*pi*gamma*f_s/10.
 
     ⚠ **REPORTED AS STIFFNESS, NOT AS A DIAL SETTING, AND THAT IS THE WHOLE
@@ -394,7 +395,7 @@ def check_power_window(setup: "TrapSetup") -> CheckResult:
             MAX_MARGIN,
             "info",
             f"Stiffness floor {kappa_min * 1e6:.3f} pN/um "
-            f"({numbers['kappa_min_set_by']}). No ceiling: G14 sets it from "
+            f"({numbers['kappa_min_set_by']}). No ceiling: L7.2–L7.4 sets it from "
             "the achieved frame rate, and lens 2 has not supplied one. The "
             "dial is not the unit to state this in -- see the check's "
             "docstring.",
@@ -406,7 +407,7 @@ def check_power_window(setup: "TrapSetup") -> CheckResult:
     f_c_max = setup.detector_fps / REQUIRED_SAMPLING_RATIO
     numbers.update(
         kappa_max_pn_per_um=round(kappa_max * 1e6, 4),
-        kappa_max_set_by=f"G14 at {setup.detector_fps:.0f} fps",
+        kappa_max_set_by=f"L7.2–L7.4 at {setup.detector_fps:.0f} fps",
         corner_frequency_max_hz=round(f_c_max, 2),
         detector_fps=setup.detector_fps,
         #: Placeholder-derived, and labelled so at every use.
@@ -427,7 +428,7 @@ def check_power_window(setup: "TrapSetup") -> CheckResult:
         measured_note = (
             f" The MEASURED {km * 1e6:.2f} pN/um is "
             f"{'inside' if inside else 'OUTSIDE'} the window, and it is what "
-            "G14c was judged on."
+            "L7.4 was judged on."
         )
 
     if kappa_min > kappa_max:
@@ -438,7 +439,7 @@ def check_power_window(setup: "TrapSetup") -> CheckResult:
             "info",
             f"NO stiffness satisfies both ends: the trap needs "
             f">= {kappa_min * 1e6:.3f} pN/um to hold the bead against kT, and "
-            f"G14 at {setup.detector_fps:.0f} fps allows only "
+            f"L7.2–L7.4 at {setup.detector_fps:.0f} fps allows only "
             f"<= {kappa_max * 1e6:.3f} pN/um. Raise the frame rate (lens 2) or "
             "use a bead the trap holds at lower stiffness.",
             numbers=numbers,
@@ -468,7 +469,11 @@ def check_power_window(setup: "TrapSetup") -> CheckResult:
 
 
 def check_temperature_basis(setup: "TrapSetup") -> CheckResult:
-    """Report what the temperature rests on. INFO, unnumbered, always visible.
+    """L7.6: Report what the temperature rests on. INFO, and always visible.
+
+    ⚠ `L7.6` is an ADDRESS, not a gate number. Under the 2026-09-11 scheme
+    every check has one, `info` ones included, and the kind printed beside it
+    is what says whether it can fail. Nothing here can.
 
     The 20 C this lens computes with is **the lab's air-conditioning
     setpoint** (KH, 2026-09-11), which makes it a sourced number rather than
@@ -533,7 +538,7 @@ def check_temperature_basis(setup: "TrapSetup") -> CheckResult:
 
 CHECKS: list[Check] = [
     Check("effective_na", INFO, (), check_effective_na),
-    # G14a/b/c and their `requires`, both added 2026-09-10. Until then these
+    # L7.2/b/c and their `requires`, both added 2026-09-10. Until then these
     # two had EMPTY requires and so always ran -- grading a stiffness derived
     # from a placeholder dial -> mW map. Two hard gates on fiction.
     Check("confinement", HARD, ("stiffness",), check_confinement),

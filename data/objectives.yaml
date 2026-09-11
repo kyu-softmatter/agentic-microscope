@@ -93,7 +93,7 @@ objectives:
     na: 1.25
     immersion: water
     # ⚠ The catalogue gives 0.2-0.16 mm, collar dependent. 160 um is the
-    # CONSERVATIVE end, deliberately chosen because G16 is a hard gate: the
+    # CONSERVATIVE end, deliberately chosen because L4.2 is a hard gate: the
     # WD shrinks as the collar is set for thicker cover glass, so budgeting
     # against 200 um would pass configurations that fail in practice.
     wd_um: 160

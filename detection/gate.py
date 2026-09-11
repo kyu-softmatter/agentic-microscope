@@ -120,7 +120,7 @@ def _missing_inputs(setup: DetectionSetup) -> list[Finding]:
             Finding(
                 "fail",
                 "missing.task_kind",
-                "No task kind specified. G5 (sampling) and G8 (motion blur) go "
+                "No task kind specified. L2.1 (sampling) and L2.4 (motion blur) go "
                 "in opposite directions for morphology imaging vs. single-"
                 "particle tracking (docs/04 §2) -- this is not a default worth "
                 "guessing.",
@@ -145,7 +145,7 @@ def _missing_inputs(setup: DetectionSetup) -> list[Finding]:
                 "fail",
                 "missing.row_time",
                 "No row/line readout time on record. Frame-rate realizability "
-                "(G9) and motion blur (G8) are both undefined without it.",
+                "(L2.5) and motion blur (L2.4) are both undefined without it.",
                 action="Run `python -m calibration.cli camera-readout` on the "
                 "microscope PC once reconnected, or supply camera.row_time_us.",
             )

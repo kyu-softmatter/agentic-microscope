@@ -84,10 +84,10 @@ The formulas are already laid out in [04](04-decision-engine.md).
 
 | Lens | Gates | Prereq | Output |
 |---|---|---|---|
-| 1 Optics | G1–G4 | — | ✅ **done** |
-| 2 Detection | G5 G6 G7 G8 G9 | camera spec, row time | ✅ **done** (2026-08-11, `detection/`) |
-| 3 Compute resources | G12a–c G13a–d | measured disk bandwidth | ✅ **done** (2026-08-11, `compute/`); deepened 2026-08-19 — multi-stream data rate, bit-depth-aware container, G12b frame-rate provenance, G12c container confirmation, G13d RAM-capture capacity, and the post-hoc `compute/drops.py` |
-| 7 Optical tweezers | G14 | — | ✅ **gate wiring done** (2026-08-10, `trapping/`) — the dial-% → mW calibration is deferred (2026-08-19), so its verdicts stay `evidence: assumed` |
+| 1 Optics | L1.1–L1.6 | — | ✅ **done** |
+| 2 Detection | L2.1 L2.2 L2.3 L2.4 L2.5 | camera spec, row time | ✅ **done** (2026-08-11, `detection/`) |
+| 3 Compute resources | L3.1–c L3.4–d | measured disk bandwidth | ✅ **done** (2026-08-11, `compute/`); deepened 2026-08-19 — multi-stream data rate, bit-depth-aware container, L3.2 frame-rate provenance, L3.3 container confirmation, L3.7 RAM-capture capacity, and the post-hoc `compute/drops.py` |
+| 7 Optical tweezers | L7.2–L7.4 | — | ✅ **gate wiring done** (2026-08-10, `trapping/`) — the dial-% → mW calibration is deferred (2026-08-19), so its verdicts stay `evidence: assumed` |
 
 Lenses 2·3·7 all use the **same schema** as Lens 1: `Check` /
 `CheckResult(margin)` / `Verdict(status, evidence, advances)` (each lens's own
@@ -108,7 +108,7 @@ coverslip/sample interface, and for micron beads the clipped stiffness lands
 within ~3% of an index-matched objective's. `ObjectiveBeam.effective_na()` now
 clips, `checks.check_effective_na` reports the three limits that ride along
 (stiffness is an upper bound; spherical aberration unmodelled; depth pinned by
-G17, which brings an uncorrected Faxén wall-drag bias), and the unmodelled
+L4.5, which brings an uncorrected Faxén wall-drag bias), and the unmodelled
 aberration is recorded as an assumed input so a clipped configuration cannot
 report `advances`. Grounded in a user observation —
 [`kb/expertise/oil-objective-trapping-in-water.md`](../kb/expertise/oil-objective-trapping-in-water.md).
@@ -125,7 +125,7 @@ are decisions. The roadmap should stop proposing them as next steps:
 
 → [`kb/decisions/2026-08-19-lens-7-scope.md`](../kb/decisions/2026-08-19-lens-7-scope.md)
 
-What genuinely remains is wiring, not physics. G14's `f_s ≥ 10·f_c` comparison
+What genuinely remains is wiring, not physics. L7.2–L7.4's `f_s ≥ 10·f_c` comparison
 is only verified when `--detector-fps` is passed by hand; without it the lens
 prints an informational note and does not block the verdict. Lens 2
 (`detection/`, 2026-08-11) already computes the realizable frame rate (`max_fps`
@@ -144,7 +144,7 @@ Also:
 - **ℓ_c diffraction-limit gate** (new, 2026-08-12) — if
   `characteristic_scales.length` in `kb/samples/<system>.md` is smaller than
   `σ_PSF`, the structure cannot be resolved directly even if sampling passes.
-  A check Lens 2 (G5) does not have today.
+  A check Lens 2 (L2.1) does not have today.
   → [04 §2](04-decision-engine.md)
 
 **Verification**: feed in conditions actually used in the past and the gates
@@ -495,10 +495,10 @@ attached — the same shape both sides already store internally.
 
 | What crosses | Direction | Consumed by | Today |
 |---|---|---|---|
-| τ_c · ℓ_c · `D` · κ | sim → scope | ①' and then G5 · G8 · G11 · G14 | a human estimate, `evidence: assumed` |
+| τ_c · ℓ_c · `D` · κ | sim → scope | ①' and then L2.1 · L2.4 · G11 · L7.2–L7.4 | a human estimate, `evidence: assumed` |
 | predicted effect size and its tolerance | sim → scope | Phase 4 planning: required precision → §4 photon count | not represented at all |
 | measured `T`, size distribution, salt, ζ | scope → sim | its SI specification stage, closing tier-1 *choices* | not exchanged |
-| the bias ledger for the intended quantity (G23) + the Savin–Doyle terms (§5) | scope → sim | its validation stage — added to the prediction, not subtracted from the data | not exchanged |
+| the bias ledger for the intended quantity (L6.2) + the Savin–Doyle terms (§5) | scope → sim | its validation stage — added to the prediction, not subtracted from the data | not exchanged |
 | achievable localization precision · frame rate · duration | scope → sim | its design-power check: *can this design decide this item at all?* | not exchanged |
 
 ### Preconditions, in order

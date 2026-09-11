@@ -141,7 +141,7 @@ def test_fails_realtime_cpu_when_processing_cannot_keep_up():
     assert v.bottleneck == "realtime_cpu.overrun"
 
 
-# ------------------------------------------------------ G12b provenance ---
+# ------------------------------------------------------ L3.2 provenance ---
 
 
 def test_requested_frame_rate_downgrades_evidence():
@@ -162,7 +162,7 @@ def test_requested_rate_within_lens_2_ceiling_still_warns():
 
 
 def test_unrealizable_frame_rate_is_a_bias_finding_not_a_hard_fail():
-    """Frame-rate realizability is lens 2's G9. This lens reports that its
+    """Frame-rate realizability is lens 2's L2.5. This lens reports that its
     own numbers rest on a rate the camera cannot deliver, and lets the
     feasibility grade collapse -- it does not seize a verdict it does not
     own."""
@@ -176,7 +176,7 @@ def test_unrealizable_frame_rate_is_a_bias_finding_not_a_hard_fail():
     assert v.advances is False
 
 
-# --------------------------------------------------- G12c pixel container ---
+# --------------------------------------------------- L3.3 pixel container ---
 
 
 def test_eight_bit_mode_halves_the_data_rate_but_is_not_measured():
@@ -243,7 +243,7 @@ def test_realtime_cpu_budget_is_set_by_the_total_frame_rate():
     assert v.margins["realtime_cpu.overrun"] < 1.0
 
 
-# --------------------------------------------------------- G13d RAM capture ---
+# --------------------------------------------------------- L3.7 RAM capture ---
 
 
 def test_ram_capture_lifts_the_real_time_disk_gate():

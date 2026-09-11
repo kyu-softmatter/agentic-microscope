@@ -9,12 +9,12 @@ docs/05-consensus-gate.md "Lens 4"; docs/06-pitfalls.md D5.
     obj = Objective("6-Plan Apo LmbdD0.13 100x Oil", 100, 1.45, "oil",
                     wd_um=130.0, verified_na=True)
     verdict = evaluate(SampleSetup(objective=obj, imaging_depth_um=15.0))
-    print(verdict.status, verdict.bottleneck)   # G15..G19
+    print(verdict.status, verdict.bottleneck)   # L4.1..L4.6
 
-Gates: G15 NA feasibility, G16 working distance, G16b depth within
-chamber, G16c near-wall drag bound, G17 refractive-index
-mismatch, G18 coverslip thickness, G19 count in field. These numbers are
-new -- docs assigned lens 4 none, and G1-G14 were already taken.
+Gates: L4.1 NA feasibility, L4.2 working distance, L4.3 depth within
+chamber, L4.4 near-wall drag bound, L4.5 refractive-index
+mismatch, G18 coverslip thickness, L4.6 count in field. These numbers are
+new -- docs assigned lens 4 none, and L1.1-L7.2–L7.4 were already taken.
 
 The refractive indices come from kb/expertise/immersion-media-in-use.md and
 kb/expertise/sample-medium-refractive-index.md. The sample-medium default of

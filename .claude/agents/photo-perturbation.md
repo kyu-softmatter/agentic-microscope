@@ -13,8 +13,9 @@ tools: Read, Grep, Glob
 model: inherit
 ---
 
-> **Status: the quantitative half is code now** (`photo/`, 2026-08-12). **G21,
-> G22 and the trap-heating ownership notice run. G10 and G20 do not exist any
+> **Status: the quantitative half is code now** (`photo/`, 2026-08-12). **L5.1,
+> L5.2 and L5.3 (trap-heating ownership) run — as REPORTS, since 2026-09-10; they
+> were G21 and G22 when they were gates. G10 and G20 do not exist any
 > more** — both were removed on 2026-09-09, each keyed to a per-dye constant
 > that is empty for every entry in `data/fluorophores.yaml`
 > ([`2026-09-09-g10-photobleaching-removed.md`](../../kb/decisions/2026-09-09-g10-photobleaching-removed.md),

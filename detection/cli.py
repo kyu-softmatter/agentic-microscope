@@ -11,8 +11,8 @@ comes from the detector registry -- and `--row-time-us 10.28`, which is the
 archive Prime95B's row time, not this camera's.)
 
 ``check`` runs the committee-lens gate (detection.gate.evaluate): sampling
-(G5), saturation (G6), SNR (G7), motion blur (G8), frame-rate realizability
-(G9).
+(L2.1), saturation (L2.2), SNR (L2.3), motion blur (L2.4), frame-rate realizability
+(L2.5).
 
 ``from-frame`` runs it backwards: give it one measured test frame and it
 computes which readout mode and what exposure the experiment needs
@@ -216,7 +216,7 @@ def cmd_from_frame(args: argparse.Namespace) -> int:
         print(f"  -> {winner.mode} at {winner.exposure_ms:.2f} ms, SNR "
               f"{winner.snr_achieved:.1f}, limited by {winner.binding_constraint}.")
         print("     Exposure is the *minimum* that meets the target -- longer only")
-        print("     adds photobleaching dose (lens 5) and motion blur (G8).")
+        print("     adds photobleaching dose (lens 5) and motion blur (L2.4).")
         print()
         print("  paste into kb/calibrations/frame-photometry.yaml:")
         print(f"    - sample: {args.subject or '<name>'}")
@@ -241,7 +241,7 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="detection", description=__doc__)
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    c = sub.add_parser("check", help="run the committee-lens gate (G5-G9)")
+    c = sub.add_parser("check", help="run the committee-lens gate (L2.1-L2.5)")
     c.add_argument("--detector", default="Kinetix", help="detector name in data/detectors.yaml")
     c.add_argument("--mode", default=None, help="detector mode name (see data/detectors.yaml)")
     c.add_argument("--binning", type=int, default=1)
@@ -258,7 +258,7 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument(
         "--achieved-fps", type=float, default=None,
         help="OBSERVED frame rate, from an acquisition's own timestamps. "
-        "Outranks --target-fps. With neither, G8 and G9 report the usable "
+        "Outranks --target-fps. With neither, L2.4 and L2.5 report the usable "
         "window and grade nothing -- the rate is decided in synthesis.",
     )
     c.add_argument("--roi-height-px", type=int, default=None, help="ROI row count")

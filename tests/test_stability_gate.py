@@ -17,7 +17,7 @@ def _setup(**overrides) -> StabilitySetup:
         objective=find_objective("100x-Oil"),
         emission_nm=520.0,
         particle_radius_um=0.5,
-        delta_density_kg_m3=0.0,  # density-matched by default, so G31 is quiet
+        delta_density_kg_m3=0.0,  # density-matched by default, so L8.2 is quiet
         viscosity_pa_s=1.0e-3,
         chamber_sealed=True,
     )
@@ -49,7 +49,7 @@ def test_a_missing_drift_rate_no_longer_blocks_anything():
     """It was Phase 0's most common refusal and it is gone. G29 needed a
     measured rate, nothing in the repo had one, so every real acquisition
     BLOCKED -- and because Phase 0 is all-or-nothing, that one absent number
-    took down G31 and G32, whose inputs were present. Removing the gate
+    took down L8.2 and L8.3, whose inputs were present. Removing the gate
     removed the refusal."""
     v = evaluate(_setup())
     assert v.status == "REPORT"
@@ -191,7 +191,7 @@ def test_the_drift_budget_is_visible_rather_than_graded():
     assert v.margins["stability.drift_budget"] == 10.0
 
 
-# ----------------------------------------------- G31 sedimentation -------
+# ----------------------------------------------- L8.2 sedimentation -------
 #
 # REPORTS, DOES NOT GATE, since 2026-09-10 (KH): "침강 상승 속도와 평형에
 # 도달하는 시간 정도만 계산하고 인포로 남겨두자." The old gate compared a whole
@@ -202,7 +202,7 @@ def test_the_drift_budget_is_visible_rather_than_graded():
 # so 0.34%, and trap_force returns that axial force beside the radial one at no
 # extra cost) and the lens has
 # no `trapped` field to tell the two apart. The free-settling case is lens 4's
-# G19, which assumes the settled state; this reports when it arrives.
+# L4.6, which assumes the settled state; this reports when it arrives.
 
 
 def test_sedimentation_is_a_report_not_a_gate():
@@ -252,7 +252,7 @@ def test_the_time_to_equilibrium_needs_a_chamber_height():
 
 
 def test_a_run_shorter_than_the_equilibration_time_says_so():
-    """Then G19's settled-state premise does not hold yet, which is the one
+    """Then L4.6's settled-state premise does not hold yet, which is the one
     thing this report exists to tell lens 4."""
     v = evaluate(
         _setup(
@@ -294,7 +294,7 @@ def test_missing_settling_inputs_report_rather_than_block():
     assert "stability.evaporation" in v.metrics
 
 
-# ------------------------------------------------- G32 evaporation ------
+# ------------------------------------------------- L8.3 evaporation ------
 #
 # REPORTS, DOES NOT GATE, since 2026-09-10 (KH). Sealing is declarable; an
 # evaporation rate is not. The old gate returned a stand-in margin of 0.5 when
@@ -451,7 +451,7 @@ def test_lens_6_can_review_this_lens_verdict():
     """Lens 8 is conditional, so lens 6 accepts it as an extra beyond the
     standing set rather than requiring it.
 
-    ⚠ AND AS OF 2026-09-10 NOTHING FROM LENS 8 REACHES LENS 6 AT ALL. G23's
+    ⚠ AND AS OF 2026-09-10 NOTHING FROM LENS 8 REACHES LENS 6 AT ALL. L6.2's
     ledger collects `bias`-kind findings, and this lens has none left -- both
     of its bias gates became reports. Its drift and evaporation notes live in
     `assumed_inputs`, and `_evaluate_one` does not read upstream

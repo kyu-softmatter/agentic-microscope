@@ -85,7 +85,7 @@ class Check:
 # Thresholds, in one place so they can be argued with.
 # --------------------------------------------------------------------------
 LIMITS = {
-    #: G3. **5.0 in both evidence tiers** -- fixed 2026-09-09 (KH). This used
+    #: L1.2. **5.0 in both evidence tiers** -- fixed 2026-09-09 (KH). This used
     #: to rise to 7.0 for parametric spectra, on the reasoning that an
     #: idealized flat blocking floor flatters the number. That penalty is now
     #: gone from the threshold: the approximation is already carried on the
@@ -162,7 +162,7 @@ def available_facts(channel: "Channel") -> set[str]:
 
 
 def check_excitation(channel: "Channel", others: list["Channel"]) -> CheckResult:
-    """Does this line actually excite this dye through this path?"""
+    """L1.1 (was G1): Does this line actually excite this dye through this path?"""
     from .path import Channel as _Channel
 
     ex_eff = channel.excitation_efficiency()
@@ -224,7 +224,7 @@ def check_excitation(channel: "Channel", others: list["Channel"]) -> CheckResult
 
 
 def check_blocking(channel: "Channel", others: list["Channel"]) -> CheckResult:
-    """Is backscattered excitation kept out of the detector?"""
+    """L1.2 (was G3): Is backscattered excitation kept out of the detector?"""
     od = channel.excitation_blocking_od()
     #: Reported, no longer priced in. See LIMITS["blocking_od"].
     assumed = not _path_measured(channel)
@@ -265,7 +265,7 @@ def check_blocking(channel: "Channel", others: list["Channel"]) -> CheckResult:
 
 
 def check_collection(channel: "Channel", others: list["Channel"]) -> CheckResult:
-    """How much of the dye's emission survives to become electrons?"""
+    """L1.4 (was G2): How much of the dye's emission survives to become electrons?"""
     coll = channel.spectral_collection()
     margin = coll / LIMITS["spectral_collection"]
 
@@ -293,7 +293,7 @@ def check_collection(channel: "Channel", others: list["Channel"]) -> CheckResult
 
 
 def check_filter_centering(channel: "Channel", others: list["Channel"]) -> CheckResult:
-    """Of the emission the detector *could* see, how much do the filters pass?
+    """L1.5: Of the emission the detector *could* see, how much do the filters pass?
 
     Separates the filters' contribution from the camera's QE, which is what
     tells you whether a different filter would help.
@@ -351,7 +351,7 @@ def check_filter_centering(channel: "Channel", others: list["Channel"]) -> Check
 
 
 def check_stokes(channel: "Channel", others: list["Channel"]) -> CheckResult:
-    """G3b: are the excitation and detection bands actually separated?
+    """L1.3 (was G3b): are the excitation and detection bands actually separated?
 
     Numbered 2026-09-10. It is `hard` and it has decided a session -- the
     2026-09-05 two-colour config went INFEASIBLE on `spectral.overlap 0.00`,
@@ -359,11 +359,11 @@ def check_stokes(channel: "Channel", others: list["Channel"]) -> CheckResult:
     table, so a proposal could be stopped by something a reader could not
     look up.
 
-    Sub-lettered under G3 because it is the same failure family, excitation
-    reaching the detector, by a different mechanism: G3 is the filter failing
-    to attenuate, this is the bands overlapping in the first place. G3's
+    Sub-lettered under L1.2 because it is the same failure family, excitation
+    reaching the detector, by a different mechanism: L1.2 is the filter failing
+    to attenuate, this is the bands overlapping in the first place. L1.2's
     action ("add a blocking filter") cannot fix it, which is why it needs its
-    own number rather than a branch of G3.
+    own number rather than a branch of L1.2.
     """
     head = channel.stokes_headroom_nm()
     if math.isnan(head):
@@ -399,7 +399,7 @@ def check_stokes(channel: "Channel", others: list["Channel"]) -> CheckResult:
 
 
 def check_crosstalk(channel: "Channel", others: list["Channel"]) -> CheckResult:
-    """How much of a neighbouring channel leaks in here?
+    """L1.6 (was G4): How much of a neighbouring channel leaks in here?
 
     Classified ``bias``: leaked signal is indistinguishable from real signal, so
     the data looks fine and the conclusion is wrong.
@@ -441,7 +441,7 @@ def check_crosstalk(channel: "Channel", others: list["Channel"]) -> CheckResult:
 
 
 def check_port(channel: "Channel", others: list["Channel"]) -> CheckResult:
-    """Is the collected light actually going to this camera?"""
+    """L1.7: Is the collected light actually going to this camera?"""
     f = channel.port_fraction
     if f >= 0.99:
         return _ok("path.port", INFO, 1.0, "Full light path to the camera.", port=f)
