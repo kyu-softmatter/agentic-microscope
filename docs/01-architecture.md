@@ -379,6 +379,11 @@ experimentalist/
 │   ├── piezo\                    verify_piezo_commands.py — command-set discovery
 │   └── session\                  measure_latency.py — all three, in parallel
 │
+├── committee\                    ← not a lens: the wiring BETWEEN the lenses
+│   └── emissions.py              every code every lens can emit, parsed with
+│                                 `ast`, and the two-way diff against lens 6's
+│                                 bias registries. Derived, not declared
+│
 ├── kb\                           ← knowledge base
 │   ├── systems\current.md        current system dossier
 │   ├── calibrations\             measured calibrations

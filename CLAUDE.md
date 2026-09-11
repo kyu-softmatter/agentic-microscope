@@ -368,6 +368,27 @@ nobody verifies while `detection/recommend.py` already refuses on it where it
 does damage. None of the ten numbers is reused.
 
 ```bash
+python -m committee.cli reconcile
+```
+
+**Run this after adding or removing a gate.** `committee/` is not a lens — it
+judges the *wiring between* them, and two failure modes there are silent: a
+lens emitting a bias code no registry names (accepted, but it pins the
+verdict's `evidence` to `assumed` forever) and a registry naming a code nobody
+emits (a declaration matches nothing and the declarer is not told). The layer
+**parses** every `CheckResult` in every `checks.py` with `ast` rather than
+trusting a declaration, and `python -m committee.cli parser` reports any
+construction site it could not read — a silent parse miss would make it
+confidently claim a code is unreachable.
+
+⚠ **It currently reports 7 and 8, and that is expected**: the drift is tracked,
+not clean, and is KH's to close through this layer rather than by hand-editing
+the tables → [`2026-09-11-the-emission-collection-layer.md`](kb/decisions/2026-09-11-the-emission-collection-layer.md).
+`emissions` lists every code with its kind and severity; `invisible` lists the
+34 sites that compute a result at severity `"ok"`, which every `gate.py` drops
+from `findings`.
+
+```bash
 python -m knowledge.cli write
 ```
 
