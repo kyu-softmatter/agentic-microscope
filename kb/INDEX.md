@@ -48,7 +48,7 @@ Durable expert judgment. Each carries a `Why` and a falsifier.
 - **[microrheology-standard-conditions](expertise/microrheology-standard-conditions.md)** · 2026-09-07
   What conditions does a microrheology run on this instrument default to, and which of them are choices rather than constants
 
-## `kb/decisions/` — 39 entries
+## `kb/decisions/` — 40 entries
 
 Dated design and scope choices, in the order they were made.
 
@@ -126,6 +126,8 @@ Dated design and scope choices, in the order they were made.
   Why could lens 7 not be told a stiffness it had measured, why did two hard gates grade a placeholder, and what should the unnumbered hard checks be called?
 - **[2026-09-10-lens-8-becomes-a-reporting-section](decisions/2026-09-10-lens-8-becomes-a-reporting-section.md)** · 2026-09-10
   What is left of lens 8 once every quantity it gated on is either measured during the run, owned by another lens, or unmeasurable in principle?
+- **[2026-09-11-a-pass-that-decides-must-be-visible](decisions/2026-09-11-a-pass-that-decides-must-be-visible.md)** · 2026-09-11
+  Which passing branches of a judging lens have to appear in findings, and which may stay silent?
 - **[2026-09-11-g11-and-g26-removed](decisions/2026-09-11-g11-and-g26-removed.md)** · 2026-09-11
   Should the validity lens compute a statistical-power margin from an ensemble formula, and gate on a post-processing flag nobody verifies?
 - **[2026-09-11-wall-drag-reaches-the-bias-ledger](decisions/2026-09-11-wall-drag-reaches-the-bias-ledger.md)** · 2026-09-11

@@ -8,8 +8,12 @@ from __future__ import annotations
 
 import pytest
 
+import pathlib
+
 from validity.gate import evaluate
 from validity.setup import STANDING_LENSES, ValiditySetup
+
+REPO = pathlib.Path(__file__).resolve().parent.parent
 
 
 class _V:
@@ -302,6 +306,118 @@ def test_an_info_KIND_finding_is_still_not_a_bias():
     )
     v = evaluate(_setup(upstream=up))
     assert v.metrics["validity.bias_ledger"]["bias_findings"] == 0
+
+
+# ------------------------- a pass that decides must be visible -----------
+#
+# KH, 2026-09-11, choosing the narrowest of three options: only the passing
+# branches that carry a DECISION report severity "info". The line drawn:
+#
+#   a pass that rests on "this does not apply to you" is a DECISION
+#   a pass that rests on "you have it"                 is a FACT
+#
+# Four branches are decisions -- each turned its check off on the strength of a
+# lookup table, and if the table is wrong a silent pass is how nobody finds
+# out. Four are facts and stay on `_ok`.
+# kb/decisions/2026-09-11-a-pass-that-decides-must-be-visible.md
+
+
+def test_a_pass_that_turns_a_gate_off_is_visible() -> None:
+    """G24 and G25 on a quantity they do not apply to. docs/06 A1 is that a
+    wrong pixel size is undetectable downstream, so "it does not matter here"
+    is the one claim worth printing."""
+    v = evaluate(
+        _setup(
+            intended_quantity="intensity",
+            pixel_size_measured=False,       # irrelevant, and that is the point
+            background_measured=True,
+            dark_current_measured=True,
+            flat_field_measured=True,
+        )
+    )
+    f = next(f for f in v.findings if f.code == "validity.pixel_calibration")
+    assert f.severity == "info"
+    assert "does not apply" in f.message
+    assert "QUANTITY_REQUIREMENTS" in f.action
+    assert v.status == "PASS"          # still a pass, just not a silent one
+
+    g = evaluate(_setup(intended_quantity="diffusion", pixel_size_measured=True))
+    photo = next(
+        f for f in g.findings if f.code == "validity.photometric_calibration"
+    )
+    assert photo.severity == "info"
+    assert "does not apply" in photo.message
+
+
+def test_a_pass_that_rests_on_having_the_calibration_stays_silent() -> None:
+    """The other side of the line. "Pixel size is measured and this quantity
+    depends on it" is a fact a reader can reconstruct from the inputs, so it
+    stays on `_ok` and out of `findings`. Keeping this narrow is why option (a)
+    was chosen over printing every branch."""
+    v = evaluate(_setup(intended_quantity="diffusion", pixel_size_measured=True))
+    assert not any(f.code == "validity.pixel_calibration" for f in v.findings)
+    assert v.margins["validity.pixel_calibration"] == 10.0
+    # The reasoning is still recoverable, just not in findings.
+    assert v.metrics["validity.pixel_calibration"]["measured"] is True
+
+
+def test_clearing_a_bias_by_declaration_is_visible() -> None:
+    """The one place the ledger can be talked out of a FAIL, and it does it on
+    a declaration this gate cannot verify. It used to pass silently."""
+    up = _all_present(
+        detection=_V(findings=[_F("motion_blur.biased", "detection")])
+    )
+    v = evaluate(
+        _setup(upstream=up, corrections_applied=frozenset({"motion_blur.biased"}))
+    )
+    f = next(f for f in v.findings if f.code == "validity.bias_ledger")
+    assert f.severity == "info"
+    assert v.status == "PASS"
+    assert "Cleared by DECLARATION" in f.action
+    assert "that it was actually applied is not" in f.action
+
+
+def test_an_unaudited_clearance_says_so_in_findings_not_only_in_evidence() -> None:
+    """A warning that sat inside a passing branch: "no correction is registered
+    for X, so that clearance is unaudited". It reached `assumed_inputs` and
+    never `findings`."""
+    up = _all_present(
+        sample=_V(findings=[_F("some.future_bias", "sample")])
+    )
+    v = evaluate(
+        _setup(upstream=up, corrections_applied=frozenset({"some.future_bias"}))
+    )
+    f = next(f for f in v.findings if f.code == "validity.bias_ledger")
+    assert f.severity == "info"
+    assert "No correction is registered for some.future_bias" in f.message
+    assert "cannot be `measured`" in f.message
+    assert "not even checked for existence" in f.action
+    assert v.evidence == "assumed"
+
+
+def test_an_empty_bias_ledger_stays_silent() -> None:
+    """No upstream bias at all is a fact, not a decision: nothing was scoped
+    out and nothing was declared. Stays on `_ok`."""
+    v = evaluate(_setup())
+    assert not any(f.code == "validity.bias_ledger" for f in v.findings)
+    assert v.metrics["validity.bias_ledger"]["bias_findings"] == 0
+
+
+def test_exactly_four_branches_report_and_four_stay_silent() -> None:
+    """Pins the narrowness of option (a). `_ok` is the fact path; a direct
+    `CheckResult(..., "ok", ...)` would bypass this count, so the helper is the
+    thing to look for."""
+    src = (REPO / "validity" / "checks.py").read_text()
+    assert src.count("return _ok(") == 4
+
+    # And `_ok` is the only place severity "ok" is constructed, so counting its
+    # call sites really does count the silent branches. Everything after the
+    # helper must be free of it.
+    # Matching `"ok",` as a positional argument rather than the bare word, so
+    # the "severity info, NOT ok" comments on the four visible branches do not
+    # trip it.
+    after_helper = src.split("def available_facts(", 1)[1]
+    assert '"ok",' not in after_helper
 
 
 # ------------------------------ wall drag, both branches -----------------

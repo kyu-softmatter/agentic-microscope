@@ -95,6 +95,31 @@ class Check:
 
 
 def _ok(code, kind, margin, message, **numbers) -> CheckResult:
+    """A pass that rests on a FACT. Severity "ok", so `gate.py` drops it.
+
+    ⚠ READ THE RULE BEFORE ADDING A CALL. Every `gate.py` in this repository
+    drops `severity == "ok"` from `findings`, so anything returned through here
+    exists only in `metrics`, which no CLI prints. That is right for a pass
+    whose basis the reader can reconstruct, and wrong for a pass that made a
+    choice. The line, set 2026-09-11 (KH, option (a) of three):
+
+        **A pass that rests on "this does not apply to you" is a DECISION and
+        must be visible -- return severity "info" directly.
+        A pass that rests on "you have it" is a FACT and may use `_ok`.**
+
+    Four branches in this lens are decisions and do not come through here:
+    G23's out-of-scope ruling and its declaration-accepted ruling, and G24's
+    and G25's "not on the critical path" rulings. Each of those turned the
+    check OFF on the strength of a lookup table -- `BIAS_SCOPE`,
+    `CORRECTIONS`, `QUANTITY_REQUIREMENTS` -- and if the table is wrong, a
+    silent pass is exactly how nobody finds out.
+
+    This was the fifth and sixth instance of one defect in a single review
+    (lens 5's G20, lens 4's wall drag, lens 7's `_ok`, lens 8's `_ok` and
+    `convening`). The reason it keeps recurring is the name: `_ok` reads as
+    "not graded" and behaves as "not visible".
+    kb/decisions/2026-09-11-a-pass-that-decides-must-be-visible.md
+    """
     return CheckResult(code, kind, margin, "ok", message, None, numbers)
 
 
@@ -191,15 +216,25 @@ def check_bias_ledger(setup: "ValiditySetup") -> CheckResult:
         )
 
     if not applicable:
-        return _ok(
+        # severity "info", NOT "ok" (KH, 2026-09-11). This branch made a
+        # DECISION -- it ruled every upstream bias out of scope from
+        # `BIAS_SCOPE` -- and it carries an instruction the reader has to act
+        # on: the biases still stand against the quantities they DO damage. As
+        # `_ok` both vanished.
+        return CheckResult(
             "validity.bias_ledger",
             HARD,
             MAX_MARGIN,
+            "info",
             f"None of the {len(all_bias)} upstream bias findings damage "
             f"'{setup.intended_quantity}': "
             f"{', '.join(f.code for f in out_of_scope)}. They still stand "
             "against the quantities they do damage -- judge those separately.",
-            **numbers,
+            action="Scoped out by validity.setup.BIAS_SCOPE, so this pass is "
+            "only as good as that table. A bias absent from it damages every "
+            "quantity by default; one listed with the wrong scope disappears "
+            "silently for the quantities it is missing.",
+            numbers=numbers,
         )
 
     if not uncorrected:
@@ -214,7 +249,29 @@ def check_bias_ledger(setup: "ValiditySetup") -> CheckResult:
                 "though, so that clearance is unaudited and the verdict cannot "
                 "be `measured`."
             )
-        return _ok("validity.bias_ledger", HARD, MAX_MARGIN, msg, **numbers)
+        # severity "info", NOT "ok" (KH, 2026-09-11). This is the one place
+        # the ledger can be talked out of a FAIL, and it does it on the
+        # strength of `corrections_applied` -- a declaration. That is a
+        # decision, and the `unverified` clause above is a live warning that
+        # used to sit inside a branch nothing printed.
+        return CheckResult(
+            "validity.bias_ledger",
+            HARD,
+            MAX_MARGIN,
+            "info",
+            msg,
+            action="Cleared by DECLARATION, not by anything this gate can "
+            "check. Each code above was matched against "
+            "validity.setup.CORRECTIONS; that the correction exists is checked, "
+            "that it was actually applied is not."
+            + (
+                " And the unregistered ones are not even checked for "
+                "existence."
+                if unverified
+                else ""
+            ),
+            numbers=numbers,
+        )
 
     margins = [
         f.margin for f in uncorrected if getattr(f, "margin", None) is not None
@@ -301,13 +358,22 @@ def check_pixel_calibration(setup: "ValiditySetup") -> CheckResult:
     }
 
     if not required:
-        return _ok(
+        # severity "info", NOT "ok" (KH, 2026-09-11): this branch turned a HARD
+        # gate OFF on the strength of QUANTITY_REQUIREMENTS. docs/06 A1 is that
+        # a wrong pixel size is undetectable downstream, so "it does not matter
+        # here" is the one claim worth seeing.
+        return CheckResult(
             "validity.pixel_calibration",
             HARD,
             MAX_MARGIN,
+            "info",
             f"Pixel size is not on the critical path for "
-            f"'{setup.intended_quantity}'.",
-            **numbers,
+            f"'{setup.intended_quantity}', so this gate does not apply.",
+            action="From validity.setup.QUANTITY_REQUIREMENTS. If that "
+            "classification is wrong, every distance derived from this data is "
+            "wrong by an unknown constant and nothing downstream can tell "
+            "(docs/06 A1).",
+            numbers=numbers,
         )
 
     if setup.pixel_size_measured:
@@ -358,13 +424,18 @@ def check_photometric_calibration(setup: "ValiditySetup") -> CheckResult:
     }
 
     if not required:
-        return _ok(
+        # severity "info", NOT "ok" (KH, 2026-09-11), same reason as G24's
+        # branch above: the check turned itself off from a lookup table.
+        return CheckResult(
             "validity.photometric_calibration",
             BIAS,
             MAX_MARGIN,
+            "info",
             f"'{setup.intended_quantity}' does not rest on photometric "
-            "calibration.",
-            **numbers,
+            "calibration, so this gate does not apply.",
+            action="From validity.setup.QUANTITY_REQUIREMENTS -- this pass is "
+            "only as good as that classification.",
+            numbers=numbers,
         )
 
     if not missing:

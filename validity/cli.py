@@ -133,6 +133,10 @@ def cmd_power(args: argparse.Namespace) -> int:
 
 def cmd_check(args: argparse.Namespace) -> int:
     declared = [s.strip() for s in (args.upstream_passed or "").split(",") if s.strip()]
+    # ⚠ `trapping` is accepted and `stability` is not, which is arbitrary --
+    # lens 8's verdict cannot be declared here at all. Part of the conditional-
+    # lens hole described at `validity.setup.STANDING_LENSES`, and left for the
+    # pipeline rework rather than patched (KH, 2026-09-11).
     unknown = [d for d in declared if d not in (*STANDING_LENSES, "trapping")]
     if unknown:
         print(

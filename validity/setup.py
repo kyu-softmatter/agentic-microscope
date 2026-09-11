@@ -236,15 +236,30 @@ BIAS_SCOPE: dict[str, frozenset[str]] = {
 #: bias reviewed here says so with BIAS; one that wants to narrate says INFO.
 _BIAS_SEVERITIES = frozenset({"info", "warn", "fail"})
 
-#: Standing lenses that should have returned a verdict before this one runs.
-#: Lens 8 is conditional (acquisitions past ~30 min), so it is not required
-#: here -- but `stability/` does implement G28-G32 and two of its gates are
-#: `kind: bias`, so pass its verdict in `upstream` when it convened and the
-#: ledger will pick those up like any other lens's.
 #: The lenses G27 requires a verdict from. `photo` left on 2026-09-10 when it
 #: became a reporting section rather than a judging lens -- it has no gate to
 #: return a verdict from, so demanding one would BLOCK every review forever.
 #: kb/decisions/2026-09-10-lens-5-becomes-a-reporting-section.md
+#:
+#: ⚠ THE CONDITIONAL LENSES (7 trapping, 8 stability) ARE NOT HERE AND CANNOT
+#: BE, AND THAT HOLE IS KNOWN AND DEFERRED. **Do not "fix" it by adding the two
+#: names** -- every trap-less, short acquisition would then FAIL G27.
+#:
+#: The defect is an asymmetry, verified 2026-09-11: hand a conditional lens's
+#: verdict in and it is judged (`blocked_lenses` / `failed_lenses` catch it),
+#: forget it entirely and `missing_standing` is empty, G27 reports 10.00 and the
+#: review PASSES. On a drag calibration that means lens 7 -- which owns kappa,
+#: the trap depth and the f_s >= 10 f_c sampling requirement, i.e. the measuring
+#: instrument itself -- can never have run and lens 6 still says
+#: `advances: True`. `CLAUDE.md` E4 already says a conditional lens that was not
+#: convened "leaves a hole, not a pass"; nothing enforces it.
+#:
+#: It is not fixable here, because `ValiditySetup` has no way to state that this
+#: experiment uses a trap or that this run is 45 minutes long -- so the gate
+#: cannot tell "never invoked" from "does not apply". The missing input is a
+#: statement of which subsystems the experiment engages, and **KH is rebuilding
+#: the pipeline (2026-09-11)**, which is where that belongs. Deliberately left
+#: unpinned by a test as well: a snapshot of this would be churn to delete.
 STANDING_LENSES: tuple[str, ...] = ("optics", "detection", "compute", "sample")
 
 

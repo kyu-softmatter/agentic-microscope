@@ -187,14 +187,26 @@ def test_an_unscoped_bias_damages_every_quantity():
 
 
 def test_out_of_scope_biases_are_named_rather_than_dropped():
+    """Twice over since 2026-09-11: counted in `metrics`, AND stated in
+    `findings`.
+
+    The check passes, but ruling a bias out of scope is a DECISION taken from
+    `BIAS_SCOPE`, and it carries an instruction -- the bias still stands
+    against the quantities it does damage. At severity "ok" both the ruling and
+    the instruction were dropped by `gate.py`, so the verdict said nothing at
+    all about a bias it had just dismissed."""
     up = _upstream(photo=_V(findings=[_F("perturbation.photobleaching", "photo")]))
     v = evaluate(_setup(intended_quantity="diffusion", upstream=up))
-    # The check passed, so it raises no finding -- but the bias is still on the
-    # record, counted and named, rather than dropped.
-    assert [f.code for f in v.findings if f.code == "validity.bias_ledger"] == []
     assert _ledger(v)["bias_findings"] == 1
     assert _ledger(v)["applicable"] == 0
     assert _ledger(v)["out_of_scope_codes"] == ["perturbation.photobleaching"]
+
+    f = next(f for f in v.findings if f.code == "validity.bias_ledger")
+    assert f.severity == "info"
+    assert f.margin == 10.0
+    assert "perturbation.photobleaching" in f.message
+    assert "judge those separately" in f.message
+    assert "BIAS_SCOPE" in f.action
 
 
 def test_the_worst_margin_is_taken_among_applicable_biases_only():
@@ -235,10 +247,17 @@ def test_one_session_can_have_a_biased_msd_and_a_sound_intensity_profile():
 
 
 def test_findings_carry_the_quantity_they_belong_to():
+    """One bias, two quantities, two differently-tagged findings -- which is
+    the whole point of per-quantity judgement, and only visible since the
+    out-of-scope ruling stopped being severity "ok" (2026-09-11).
+
+    `motion_blur.biased` scopes to `pixel_size`, so it damages the diffusion
+    coefficient and not the intensity profile."""
     up = _upstream(detection=_V(findings=[_F("motion_blur.biased", "detection")]))
     v = evaluate(_both(upstream=up))
     ledger = [f for f in v.findings if f.code == "validity.bias_ledger"]
-    assert [f.physical_quantity for f in ledger] == ["diffusion"]
+    by_quantity = {f.physical_quantity: f.severity for f in ledger}
+    assert by_quantity == {"diffusion": "fail", "intensity": "info"}
 
 
 def test_a_quantity_independent_finding_is_emitted_once_untagged():
