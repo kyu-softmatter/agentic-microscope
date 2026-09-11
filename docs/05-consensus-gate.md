@@ -643,6 +643,53 @@ this instrument, and L2.4's action text says so explicitly.
   repeatability, thermal environment, whether the settling figure applies, what
   each remedy costs another lens)
 
+### Lens 9 · Velocity (conditional, whenever something moves) — implemented
+
+- **New 2026-09-11**, asked for by KH after the review found that nothing in
+  this repository records a commanded-versus-actual motion scale
+  → [`kb/decisions/2026-09-11-the-velocity-lens.md`](../kb/decisions/2026-09-11-the-velocity-lens.md)
+- **Owns**: the **system's** velocity, not the stage's — the piezo's ramps and
+  the AOD trap's sweeps together, their scale, and what a commanded velocity
+  does to a trapped bead
+- **Gates**: L9.1 (time base) L9.2 (displacement window) L9.3 (steady state).
+  **Reports**: L9.4 (Reynolds) L9.5 (time-axis owner)
+- **⚠ L9.1 FAILS on every real configuration today, and that is the finding.**
+  A velocity is a distance over a time. The **distance** half is corroborated —
+  two independent length standards driven 10 µm on 2026-09-03 agreed to
+  **0.24 %** (`data/pixel_size.yaml`, 100x row: closed-loop piezo 0.06460
+  µm/px, AOD trap 0.06445). The **time** half has never been checked, and a
+  Stokes-drag calibration multiplies the commanded velocity straight into
+  `κ = γv/x_eq` — so an unverified time base is an **unbounded scale error on
+  the measured stiffness**, the same shape as the pixel-size error in
+  [06 A1](06-pitfalls.md) and unguarded until now. **A closed-loop controller
+  reporting position does not settle it**: the loop holds its own scale, which
+  is the question
+- **`LIMITS` is empty by construction.** Every bound derives from the caller's
+  `target_relative_error` — the offset floor is `σ/target` because
+  `δκ/κ = δx/x_eq`, and the step duration is `ln(1/target)` time constants
+  because the approach is exponential — or from a limit the trap model states
+  about itself (`trapping.goa.trap_force` refuses past the bead radius). A
+  velocity window is meaningless without a stated precision, and picking a
+  multiple would be originating a physical number (§3 Principle 1)
+- **The headline output is a velocity window.** For the drag calibration —
+  5 µm bead, water, κ = 3.87 pN/µm measured, σ = 10 nm, 5 % target — it is
+  **16.4–205 µm/s**, with the step at **≥ 36.5 ms (3.0 τ, 19 frames at 520
+  fps)**. The upper end is a hard bound and not a recommendation: linearity
+  departs from the GOA curve by 1.5 % at 20 % of the radius and 6.5 % at 40 %,
+  long before the focus leaves the bead
+- **It does not own the time axis**, and L9.5 says so rather than re-deriving
+  it: lens 2 owns the frame rate, lens 3's L3.2 owns whether that rate is
+  achieved or merely requested. ⚠ Those three `fps_provenance.*` codes reach
+  lens 6's ledger **registered nowhere**, so no table says whether a
+  frame-period error is correctable after the fact
+  (`python -m committee.cli reconcile`)
+- **The near-wall bias rides along and is not cleared here.** `γ` is the
+  unbounded Stokes drag; lens 4's L4.4 bounds the inflation and deliberately
+  does not correct it, so a velocity chosen from this window inherits it. That
+  entry in `assumed_inputs` belongs to lens 4 and reaches lens 6 from there
+- **Implementation**: `velocity/gate.py`, with `velocity/kinematics.py` for the
+  physics. No agent file yet — the qualitative half of this lens is not written
+
 ---
 
 ## 6. Orchestration — goal to instrument
@@ -657,7 +704,7 @@ and skill is this repository's proposal on top of it — the two are separated i
 |---:|---|---|---|
 | 1 | **Question** — a research goal, in the operator's words | conversation | not formalised |
 | 2 | **Interpretation** — goal → a concrete setting proposal | main agent | not formalised |
-| 3 | **Verification** — the eight lenses | code + subagents | ✅ code for all 8; agent files for 5 |
+| 3 | **Verification** — the nine lenses | code + subagents | ✅ code for all 9; agent files for 5 |
 | 4 | **Decision** — difficulty grade, interventions, or a deadlock handed up | main agent | ✅ §3 · §4 · below |
 | 5 | **Hardware plan** — one `kb/plans/` entry per run | main agent writes it | ✗ designed 2026-09-09, not built |
 | 6 | **Skill dispatch** — one skill per subsystem, each reading that plan | `.claude/skills/` | ✗ the directory does not exist |

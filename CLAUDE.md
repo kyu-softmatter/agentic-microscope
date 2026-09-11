@@ -135,6 +135,7 @@ inside is [05 §6](docs/05-consensus-gate.md).
 
 ```
 1 · 2 · 3  (+7 if trapping)     code, in parallel      deterministic, fast
+           (+9 if anything moves)
       ↓        any hard gate m < 1 → stop here, return a revision
 4 · 5      (+8 if >30 min)      subagents, parallel    fed the computed results
       ↓
@@ -183,8 +184,8 @@ the disk's write bandwidth (L3.1). And underneath all of it, **`unevaluated` ≠
 - **E3 · Lens 7 silent on heating ≠ heating cleared.** Trap heating is ungated
   by decision ([05 §5](docs/05-consensus-gate.md), [06 D6](docs/06-pitfalls.md)).
 - **E4 · A conditional lens that was not convened leaves a hole, not a pass.**
-  Lens 8 under ~30 min and lens 7 with no trap are absent; their row in lens 6's
-  bias ledger is `unevaluated`.
+  Lens 8 under ~30 min, lens 7 with no trap and lens 9 with nothing moving are
+  absent; their row in lens 6's bias ledger is `unevaluated`.
   ⚠ **Lens 8's row is now `unevaluated` even when it runs** (2026-09-10). It
   became a reporting section — every check INFO, `status: REPORT`,
   `advances: None` — so it emits no `bias` code for L6.2 to collect, and its
@@ -248,7 +249,7 @@ the disk's write bandwidth (L3.1). And underneath all of it, **`unevaluated` ≠
   becomes a wrong one. A margin of 10.00 against a threshold nobody supplied
   still does not advance.
 - **Lens 6 (`validity/`) reviews the other lenses' verdicts, so call it last.**
-- **Two of the eight lenses judge nothing.** Lens 5 and lens 8 both became
+- **Two of the nine lenses judge nothing.** Lens 5 and lens 8 both became
   reporting sections on 2026-09-10 — every check INFO, `LIMITS` empty,
   `status: REPORT`, `feasibility: "N/A"`, `advances: None`. The reasons do not
   transfer and should not be merged: lens 5's gates needed per-dye constants
@@ -340,11 +341,11 @@ python -m optics.cli check config/channels/proposed-2color.yaml
 ```
 
 Every lens has the same shape — `optics` · `detection` · `compute` · `sample` ·
-`photo` · `validity` · `stability` · `trapping`, each with `checks.py` ·
-`gate.py` · `setup.py` · `cli.py`. All **43 checks** are collected in
+`photo` · `validity` · `stability` · `trapping` · `velocity`, each with `checks.py` ·
+`gate.py` · `setup.py` · `cli.py`. All **48 checks** are collected in
 [04](docs/04-decision-engine.md), addressed `L<lens>.<n>` since 2026-09-11 —
 the lens number from [01 §4](docs/01-architecture.md), then the check's
-position in it. **19 `hard` · 6 `bias` · 3 `soft` can fail; 15 `info` only
+position in it. **22 `hard` · 6 `bias` · 3 `soft` can fail; 17 `info` only
 report**, and the kind is printed beside the address, because an address is a
 location and not a claim that something can fail. That is what let the eleven
 previously unnumbered checks be documented at all — two of them `hard`, so a

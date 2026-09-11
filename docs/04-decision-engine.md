@@ -594,6 +594,11 @@ The `was` column is the old flat number, for anything written before the change
 | **L8.2** | `info` | Sedimentation | **reports only** — velocity, and the time to reach the floor | radius, Δρ, viscosity, chamber height | INFO | L8.2 |
 | **L8.3** | `info` | Evaporation | **reports only** — evaporated fraction and concentration factor | sealed, or a measured rate | INFO | L8.3 |
 | **L8.4** | `info` | Drift budget | **reports only** — the drift rate this run could absorb, `DOF/duration`; assumes monotonic drift | duration, depth of field | INFO | — |
+| **L9.1** | `hard` | Velocity time base | a commanded µm/s has been shown to be the µm/s that happens. ⚠ **FAILS today**: the *distance* half is corroborated to 0.24 % (2026-09-03, two standards over 10 µm), the *time* half has never been checked | a measured actual/commanded ratio | **FAIL** |
+| **L9.2** | `hard` | Displacement window | `x_eq = γv/κ` inside [`σ/target`, bead radius]. **Both ends derived** — the floor from the precision asked for, the ceiling from where `trap_force` refuses | v, γ, κ (lens 7), σ (lens 2), target error | BLOCKED |
+| **L9.3** | `hard` | Steady state | step duration `≥ ln(1/target) · τ`, `τ = γ/κ`. Derived, so no "about five time constants" appears anywhere | step duration, γ, κ, target error | BLOCKED |
+| **L9.4** | `info` | Reynolds | **reports only** — `Re = ρva/η`; ungated on a computed argument, since `Re = 1` needs ~4×10⁵ µm/s for this bead | v, radius, viscosity | INFO |
+| **L9.5** | `info` | Time-axis owner | **reports only** — names lens 3's L3.2 as the owner of frame-period provenance and what L9.3 inherits from it | achieved fps | INFO |
 
 ### Retired gate numbers
 

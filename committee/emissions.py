@@ -37,6 +37,11 @@ LENSES: tuple[str, ...] = (
     "validity",
     "trapping",
     "stability",
+    #: Added 2026-09-11 with the lens itself. A lens this layer does not know
+    #: about is a lens whose emissions nobody reconciles, which is the exact
+    #: blindness the layer exists to remove -- so adding one here is part of
+    #: adding a lens, and `test_the_layer_covers_every_lens_package` says so.
+    "velocity",
 )
 
 _REPO = pathlib.Path(__file__).resolve().parent.parent
@@ -56,6 +61,9 @@ _OK_SEVERITY: dict[str, str] = {
     "validity": "ok",
     "trapping": "info",
     "stability": "info",
+    #: Written "info" from the start rather than inherited as "ok" and fixed
+    #: later -- lens 9 was built after the defect had appeared five times.
+    "velocity": "info",
 }
 
 _KINDS = {"HARD": "hard", "BIAS": "bias", "SOFT": "soft", "INFO": "info"}

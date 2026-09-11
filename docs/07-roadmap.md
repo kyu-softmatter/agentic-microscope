@@ -217,7 +217,7 @@ would have happened. And **nothing in the `plan` tier recomputes anything**: eac
 tool calls the entry point `config/`'s own scripts call, so a tool and a script
 that disagree is a bug rather than a difference of opinion.
 
-**What remains is the larger half: the eight lenses.** Each lens's CLI would have
+**What remains is the larger half: the nine lenses.** Each lens's CLI would have
 to grow a `--json` — two of eight have one — and hand its `argparse` parser over
 as the tool schema, so the CLI and the tool surface cannot drift apart. That is
 the piece that would let a model run the committee rather than only reach the

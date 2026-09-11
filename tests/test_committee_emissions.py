@@ -204,5 +204,38 @@ def test_every_site_carries_its_address() -> None:
 
 def test_the_site_count_is_pinned() -> None:
     """Not an interesting number in itself -- it is here so that adding or
-    removing a branch shows up as a decision rather than as noise."""
-    assert len(collect_all()) == 104
+    removing a branch shows up as a decision rather than as noise. 104 before
+    lens 9 was added on 2026-09-11, 112 after."""
+    assert len(collect_all()) == 112
+
+
+def test_the_layer_covers_every_lens_package() -> None:
+    """A lens this layer does not know about is a lens whose emissions nobody
+    reconciles -- the exact blindness it exists to remove. So registering a new
+    lens in `committee.emissions.LENSES` is part of adding one, and this is
+    what says so.
+
+    Derived from the filesystem rather than from a list, because a list is the
+    thing that would go stale. A lens is a package with both `checks.py` and
+    `gate.py`; `setup.py` is NOT part of the test, because `optics` and
+    `trapping` do not have one -- optics reads a `Channel` and trapping a
+    `TrapSetup` from its own `dynamics.py`.
+    """
+    import pathlib
+
+    repo = pathlib.Path(__file__).resolve().parent.parent
+    packages = {
+        p.parent.name
+        for p in repo.glob("*/checks.py")
+        if (p.parent / "gate.py").exists()
+    }
+    assert packages == set(LENSES), (
+        f"lens packages and committee.emissions.LENSES disagree: "
+        f"{packages ^ set(LENSES)}"
+    )
+
+
+def test_the_new_lens_has_no_invisible_computations() -> None:
+    """Lens 9 was built after the `_ok`-hides-it defect had appeared five
+    times, so its `_ok` writes severity "info" from the start."""
+    assert not [s for s in invisible_computations() if s.lens == "velocity"]

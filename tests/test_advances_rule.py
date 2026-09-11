@@ -32,6 +32,10 @@ LENS_MODULES = [
     "trapping",
     "sample",
     "validity",
+    # Lens 9, new 2026-09-11. A judging lens: three `hard` checks, and it
+    # FAILS on every real configuration today because L9.1's input does not
+    # exist yet -- which is the finding, not an exemption from the rule.
+    "velocity",
 ]
 
 #: The reporting sections, which are held to the opposite rule.

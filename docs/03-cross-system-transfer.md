@@ -207,7 +207,7 @@ has to be replaced at once.
 
 | Portable — computes from physical quantities | This instrument's — must be replaced |
 |---|---|
-| The eight lenses and the 28 gates | [`kb/systems/current.md`](../kb/systems/current.md) — this device wiring, cross-checked three ways |
+| The nine lenses and the 31 gates | [`kb/systems/current.md`](../kb/systems/current.md) — this device wiring, cross-checked three ways |
 | The 3-tier normalization and the `evidence` / `advances` split ([02 §2](02-knowledge-base.md), [01 §3](01-architecture.md)) | [`kb/calibrations/`](../kb/calibrations/) — pixel size, camera row time, disk bandwidth, all measured here |
 | The decision order and the formulas behind every gate ([04](04-decision-engine.md)) | [`kb/expertise/`](../kb/expertise/) — this lab's tacit priors: which coverslip is really in use, which immersion media, trapping with an oil objective in water |
 | The `data/*.yaml` registries as *catalogue* data — detectors, objectives, filters, light sources, fluorophores, spectra | Which entries of those registries are actually on the bench, and every empty field a power meter has to fill |

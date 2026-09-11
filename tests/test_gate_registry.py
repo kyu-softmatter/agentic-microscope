@@ -42,14 +42,15 @@ LENSES = (
     "validity",
     "stability",
     "trapping",
+    "velocity",
 )
 
-#: The same eight in COMMITTEE order, which is what the `L<lens>.<n>` addresses
+#: The same nine in COMMITTEE order, which is what the `L<lens>.<n>` addresses
 #: are numbered from. `LENSES` above is the import order this file has always
 #: used and puts stability before trapping; the address scheme follows docs/01
-#: §4's lens numbers, where trapping is 7 and stability is 8. Two orderings for
-#: one set is worth the explicitness -- deriving the lens number from `LENSES`
-#: would have silently numbered every trapping check L8.x.
+#: §4's lens numbers, where trapping is 7, stability is 8 and velocity is 9.
+#: Two orderings for one set is worth the explicitness -- deriving the lens
+#: number from `LENSES` would have silently numbered every trapping check L8.x.
 LENSES_IN_COMMITTEE_ORDER = (
     "optics",
     "detection",
@@ -59,6 +60,7 @@ LENSES_IN_COMMITTEE_ORDER = (
     "validity",
     "trapping",
     "stability",
+    "velocity",
 )
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
@@ -145,6 +147,17 @@ EXPECTED_CHECKS: dict[str, tuple[tuple[str, str], ...]] = {
     # microscope sits on one isolation table, so camera and sample move
     # together and an image shows only their relative motion.
     # kb/decisions/2026-09-10-lens-8-becomes-a-reporting-section.md
+    # Lens 9, new 2026-09-11: the system's velocity. Three `hard` and two
+    # `info`, and `LIMITS` empty -- every bound is derived from the caller's
+    # `target_relative_error` or from a limit the trap model states about
+    # itself. kb/decisions/2026-09-11-the-velocity-lens.md
+    "velocity": (
+        ("time_base", "hard"),
+        ("displacement_window", "hard"),
+        ("steady_state", "hard"),
+        ("reynolds", "info"),
+        ("time_axis_owner", "info"),
+    ),
     "stability": (
         ("convening", "info"),
         # THREE GATES LEFT THIS LENS ON 2026-09-10, all to the hardware /
@@ -241,6 +254,12 @@ EXPECTED_LIMITS: dict[str, dict] = {
     # stability, and for a third reason: this one never computed much to begin
     # with.
     "validity": {},
+    # Empty BY CONSTRUCTION, which is different from the other three empties:
+    # photo and stability lost their constants when they became reporting
+    # sections and validity never had many, but lens 9 was designed so that
+    # every bound derives from the experiment's stated precision target. An
+    # entry here means somebody introduced a threshold that does not.
+    "velocity": {},
     # Empty since lens 8 became a reporting section on 2026-09-10 -- the
     # second lens to have no constant of its own, for a different reason than
     # photo's. `axial_drift_dof_fraction` (0.5) went with G29;
@@ -361,6 +380,13 @@ EXPECTED_ADDRESSES: dict[str, tuple[tuple[str, str], ...]] = {
         ("L7.5", "power_window"),
         ("L7.6", "temperature_basis"),
     ),
+    "velocity": (
+        ("L9.1", "time_base"),
+        ("L9.2", "displacement_window"),
+        ("L9.3", "steady_state"),
+        ("L9.4", "reynolds"),
+        ("L9.5", "time_axis_owner"),
+    ),
     "stability": (
         ("L8.1", "convening"),
         ("L8.2", "sedimentation"),
@@ -439,7 +465,8 @@ def test_every_check_in_every_lens_is_addressed() -> None:
         }
         mapped = {code for _, code in EXPECTED_ADDRESSES[lens]}
         assert addressed == mapped, f"lens {lens}: {addressed ^ mapped} unaddressed"
-    assert sum(len(v) for v in EXPECTED_ADDRESSES.values()) == 43
+    # 43 before lens 9 arrived on 2026-09-11, 48 after.
+    assert sum(len(v) for v in EXPECTED_ADDRESSES.values()) == 48
 
 
 def test_addresses_are_dense_and_lens_numbered() -> None:

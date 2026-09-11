@@ -244,12 +244,13 @@ FAIL is already a fix instruction.
 | 5 | **Photo-perturbation** — ⚠ **a REPORTING SECTION, not a judging lens** (2026-09-10) | Light level, illumination duty, total dose | Reports irradiance, dose, light-driving and trap heating. **No gates**: G10/G20 went 2026-09-09, G21/G22 on 2026-09-10, and it is out of `STANDING_LENSES` — it cannot block or bless | `photo/` ✅ (every check `INFO`) + `.claude/agents/photo-perturbation.md` |
 | 6 | **Measurement validity** | Whether all of the above yields the intended physical quantity without bias | Bias computation + qualitative | `validity/` ✅ (L6.1–L6.4) + `.claude/agents/measurement-validity.md` for the qualitative half. **Computes nothing since 2026-09-11** — G11 and G26 removed, `LIMITS` empty |
 
-### Conditional (2)
+### Conditional (3)
 
 | # | Lens | Convened when | Basis of verdict | Implementation |
 |---|---|---|---|---|
 | 7 | **Optical tweezers** | Tweezers in use | Trap stiffness κ, U/kT, corner frequency f_c → computed | `trapping/` ✅ (no heating check — [06 D6](06-pitfalls.md)) |
-| 8 | **Mechanical & environmental** | Long experiments (>30 min) | Drift, vibration, evaporation, PFS lock | `stability/` ✅ (G29–L8.3; **G28 moved to the hardware execution stage 2026-09-10**) + `.claude/agents/mechanical-env.md` for the qualitative half. Vibration and stage repeatability remain ungated — no measurement channel exists |
+| 8 | **Mechanical & environmental** | Long experiments (>30 min) | Drift, vibration, evaporation, PFS lock | `stability/` ✅ (L8.1–L8.4; **G28/G29/G30 moved to the hardware execution stage 2026-09-10**) + `.claude/agents/mechanical-env.md` for the qualitative half. Vibration and stage repeatability remain ungated — no measurement channel exists |
+| 9 | **Velocity** — the *system's*, not the stage's | Anything commands a motion: a stage ramp, a trap sweep | Commanded-vs-actual scale, the offset it produces, whether it has time to arrive | `velocity/` ✅ (L9.1–L9.5). **New 2026-09-11.** ⚠ L9.1 FAILS on every real configuration: the distance half of the scale is corroborated to 0.24 % (2026-09-03, two standards over 10 µm), the **time** half has never been checked, and a drag calibration multiplies commanded velocity straight into `κ = γv/x_eq` |
 
 ### Why 4 and 5 are separate
 
@@ -287,7 +288,7 @@ experimentalist/
 │   ├── 01-architecture.md        (this file)
 │   ├── 02-knowledge-base.md      KB schema · three-way wiring cross-check · off-ledger settings
 │   ├── 03-cross-system-transfer.md   transferring settings between systems
-│   ├── 04-decision-engine.md     decision order · formulas · the 43 addressed checks
+│   ├── 04-decision-engine.md     decision order · formulas · the 48 addressed checks
 │   ├── 05-consensus-gate.md      committee · difficulty grades · improvement proposals
 │   ├── 06-pitfalls.md            pitfall list grounded in measured evidence
 │   ├── 07-roadmap.md             Phase 0–5
@@ -378,6 +379,10 @@ experimentalist/
 │   ├── tweezers\                 drive specs + run_pattern.py
 │   ├── piezo\                    verify_piezo_commands.py — command-set discovery
 │   └── session\                  measure_latency.py — all three, in parallel
+│
+├── velocity\                     ← lens 9 (the system's velocity, L9.1–L9.5)
+│   └── kinematics.py             x_eq = gamma*v/kappa, and the window both of
+│                                 whose ends derive from the precision target
 │
 ├── committee\                    ← not a lens: the wiring BETWEEN the lenses
 │   └── emissions.py              every code every lens can emit, parsed with
