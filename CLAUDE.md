@@ -97,7 +97,7 @@ from the other end.
   Load with a low-magnification objective in place — millimetres of working
   distance, so the front element cannot be reached — regardless of what rank 1
   wants for the measurement → README item 10, SAFETY §2.
-- It ranks axes, not *quantities*. Statistical power (G11), field count and
+- It ranks axes, not *quantities*. Statistical power (ungated since 2026-09-11), field count and
   duration are lens 6 and lens 8 questions and are not on this ladder.
 
 ### Status of this rule
@@ -341,9 +341,9 @@ python -m optics.cli check config/channels/proposed-2color.yaml
 
 Every lens has the same shape — `optics` · `detection` · `compute` · `sample` ·
 `photo` · `validity` · `stability` · `trapping`, each with `checks.py` ·
-`gate.py` · `setup.py` · `cli.py`. The formulas behind all 24 gates are
-collected in [04](docs/04-decision-engine.md); 21 are implemented, and `G2`–`G4`
-exist only as a threshold and a default verdict in that document. **`G10`, `G18`, `G20`, `G21`, `G22`, `G28`, `G29` and `G30` are vacant** — G10 and G20 on
+`gate.py` · `setup.py` · `cli.py`. The formulas behind all 22 gates are
+collected in [04](docs/04-decision-engine.md); 19 are implemented, and `G2`–`G4`
+exist only as a threshold and a default verdict in that document. **`G10`, `G11`, `G18`, `G20`, `G21`, `G22`, `G26`, `G28`, `G29` and `G30` are vacant** — G10 and G20 on
 2026-09-09, the other six on 2026-09-10: G18 because the coverslip condition is
 checked elsewhere, G21/G22 when **lens 5 stopped being a judging lens** and
 became a reporting section, and G28/G29/G30 when PFS lock and both drift rates
@@ -352,7 +352,12 @@ it is worth knowing before proposing a gate: **a planning gate must judge from
 what is known before the run starts.** G28 was reading `PFS in Range` as the
 servo state and that property reports the coverslip; G29 and G30 were reading
 the right quantity at the wrong time — *"실험 중 측정해야한다면 디자인 요소로는
-적합하지 않은듯"* (KH, 2026-09-10). None of the eight numbers is reused.
+적합하지 않은듯"* (KH, 2026-09-10). **G11 and G26 followed on 2026-09-11**,
+which left lens 6 computing nothing at all: G11's `1/√(N_p·N_f)` counts
+*independent* samples and one trapped bead at 520 fps has 6.3 correlated frames
+per relaxation time (3.5× optimistic), and G26 gated on a `despeckle` boolean
+nobody verifies while `detection/recommend.py` already refuses on it where it
+does damage. None of the ten numbers is reused.
 
 ```bash
 python -m knowledge.cli write

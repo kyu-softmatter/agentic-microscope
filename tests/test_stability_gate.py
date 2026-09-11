@@ -484,10 +484,7 @@ def test_lens_6_can_review_this_lens_verdict():
     v = validity_evaluate(
         ValiditySetup(
             intended_quantity="diffusion",
-            target_relative_error=0.05,
             upstream=upstream,
-            n_particles=200.0,
-            n_frames=2000,
             pixel_size_measured=True,
             analysis_script="D:/codes/msd.m",
         )

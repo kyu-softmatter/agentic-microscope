@@ -555,7 +555,7 @@ All decided in code. If even one fails, the proposal is void.
 | G8 | Motion blur | duty `= t_exp/t_frame ≤ 0.3` at the **decided** rate; reports a bound while the rate is undecided, plus `fps_at_duty_limit`, `exposure_max_ms` and `roi_height_min_px` | D or τ_c, **decided frame rate** | ask |
 | G9 | Frame-rate realizability | `f ≤ 1/max(t_exp, t_readout)`, graded against the **decided** rate; reports `fps_usable_max` = min(readout ceiling, G8's duty ceiling) and which binds | row time, ROI, **decided frame rate** | computable |
 | ~~G10~~ | *vacant* — photobleaching, **removed 2026-09-09**. Formulas kept in §6; number not reused | — | — |
-| G11 | Statistical power | target error met | particle concentration, target precision | ask |
+| ~~G11~~ | *vacant* — statistical power, **removed 2026-09-11**. `1/sqrt(N_p × N_f)` counts *independent* samples; one trapped bead at 520 fps has 6.3 correlated frames per relaxation time (τ = γ/κ = 12.1 ms), so it read 0.566% where ~2.0% is defensible — **3.5× optimistic**, a margin of 78× where ~6× is real. A drag calibration's precision comes from the number of velocity steps instead. The arithmetic survives as a calculator: `python -m validity.cli power`. Number not reused | — | — |
 | G12 | Data rate | a `< 0.7 ×` disk bandwidth (**reduce ROI *width*** — at the readout limit height cancels) · b `f` is achieved not requested, judged against lens 2's `fps_usable_max` · c container width is the one MM writes | measured disk bandwidth, achieved fps, confirmed bytes/px | measurement required |
 | G13 | Buffer · capacity · CPU · RAM | a `≥ 5 seconds' worth` · b fits free disk · c CPU/frame `< 1/f_total` · d RAM burst `≤` budget (**128 GB** authorized 2026-09-10, was 32) | RAM, frame size, duration, free disk | computable |
 | G14 | Tweezers | a **confinement** `κ > 0` · b **trap depth** `U ≥ 10 kT` · c **sampling** `f_s ≥ 10 f_c`. Sub-lettered 2026-09-10: `a` was `hard` and unnumbered, `b` already called itself "G14's escape-resistance half" | measured κ or a calibrated laser, viscosity, particle radius, achieved fps | BLOCKED |
@@ -573,7 +573,7 @@ All decided in code. If even one fails, the proposal is void.
 | G23 | Bias ledger | every bias that damages this quantity is absent, or cleared by a correction that exists | other lenses' verdicts, declared corrections | BLOCKED |
 | G24 | Pixel calibration | measured, when the quantity needs it | measured pixel size | BLOCKED |
 | G25 | Photometric calibration | background · dark · flat-field measured | those frames | BLOCKED |
-| G26 | Post-processing | no linearity-breaking filter | declared filters | BLOCKED |
+| ~~G26~~ | *vacant* — post-processing, **removed 2026-09-11**. It gated on a self-declared `despeckle` boolean nobody verifies, while `detection/recommend.py` already refuses a reference frame shot with despeckle on — *"the ADU→electron conversion is invalid, full stop"* — at the point where the filter destroys something computable. docs/06 C1 is unchanged as a pitfall; what changed is which code owns it. Number not reused | — | — |
 | G27 | Committee coverage | every standing lens returned, none BLOCKED | other lenses' verdicts | BLOCKED |
 | ~~G28~~ | *vacant* — PFS lock, **moved to the hardware execution stage 2026-09-10**. It read `PFS in Range` as the servo state, and that property reports the coverslip; `hardware/focus.py` asks MMCore's autofocus API instead. Number not reused | — | — |
 | ~~G29~~ | *vacant* — axial drift, **moved to the hardware execution stage 2026-09-10**, with G30. A drift rate is measured while a run happens, so it is not an input to a design: *"실험 중 측정해야한다면 디자인 요소로는 적합하지 않은듯"* (KH). Number not reused | — | — |
@@ -584,7 +584,8 @@ All decided in code. If even one fails, the proposal is void.
 G15–G19 are lens 4's, G23–G27 lens 6's, G31–G32 lens 8's; **lens 5 has no gate
 numbers at all** since 2026-09-10 — it is a reporting section. The
 numbers are new. This table previously stopped at G14 because lenses 4 and 8 had
-no gate IDs at all, lens 5 had only G10 (removed 2026-09-09) and lens 6 only G11.
+no gate IDs at all, lens 5 had only G10 (removed 2026-09-09) and lens 6 only G11
+(removed 2026-09-11).
 
 G23–G27 read **other lenses' verdicts** rather than hardware facts, which is
 why lens 6 has to run last.
@@ -632,7 +633,7 @@ next step, but the action differs: FAIL means change the setting, BLOCKED means
 | §5 timing · blur (G8, G9) | `detection.gate.evaluate` | ✅ covered by tests (2026-08-11) |
 | §6 bleaching (G10) | — | **Removed 2026-09-09.** The gate, its tests and its plumbing are gone; §6 keeps the formulas and says why |
 | §5 dose · light-driving | `photo.gate.evaluate` | ✅ covered by tests, but **not gates**: G20 went 2026-09-09, G21 and G22 on 2026-09-10 when lens 5 became a reporting section |
-| §7 statistical power (G11) | `validity.gate.evaluate` | ✅ covered by tests (2026-08-12) |
+| §7 statistical power | ~~`validity.gate.evaluate`~~ → `validity/power.py` | ⚠ **no longer a gate** (G11 removed 2026-09-11). The formulas are tested and reachable as `python -m validity.cli power`; nothing certifies against them. §7's ROI-vs-statistics trade (docs/01 §4's 3↔6 constraint) therefore **has no code left** — shrinking the ROI to buy frame rate still cuts the particle count by the same factor, and no gate notices |
 | bias ledger · calibrations · post-processing (G23–G27) | `validity.gate.evaluate` | ✅ covered by tests (2026-08-12); bias scoping + correction registry + per-quantity verdicts added 2026-08-20 |
 | settling · evaporation (G31–G32) | `stability.gate.evaluate` | ✅ covered by tests (2026-08-12) — but **lens 8 became a reporting section on 2026-09-10** and grades nothing: G28/G29/G30 moved to the hardware execution stage, G31/G32 became INFO reports, `vibration` was deleted. `status: REPORT`, `advances: None`. `stability.drift_budget` (INFO, unnumbered) reports the drift rate the run can absorb |
 | §8 compute resources (G12, G13) | `compute.gate.evaluate` | ✅ covered by tests (2026-08-11) |

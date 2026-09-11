@@ -62,10 +62,7 @@ def _setup(**overrides) -> ValiditySetup:
     """
     defaults = dict(
         intended_quantity="diffusion",
-        target_relative_error=0.05,
         upstream=_upstream(),
-        n_particles=200.0,
-        n_frames=2000,
         pixel_size_measured=True,
         background_measured=True,
         dark_current_measured=True,
@@ -245,12 +242,18 @@ def test_findings_carry_the_quantity_they_belong_to():
 
 
 def test_a_quantity_independent_finding_is_emitted_once_untagged():
-    """Statistical power does not depend on which quantity is wanted, so a
-    two-quantity session must not report it twice."""
-    v = evaluate(_both(n_particles=2.0, n_frames=10))
-    power = [f for f in v.findings if f.code == "validity.statistical_power"]
-    assert len(power) == 1
-    assert power[0].physical_quantity is None
+    """Committee coverage does not depend on which quantity is wanted, so a
+    two-quantity session must not report it twice.
+
+    G11 was this test's example until 2026-09-11. `committee_coverage` is the
+    only quantity-independent check left -- `bias_ledger` scopes by quantity,
+    and G24/G25 read the quantity's own requirement table."""
+    up = _upstream()
+    del up["sample"]
+    v = evaluate(_both(upstream=up))
+    coverage = [f for f in v.findings if f.code == "validity.committee_coverage"]
+    assert len(coverage) == 1
+    assert coverage[0].physical_quantity is None
 
 
 def test_margins_are_namespaced_by_quantity():

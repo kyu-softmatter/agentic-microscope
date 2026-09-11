@@ -1,16 +1,41 @@
-"""Individual measurement-validity checks -- G11 (statistical power), G23 (bias
-ledger), G24 (pixel calibration), G25 (photometric calibration), G26
-(post-processing), G27 (committee coverage).
+"""Individual measurement-validity checks -- G23 (bias ledger), G24 (pixel
+calibration), G25 (photometric calibration), G27 (committee coverage).
 
-docs/04-decision-engine.md §7; docs/05-consensus-gate.md "Lens 6";
-docs/06-pitfalls.md A1, C1.
+docs/05-consensus-gate.md "Lens 6"; docs/06-pitfalls.md A1.
 
-G11 was specified and never implemented. G23-G27 are new numbers (G1-G22 were
-taken by lenses 1/2/3/4/5/7).
+G23-G27 were new numbers (G1-G22 were taken by lenses 1/2/3/4/5/7).
 
-Unlike the other lenses, most of these checks read **other lenses' verdicts**
-rather than hardware facts. That is this lens's job: deciding whether the
-intended physical quantity survives every bias the committee found.
+TWO CHECKS LEFT THIS LENS ON 2026-09-11 (KH) AND NEITHER NUMBER IS REUSED.
+
+**G11 (statistical power)** was the only quantity this lens computed rather
+than reviewed, and the quantity it computed did not describe this instrument's
+measurements. `1/sqrt(N_p x N_f)` counts independent samples, and
+`validity/power.py` says so in its own docstring -- "in a crowded or
+hydrodynamically coupled suspension they are not, and this is optimistic". A
+single trapped bead is the worse case, because consecutive FRAMES are
+correlated too: at 520 fps with tau = gamma/kappa = 12.1 ms there are 6.3
+frames per relaxation time, so a 60 s movie of one bead is ~2,500 independent
+samples and not 31,200. The gate reported 0.566% where ~2.0% is defensible --
+**3.5x optimistic, and a margin of 78x where ~6x is real.** And the real
+precision of a Stokes-drag calibration comes from the number of velocity steps,
+which is not N_p x N_f at all. The arithmetic survives in `validity/power.py`
+and `python -m validity.cli power`, which is where a floor belongs: something
+you consult, not something that certifies.
+
+**G26 (post-processing)** was re-charging a bias that is already caught where
+it does damage. It gated on the self-declared `despeckle_enabled` boolean,
+which nobody verifies. `detection/recommend.py` refuses on the same fact and
+puts it more sharply -- "despeckle on -> the ADU->electron conversion is
+invalid, full stop" -- and it refuses at the point where despeckle actually
+destroys something computable: deriving a photon budget from a frame it was
+applied to. A committee-level hard gate on an unverified boolean added no
+information and could not see the camera.
+kb/decisions/2026-09-11-g11-and-g26-removed.md
+
+What is left is four checks that all **read other lenses' verdicts or
+declarations** rather than hardware facts. That is now the whole of this lens's
+job: deciding whether the intended physical quantity survives every bias the
+committee found. It computes nothing.
 """
 
 from __future__ import annotations
@@ -20,7 +45,6 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from .power import relative_error, required_particles, required_sample_product
 from .setup import UNCORRECTABLE
 
 if TYPE_CHECKING:
@@ -33,12 +57,13 @@ INFO = "info"
 
 MAX_MARGIN = 10.0
 
-LIMITS = {
-    #: G26: filters that break the proportionality between pixel value and
-    #: photon count, so photometry and sub-pixel localization both lose their
-    #: premises. docs/06 C1.
-    "linearity_breaking_filters": ("despeckle",),
-}
+#: EMPTY since 2026-09-11, when G26 went. `linearity_breaking_filters`
+#: (`("despeckle",)`) was this lens's only numeric constant, and with the check
+#: gone there is nothing here comparing against a threshold of its own -- every
+#: remaining check compares a declaration or another lens's verdict. An entry
+#: appearing here again means this lens has started computing rather than
+#: reviewing, which is a decision and not a refactor.
+LIMITS: dict = {}
 
 
 @dataclass
@@ -84,71 +109,12 @@ def available_facts(setup: "ValiditySetup") -> set[str]:
         facts.add("upstream")
     if setup.intended_quantity is not None:
         facts.add("intended_quantity")
-    if setup.resolved_n_particles is not None and setup.n_frames is not None:
-        facts.add("sample_size")
-    if setup.target_relative_error is not None:
-        facts.add("target_error")
     return facts
 
 
 # --------------------------------------------------------------------------
 # The checks
 # --------------------------------------------------------------------------
-
-
-def check_statistical_power(setup: "ValiditySetup") -> CheckResult:
-    """G11: does the sample size reach the target error? docs/04 §7.
-
-    The only quantity this lens computes rather than reviews.
-    """
-    n_p = setup.resolved_n_particles
-    n_f = setup.n_frames
-    target = setup.target_relative_error
-
-    achieved = relative_error(n_p, n_f)
-    needed_product = required_sample_product(target)
-    product = n_p * n_f
-    margin = product / needed_product if needed_product > 0 else MAX_MARGIN
-
-    numbers = {
-        "n_particles": n_p,
-        "n_frames": n_f,
-        "sample_product": product,
-        "required_product": round(needed_product, 1),
-        "achieved_relative_error": round(achieved, 5),
-        "target_relative_error": target,
-    }
-
-    if margin >= 1.0:
-        return _ok(
-            "validity.statistical_power",
-            SOFT,
-            margin,
-            f"About {n_p:.0f} particles x {n_f} frames reaches a relative "
-            f"error of {achieved * 100:.2f}%, inside the "
-            f"{target * 100:.1f}% target. This is a floor: correlated "
-            "particles and long-lag MSD points both make the real error worse.",
-            **numbers,
-        )
-
-    needed_particles = required_particles(target, n_f)
-    numbers["required_particles_at_this_frame_count"] = round(needed_particles, 1)
-
-    return CheckResult(
-        "validity.statistical_power",
-        SOFT,
-        margin,
-        "warn",
-        f"About {n_p:.0f} particles x {n_f} frames gives a relative error of "
-        f"{achieved * 100:.2f}%, short of the {target * 100:.1f}% target. "
-        f"Reaching it needs {needed_particles:.0f} particles at this frame "
-        "count. And this is a floor -- the real error is worse.",
-        action="Raise the particle count (larger field, less dilution) or "
-        "lengthen the movie. Note the trap in docs/04 §7: shrinking the ROI to "
-        "buy frame rate cuts the particle count by the same factor, so the net "
-        "gain can vanish.",
-        numbers=numbers,
-    )
 
 
 def check_bias_ledger(setup: "ValiditySetup") -> CheckResult:
@@ -395,65 +361,6 @@ def check_photometric_calibration(setup: "ValiditySetup") -> CheckResult:
     )
 
 
-def check_post_processing(setup: "ValiditySetup") -> CheckResult:
-    """G26: does any post-processing break quantitative validity? docs/06 C1.
-
-    Despeckle was enabled in **every** archive generation
-    (data/detectors.yaml), so this is a live problem for the existing data, not
-    a hypothetical.
-    """
-    offenders = list(setup.nonlinear_filters)
-    if setup.despeckle_enabled:
-        offenders.insert(0, "despeckle")
-
-    needs_linearity = "linearity" in setup.required_calibrations
-    numbers = {
-        "filters": offenders,
-        "linearity_required": needs_linearity,
-        "intended_quantity": setup.intended_quantity,
-    }
-
-    if not offenders:
-        return _ok(
-            "validity.post_processing",
-            HARD,
-            MAX_MARGIN,
-            "No linearity-breaking post-processing declared.",
-            **numbers,
-        )
-
-    if not needs_linearity:
-        return CheckResult(
-            "validity.post_processing",
-            HARD,
-            MAX_MARGIN,
-            "info",
-            f"{', '.join(offenders)} enabled. "
-            f"'{setup.intended_quantity}' does not depend on pixel-value "
-            "linearity, but sub-pixel localization precision still degrades: "
-            "the filter alters the noise structure the estimator assumes.",
-            action="Turn it off anyway unless there is a reason to keep it; "
-            "there is no benefit for a quantitative measurement.",
-            numbers=numbers,
-        )
-
-    return CheckResult(
-        "validity.post_processing",
-        HARD,
-        0.0,
-        "fail",
-        f"{', '.join(offenders)} enabled while "
-        f"'{setup.intended_quantity}' depends on pixel values being "
-        "proportional to photons. That proportionality and the independence of "
-        "pixel noise are both broken, so photometric quantitation and "
-        "sub-pixel position estimation lose their premises (docs/06 C1).",
-        action="Turn the filter off and re-acquire. It cannot be undone "
-        "afterwards -- the discarded information is gone. Archive data taken "
-        "with it on cannot be rescued by reprocessing.",
-        numbers=numbers,
-    )
-
-
 def check_committee_coverage(setup: "ValiditySetup") -> CheckResult:
     """G27: did the committee actually convene, and did anyone refuse?
 
@@ -518,13 +425,6 @@ CHECKS: list[Check] = [
         BIAS,
         ("intended_quantity",),
         check_photometric_calibration,
-    ),
-    Check("post_processing", HARD, ("intended_quantity",), check_post_processing),
-    Check(
-        "statistical_power",
-        SOFT,
-        ("sample_size", "target_error"),
-        check_statistical_power,
     ),
 ]
 

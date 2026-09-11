@@ -480,7 +480,7 @@ those rows say so, and being named here is what keeps them from being forgotten:
 | Item | Owner |
 |---|---|
 | ~~A1 missing pixel calibration~~ | ~~Lens 6~~ — now caught: `validity.gate` G24 (2026-08-12), but only for quantities that depend on pixel size |
-| ~~C1 despeckle post-processing~~ | ~~Lens 6~~ — now caught: `validity.gate` G26 (2026-08-12). Note it can only refuse *future* acquisitions; archive data taken with despeckle on is not recoverable |
+| ~~C1 despeckle post-processing~~ | ~~Lens 6~~ → **Lens 2, since 2026-09-11.** `validity.gate` G26 caught it from 2026-08-12 and was removed: it read a self-declared boolean nobody verifies. `detection/recommend.py` refuses a reference frame shot with despeckle on — *"the ADU→electron conversion is invalid, full stop"* — which is where the filter destroys something computable. Still only refuses *future* acquisitions; archive data taken with despeckle on is not recoverable |
 | ~~D2 light-driven perturbation~~ | ~~Lens 5~~ — now caught: `photo.gate` G21 (2026-08-12), which BLOCKs rather than guessing the threshold. And since 2026-08-19 the *unasked* case warns instead of passing: `photoresponsive` is tri-state, because the accident here is the question never being put |
 | D3 sample perturbation by the label | Lens 5 — checked by the subagent and tagged `scope_tension`, but no gate. docs 05 and 06 disagree on why it belongs here ([kb/decisions/2026-08-19-lens-5-hardening](../kb/decisions/2026-08-19-lens-5-hardening.md)) |
 | Phototoxicity (living samples) | Lens 5 — no gate, absent from the 32-gate table. Needs a per-sample dose ceiling; a literature citation every time |

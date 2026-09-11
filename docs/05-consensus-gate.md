@@ -52,7 +52,7 @@ conditions on the same arithmetic the hard rows gate.
 | G7 SNR | soft | Merely noisy |
 | G8 Motion blur | **bias** | MSD underestimated. Correction formula exists |
 | G9 Frame-rate realizability | hard | Does not run as requested |
-| G11 Statistical power | soft | Error bars merely widen |
+| ~~G11 Statistical power~~ | — | **removed 2026-09-11**: it counted independent samples and the frames of one trapped bead are correlated. `soft` survives elsewhere (optics.collection, detection.sampling, detection.snr), so §2's level-3 tie-break still has work |
 | G12a Data rate | hard | **Silent frame drops** |
 | G12b Frame-rate provenance | bias | Every lens-3 number scales with a rate nobody observed |
 | G12c Pixel container | bias | Data rate off by 2× in the 8-bit mode, where it binds |
@@ -97,7 +97,7 @@ feasibility:  HARD  (m = 0.64, deciding gate: G7 SNR)
   hard gates   all pass ✅
   bias gates   G8 motion blur m=0.9 → correction mandatory (Savin-Doyle)
   soft gates   G7 SNR m=0.64  ← bottleneck
-               G11 statistical power m=1.8
+               G23 bias ledger       m=1.8
 
 This experiment is possible but hard.
 · Expected SNR 3.2 (target 5). Localization precision 16 nm (target 10 nm)
@@ -448,8 +448,17 @@ this instrument, and G8's action text says so explicitly.
 
 - **Owns**: whether the result of all of the above yields the intended physical
   quantity without bias
-- **Gates**: G11 (statistical power) G23 (bias ledger) G24 (pixel calibration)
-  G25 (photometric calibration) G26 (post-processing) G27 (committee coverage)
+- **Gates**: G23 (bias ledger) G24 (pixel calibration) G25 (photometric
+  calibration) G27 (committee coverage)
+- **⚠ G11 and G26 left on 2026-09-11** and neither number is reused. **G11 was
+  the only quantity this lens computed**, so the lens now computes nothing at
+  all — every check reads another lens's verdict or a declaration, and `LIMITS`
+  is empty. `1/sqrt(N_p × N_f)` counts *independent* samples, and one trapped
+  bead at 520 fps has 6.3 correlated frames per relaxation time: it read 0.566%
+  where ~2.0% is defensible. **G26** gated on a self-declared `despeckle`
+  boolean nobody verifies, and `detection/recommend.py` already refuses on the
+  same fact where it does damage
+  → [`kb/decisions/2026-09-11-g11-and-g26-removed.md`](../kb/decisions/2026-09-11-g11-and-g26-removed.md)
 - **Key questions**
   - Is **the intended quantity actually extractable** from data taken with this
     setting
@@ -798,7 +807,7 @@ relaxes — **gradually, against the record, and never against confidence.**
 | Relaxes | Stays |
 |---|---|
 | **What counts as sufficient evidence for an input.** The ladder already exists: `BLOCKED` → a literature value that lets the gate compute but never advance ([`kb/literature/`](../kb/literature/)) → measured once → measured repeatedly with a known spread, at which point it becomes a default carrying its own tolerance | **A hard gate's threshold.** Trust does not raise the disk's write bandwidth. If G12a is exceeded the frames drop, on run 1 and on run 500 |
-| **Whether a gate is asked at all.** An input that has come back the same on N consecutive runs on this instrument can default instead of prompting | **The bias gates.** A bias gate fails by producing data that looks right, so a record of successful runs is precisely the evidence that cannot detect it. G8, G12b/c, G23–G26 do not loosen on accumulated success |
+| **Whether a gate is asked at all.** An input that has come back the same on N consecutive runs on this instrument can default instead of prompting | **The bias gates.** A bias gate fails by producing data that looks right, so a record of successful runs is precisely the evidence that cannot detect it. G8, G12b/c, G23–G25 do not loosen on accumulated success |
 | **The treatment of "never asked".** Sample photoresponsiveness warns on every run today; a system with a recorded answer should stop being asked | **Saying what was relaxed.** Every loosening is a dated [`kb/decisions/`](../kb/decisions/) entry naming the evidence that bought it, and is revertible — the falsifier field is what makes it revertible |
 
 The promotion target already exists: a value that graduates lands in

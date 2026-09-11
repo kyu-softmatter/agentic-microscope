@@ -6,15 +6,18 @@
     python -m validity.cli power --n-particles 200 --n-frames 2000 \\
         --target-error 0.05
 
-    python -m validity.cli check --quantity diffusion --target-error 0.05 \\
-        --n-particles 200 --n-frames 2000 --pixel-size-measured \\
-        --upstream-passed optics,detection,compute,sample,photo
+    python -m validity.cli check --quantity diffusion --pixel-size-measured \\
+        --upstream-passed optics,detection,compute,sample
 
     python -m validity.cli check --quantity diffusion,intensity ...
 
-``power`` runs G11 alone, which needs no upstream verdicts. ``corrections``
-prints which biases have a correction, which do not, and which quantity each
-one damages -- the tables G23 checks a declaration against.
+``power`` is a **calculator, not a gate**. G11 was removed on 2026-09-11 --
+`1/sqrt(N_p x N_f)` counts independent samples, and one trapped bead at 520 fps
+has 6.3 correlated frames per relaxation time, so the gate was 3.5x optimistic
+about the measurement this instrument actually makes. The floor is still worth
+consulting, which is what this subcommand is for; it certifies nothing.
+``corrections`` prints which biases have a correction, which do not, and which
+quantity each one damages -- the tables G23 checks a declaration against.
 
 ``--quantity`` takes several names comma-separated, and then the verdict's unit
 is the physical quantity rather than the channel: a session can come out with a
@@ -68,7 +71,10 @@ def cmd_quantities(args: argparse.Namespace) -> int:
         print(f"{q:24s} {', '.join(QUANTITY_REQUIREMENTS[q])}")
     print(
         "\n'linearity' means pixel values must stay proportional to photons, "
-        "which\ndespeckle and similar filters break (docs/06 C1).\n"
+        "which\ndespeckle and similar filters break (docs/06 C1). NOTHING HERE "
+        "GATES IT:\nG26 left on 2026-09-11 and `detection/recommend.py` owns "
+        "the refusal. The\nentry survives because BIAS_SCOPE intersects "
+        "against it.\n"
     )
     return 0
 
@@ -143,15 +149,11 @@ def cmd_check(args: argparse.Namespace) -> int:
     setup = ValiditySetup(
         intended_quantity=quantities[0] if len(quantities) == 1 else None,
         intended_quantities=quantities if len(quantities) > 1 else (),
-        target_relative_error=args.target_error,
         upstream={name: _DeclaredVerdict() for name in declared},
-        n_particles=args.n_particles,
-        n_frames=args.n_frames,
         pixel_size_measured=args.pixel_size_measured,
         background_measured=args.background_measured,
         dark_current_measured=args.dark_current_measured,
         flat_field_measured=args.flat_field_measured,
-        despeckle_enabled=args.despeckle,
         corrections_applied=frozenset(
             s.strip() for s in (args.corrections or "").split(",") if s.strip()
         ),
@@ -236,9 +238,9 @@ def main(argv: list[str] | None = None) -> int:
         help="one quantity, or several comma-separated for a per-quantity "
         "verdict; see `quantities` for the list",
     )
-    c.add_argument("--target-error", type=float, default=None, help="e.g. 0.05 for 5%%")
-    c.add_argument("--n-particles", type=float, default=None)
-    c.add_argument("--n-frames", type=int, default=None)
+    # NO --target-error / --n-particles / --n-frames here: G11 left this gate
+    # on 2026-09-11. `power` below still takes them -- it is a calculator, not
+    # a verdict, which is where a 1/sqrt(N) floor belongs.
     c.add_argument(
         "--upstream-passed", default=None,
         help="comma-separated lens names you are DECLARING returned a clean PASS",
@@ -247,10 +249,9 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--background-measured", action="store_true")
     c.add_argument("--dark-current-measured", action="store_true")
     c.add_argument("--flat-field-measured", action="store_true")
-    c.add_argument(
-        "--despeckle", action="store_true",
-        help="on-camera despeckle was enabled (docs/06 C1)",
-    )
+    # NO --despeckle: G26 left with G11. docs/06 C1 is unchanged as a pitfall;
+    # `detection/recommend.py` refuses a reference frame shot with it on, which
+    # is where the bias destroys something computable.
     c.add_argument(
         "--corrections", default=None,
         help="comma-separated upstream finding codes that have an applied correction",

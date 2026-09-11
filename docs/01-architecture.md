@@ -242,7 +242,7 @@ FAIL is already a fix instruction.
 | 3 | **Compute resources** | Frame rate, buffer, storage, processing | Bandwidth and capacity arithmetic → deterministic | `compute/` ✅ (G12a–c, G13a–d) + `compute/drops.py` for the post-hoc half + `.claude/agents/compute-resources.md` for the interpretive half |
 | 4 | **Sample geometry & optics** | Objective choice, immersion, coverslip, focal depth | Refractive index, WD, aberration → semi-deterministic | `sample/` ✅ (G15–G19 less the vacant `G18`, removed 2026-09-10) + a **depth window** reporting all four depth bounds as one band + `.claude/agents/sample-optics.md` for the qualitative half |
 | 5 | **Photo-perturbation** — ⚠ **a REPORTING SECTION, not a judging lens** (2026-09-10) | Light level, illumination duty, total dose | Reports irradiance, dose, light-driving and trap heating. **No gates**: G10/G20 went 2026-09-09, G21/G22 on 2026-09-10, and it is out of `STANDING_LENSES` — it cannot block or bless | `photo/` ✅ (every check `INFO`) + `.claude/agents/photo-perturbation.md` |
-| 6 | **Measurement validity** | Whether all of the above yields the intended physical quantity without bias | Bias computation + qualitative | `validity/` ✅ (G11, G23–G27) + `.claude/agents/measurement-validity.md` for the qualitative half |
+| 6 | **Measurement validity** | Whether all of the above yields the intended physical quantity without bias | Bias computation + qualitative | `validity/` ✅ (G23–G25, G27) + `.claude/agents/measurement-validity.md` for the qualitative half. **Computes nothing since 2026-09-11** — G11 and G26 removed, `LIMITS` empty |
 
 ### Conditional (2)
 
@@ -271,7 +271,7 @@ This is the real reason for having a committee.
 | Pixel size | 2 ↔ 6 | Morphology wants Nyquist; tracking is optimal at σ_PSF ≈ pixel. **Opposite directions** |
 | Immersion vs depth | 4 ↔ 1 | Refractive-index mismatch grows spherical aberration in proportion to depth. In ATPS the two phases have different RI |
 | Chamber | 4 ↔ 8 | **`chamber_height_um` is asked once and used by both**, for different things: lens 8 for evaporation and whether settling particles reach the wall (G31), lens 4 for whether the requested focal plane still has sample in it (G16b). **Note what the chamber does *not* affect**: the spacer or gasket setting the height forms the walls and is not in the optical path, either orientation of stand, so it never enters the working-distance budget. The only glass in the path is the coverslip facing the objective, which G16 already carries |
-| Particle count | 4 → 6, 8 → 4 | G19's `expected_count` is what `validity.setup.resolved_n_particles` feeds to G11 when no count is given explicitly, so lens 4's choice of axial extent lands on lens 6's statistical power. Lens 8 can invert its sign: with the focal plane near the chamber floor, sedimentation (G31) brings particles *into* the observed volume instead of depleting it |
+| Particle count | ~~4 → 6~~, 8 → 4 | ⚠ **THE 4 → 6 HALF IS GONE.** G19's `expected_count` fed `validity.setup.resolved_n_particles` → G11, so lens 4's choice of axial extent landed on lens 6's statistical power. G11 and that property were removed 2026-09-11, so **nothing carries a particle count between lenses now** and docs/01 §4's ROI-vs-statistics trade (3 ↔ 6) has no code. Lens 8 can still invert the sign qualitatively: with the focal plane near the chamber floor, settling (G31, now a report) brings particles *into* the observed volume instead of depleting it |
 
 ---
 
@@ -287,7 +287,7 @@ experimentalist/
 │   ├── 01-architecture.md        (this file)
 │   ├── 02-knowledge-base.md      KB schema · three-way wiring cross-check · off-ledger settings
 │   ├── 03-cross-system-transfer.md   transferring settings between systems
-│   ├── 04-decision-engine.md     decision order · formulas · the 24 gates
+│   ├── 04-decision-engine.md     decision order · formulas · the 22 gates
 │   ├── 05-consensus-gate.md      committee · difficulty grades · improvement proposals
 │   ├── 06-pitfalls.md            pitfall list grounded in measured evidence
 │   ├── 07-roadmap.md             Phase 0–5
@@ -330,7 +330,7 @@ experimentalist/
 │   ├── dose.py                   irradiance, bleaching, saturation, total dose
 │   ├── checks.py  gate.py  setup.py  cli.py
 │
-├── validity\                     ← lens 6 (measurement validity, G11 · G23–G27)
+├── validity\                     ← lens 6 (measurement validity, G23–G25 · G27)
 │   ├── power.py                  statistical power, the ROI/speed tradeoff
 │   ├── checks.py  gate.py  setup.py  cli.py
 │                                 reviews the other lenses' verdicts — call last

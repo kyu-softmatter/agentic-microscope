@@ -103,13 +103,23 @@ EXPECTED_CHECKS: dict[str, tuple[tuple[str, str], ...]] = {
         ("total_dose", "info"),
         ("trap_heating", "info"),
     ),
+    # TWO CHECKS LEFT ON 2026-09-11 and neither number is reused. G11
+    # (statistical_power) was this lens's only computation and
+    # `1/sqrt(N_p x N_f)` counts independent samples -- 3.5x optimistic for one
+    # trapped bead at 520 fps, where 6.3 consecutive frames fall inside one
+    # relaxation time. G26 (post_processing) gated on an unverified
+    # `despeckle_enabled` boolean that `detection/recommend.py` already refuses
+    # on, where it destroys something computable.
+    # kb/decisions/2026-09-11-g11-and-g26-removed.md
+    #
+    # `soft` survives elsewhere -- optics.collection, detection.sampling and
+    # detection.snr -- so §1's rank order still has a level-3 tie-break to
+    # decide. G11 was this lens's only one.
     "validity": (
         ("committee_coverage", "hard"),
         ("bias_ledger", "hard"),
         ("pixel_calibration", "hard"),
         ("photometric_calibration", "bias"),
-        ("post_processing", "hard"),
-        ("statistical_power", "soft"),
     ),
     # A REPORTING SECTION SINCE 2026-09-10, like photo above: every check INFO.
     # G31 and G32 became reports (a trapped bead does not settle, and the free
@@ -201,7 +211,13 @@ EXPECTED_LIMITS: dict[str, dict] = {
     # threshold and G22 against a caller-supplied ceiling, so this lens has no
     # constant of its own. An entry appearing here is a new standing number.
     "photo": {},
-    "validity": {"linearity_breaking_filters": ("despeckle",)},
+    # Empty since G26 went on 2026-09-11 -- `linearity_breaking_filters`
+    # (`("despeckle",)`) was this lens's only numeric constant, and every check
+    # left compares a declaration or another lens's verdict rather than a
+    # threshold. The third lens with no constant of its own, after photo and
+    # stability, and for a third reason: this one never computed much to begin
+    # with.
+    "validity": {},
     # Empty since lens 8 became a reporting section on 2026-09-10 -- the
     # second lens to have no constant of its own, for a different reason than
     # photo's. `axial_drift_dof_fraction` (0.5) went with G29;
@@ -245,7 +261,9 @@ def test_only_trapping_lacks_a_limits_dict() -> None:
 
 #: Numbers that are VACANT and must never be reused, so that every reference
 #: in the history stays unambiguous.
-VACANT_GATES = ("G10", "G18", "G20", "G21", "G22", "G28", "G29", "G30")
+VACANT_GATES = (
+    "G10", "G11", "G18", "G20", "G21", "G22", "G26", "G28", "G29", "G30",
+)
 
 #: Checks that carry NO gate number. Not an error -- but the set must not grow
 #: without somebody noticing, because two of them are `hard` and can stop a

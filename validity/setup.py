@@ -54,7 +54,11 @@ class VerdictLike(Protocol):
 #: indifferent to flat-field, while an intensity-based one is the reverse.
 #:
 #: "linearity" means pixel values must stay proportional to photons, which
-#: despeckle and similar filters break (docs/06 C1).
+#: despeckle and similar filters break (docs/06 C1). ⚠ NOTHING GATES IT HERE
+#: any more -- G26 left on 2026-09-11 and it was the only reader. The entry
+#: stays because `BIAS_SCOPE` still intersects against it, so it is what scopes
+#: a photobleaching bias to the photometric quantities. Do not read a
+#: "linearity" requirement as a check.
 QUANTITY_REQUIREMENTS: dict[str, tuple[str, ...]] = {
     # geometry / kinematics
     "position": ("pixel_size",),
@@ -183,19 +187,24 @@ class ValiditySetup:
     #: reports the aggregate; `intended_quantity` remains the single-quantity
     #: form. If both are set this one wins.
     intended_quantities: tuple[str, ...] = ()
-    #: Target relative error on that quantity, e.g. 0.05 for 5%.
-    target_relative_error: float | None = None
-
     #: Verdicts from the other lenses, keyed by lens name ("optics",
     #: "detection", "compute", "sample", "photo", "trapping"). This lens's
     #: primary input.
     upstream: dict[str, VerdictLike] = field(default_factory=dict)
 
-    # -- statistical power (G11) -------------------------------------------
-    #: Particles in the observed volume. Lens 4 computes this as G19's
-    #: `expected_count`; if omitted it is read from the sample verdict.
-    n_particles: float | None = None
-    n_frames: int | None = None
+    # -- statistical power: NO FIELDS, G11 IS GONE -------------------------
+    # `target_relative_error`, `n_particles` and `n_frames` fed G11 and left
+    # with it on 2026-09-11. The arithmetic is not wrong and still lives in
+    # `validity/power.py` behind `python -m validity.cli power`; what was wrong
+    # was certifying a measurement with it. `1/sqrt(N_p x N_f)` counts
+    # INDEPENDENT samples, and for one trapped bead at 520 fps the frames are
+    # correlated over 6.3 frames per relaxation time -- 3.5x optimistic, and
+    # the real precision of a drag calibration comes from the number of
+    # velocity steps instead. kb/decisions/2026-09-11-g11-and-g26-removed.md
+    #
+    # Note what else went with it: `missing.target_error` and
+    # `missing.sample_size` were two of this lens's four Phase 0 refusals, and
+    # `resolved_n_particles` was its only consumer of lens 4's G19 estimate.
 
     # -- calibrations in hand ---------------------------------------------
     #: Measured pixel size at the sample. docs/06 A1: without it every
@@ -207,13 +216,14 @@ class ValiditySetup:
     dark_current_measured: bool = False
     flat_field_measured: bool = False
 
-    # -- post-processing (docs/06 C1) --------------------------------------
-    #: Filters that break the proportionality between pixel value and photon
-    #: count. PVCAM on-camera despeckle was enabled in every archive
-    #: generation (data/detectors.yaml).
-    despeckle_enabled: bool = False
-    #: Any other declared post-processing that breaks linearity.
-    nonlinear_filters: tuple[str, ...] = ()
+    # -- post-processing: NO FIELDS, G26 IS GONE ---------------------------
+    # `despeckle_enabled` and `nonlinear_filters` were self-declared booleans
+    # that nobody verified, and the bias is caught where it does damage:
+    # `detection/recommend.py` refuses a reference frame shot with despeckle on
+    # ("the ADU->electron conversion is invalid, full stop"), which is the point
+    # at which despeckle destroys something computable. Removed 2026-09-11 with
+    # the check. docs/06 C1 is unchanged as a pitfall -- what changed is which
+    # code owns it.
 
     # -- the bias ledger ---------------------------------------------------
     #: Upstream bias-finding codes the experimenter asserts are corrected, with
@@ -246,17 +256,6 @@ class ValiditySetup:
     def for_quantity(self, quantity: str) -> "ValiditySetup":
         """This setup narrowed to one quantity, for the per-quantity pass."""
         return replace(self, intended_quantity=quantity, intended_quantities=())
-
-    @property
-    def resolved_n_particles(self) -> float | None:
-        """Explicit count, else lens 4's G19 metric."""
-        if self.n_particles is not None:
-            return self.n_particles
-        sample = self.upstream.get("sample")
-        if sample is None:
-            return None
-        m = (sample.metrics or {}).get("geometry.count_in_field") or {}
-        return m.get("expected_count") if m.get("evaluated") else None
 
     def bias_findings(self) -> list[Any]:
         """Every bias-kind finding from upstream, in lens order.

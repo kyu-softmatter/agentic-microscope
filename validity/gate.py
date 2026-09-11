@@ -135,33 +135,13 @@ def _missing_inputs(setup: ValiditySetup) -> list[Finding]:
             )
         )
 
-    if setup.target_relative_error is None:
-        out.append(
-            Finding(
-                "fail",
-                "missing.target_error",
-                "No target relative error stated, so statistical power (G11) "
-                "has no criterion. docs/04 §9 marks G11 'ask' for exactly this "
-                "reason -- the target comes from the experiment, not the "
-                "instrument.",
-                action="State target_relative_error, e.g. 0.05 for 5%.",
-            )
-        )
-
-    if setup.resolved_n_particles is None or setup.n_frames is None:
-        out.append(
-            Finding(
-                "fail",
-                "missing.sample_size",
-                "No particle count and/or frame count, so G11 cannot be "
-                "computed. The particle count normally comes from lens 4's G19 "
-                "(`geometry.count_in_field`); supplying that lens's verdict is "
-                "enough.",
-                action="Pass the sample lens's verdict in `upstream` with G19 "
-                "evaluated, or set n_particles directly, and set n_frames.",
-            )
-        )
-
+    # TWO REFUSALS LEFT WITH G11 ON 2026-09-11: `missing.target_error` and
+    # `missing.sample_size`, which were half of this lens's Phase 0. Neither
+    # was defensible once the gate they served was gone -- refusing to review
+    # the committee because nobody stated a target error meant a session with
+    # every calibration in hand still got BLOCKED. What remains blocks on the
+    # two things this lens genuinely cannot work without: something to review,
+    # and a statement of what is being measured.
     return out
 
 
@@ -171,11 +151,6 @@ def _assumed_inputs(setup: ValiditySetup) -> list[str]:
         out.append(
             "analysis script (not declared; which script processes the data "
             "changes the setting requirements -- docs/05 Lens 6)"
-        )
-    if setup.n_particles is None and "sample" in setup.upstream:
-        out.append(
-            "particle count (taken from lens 4's G19 estimate, which rests on "
-            "a stated concentration rather than a count of what is in frame)"
         )
     for code in setup.unverified_corrections():
         out.append(

@@ -8,21 +8,28 @@ docs/05-consensus-gate.md "Lens 6"; docs/06-pitfalls.md A1, C1.
 
     v = evaluate(ValiditySetup(
         intended_quantity="diffusion",
-        target_relative_error=0.05,
-        upstream={"optics": v1, "detection": v2, "compute": v3,
-                  "sample": v4, "photo": v5},
-        n_frames=2000,
+        upstream={"optics": v1, "detection": v2, "compute": v3, "sample": v4},
         pixel_size_measured=True,
     ))
 
-Gates: G11 statistical power (specified in docs/04 §7, previously
-unimplemented), G23 bias ledger, G24 pixel calibration, G25 photometric
-calibration, G26 post-processing, G27 committee coverage.
+Gates: G23 bias ledger, G24 pixel calibration, G25 photometric calibration,
+G27 committee coverage.
+
+**G11 AND G26 LEFT ON 2026-09-11 (KH) and neither number is reused.** G11 was
+the only quantity this lens computed, and `1/sqrt(N_p x N_f)` counts
+INDEPENDENT samples -- one trapped bead at 520 fps has 6.3 correlated frames
+per relaxation time, so it was 3.5x optimistic about this instrument's own
+measurement, and a drag calibration's precision comes from the number of
+velocity steps instead. The arithmetic survives as a calculator:
+`python -m validity.cli power`. G26 gated on a self-declared `despeckle`
+boolean that nobody verified, and `detection/recommend.py` already refuses a
+reference frame shot with it on -- the point at which despeckle destroys
+something computable. kb/decisions/2026-09-11-g11-and-g26-removed.md
 
 **Call it last.** Unlike every other lens, its primary input is the other
 lenses' verdicts rather than hardware facts, so it has nothing to review if it
-runs first. G11 is the only quantity it computes; everything else reviews what
-the committee already found.
+runs first. **It now computes nothing at all** -- every remaining check reads a
+verdict or a declaration.
 
 Two things it does that no counting of verdicts would:
 

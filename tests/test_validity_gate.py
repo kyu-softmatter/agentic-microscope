@@ -44,10 +44,7 @@ def _all_present(**overrides):
 def _setup(**overrides) -> ValiditySetup:
     defaults = dict(
         intended_quantity="diffusion",
-        target_relative_error=0.05,
         upstream=_all_present(),
-        n_particles=200.0,
-        n_frames=2000,
         pixel_size_measured=True,
         analysis_script="D:/codes/track_msd.m",
     )
@@ -79,16 +76,25 @@ def test_blocked_for_an_unknown_quantity():
     assert any(f.code == "missing.quantity_requirements" for f in v.findings)
 
 
-def test_blocked_without_a_target_error():
-    v = evaluate(_setup(target_relative_error=None))
-    assert v.status == "BLOCKED"
-    assert any(f.code == "missing.target_error" for f in v.findings)
+def test_phase_0_blocks_on_two_things_and_no_longer_on_four():
+    """`missing.target_error` and `missing.sample_size` left with G11 on
+    2026-09-11. They were half of this lens's Phase 0, and neither survived the
+    gate they served -- refusing to review the committee because nobody stated
+    a target relative error meant a session with every calibration in hand
+    still came back BLOCKED. What blocks now is what this lens genuinely cannot
+    work without: something to review, and a statement of what is measured."""
+    from validity.gate import _missing_inputs
+
+    assert [f.code for f in _missing_inputs(ValiditySetup())] == [
+        "missing.upstream_verdicts",
+        "missing.intended_quantity",
+    ]
 
 
-def test_blocked_without_a_sample_size():
-    v = evaluate(_setup(n_particles=None, n_frames=None))
-    assert v.status == "BLOCKED"
-    assert any(f.code == "missing.sample_size" for f in v.findings)
+def test_the_setup_no_longer_accepts_the_g11_inputs():
+    for field in ("target_relative_error", "n_particles", "n_frames"):
+        with pytest.raises(TypeError):
+            _setup(**{field: 1.0})
 
 
 # ------------------------------------------- G27 committee coverage ------
@@ -250,79 +256,96 @@ def test_photometric_margin_reflects_how_many_calibrations_are_missing():
     )
 
 
-# ------------------------------------------- G26 post-processing --------
+# ---------------- G26 removed 2026-09-11 -------------------------------------
+#
+# Four tests went with the check. It gated on the self-declared
+# `despeckle_enabled` boolean -- which nobody verifies -- while
+# `detection/recommend.py` already refuses a reference frame shot with
+# despeckle on, and puts it more sharply: "despeckle on -> the ADU->electron
+# conversion is invalid, full stop". That refusal lands at the point where
+# despeckle destroys something computable, namely deriving a photon budget from
+# the frame. A committee-level hard gate on an unverified boolean added no
+# information and could not see the camera.
+#
+# docs/06 C1 is unchanged as a pitfall. What changed is which code owns it.
+# kb/decisions/2026-09-11-g11-and-g26-removed.md
 
 
-def test_despeckle_fails_an_intensity_quantity():
-    """docs/06 C1: linearity and noise independence are both broken."""
-    v = evaluate(
-        _setup(
-            intended_quantity="intensity",
-            despeckle_enabled=True,
-            background_measured=True,
-            dark_current_measured=True,
-            flat_field_measured=True,
-        )
-    )
-    assert v.status == "FAIL"
-    assert any(
-        f.code == "validity.post_processing" and f.severity == "fail" for f in v.findings
-    )
-
-
-def test_despeckle_still_warns_for_a_geometric_quantity():
-    """Localization precision degrades even where linearity is not required:
-    the filter changes the noise structure the estimator assumes."""
-    v = evaluate(_setup(despeckle_enabled=True))
-    f = next(f for f in v.findings if f.code == "validity.post_processing")
-    assert f.severity == "info"
-    assert v.status != "FAIL"
-
-
-def test_clean_acquisition_passes_post_processing():
+def test_nothing_in_this_lens_gates_post_processing_any_more():
     v = evaluate(_setup())
-    assert v.margins["validity.post_processing"] == 10.0
+    assert "validity.post_processing" not in v.margins
+    assert not any(f.code == "validity.post_processing" for f in v.findings)
 
 
-def test_post_processing_action_says_it_cannot_be_undone():
-    v = evaluate(
-        _setup(
-            intended_quantity="intensity",
-            despeckle_enabled=True,
-            background_measured=True,
-            dark_current_measured=True,
-            flat_field_measured=True,
-        )
-    )
-    f = next(f for f in v.findings if f.code == "validity.post_processing")
-    assert "cannot be undone" in f.action
+def test_the_setup_no_longer_accepts_a_despeckle_flag():
+    for field in ("despeckle_enabled", "nonlinear_filters"):
+        with pytest.raises(TypeError):
+            _setup(**{field: True})
 
 
-# ------------------------------------------ G11 statistical power -------
+def test_linearity_survives_in_the_quantity_table_with_no_reader():
+    """Removing the check did not remove the requirement, on purpose:
+    `BIAS_SCOPE` intersects against "linearity" to scope a photobleaching bias
+    to the photometric quantities. It is no longer a check, and the table says
+    so."""
+    from validity.setup import BIAS_SCOPE, calibrations_for
+
+    assert "linearity" in calibrations_for("intensity")
+    assert "linearity" in BIAS_SCOPE["perturbation.photobleaching"]
 
 
-def test_adequate_sample_size_passes():
+# ---------------- G11 removed 2026-09-11 -------------------------------------
+#
+# Five tests went with the check, and so did this lens's only computation.
+# `1/sqrt(N_p x N_f)` counts INDEPENDENT samples, which `validity/power.py`
+# states in its own docstring, and a single trapped bead is the worse case
+# because consecutive FRAMES are correlated: at 520 fps with
+# tau = gamma/kappa = 12.1 ms there are 6.3 frames per relaxation time, so a
+# 60 s movie of one bead is ~2,500 independent samples and not 31,200. The gate
+# reported 0.566% where ~2.0% is defensible -- 3.5x optimistic, a margin of 78x
+# where ~6x is real -- and the precision of a Stokes-drag calibration comes
+# from the number of velocity steps, which is not N_p x N_f at all.
+#
+# The arithmetic is not wrong and survives in `validity/power.py` and
+# `python -m validity.cli power`, which is where a floor belongs: something you
+# consult, not something that certifies. tests/test_validity.py still covers it.
+# kb/decisions/2026-09-11-g11-and-g26-removed.md
+
+
+def test_nothing_in_this_lens_computes_a_sample_size_any_more():
     v = evaluate(_setup())
-    assert v.margins["validity.statistical_power"] >= 1.0
+    assert "validity.statistical_power" not in v.margins
+    assert not any("statistical_power" in f.code for f in v.findings)
 
 
-def test_thin_sample_size_warns():
-    v = evaluate(_setup(n_particles=5.0, n_frames=20))
-    assert any(
-        f.code == "validity.statistical_power" and f.severity == "warn"
-        for f in v.findings
-    )
+def test_this_lens_computes_nothing_at_all():
+    """Every remaining check reads another lens's verdict or a declaration.
+    That is why `LIMITS` is empty -- there is no threshold of its own left."""
+    import validity
+
+    assert validity.LIMITS == {}
+    assert {c.code for c in validity.CHECKS} == {
+        "committee_coverage",
+        "bias_ledger",
+        "pixel_calibration",
+        "photometric_calibration",
+    }
 
 
-def test_statistical_power_reports_what_would_be_needed():
-    v = evaluate(_setup(n_particles=5.0, n_frames=20))
-    m = v.metrics["validity.statistical_power"]
-    assert m["required_particles_at_this_frame_count"] == pytest.approx(20.0)
+def test_the_power_calculator_still_works_outside_the_gate():
+    """Removing the gate did not remove the arithmetic, and the floor is worth
+    consulting. It just does not certify anything."""
+    from validity.power import relative_error, required_particles
+
+    assert relative_error(1, 31200) == pytest.approx(0.00566, rel=1e-3)
+    assert required_particles(0.05, 2000) == pytest.approx(0.2)
 
 
-def test_particle_count_is_taken_from_lens_4_when_not_given():
-    """Cross-lens consumption: lens 4's G19 feeds lens 6's G11, which is the
-    'ROI vs statistics' constraint docs/01 §4 lists as 3 <-> 6."""
+def test_lens_4s_particle_count_is_no_longer_consumed_here():
+    """G19 fed G11, and that was the computational half of docs/01 §4's
+    'ROI vs statistics' 3 <-> 6 constraint. With G11 gone **the constraint has
+    no code left**: shrinking the ROI to buy frame rate still cuts the particle
+    count by the same factor, and nothing in the committee now notices."""
     up = _all_present(
         sample=_V(
             metrics={
@@ -330,17 +353,10 @@ def test_particle_count_is_taken_from_lens_4_when_not_given():
             }
         )
     )
-    v = evaluate(_setup(upstream=up, n_particles=None))
-    assert v.metrics["validity.statistical_power"]["n_particles"] == 250.0
-
-
-def test_unevaluated_lens_4_count_does_not_leak_through():
-    up = _all_present(
-        sample=_V(metrics={"geometry.count_in_field": {"evaluated": False}})
-    )
-    v = evaluate(_setup(upstream=up, n_particles=None))
-    assert v.status == "BLOCKED"
-    assert any(f.code == "missing.sample_size" for f in v.findings)
+    v = evaluate(_setup(upstream=up))
+    assert v.status != "BLOCKED"
+    assert not any("particle count" in a for a in v.assumed_inputs)
+    assert not hasattr(ValiditySetup(), "resolved_n_particles")
 
 
 # ---------------------------------------------------------- evidence ------
@@ -352,19 +368,6 @@ def test_undeclared_analysis_script_downgrades_evidence():
     v = evaluate(_setup(analysis_script=None))
     assert v.evidence == "assumed"
     assert v.advances is False
-
-
-def test_particle_count_from_lens_4_downgrades_evidence():
-    up = _all_present(
-        sample=_V(
-            metrics={
-                "geometry.count_in_field": {"evaluated": True, "expected_count": 250.0}
-            }
-        )
-    )
-    v = evaluate(_setup(upstream=up, n_particles=None))
-    assert v.evidence == "assumed"
-    assert any("particle count" in a for a in v.assumed_inputs)
 
 
 def test_fully_specified_setup_advances():
