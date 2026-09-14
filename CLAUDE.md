@@ -179,6 +179,34 @@ building the refiner first would make it guess at its own output.
 `unevaluated` and `unresolved` are **required keys in `plan.yaml` even when
 empty.** An absent key reads as a cleared one, which is §3 exactly.
 
+**Three templates now fix these shapes**, and each says in its own header what
+it refuses to carry: [`config/briefs/_template.yaml`](config/briefs/_template.yaml)
+· [`kb/plans/_template.md`](kb/plans/_template.md) ·
+[`kb/plans/_template.yaml`](kb/plans/_template.yaml). Every field in the brief
+template is one a builder in `designer/build.py` actually reads, annotated with
+the check that consumes it.
+
+**The settings no check reads live in `plan.md`, not `plan.yaml`** (KH,
+2026-09-14). The operator's parameter inventory lists about thirty of them —
+CSU, both filter turrets, condenser, LAPP branch, dia lamp, PFS, z-drive,
+camera fan/trigger/shutter/clear-cycle, confocal disk speed and aperture, the
+Tweez trap and pattern block, the piezo's units, channel map and initial
+position. They are set by a person and confirmed by something *observed*, in
+`plan.md`'s Preconditions table, because a value in `plan.yaml` would be applied
+by an interpreter that has no reviewer and cannot observe (E9). Two of them —
+**confocal disk speed and aperture size — are in no KB entry at all**, so the
+disk's exposure quantization cannot be computed today.
+
+**The system's own scales are a brief field as of 2026-09-14.** Eight settings
+in that inventory are bounded from below by the characteristic length and time
+of the thing being measured, and nothing in this repository carried either — so
+the harvest-based refiner could never have asked for them, which is the
+falsifier [the planning-layer entry](kb/decisions/2026-09-13-the-planning-layer.md)
+set for itself. `facts.system.characteristic_length_um` and
+`characteristic_time_s` now feed **L2.6**, which reports pixels-per-feature and
+frames-per-characteristic-time and **grades neither**: both thresholds are the
+experimenter's and this repository holds no value for either.
+
 **Stage 1 is the code half only.** All nine lenses have a `gate.py`, so the
 order runs end to end with no subagent convened. The subagents — the
 qualitative half of 4 · 5 · 6 · 8 — and `plan.md`'s prose are stage 2. So a
@@ -355,9 +383,9 @@ survives a clean checkout).
 pytest -q -rs
 ```
 
-1329 passed, 11 skipped on macOS, of 1,340 (re-measured 2026-09-13; was
-1194/11 of 1,205 on 2026-09-09, and the 135 added since are lens 9,
-`committee/` and the renumbering. Windows printed 1195/10 on 2026-09-09 — one
+1342 passed, 11 skipped on macOS, of 1,353 (re-measured 2026-09-14; was
+1329/11 of 1,340 on 2026-09-13, and the 13 added since are L2.6 and the
+designer's first tests. Windows printed 1195/10 on 2026-09-09 — one
 Windows-only test — and has **not** been re-measured since). Two kinds of
 skip: three whole modules behind `pytest.importorskip("pymmcore_plus")`
 holding 56 tests (counted 2026-09-09, not re-counted today — the dependency is
@@ -391,10 +419,10 @@ python -m optics.cli check config/channels/proposed-2color.yaml
 
 Every lens has the same shape — `optics` · `detection` · `compute` · `sample` ·
 `photo` · `validity` · `stability` · `trapping` · `velocity`, each with `checks.py` ·
-`gate.py` · `setup.py` · `cli.py`. All **48 checks** are collected in
+`gate.py` · `setup.py` · `cli.py`. All **49 checks** are collected in
 [04](docs/04-decision-engine.md), addressed `L<lens>.<n>` since 2026-09-11 —
 the lens number from [01 §4](docs/01-architecture.md), then the check's
-position in it. **22 `hard` · 6 `bias` · 3 `soft` can fail; 17 `info` only
+position in it. **22 `hard` · 6 `bias` · 3 `soft` can fail; 18 `info` only
 report**, and the kind is printed beside the address, because an address is a
 location and not a claim that something can fail. That is what let the eleven
 previously unnumbered checks be documented at all — two of them `hard`, so a

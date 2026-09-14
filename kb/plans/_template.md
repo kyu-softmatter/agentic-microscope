@@ -18,6 +18,10 @@ subsystems: [microscope]        # microscope · tweezers · piezo
 
 # YYYY-MM-DD · Title
 
+**Machine half:** `kb/plans/YYYY-MM-DD-<slug>.yaml`, same slug — one run, one
+name, two readers. It carries only what a check reads; everything else is in
+this file, in Preconditions and Sequence.
+
 ## Request
 
 The goal in the operator's words, before it is turned into settings. If it was
@@ -53,6 +57,35 @@ Checked before anything moves. Each one refuses the run on its own; none of them
 is a formality.
 
 - [ ] … — *checked by:* …
+
+### Instrument state no gate reads
+
+**This is where the settings the committee never sees are set** (KH,
+2026-09-14). The operator's parameter inventory lists about thirty of them, and
+they are deliberately absent from `plan.yaml`: a device property no check reads
+would make the plan tier 2 and end its portability (CLAUDE.md §2), and the plan
+interpreter leaves every parameter no check reads at its current value — so if
+it is not written here, **nobody sets it**.
+
+Each row is set by a person and confirmed by something *observed*. Delete the
+blocks this run does not touch; do not delete a block to make the list shorter.
+
+| Block | Set | Confirmed by |
+|---|---|---|
+| light path · L100 / eyepiece / camera port | | |
+| filter turret 1 (lower) · turret 2 (upper) | | |
+| condenser · 0 ND / 1 block / open | | |
+| dia lamp · level, and on only while the camera is on | | |
+| LAPP branch on/off · CSU on/off · disk in/out | | |
+| confocal disk speed · aperture size | | ⚠ neither is in the KB (R2) |
+| PFS · z-drive | | |
+| camera fan speed · trigger mode · shutter mode · clear cycle | | |
+| tweezers · trap positions, active, strength, breakpoints, pattern | | |
+| piezo · initial x/y/z, lock, time unit, distance unit, channel↔axis | | |
+
+**Objective at load time is not on this list and not an imaging decision.**
+Load with a low-magnification objective in place, whatever the measurement
+wants (SAFETY §2, README item 10, CLAUDE.md §2 E7).
 
 ## Sequence
 

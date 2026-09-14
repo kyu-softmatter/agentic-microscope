@@ -136,6 +136,20 @@ class DetectionSetup:
     acquisition: Acquisition
     mag_intermediate: float = 1.0
     photons: PhotonBudget = field(default_factory=PhotonBudget)
+    #: THE SYSTEM UNDER STUDY, not the instrument -- the length and the time
+    #: the experiment is trying to see. Every other field here describes the
+    #: microscope; these two describe what it is pointed at, and L2.6 is the
+    #: only check that reads them.
+    #:
+    #: They are here because the operator's own parameter inventory bounds
+    #: eight settings from below by these two numbers and by nothing else
+    #: (objective, intermediate magnification, ROI, fps, sensor size, binning,
+    #: exposure, frame interval), and until 2026-09-14 no setup object in this
+    #: repository carried either. A refiner that harvests `missing.*` findings
+    #: therefore could not ask for them -- which is the falsifying condition
+    #: kb/decisions/2026-09-13-the-planning-layer.md set for itself.
+    characteristic_length_um: float | None = None
+    characteristic_time_s: float | None = None
 
     def pixel_size_nm(self) -> tuple[float, str]:
         """Effective pixel at the sample, in nm, with where the number came from.

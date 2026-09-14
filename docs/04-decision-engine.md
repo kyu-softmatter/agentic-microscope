@@ -563,6 +563,7 @@ The `was` column is the old flat number, for anything written before the change
 | **L2.3** | `soft` | SNR | at or above target | measured light level, measured background | BLOCKED | L2.3 |
 | **L2.4** | `bias` | Motion blur | duty `= t_exp/t_frame ≤ 0.3` at the **decided** rate; reports a bound while the rate is undecided, plus `fps_at_duty_limit`, `exposure_max_ms` and `roi_height_min_px` | D or τ_c, **decided frame rate** | ask | L2.4 |
 | **L2.5** | `hard` | Frame-rate realizability | `f ≤ 1/max(t_exp, t_readout)`, graded against the **decided** rate; reports `fps_usable_max` = min(readout ceiling, L2.4's duty ceiling) and which binds | row time, ROI, **decided frame rate** | computable | L2.5 |
+| **L2.6** | `info` | System scales | pixels across the characteristic length, frames per characteristic time, exposure as a fraction of it — **reports all three and grades none**: the two constants a grade would need are the experimenter's, not this repository's | characteristic length (um), characteristic time (s) | ask (`missing.characteristic_*`) | — |
 | **L3.1** | `hard` | Data rate | `< 0.7 ×` disk bandwidth (**reduce ROI *width*** — at the readout limit height cancels) | measured disk bandwidth | measurement required | L3.1 |
 | **L3.2** | `bias` | Frame-rate provenance | `f` is achieved, not requested, judged against lens 2's `fps_usable_max` | achieved fps | measurement required | L3.2 |
 | **L3.3** | `bias` | Pixel container | the bytes/pixel in `R` is the one MM actually writes | confirmed bytes/px | measurement required | L3.3 |

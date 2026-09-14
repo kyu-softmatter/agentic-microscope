@@ -112,9 +112,22 @@ def build_detection(brief: Brief):
             detector=det,
             mode=brief.value("lens_2_detection.camera_mode"),
             binning=brief.value("lens_2_detection.binning") or 1,
+            roi_height_px=brief.value("lens_2_detection.roi_height_px"),
             row_time_us=_ns_to_us(brief.value("lens_2_detection.row_time_ns")),
         ),
-        acquisition=Acquisition(exposure_ms=exposure),
+        acquisition=Acquisition(
+            exposure_ms=exposure,
+            task_kind=brief.value("lens_2_detection.task_kind"),
+            target_fps=brief.value("lens_2_detection.target_fps"),
+            achieved_fps=brief.value("lens_2_detection.achieved_fps"),
+        ),
+        # `or 1.0` is NOT a default in the sense rule 2 forbids: 1.0 is "no
+        # intermediate magnifier in the path", which is a statement about the
+        # optics and the value DetectionSetup already carries. A brief that
+        # means 1.5x has to say 1.5x.
+        mag_intermediate=brief.value("lens_2_detection.mag_intermediate") or 1.0,
+        characteristic_length_um=brief.value("system.characteristic_length_um"),
+        characteristic_time_s=brief.value("system.characteristic_time_s"),
     )
 
 
@@ -126,13 +139,75 @@ def build_compute(brief: Brief):
     from compute.setup import AcquisitionResourceSetup
 
     return AcquisitionResourceSetup(
+        streams=_streams(brief),
         disk_bandwidth_mb_s=brief.value("lens_3_compute.disk_bandwidth_mb_s"),
         disk_bandwidth_path_confirmed=bool(
             brief.value("lens_3_compute.disk_bandwidth_path_confirmed")
         ),
         acquisition_duration_s=brief.value("environment.acquisition_duration_s"),
         free_disk_gb=brief.value("lens_3_compute.free_disk_gb"),
+        circular_buffer_frames=brief.value("lens_3_compute.circular_buffer_frames"),
+        ram_budget_mb=brief.value("lens_3_compute.ram_budget_mb"),
+        cpu_per_frame_ms=brief.value("lens_3_compute.cpu_per_frame_ms"),
+        realtime_processing=bool(brief.value("lens_3_compute.realtime_processing")),
     )
+
+
+def _streams(brief: Brief) -> list:
+    """The camera streams lens 3 measures a data rate from.
+
+    Four facts are needed and **none of them has a fallback**: ROI width, ROI
+    height, a frame rate, and the readout mode's bit depth. Missing any one,
+    this returns no stream at all and lens 3 refuses by name with
+    `missing.streams` -- which is what it did for every brief written before
+    2026-09-14, because nothing was passing streams in at all.
+
+    That absence is exactly the operator inventory's "ROI · fps · bit-depth,
+    upper limit = 저장용량": the three settings that bound each other through
+    the disk, wired to the lens that owns the disk.
+    """
+    from compute.setup import Stream
+    from optics.components import find_detector
+
+    width = brief.value("lens_2_detection.roi_width_px")
+    height = brief.value("lens_2_detection.roi_height_px")
+    achieved = brief.value("lens_2_detection.achieved_fps")
+    target = brief.value("lens_2_detection.target_fps")
+    fps = achieved if achieved is not None else target
+    if width is None or height is None or fps is None:
+        return []
+
+    name = brief.value("lens_1_optics.detector.value")
+    det = find_detector(name) if name else None
+    mode = brief.value("lens_2_detection.camera_mode")
+    bit_depth = None
+    if det is not None and mode is not None:
+        resolved = det.modes.get(mode)
+        bit_depth = resolved.bit_depth if resolved else None
+    if bit_depth is None:
+        # The bytes/pixel of the stream is what a data rate IS. Guessing 16-bit
+        # here would make L3.1 report a number that is 25% wrong in the
+        # direction that passes.
+        return []
+
+    # One stream per camera body in the path. Two bodies means twice the data
+    # rate through one disk, which is the whole reason L3.1 is a `hard` gate.
+    count = brief.value("lens_1_optics.detector.count") or 1
+    source = "measured" if achieved is not None else "requested"
+    return [
+        Stream(
+            label=f"{name}-{i + 1}" if count > 1 else str(name),
+            width_px=int(width),
+            height_px=int(height),
+            fps=float(fps),
+            bit_depth=int(bit_depth),
+            container_confirmed=bool(
+                brief.value("lens_3_compute.pixel_container_confirmed")
+            ),
+            fps_source=source,
+        )
+        for i in range(int(count))
+    ]
 
 
 def build_sample(brief: Brief):
@@ -223,6 +298,8 @@ def build_velocity(brief: Brief):
         commanded_velocity_um_per_s=v,
         particle_radius_um=_radius(brief, "probe"),
         target_relative_error=brief.value("lens_9_velocity.target_relative_error"),
+        step_duration_ms=brief.value("lens_9_velocity.step_duration_ms"),
+        localization_sigma_nm=brief.value("lens_9_velocity.localization_sigma_nm"),
         velocity_time_base_verified=bool(
             brief.value("lens_9_velocity.velocity_time_base_verified")
         ),

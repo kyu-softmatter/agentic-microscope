@@ -344,3 +344,58 @@ def test_fails_frame_rate_when_target_exceeds_the_realizable_rate():
     v = evaluate(_setup(camera=camera, acquisition=acquisition, photons=photons))
     assert v.status == "FAIL"
     assert v.bottleneck == "frame_rate.unrealizable"
+
+
+# ------------------------------------------------- L2.6 · system scales -----
+#
+# Added 2026-09-14. What this check is FOR is that the two numbers it asks for
+# were, until it existed, asked for nowhere -- so a refiner harvesting
+# `missing.*` could not put the question to anybody.
+
+
+def test_l2_6_asks_for_both_scales_when_neither_is_supplied():
+    v = evaluate(_setup())
+    codes = [f.code for f in v.findings]
+    assert "missing.characteristic_scales" in codes
+    finding = next(f for f in v.findings if f.code == "missing.characteristic_scales")
+    assert finding.action, "a refusal that names nothing to do is a bug (CLAUDE.md §3)"
+
+
+def test_l2_6_asks_for_only_the_half_that_is_missing():
+    length_only = evaluate(_setup(characteristic_length_um=2.0))
+    assert "missing.characteristic_time_s" in [f.code for f in length_only.findings]
+
+    time_only = evaluate(_setup(characteristic_time_s=0.05))
+    assert "missing.characteristic_length_um" in [f.code for f in time_only.findings]
+
+
+def test_l2_6_reports_both_ratios_and_grades_neither():
+    """A 2 um feature at 100x/1.5x is 46 pixels across on this bench.
+
+    43.33 nm, not the 73.3 nm the 11 um test pitch would give: L2.6 takes the
+    pixel from ``DetectionSetup.pixel_size_nm()``, which consults
+    ``data/pixel_size.yaml`` first and finds the real 6.5 um sensor's row for
+    100x/1.5x. That is the same source L2.1 grades against, and the two
+    agreeing matters more than either agreeing with this file's fixture.
+    """
+    v = evaluate(_setup(characteristic_length_um=2.0, characteristic_time_s=0.05))
+    finding = next(f for f in v.findings if f.code == "scale_coverage")
+    assert finding.severity == "info"
+    pixel_nm, _ = _setup().pixel_size_nm()
+    assert finding.numbers["pixels_across_length"] == pytest.approx(
+        2.0 / (pixel_nm / 1000.0), rel=1e-9
+    )
+    # 176 rows at the Slow mode's 10.28 us/row is a 1.81 ms readout, so a 10 ms
+    # exposure sets the period: 50 ms / 10 ms = 5 frames per characteristic time.
+    assert finding.numbers["frames_per_characteristic_time"] == pytest.approx(5.0, rel=1e-2)
+    assert finding.numbers["frame_period_is_floor"] is True
+
+
+def test_l2_6_never_changes_the_verdict():
+    """INFO, and it stays INFO: the two constants a grade would need -- pixels
+    per feature, frames per characteristic time -- are the experimenter's."""
+    without = evaluate(_setup())
+    with_scales = evaluate(_setup(characteristic_length_um=2.0, characteristic_time_s=0.05))
+    assert without.status == with_scales.status
+    assert without.feasibility == with_scales.feasibility
+    assert without.bottleneck == with_scales.bottleneck

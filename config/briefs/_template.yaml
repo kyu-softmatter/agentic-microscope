@@ -1,0 +1,312 @@
+# EXPERIMENT BRIEF -- the template. Copy to config/briefs/<slug>.yaml.
+#
+#   The designer's INPUT (CLAUDE.md §2). Hand-written until the query refiner
+#   exists -> kb/decisions/2026-09-13-the-planning-layer.md
+#
+# THE ONE RULE. Every value carries the entry it came from. A fact with no
+# source is NOT filled in here -- it goes to `gaps` with a resolver rank, and
+# the designer BLOCKs on the R2 ones rather than proceeding past them
+# (CLAUDE.md rule 2). `designer/brief.py` enforces this: a value with no
+# `source:` anywhere above it raises rather than being read.
+#
+# WHAT DECIDES THE FIELD LIST BELOW. Every field is one a builder in
+# `designer/build.py` actually reads, and every one is annotated with the
+# check that consumes it. A field no check reads does not belong here -- see
+# `not_carried_here` at the bottom, which is where about thirty real
+# instrument settings went and why.
+#
+# Ranks, from the planning-layer entry:
+#   R0  the KB has it        -> fill it in, cite the entry
+#   R1  only the operator knows
+#   R2  measurable, not measured -> the designer BLOCKS; do not default it
+#   R3  nobody knows             -> record as ungated and proceed
+
+meta:
+  id: <slug>
+  date: YYYY-MM-DD
+  status: proposed              # example | proposed | run
+  written_by: hand
+  #: Lens 1 is specified ENTIRELY by this file and is not restated below.
+  #: Without it `build_optics` returns NotConstructible.
+  channel_config: config/channels/<name>.yaml
+
+goal:
+  in_operator_words: >-
+    The goal before it is turned into settings. Quote it if it was spoken.
+  #: validity/setup.py's quantity table. `validity/gate.py` says in so many
+  #: words why this one omission cannot be papered over: a wrong pixel size
+  #: ruins a diffusion coefficient and is irrelevant to a stoichiometry.
+  intended_quantity: null       # R1
+  why_this_quantity: >-
+    Which computed number the answer actually rests on.
+
+# EVERY LEAF BELOW IS `null` ON PURPOSE, including the booleans. A `null`
+# reads as "not stated"; the builders coerce it with `bool()`, so the run
+# behaves as if it were false while the brief has claimed nothing. Writing
+# `false` is a claim and needs a source like any other -- `designer/brief.py`
+# raises on a value whose `source:` is empty, which is what a copied template
+# with the placeholders still in it will do.
+
+facts:
+
+  # -------------------------------------------------------------------------
+  # THE SYSTEM UNDER STUDY -- not the instrument. Two numbers, and they are
+  # the ones the settings are chosen against.
+  #
+  # Added 2026-09-14. The operator's parameter inventory bounds EIGHT settings
+  # from below by these two and by nothing else -- objective, intermediate
+  # magnification, ROI, fps, sensor size, binning, exposure, frame interval --
+  # and no setup object in this repository carried either until L2.6 was
+  # added. Read by `detection` L2.6, which reports the two ratios and grades
+  # neither: how many pixels per feature and how many frames per
+  # characteristic time are enough is the experimenter's judgement.
+  # -------------------------------------------------------------------------
+  system:
+    characteristic_length_um:   # R1 -> L2.6 (and the reason for the objective,
+      value: null               #      the intermediate mag, binning and ROI)
+      source: ""
+      evidence: assumed
+    characteristic_time_s:      # R1 -> L2.6 (and the reason for the exposure,
+      value: null               #      the frame rate and the frame interval)
+      source: ""
+      evidence: assumed
+
+  # -------------------------------------------------------------------------
+  # LENS 1 · optics. The channel file is the source for the whole light path.
+  # Only what the OTHER lenses need is repeated here.
+  # -------------------------------------------------------------------------
+  lens_1_optics:
+    channels_from: config/channels/<name>.yaml
+    objective:                  # R0 -> L4.1 L4.2 L4.5 L7.1, and L2.1's magnification
+      value: null               #    kb/systems/current.md > objectives
+      na: null
+      immersion: null           # water | oil | air -> L4.5 RI mismatch
+      verified_na: null         #    anything but true pins the verdict to `assumed`
+      source: ""
+      evidence: measured
+    detector:                   # R0 -> data/detectors.yaml
+      value: null
+      count: null               #    2 for a dual-camera split -> twice the data rate
+      source: ""
+      evidence: measured
+
+  # -------------------------------------------------------------------------
+  # LENS 2 · detection. The camera. Everything the operator inventory lists
+  # under 카메라 that a check actually reads.
+  # -------------------------------------------------------------------------
+  lens_2_detection:
+    exposure_ms:                # R1 -> L2.2 L2.4 L2.5 L2.6, and lens 3's data rate
+      value: null               #    REQUIRED: without it `build_detection` returns
+      source: ""                #    NotConstructible and lens 2 emits NO missing.*
+      evidence: assumed
+    task_kind:                  # R1 -> L2.1 L2.4. "imaging" | "tracking"
+      value: null               #    Not a default worth guessing: L2.1 and L2.4 go
+      source: ""                #    in OPPOSITE directions between the two
+    roi_width_px:               # R1 -> L3.1 L3.4 L3.5 (data rate, buffer, capacity)
+      value: null
+      source: ""
+    roi_height_px:              # R1 -> L2.4 L2.5 (readout time) AND lens 3
+      value: null               #    Rolling shutter: rows set readout, columns do not
+      source: ""
+    target_fps:                 # R1 -> L2.4 L2.5 L3.2. A REQUESTED rate.
+      value: null               #    L3.2 marks it `bias`: a request is not evidence
+      source: ""
+    achieved_fps:               # R2 -> the same, from an acquisition's own
+      value: null               #    timestamps. Only this makes lens 3 `measured`
+      source: ""
+    binning:                    # R1 -> L2.1 (pixel size), and data/pixel_size.yaml
+      value: null
+      source: ""
+    mag_intermediate:           # R1 -> pixel size. 1.0 = no magnifier in the path;
+      value: null               #    this bench also has 1.5x
+      source: ""
+    camera_mode:                # R1 -> L2.2 L2.3 L2.5 L3.3. Selects bit depth,
+      value: null               #    full well, read noise and line time together
+      source: ""                #    -- a real trade, not a formality
+    pixel_size_um_per_px:       # R0 -> data/pixel_size.yaml, measured at all six rows
+      value: null
+      source: data/pixel_size.yaml
+      evidence: measured
+    row_time_ns:                # R0/R2 -> L2.4 L2.5. kb/calibrations/camera-readout.yaml
+      value: null               #    A datasheet mode value is a fallback, not a
+      source: ""                #    substitute for the measurement
+      evidence: measured
+    wavelength_em_nm:           # R0 -> L2.1 (the PSF that pixel size is judged against)
+      value: null
+      source: ""
+
+  # -------------------------------------------------------------------------
+  # LENS 3 · compute. The operator inventory's 컴퓨터 block, one field per row.
+  # -------------------------------------------------------------------------
+  lens_3_compute:
+    disk_bandwidth_mb_s:        # R0/R2 -> L3.1. kb/calibrations/disk-bandwidth.yaml
+      value: null
+      source: ""
+      evidence: measured
+    disk_bandwidth_path_confirmed:  # R2 -> pins every lens-3 verdict to `assumed`
+      value: null              #    until it is confirmed to be the folder MM
+      source: ""                #    actually streams into
+    free_disk_gb:               # R1 -> L3.5 (총 촬영 시간 x data rate must fit)
+      value: null
+      source: ""
+    circular_buffer_frames:     # R1 -> L3.4 (must absorb >= 5 s of transient)
+      value: null
+      source: ""
+    ram_budget_mb:              # R1 -> L3.7, RAM-capture path only
+      value: null
+      source: ""
+    cpu_per_frame_ms:           # R2 -> L3.6, only when realtime_processing is true
+      value: null
+      source: ""
+    realtime_processing:        # R1 -> L3.6
+      value: null
+      source: ""
+    pixel_container_confirmed:  # R2 -> L3.3. Only meaningful at <= 8-bit
+      value: null
+      source: ""
+
+  # -------------------------------------------------------------------------
+  # LENS 4 · sample. The inventory's Sample block plus the chamber.
+  # -------------------------------------------------------------------------
+  lens_4_sample:
+    probe:
+      diameter_um: null         # R1 -> L4.4 L7.2 L7.3 L9.2
+      material: null
+      trapped: null             #    also decides whether lens 7 is convened
+      source: ""
+    tracer:
+      diameter_um: null         # R1 -> L4.6 L8.2
+      material: null
+      trapped: null
+      source: ""
+    imaging_depth_um:           # R1 -> L4.2 L4.4 L4.5 L4.7
+      value: null
+      source: ""
+    chamber_height_um:          # R1 -> L4.3 AND L8.2/L8.3. Asked once, used twice
+      value: null               #    for different things (01 §4)
+      source: ""
+    chamber_sealed:             # R1 -> L8.3
+      value: null
+      source: ""
+    tracer_concentration_per_ml:  # R1 -> L4.6
+      value: null
+      source: ""
+
+  # -------------------------------------------------------------------------
+  # LENS 5 · photo. A REPORTING SECTION since 2026-09-10 -- every check INFO,
+  # `advances: None`. These fields buy a report, not a gate, and the operator
+  # inventory's "광량: 상한 SNR, 하한 photobleaching·heating" has no gate on
+  # either side. Nothing enforces H2 but the reader (CLAUDE.md §1 H2).
+  # -------------------------------------------------------------------------
+  lens_5_photo:
+    power_mw_at_sample:         # R2 -> L5.1 L5.2. kb/calibrations/illumination-power.yaml
+      value: null
+      source: ""
+    illuminated_area_um2:       # R2 -> L5.1 L5.2. Recorded at 20x ONLY, and the
+      value: null               #    Aura's circle is 1.56x the square field
+      source: ""
+
+  # -------------------------------------------------------------------------
+  # LENS 7 · trapping. Convened when anything is trapped.
+  # -------------------------------------------------------------------------
+  lens_7_trapping:
+    dial_percent:               # R1 -> REQUIRED. Without it `build_trapping`
+      value: null               #    returns NotConstructible and lens 7 emits
+      source: ""                #    no missing.* code at all
+    laser_nm: 1064
+    instrument: "Aresis Tweez 300"
+    measured_stiffness_pn_per_um:   # R2 -> L7.2 L7.3 L7.4 L9.2 L9.3. A kappa
+      value: null                   #    measured at another objective is not
+      source: ""                    #    this trap's kappa
+      evidence: measured
+
+  # -------------------------------------------------------------------------
+  # LENS 9 · velocity. Convened when anything commands a motion.
+  # -------------------------------------------------------------------------
+  lens_9_velocity:
+    commanded_velocity_um_per_s:  # R1 -> L9.1 L9.2 L9.3 L9.4. A range is allowed;
+      value: null                 #    the worst case (the fastest) is judged
+      source: ""
+      evidence: measured          #    commanded, therefore exactly known
+    target_relative_error:      # R1 -> L9.2 L9.3. EVERY bound in lens 9 derives
+      value: null               #    from it, which is why lens 9 has no LIMITS
+      source: ""
+    step_duration_ms:           # R1 -> L9.3 (the offset has to arrive)
+      value: null
+      source: ""
+    localization_sigma_nm:      # R0 -> L9.2's floor. Lens 2 computes it
+      value: null
+      source: ""
+    velocity_time_base_verified:  # R2 -> L9.1, which is `hard` and FAILS on every
+      value: null                 #    real configuration until this is done
+      source: ""
+
+  environment:
+    acquisition_duration_s:     # R1 -> L3.5 L8.1 L8.3 L8.4, and it decides whether
+      value: null               #    lens 8 is convened at all (~30 min). Absent,
+      source: ""                #    the seat is `undecided`, not `absent`
+    temperature_c:              # R0 -> drag, kT. The LAB SETPOINT, which is the
+      value: null               #    room and not the sample at the focus
+      source: kb/expertise/microrheology-standard-conditions.md
+      evidence: measured
+
+# ---------------------------------------------------------------------------
+# GAPS -- what this brief could not fill, and who can. One entry per field
+# left null above that matters. `designer/run.py` compares these against the
+# `missing.*` codes the gates actually emit, and reports every gate question
+# the brief did not predict: that difference is the brief's quality score.
+# ---------------------------------------------------------------------------
+
+gaps:
+  - field: <name>
+    rank: R1                    # R0 | R1 | R2 | R3
+    consumed_by: [L2.6]
+    why: >-
+      Why it is missing, and what it costs. R2 entries stop the designer.
+    action: "What would resolve it -- an instruction, not a wish."
+
+# ---------------------------------------------------------------------------
+# DEPARTURES from kb/expertise/microrheology-standard-conditions.md.
+# H1: a concession is reported by name and never spent silently.
+# ---------------------------------------------------------------------------
+
+departures:
+  - condition: <objective | frame rate / exposure | illumination>
+    standing: "<the standing choice>"
+    here: "<what this run does instead>"
+    basis: "<why>"
+    costs: "<which rank in CLAUDE.md §1 pays, and how much>"
+
+# ---------------------------------------------------------------------------
+# WHAT THIS FILE DELIBERATELY DOES NOT CARRY.  Decided 2026-09-14 (KH).
+#
+# The operator's parameter inventory lists about thirty more settings that a
+# real run has to get right and that NO CHECK IN ANY LENS READS:
+#
+#   현미경 세팅   dia lamp brightness and on/off · condenser 0/1/open ·
+#                 light path L100 · PFS · z-drive · filter turret 1 (lower)
+#                 and 2 (upper) · LAPP branch on/off · CSU on/off
+#   카메라        fan speed · trigger mode · shutter mode · clear cycle
+#   컨포컬        disk speed · aperture size · run/stop disk · disk in/out ·
+#                 filter wheel
+#   트위져        trap position · active · strength 0-1 · breakpoints ·
+#                 multitone · pattern rotation/scale/wait-state · repeat
+#   피에조        initial x/y/z · lock status · time unit · distance unit ·
+#                 channel-to-axis mapping · state measurement rate
+#
+# They are NOT here and NOT in plan.yaml. `plan.yaml` admitting a device
+# property that no check reads would make the plan tier 2 and end its
+# portability (CLAUDE.md §2, 01 §3 Principle 2), and putting them in the brief
+# would mean the designer carrying values it cannot judge.
+#
+# They live in **plan.md's Preconditions and Sequence**, where each one is set
+# by a person and confirmed by something OBSERVED -- a bead that moved, a
+# frame that changed, a readback from a device that has one. Never by a return
+# code (SAFETY §0, E9). See kb/plans/_template.md.
+#
+# Two of these are worth knowing are missing rather than merely absent:
+#   · disk speed and aperture size are not in the KB at all, so the confocal
+#     path's exposure quantization cannot be computed today (R2).
+#   · 총 이미지 수 / 총 촬영 수 / 총 샘플 수 -- how much data is enough, and
+#     how many samples make it reproducible -- have no field and no lens.
+#     Statistical power has been ungated since G11 was removed on 2026-09-11.

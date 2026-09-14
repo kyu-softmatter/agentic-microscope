@@ -1,0 +1,105 @@
+# One hardware run, for the reader that is not a person.
+#
+#   Copy to kb/plans/YYYY-MM-DD-<slug>.yaml, beside the `.md` of the SAME
+#   SLUG -- one run, one name, two readers (CLAUDE.md §6).
+#
+#   `.md` is the operator's: what was conceded and why, in sentences.
+#   `.yaml` is this: the parameters without the sentences, for the plan
+#   interpreter and for any re-check.
+#
+# NOT WRITTEN BY ANYTHING YET. The designer's stage-1 runner produces the
+# verdicts; nothing yet serialises them into this shape
+# -> kb/decisions/2026-09-13-the-planning-layer.md §3.
+#
+# TIER 3, AND THAT IS THE WHOLE CONSTRAINT. No device property that no check
+# reads may appear in this file. Admitting one makes the plan tier 2 and ends
+# its portability (CLAUDE.md §2, 01 §3 Principle 2) -- and the interpreter
+# leaves every parameter no check reads at its current value, so a key here
+# that nothing reads is a key nothing will honour. See `instrument_state`
+# at the bottom for where those went instead.
+
+id: YYYY-MM-DD-slug
+date: YYYY-MM-DD
+status: planned                  # planned | run | abandoned
+
+#: The input this plan was derived from, pinned by content. A plan whose
+#: brief has moved underneath it is not this plan.
+brief:
+  ref: config/briefs/<slug>.yaml
+  sha256: null
+
+#: `config/channels` schema VERBATIM -- so `python -m optics.cli check` can be
+#: pointed straight at this file rather than at a second copy of the same
+#: facts (CLAUDE.md §7, one definition one file).
+channels: []
+
+#: What lens 2 and lens 3 were judged on. `fps_source` is load-bearing:
+#: a REQUESTED rate is not evidence (L3.2), and lens 2's `fps_usable_max` is
+#: what L3.2, L7.4 and L9.3 are all judged against (CLAUDE.md §2 E5).
+acquisition:
+  exposure_ms: null
+  task_kind: null                # imaging | tracking
+  roi_width_px: null
+  roi_height_px: null
+  binning: null
+  camera_mode: null
+  fps: null
+  fps_source: undecided          # measured | requested | undecided
+  fps_usable_max: null           # lens 2's ceiling, the number lens 3 inherits
+  duration_s: null
+
+#: The system the settings were chosen against, carried through from the
+#: brief because L2.6 reports against it and a re-check needs it (2026-09-14).
+system:
+  characteristic_length_um: null
+  characteristic_time_s: null
+
+#: One row per check that ran. `m` is the margin, `evidence` is the axis that
+#: decides whether the verdict may advance -- `assumed` computes and reports
+#: and never authorises.
+verdicts:
+  - lens: null                   # 1..9
+    addr: null                   # L<lens>.<n>
+    kind: null                   # hard | bias | soft | info
+    status: null
+    m: null
+    evidence: null               # measured | assumed
+
+#: REQUIRED KEY EVEN WHEN EMPTY. An absent key reads as a cleared one, and
+#: `unevaluated` != `cleared` (CLAUDE.md §3). Three distinct states belong
+#: here and they are not interchangeable:
+#:   absent            the condition for convening was false, and that is a fact
+#:   undecided         the input that decides convening is itself missing
+#:   not_constructible the Setup could not be built, so the gate emitted NO
+#:                     missing.* code at all -- the blind spot a harvest-based
+#:                     refiner cannot see into
+unevaluated: []
+
+#: REQUIRED KEY EVEN WHEN EMPTY. Every `missing.*` the gates emitted, plus
+#: every gap the brief declared, each with the rank that says who resolves it.
+#: R2 entries are the calibration queue.
+unresolved: []
+  # - code: missing.<field>
+  #   rank: R2                   # R0 | R1 | R2 | R3
+  #   lens: null
+  #   action: "what would resolve it"
+  #   predicted_by_brief: false  # false = the brief did not know to ask
+
+# ---------------------------------------------------------------------------
+# NO `instrument_state` KEY, AND THAT IS DELIBERATE (KH, 2026-09-14).
+#
+# The operator's parameter inventory lists about thirty settings a real run
+# has to get right that no check in any lens reads -- CSU on/off, condenser
+# position, both filter turrets, the LAPP branch, dia lamp, PFS, z-drive,
+# light path, camera fan speed / trigger mode / shutter mode / clear cycle,
+# confocal disk speed and aperture, the whole Tweez trap and pattern block,
+# and the piezo's units, channel mapping and initial position.
+#
+# They go in **plan.md's Preconditions and Sequence**, not here. Two reasons,
+# and the second is the one that bites:
+#   1. tier 3, above.
+#   2. a value in this file would be applied by the interpreter, which has no
+#      reviewer and cannot observe. Every one of these settings is confirmed
+#      by something SEEN -- the disk in the path, the turret at 1, a frame
+#      that changed. A return code is not a confirmation (SAFETY §0, E9).
+# ---------------------------------------------------------------------------

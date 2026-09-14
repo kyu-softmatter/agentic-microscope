@@ -205,8 +205,10 @@ def test_every_site_carries_its_address() -> None:
 def test_the_site_count_is_pinned() -> None:
     """Not an interesting number in itself -- it is here so that adding or
     removing a branch shows up as a decision rather than as noise. 104 before
-    lens 9 was added on 2026-09-11, 112 after."""
-    assert len(collect_all()) == 112
+    lens 9 was added on 2026-09-11, 112 after, and 116 once L2.6 added its
+    four branches on 2026-09-14 -- three of them `missing.*`, which is the
+    point of the check."""
+    assert len(collect_all()) == 116
 
 
 def test_the_layer_covers_every_lens_package() -> None:

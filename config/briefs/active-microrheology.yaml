@@ -40,6 +40,27 @@ goal:
 
 facts:
 
+  # THE SYSTEM UNDER STUDY, added 2026-09-14 with L2.6. Both null: this brief
+  # was written from a channel file and a channel file does not carry them.
+  # That is the point -- until today nothing in the repository asked, so their
+  # absence was invisible rather than reported.
+  system:
+    characteristic_length_um:
+      value: null
+      note: >-
+        NOT the particle diameter. The 0.5 um tracer is the reporter; the
+        length this experiment is trying to resolve is the medium's, and the
+        channel file never states it.
+      see: gaps.characteristic_length_um
+    characteristic_time_s:
+      value: null
+      note: >-
+        For a complex modulus this is the shortest lag the MSD is fitted over,
+        which is what the 1.5 ms exposure was reasoned from -- but the
+        reasoning is in the channel file's header and the number is not
+        anywhere.
+      see: gaps.characteristic_time_s
+
   lens_1_optics:
     # The channel file is the source for the whole light path; not restated.
     channels_from: config/channels/active-microrheology-probe-tracer.yaml
@@ -152,6 +173,85 @@ facts:
 # ---------------------------------------------------------------------------
 
 gaps:
+
+  - field: characteristic_length_um
+    rank: R1
+    consumed_by: [L2.6]
+    why: >-
+      The lower bound on the objective, the intermediate magnification, the
+      binning and the ROI, all four at once. Before L2.6 existed no gate asked
+      for it, so a refiner that harvests `missing.*` could not have put the
+      question to the operator -- the falsifier
+      kb/decisions/2026-09-13-the-planning-layer.md set for itself.
+    action: "Ask KH: what length does this measurement have to resolve, in um?"
+
+  - field: characteristic_time_s
+    rank: R1
+    consumed_by: [L2.6]
+    why: "the same, for the exposure, the frame rate and the frame interval"
+    action: "Ask KH: what is the shortest time the dynamics have to be followed over?"
+
+  - field: task_kind
+    rank: R1
+    consumed_by: [L2.1, L2.4]
+    why: >-
+      "imaging" or "tracking". L2.1 and L2.4 go in OPPOSITE directions between
+      the two, so this is not a default worth guessing -- and lens 2 already
+      says so in its own refusal text.
+    action: "Ask KH. This one is single-particle tracking on both arms, but the brief may not assume it."
+
+  - field: roi_width_px
+    rank: R1
+    consumed_by: [L3.1, L3.4, L3.5]
+    why: >-
+      With no ROI there is no frame size, with no frame size there is no data
+      rate, and lens 3 refuses with `missing.streams` -- which it did for every
+      brief written before 2026-09-14, because nothing passed streams in at all.
+    action: "Ask KH for the ROI, or state full frame and its pixel dimensions."
+
+  - field: roi_height_px
+    rank: R1
+    consumed_by: [L2.4, L2.5, L3.1, L3.4, L3.5]
+    why: >-
+      Asked once, used twice for different things: rows set the rolling-shutter
+      readout for lens 2, and rows x columns set the data rate for lens 3.
+    action: "the same question as roi_width_px"
+
+  - field: target_fps
+    rank: R1
+    consumed_by: [L2.4, L2.5, L3.2]
+    why: >-
+      Without any rate L2.4 reports `motion_blur.rate_undecided` and grades
+      nothing. A REQUESTED rate is still not evidence (L3.2, E5); an achieved
+      one only exists after a run.
+    action: "State the requested rate and mark it requested, or supply achieved_fps from timestamps."
+
+  - field: circular_buffer_frames
+    rank: R1
+    consumed_by: [L3.4]
+    action: "Read the MM circular-buffer size on the microscope PC."
+
+  - field: trap_dial_percent
+    rank: R1
+    consumed_by: [L7.2, L7.3, L7.4, L7.5]
+    why: >-
+      REQUIRED, not merely missing: `TrapSetup` cannot be constructed without
+      it, so lens 7 emits no `missing.*` code at all and appears as
+      `not_constructible` instead. A gap that produces silence rather than a
+      question is exactly what this list exists to catch.
+    action: "Ask KH for the Tweez main-laser dial setting this run uses."
+
+  - field: step_duration_ms
+    rank: R1
+    consumed_by: [L9.3]
+    why: "the bead approaches the steady offset exponentially; a short step reports a displacement that has not arrived"
+    action: "State how long one velocity step is held before it is resampled."
+
+  - field: localization_sigma_nm
+    rank: R1
+    consumed_by: [L9.2]
+    why: "lens 2 computes it, but only once it has a photon budget -- which this configuration has for neither dye"
+    action: "Supply signal and background rates, or measure the localization scatter on a stuck bead."
 
   - field: chamber_height_um
     rank: R1

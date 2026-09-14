@@ -90,6 +90,10 @@ EXPECTED_CHECKS: dict[str, tuple[tuple[str, str], ...]] = {
         ("snr", "soft"),
         ("motion_blur", "bias"),
         ("frame_rate", "hard"),
+        # 2026-09-14. INFO, and it will stay INFO until somebody supplies the
+        # two constants a grade would need -- pixels per feature and frames
+        # per characteristic time. Neither is in this repository.
+        ("scale_coverage", "info"),
     ),
     "compute": (
         ("data_rate", "hard"),
@@ -342,6 +346,7 @@ EXPECTED_ADDRESSES: dict[str, tuple[tuple[str, str], ...]] = {
         ("L2.3", "snr"),
         ("L2.4", "motion_blur"),
         ("L2.5", "frame_rate"),
+        ("L2.6", "scale_coverage"),
     ),
     "compute": (
         ("L3.1", "data_rate"),
@@ -465,8 +470,10 @@ def test_every_check_in_every_lens_is_addressed() -> None:
         }
         mapped = {code for _, code in EXPECTED_ADDRESSES[lens]}
         assert addressed == mapped, f"lens {lens}: {addressed ^ mapped} unaddressed"
-    # 43 before lens 9 arrived on 2026-09-11, 48 after.
-    assert sum(len(v) for v in EXPECTED_ADDRESSES.values()) == 48
+    # 43 before lens 9 arrived on 2026-09-11, 48 after, 49 once L2.6 gave the
+    # system's own characteristic scales somewhere to be asked for
+    # (2026-09-14).
+    assert sum(len(v) for v in EXPECTED_ADDRESSES.values()) == 49
 
 
 def test_addresses_are_dense_and_lens_numbered() -> None:

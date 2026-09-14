@@ -1,5 +1,6 @@
 """Individual detection checks -- L2.1 (sampling), L2.2 (saturation), L2.3 (SNR),
-L2.4 (motion blur), L2.5 (frame-rate realizability). docs/04-decision-engine.md
+L2.4 (motion blur), L2.5 (frame-rate realizability), L2.6 (system scales).
+docs/04-decision-engine.md
 §2, §4, §5; docs/05-consensus-gate.md §5.
 
 Mirrors optics.checks / trapping.checks: independent margins
@@ -561,6 +562,145 @@ def check_frame_rate(setup: "DetectionSetup") -> CheckResult:
     )
 
 
+def check_scale_coverage(setup: "DetectionSetup") -> CheckResult:
+    """L2.6: does this configuration resolve, and outlast, the SYSTEM's scales?
+
+    Every other check in this lens is about the instrument -- the PSF, the
+    well, the readout. This one is about the thing the instrument is pointed
+    at, and it exists because the operator's own parameter inventory bounds
+    eight settings from below by the same two numbers and by nothing else:
+    objective, intermediate magnification, ROI, fps, sensor size, binning,
+    exposure and frame interval, all of them read "관측하고자 하는 결과의
+    characteristic length/time scale" (KH, 2026-09-14).
+
+    **It reports and never grades**, and that is not timidity. A grade needs
+    two constants this repository does not have -- how many pixels across a
+    feature is enough, how many frames per characteristic time is enough --
+    and both are the experimenter's numbers, not this file's. Inventing them
+    here is precisely what rule 2 forbids, so L2.6 computes the two ratios and
+    hands them to a reader who can judge them.
+
+    The two ``missing.*`` codes it emits are deliberately prefixed the same way
+    ``gate._missing_inputs`` prefixes its own, because that prefix is what the
+    planning layer harvests (``designer/run.py``). Before this check existed no
+    gate asked for either scale, so no harvest-based refiner could ever have
+    put the question to the operator -- the falsifying condition
+    kb/decisions/2026-09-13-the-planning-layer.md set for itself, met by a
+    real inventory rather than by a hypothetical.
+    """
+    cam = setup.camera
+    acq = setup.acquisition
+    length_um = setup.characteristic_length_um
+    time_s = setup.characteristic_time_s
+
+    numbers: dict = {
+        "characteristic_length_um": length_um,
+        "characteristic_time_s": time_s,
+    }
+
+    # --- the length half ---------------------------------------------------
+    pixel_um = None
+    if cam.detector.pixel_um and setup.mag_objective:
+        pixel_nm, pixel_evidence = setup.pixel_size_nm()
+        pixel_um = pixel_nm / 1000.0
+        numbers["pixel_at_sample_um"] = pixel_um
+        numbers["pixel_size_evidence"] = pixel_evidence
+    if pixel_um and length_um:
+        numbers["pixels_across_length"] = length_um / pixel_um
+    if pixel_um and cam.roi_height_px:
+        numbers["roi_height_um"] = cam.roi_height_px * pixel_um
+        if length_um:
+            numbers["roi_height_in_lengths"] = (cam.roi_height_px * pixel_um) / length_um
+
+    # --- the time half -----------------------------------------------------
+    row_time = cam.effective_row_time_us()
+    t_frame = None
+    if row_time is not None and cam.roi_height_px:
+        readout_s = readout_time_s(row_time, cam.roi_height_px)
+        t_frame_min = frame_period_s(acq.exposure_ms, readout_s, cam.frame_overhead_ms)
+        decided = acq.decided_fps
+        t_frame = max(1.0 / decided, t_frame_min) if decided else t_frame_min
+        numbers["frame_period_s"] = t_frame
+        numbers["frame_period_is_floor"] = decided is None
+    if t_frame and time_s:
+        numbers["frames_per_characteristic_time"] = time_s / t_frame
+    if time_s:
+        numbers["exposure_fraction_of_characteristic_time"] = (
+            acq.exposure_ms * 1e-3
+        ) / time_s
+
+    # --- what is missing ---------------------------------------------------
+    if length_um is None and time_s is None:
+        return CheckResult(
+            "missing.characteristic_scales",
+            INFO,
+            MAX_MARGIN,
+            "info",
+            "Neither characteristic scale is supplied, so nothing here can be "
+            "checked against the system being measured. Pixel size, ROI, "
+            "exposure and frame rate are all being judged against the "
+            "instrument alone.",
+            action="Ask the experimenter for the two numbers the settings are "
+            "chosen against: the characteristic LENGTH of the feature to be "
+            "resolved, in um, and the characteristic TIME of the dynamics to "
+            "be followed, in s. Neither is derivable from the instrument.",
+            numbers=numbers,
+        )
+    if length_um is None:
+        return CheckResult(
+            "missing.characteristic_length_um",
+            INFO,
+            MAX_MARGIN,
+            "info",
+            "No characteristic length. The time half is reported below; the "
+            "pixel size and ROI are unjudged against anything but the PSF "
+            "(L2.1).",
+            action="Ask the experimenter for the characteristic length of the "
+            "feature to be resolved, in um.",
+            numbers=numbers,
+        )
+    if time_s is None:
+        return CheckResult(
+            "missing.characteristic_time_s",
+            INFO,
+            MAX_MARGIN,
+            "info",
+            "No characteristic time. The length half is reported below; the "
+            "exposure and frame period are unjudged against the dynamics.",
+            action="Ask the experimenter for the characteristic time of the "
+            "dynamics to be followed, in s.",
+            numbers=numbers,
+        )
+
+    across = numbers.get("pixels_across_length")
+    per_time = numbers.get("frames_per_characteristic_time")
+    parts = []
+    if across is not None:
+        parts.append(f"{across:.1f} px across the {length_um:g} um feature")
+    if numbers.get("roi_height_in_lengths") is not None:
+        parts.append(f"ROI height {numbers['roi_height_in_lengths']:.1f}x it")
+    if per_time is not None:
+        floor = " (camera floor -- no rate decided)" if numbers.get("frame_period_is_floor") else ""
+        parts.append(
+            f"{per_time:.1f} frames per {time_s:g} s characteristic time{floor}"
+        )
+    parts.append(
+        f"exposure {numbers['exposure_fraction_of_characteristic_time'] * 100:.1f}% of it"
+    )
+
+    return CheckResult(
+        "scale_coverage",
+        INFO,
+        MAX_MARGIN,
+        "info",
+        "System scales vs. this configuration: " + "; ".join(parts) + ".",
+        action="Not graded -- how many pixels per feature and how many frames "
+        "per characteristic time are enough is the experimenter's judgement, "
+        "and this repository holds no threshold for either.",
+        numbers=numbers,
+    )
+
+
 CHECKS: list[Check] = [
     Check("sampling", SOFT, ("objective.na", "magnification", "pixel", "task_kind"), check_sampling),
     Check(
@@ -583,6 +723,10 @@ CHECKS: list[Check] = [
     ),
     Check("motion_blur", BIAS, ("task_kind", "row_time", "roi_height"), check_motion_blur),
     Check("frame_rate", HARD, ("row_time", "roi_height"), check_frame_rate),
+    #: `requires` is empty ON PURPOSE. INFO checks are never in Phase 0's
+    #: `unrunnable` list, and this one has to run on the thinnest setup there
+    #: is -- reporting that the two scales are absent is its main job.
+    Check("scale_coverage", INFO, (), check_scale_coverage),
 ]
 
 
