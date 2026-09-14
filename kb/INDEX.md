@@ -48,7 +48,7 @@ Durable expert judgment. Each carries a `Why` and a falsifier.
 - **[microrheology-standard-conditions](expertise/microrheology-standard-conditions.md)** · 2026-09-07
   What conditions does a microrheology run on this instrument default to, and which of them are choices rather than constants
 
-## `kb/decisions/` — 44 entries
+## `kb/decisions/` — 45 entries
 
 Dated design and scope choices, in the order they were made.
 
@@ -140,6 +140,8 @@ Dated design and scope choices, in the order they were made.
   Why did a bias that lens 4 measured and reported never reach the lens whose job is reviewing biases?
 - **[2026-09-13-the-planning-layer](decisions/2026-09-13-the-planning-layer.md)** · 2026-09-13
   A research goal arrives as an open question. What turns it into a checked experiment plan, and who is allowed to fill in what it did not say?
+- **[2026-09-14-gate-audit-against-the-parameter-inventory](decisions/2026-09-14-gate-audit-against-the-parameter-inventory.md)** · 2026-09-14
+  Which of the operator's parameters can the committee actually decide, and where should the gates that decide the rest get their thresholds?
 
 ## `kb/literature/` — 1 entries
 

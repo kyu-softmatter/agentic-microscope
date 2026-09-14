@@ -22,11 +22,23 @@ from .roster import Seat, convene, order
 #: not listed -- those really are parallel.
 INTRA_TIER = {("detection", "compute"): "L3.2 is judged against lens 2's fps_usable_max"}
 
+#: Handoffs that cross a tier boundary. The tiers already sequence these, so
+#: unlike INTRA_TIER this table changes no order -- it records WHAT is carried,
+#: which is the part that was invisible. A lens not listed here receives
+#: nothing but the brief.
+CROSS_TIER = {
+    ("detection", "sample"): "L4.6's particle count needs the field, which is "
+    "lens 2's ROI times lens 2's pixel"
+}
+
 
 @dataclass
 class LensRun:
     lens: str
     verdict: Any | None = None
+    #: The Setup the gate was called on. Kept because a later lens sometimes
+    #: needs a number this one computed -- see CROSS_TIER.
+    setup: Any | None = None
     not_constructible: _build.NotConstructible | None = None
     seat: Seat | None = None
 
@@ -108,12 +120,16 @@ def run(brief: Brief) -> Result:
 
     for index, tier in enumerate(tiers, start=1):
         for lens in _sequence(tier):
-            built = _build.BUILDERS[lens](brief) if lens != "validity" else None
             if lens == "validity":
                 built = _build.build_validity(brief, upstream=_upstream(result))
+            elif lens == "sample":
+                built = _build.build_sample(brief, detection=_setup_of(result, "detection"))
+            else:
+                built = _build.BUILDERS[lens](brief)
             if isinstance(built, _build.NotConstructible):
                 result.runs[lens].not_constructible = built
                 continue
+            result.runs[lens].setup = built
             result.runs[lens].verdict = _evaluate(lens, built)
 
         if index == 1:
@@ -149,6 +165,17 @@ def _evaluate(lens: str, setup):
         channels = setup
         return gate.evaluate(channels[0], others=channels[1:])
     return gate.evaluate(setup)
+
+
+def _setup_of(result: Result, lens: str):
+    """The Setup a lens ran on, or None if it never ran.
+
+    None is the honest answer and the receiving builder has to handle it:
+    lens 2 being unbuildable must not make lens 4 unbuildable too, it must
+    make lens 4's field-dependent check say it did not evaluate.
+    """
+    run = result.runs.get(lens)
+    return None if run is None else run.setup
 
 
 def _upstream(result: Result) -> dict:

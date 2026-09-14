@@ -220,6 +220,22 @@ code**: particle count 4 → 6 died with G11 on 2026-09-11, and ROI-versus-
 statistics 3 ↔ 6 never had any. Wiring the designer is what will establish how
 many of the nine are real.
 
+⚠ **And a broken handoff looks exactly like a missing gate from the outside.**
+The 2026-09-14 audit found three, all of them upstream of any check being
+wrong: `build.py` hand-built the objective instead of looking it up, so lens 4
+BLOCKED on `missing.working_distance` for **every brief ever run** and six
+checks never executed; nothing carried the field of view from lens 2 to lens 4,
+so L4.6's count reported "not evaluated", which reads as a pass; and the
+30-minute convening threshold had two definitions that disagreed at exactly 30.
+**Repair the wiring before adding a gate** →
+[`2026-09-14-gate-audit-against-the-parameter-inventory.md`](kb/decisions/2026-09-14-gate-audit-against-the-parameter-inventory.md).
+
+**A new gate's threshold comes from the brief, not from `LIMITS`** (KH,
+2026-09-14). The operator's multiples — ROI at 1.5× the system, concentration
+at 3–5×, trap power at 1.2× — are per-experiment and are asked for, the way
+lens 9 asks for `target_relative_error` and then has no `LIMITS` dict at all.
+A constant in a `LIMITS` entry is a claim about every future experiment.
+
 **After `plan.yaml`.** The plan interpreter applies what the plan decided,
 **leaves every parameter no check reads at its current value**, and records the
 whole machine state as `as_set.yaml`. It originates nothing and is code, not a
@@ -383,9 +399,9 @@ survives a clean checkout).
 pytest -q -rs
 ```
 
-1342 passed, 11 skipped on macOS, of 1,353 (re-measured 2026-09-14; was
-1329/11 of 1,340 on 2026-09-13, and the 13 added since are L2.6 and the
-designer's first tests. Windows printed 1195/10 on 2026-09-09 — one
+1350 passed, 11 skipped on macOS, of 1,361 (re-measured 2026-09-14; was
+1329/11 of 1,340 on 2026-09-13, and the 21 added since are L2.6 and the
+designer's first tests, which is where the three broken handoffs were found. Windows printed 1195/10 on 2026-09-09 — one
 Windows-only test — and has **not** been re-measured since). Two kinds of
 skip: three whole modules behind `pytest.importorskip("pymmcore_plus")`
 holding 56 tests (counted 2026-09-09, not re-counted today — the dependency is

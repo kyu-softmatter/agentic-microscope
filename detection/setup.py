@@ -23,6 +23,12 @@ class Camera:
     #: Row count only -- readout time depends on rows, not columns
     #: (docs/06-pitfalls.md §C3), so column count is not tracked here.
     roi_height_px: int | None = None
+    #: Column count. **Not used for readout**, for the reason directly above.
+    #: It is here because the FIELD needs both dimensions and lens 2 is the
+    #: lens that can compute one: the field is ROI x the pixel at the sample,
+    #: and the pixel at the sample is this lens's number. Lens 3's data rate
+    #: needs it too, and takes it from the brief rather than from here.
+    roi_width_px: int | None = None
     #: Measured row/line time; overrides the mode's ``line_time_us`` when
     #: supplied. calibration.mm_live has not been run against the real
     #: PVCAM/Kinetix adapter yet, so a datasheet mode value is a fallback,
@@ -150,6 +156,28 @@ class DetectionSetup:
     #: kb/decisions/2026-09-13-the-planning-layer.md set for itself.
     characteristic_length_um: float | None = None
     characteristic_time_s: float | None = None
+
+    def field_of_view_um(self) -> tuple[float | None, float | None]:
+        """The field at the sample, um, as (width, height).
+
+        **Lens 4 consumes this and does not compute it** (`sample/setup.py`
+        says so of `field_width_um` in as many words: "Owned by lenses 1/2
+        (objective + camera); lens 4 only consumes it"). Until 2026-09-14
+        nothing carried it across that boundary, so L4.6's particle count only
+        ever ran when a human typed the field into `sample/cli.py` -- in the
+        designer's path it was silently unevaluated.
+
+        Returns ``(None, None)`` for either dimension the ROI does not give.
+        The pixel comes from ``pixel_size_nm()``, so the field inherits the
+        same provenance the sampling check is graded on rather than a second
+        derivation of the same quantity.
+        """
+        pixel_um = self.pixel_size_nm()[0] / 1000.0
+        cam = self.camera
+        return (
+            None if cam.roi_width_px is None else cam.roi_width_px * pixel_um,
+            None if cam.roi_height_px is None else cam.roi_height_px * pixel_um,
+        )
 
     def pixel_size_nm(self) -> tuple[float, str]:
         """Effective pixel at the sample, in nm, with where the number came from.

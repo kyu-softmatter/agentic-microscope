@@ -41,11 +41,29 @@ class NotConstructible:
 
 
 def _objective(brief: Brief):
-    from optics.components import Objective
+    """The objective, from `data/objectives.yaml` where the label is known.
+
+    **The brief NAMES the objective; the registry IS the objective.** This
+    hand-built one from the brief's three fields until 2026-09-14, which threw
+    away everything the registry carries and nothing else does -- above all
+    ``wd_um``. Lens 4 therefore BLOCKED with `missing.working_distance` on
+    every brief ever run through the designer, and L4.2, L4.3, L4.4, L4.5,
+    L4.6 and L4.7 never executed: the whole lens, silently, on a fact the
+    repository has had on file since 2026-08-10.
+
+    A label the registry does not know still builds from the brief, because an
+    objective that is on the nosepiece and not in the file is a real situation
+    and refusing it would be worse than proceeding with less. That path keeps
+    exactly the old behaviour, including the missing WD.
+    """
+    from optics.components import Objective, find_objective
 
     label = brief.value("lens_1_optics.objective")
     if label is None:
         return None
+    known = find_objective(label)
+    if known is not None:
+        return known
     na = brief.value("lens_1_optics.objective.na")
     node = brief.facts.get("lens_1_optics", {}).get("objective", {})
     return Objective(
@@ -113,6 +131,7 @@ def build_detection(brief: Brief):
             mode=brief.value("lens_2_detection.camera_mode"),
             binning=brief.value("lens_2_detection.binning") or 1,
             roi_height_px=brief.value("lens_2_detection.roi_height_px"),
+            roi_width_px=brief.value("lens_2_detection.roi_width_px"),
             row_time_us=_ns_to_us(brief.value("lens_2_detection.row_time_ns")),
         ),
         acquisition=Acquisition(
@@ -210,7 +229,20 @@ def _streams(brief: Brief) -> list:
     ]
 
 
-def build_sample(brief: Brief):
+def build_sample(brief: Brief, detection=None):
+    """Lens 4, with the field of view handed down from lens 2.
+
+    ``detection`` is the DetectionSetup lens 2 already ran on, and it is the
+    **only** argument here that does not come from the brief. That is the
+    point: the field at the sample is ROI x the pixel at the sample, both of
+    which lens 2 owns, and `sample/setup.py` says so of `field_width_um` --
+    "Owned by lenses 1/2 (objective + camera); lens 4 only consumes it".
+
+    Nothing carried it across until 2026-09-14. L4.6's particle count ran only
+    when a human typed the field into `sample/cli.py`; through the designer it
+    reported "Settled crowding not evaluated" and no gate noticed, because an
+    INFO check that declines to evaluate looks exactly like one that passed.
+    """
     from sample.setup import SampleSetup
 
     obj = _objective(brief)
@@ -218,6 +250,7 @@ def build_sample(brief: Brief):
         return NotConstructible(
             "sample", ("objective",), "sample.setup.SampleSetup requires an objective",
         )
+    field_w, field_h = (None, None) if detection is None else detection.field_of_view_um()
     return SampleSetup(
         objective=obj,
         imaging_depth_um=brief.value("lens_4_sample.imaging_depth_um"),
@@ -225,6 +258,8 @@ def build_sample(brief: Brief):
         particle_radius_um=_radius(brief, "probe"),
         trapped=bool(brief.value("lens_4_sample.probe.trapped")),
         concentration_per_ml=brief.value("lens_4_sample.tracer_concentration_per_ml"),
+        field_width_um=field_w,
+        field_height_um=field_h,
     )
 
 

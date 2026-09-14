@@ -728,8 +728,19 @@ def check_count_in_field(setup: "SampleSetup") -> CheckResult:
     check compared against the resolution term alone, which is right only for
     sub-diffraction tracers.
 
-    INFO, unchanged: whether the count is *enough* is G11's call, and a
-    missing concentration must not take the rest of the lens down.
+    INFO, unchanged, but the reason has changed and is worth stating plainly:
+    a missing concentration must not take the rest of the lens down, AND
+    **whether the count is *enough* now has no owner at all.** That was G11's
+    half, and G11 was removed on 2026-09-11 for counting correlated frames as
+    independent samples. So this check bounds crowding from ABOVE and nothing
+    bounds it from below -- the operator inventory's "너무 희석하면 실험하기가
+    힘듦" is unchecked. `expected_count` and `min_dilution_factor` below are
+    reported for a reader; no gate reads them.
+
+    The field they need arrives from lens 2 as of 2026-09-14
+    (`DetectionSetup.field_of_view_um`). Before that it came only from
+    `sample/cli.py`'s arguments, so through the designer this half of the
+    check silently did not evaluate.
     """
     a = setup.particle_radius_um
     h = setup.chamber_height_um

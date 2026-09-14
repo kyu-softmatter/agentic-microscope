@@ -17,6 +17,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from stability.setup import CONVENE_DURATION_MIN
+
 from .brief import Brief
 
 #: CLAUDE.md §2. Tier 1 is code and runs first so that no later lens
@@ -31,7 +33,14 @@ STANDING = ("optics", "detection", "compute", "sample", "photo", "validity")
 CONDITIONAL = ("trapping", "stability", "velocity")
 
 #: Past this, lens 8 is convened (01 §4).
-STABILITY_THRESHOLD_MIN = 30.0
+#:
+#: IMPORTED, NOT RESTATED. It was a second `30.0` here until 2026-09-14, and
+#: the two copies had already drifted in the way a duplicated constant always
+#: does first -- not in value but in the comparison around it: `StabilitySetup
+#: .convenes` is `> 30`, and this module was `>= 30`, so a 30-minute
+#: acquisition convened lens 8 here and did not convene it there. One
+#: definition, one file (CLAUDE.md §7).
+STABILITY_THRESHOLD_MIN = CONVENE_DURATION_MIN
 
 
 @dataclass(frozen=True)
@@ -83,10 +92,16 @@ def convene(brief: Brief) -> dict[str, Seat]:
             "no acquisition duration, so the ~30 min threshold cannot be applied"
             + (f" -- {gap.rank}, the operator's to answer" if gap else ""),
         )
-    elif float(minutes) / 60.0 >= STABILITY_THRESHOLD_MIN:
-        seats["stability"] = Seat("stability", "convened", f"{float(minutes)/60:.0f} min >= 30")
+    elif float(minutes) / 60.0 > STABILITY_THRESHOLD_MIN:
+        seats["stability"] = Seat(
+            "stability", "convened",
+            f"{float(minutes) / 60:.0f} min > {STABILITY_THRESHOLD_MIN:.0f}",
+        )
     else:
-        seats["stability"] = Seat("stability", "absent", f"{float(minutes)/60:.0f} min < 30")
+        seats["stability"] = Seat(
+            "stability", "absent",
+            f"{float(minutes) / 60:.0f} min <= {STABILITY_THRESHOLD_MIN:.0f}",
+        )
 
     return seats
 
