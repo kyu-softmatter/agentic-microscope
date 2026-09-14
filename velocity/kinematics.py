@@ -112,3 +112,59 @@ def reynolds_unity_velocity_um_per_s(
 ) -> float:
     """The velocity at which ``Re = 1`` -- the number that retires the gate."""
     return viscosity_pa_s / (density_kg_m3 * radius_um * 1e-6) * 1e6
+
+
+# --------------------------------------------------------------------------
+# Statistical precision of a stiffness read off a velocity step (L9.6)
+# --------------------------------------------------------------------------
+#
+# `kappa = gamma * v / x_eq` is only as precise as `x_eq`, and `x_eq` is a MEAN
+# over a step of a quantity that never stops moving. The bead in the trap is an
+# Ornstein-Uhlenbeck process: variance `kT/kappa` by equipartition, correlation
+# time `tau = gamma/kappa`. Those are the two numbers below, and both come from
+# lens 7 rather than from here.
+
+
+def thermal_position_sigma_um(kt_pn_um: float, stiffness_pn_per_um: float) -> float:
+    """``sqrt(kT / kappa)`` -- equipartition, the bead's 1-sigma wander."""
+    if stiffness_pn_per_um <= 0:
+        raise ValueError("stiffness must be positive")
+    return math.sqrt(kt_pn_um / stiffness_pn_per_um)
+
+
+def averaged_sigma_um(sigma_um: float, relaxation_time_s: float, averaging_time_s: float) -> float:
+    """1-sigma of the MEAN of an OU process over ``averaging_time_s``.
+
+        Var(x_bar) = (2 sigma^2 tau / T) * [1 - (tau/T)(1 - exp(-T/tau))]
+
+    The exact expression, not the ``T >> tau`` limit, because the limit is
+    wrong in exactly the regime this lens cares about: L9.3 already tells the
+    caller their step may be only a few tau long, and at ``T = tau`` the simple
+    form overstates the averaging benefit by 37 %. As ``T -> 0`` this returns
+    ``sigma`` -- averaging over no time buys nothing, which is the check that
+    the formula is the right one.
+
+    **This is the arithmetic G11 did not do.** `1/sqrt(N_frames)` assumes every
+    frame is an independent sample; consecutive frames inside one relaxation
+    time are not, and on this instrument's own calibration that was 3.5x
+    optimistic -> kb/decisions/2026-09-11-g11-and-g26-removed.md
+    """
+    if relaxation_time_s <= 0:
+        raise ValueError("relaxation time must be positive")
+    if averaging_time_s <= 0:
+        return sigma_um
+    ratio = relaxation_time_s / averaging_time_s
+    bracket = 1.0 - ratio * (1.0 - math.exp(-1.0 / ratio))
+    return sigma_um * math.sqrt(2.0 * ratio * bracket)
+
+
+def steps_for_relative_error(per_step_relative_error: float, target_relative_error: float) -> float:
+    """Steps needed so that ``eps_1 / sqrt(N) <= target``.
+
+    Steps are independent of each other in the way frames inside a step are
+    not: each one is a fresh approach to a fresh offset, so ``1/sqrt(N)`` is
+    honest here for the same reason it was not honest in G11.
+    """
+    if target_relative_error <= 0:
+        raise ValueError("target_relative_error must be positive")
+    return (per_step_relative_error / target_relative_error) ** 2

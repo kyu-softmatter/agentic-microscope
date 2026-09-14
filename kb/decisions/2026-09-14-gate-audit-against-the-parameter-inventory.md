@@ -71,10 +71,14 @@ number known before the run, the other is the last refusal before the DAC, and
 a bound enforced at two stages is defence in depth rather than two sources of
 truth. **Designed here, not built.**
 
-## Deferred, with what each one needs
+## Deferred, then built the same day
 
-Three additions were specified and left unbuilt, so that the audit's repairs
-could land on their own:
+Three additions were specified and left unbuilt so that the audit's repairs
+could land on their own. **KH asked for all three within the hour**
+(*"L4.8, L9.6, L6.5 만들자"*), and they exist:
+[`2026-09-14-the-three-deferred-gates.md`](2026-09-14-the-three-deferred-gates.md)
+carries the arithmetic each rests on, including L9.6's derivation and the four
+ways L6.5 differs from G11. What each needed before it could be written:
 
 | | What | What it needs before it can be written |
 |---|---|---|

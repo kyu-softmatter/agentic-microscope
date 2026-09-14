@@ -1,5 +1,6 @@
 """Lens 9's checks -- L9.1 (time base), L9.2 (displacement window),
-L9.3 (steady state), L9.4 (Reynolds), L9.5 (time-axis owner).
+L9.3 (steady state), L9.4 (Reynolds), L9.5 (time-axis owner), L9.6 (how many
+steps).
 
 docs/04-decision-engine.md §9; docs/05-consensus-gate.md "Lens 9".
 
@@ -29,11 +30,14 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from .kinematics import (
+    averaged_sigma_um,
     equilibrium_offset_um,
     minimum_offset_um,
     reynolds_number,
     reynolds_unity_velocity_um_per_s,
     settling_time_constants,
+    steps_for_relative_error,
+    thermal_position_sigma_um,
     velocity_for_offset_um_per_s,
 )
 
@@ -438,6 +442,163 @@ def check_time_axis_owner(setup: "VelocitySetup") -> CheckResult:
     )
 
 
+def check_step_count(setup: "VelocitySetup") -> CheckResult:
+    """L9.6: how many velocity steps does the asked-for precision need?
+
+    **This check exists because G11's removal entry named it.** That entry
+    explains why `1/sqrt(N_p x N_f)` did not describe this instrument, and
+    then says what does: *"a Stokes-drag calibration's precision does not come
+    from N_p x N_f at all: it comes from the number of velocity steps.
+    kappa = gamma*v/x_eq is fitted across commanded velocities, and the frames
+    within one step are averaged, not counted."* This is that sentence, made
+    computable.
+
+    THE DERIVATION, because a gate whose arithmetic is not stated cannot be
+    argued with:
+
+    1. `kappa = gamma v / x_eq`, so with `v` commanded and `gamma` lens 4's
+       business, the relative error on kappa IS the relative error on `x_eq`.
+    2. `x_eq` is a MEAN over one step of a bead that never stops moving. In
+       the trap that bead is an Ornstein-Uhlenbeck process: variance
+       `kT/kappa` (equipartition), correlation time `tau = gamma/kappa`.
+    3. Averaging it over a step of length `T` leaves
+       `sigma_mean = sqrt(kT/kappa) * sqrt(2 tau/T * [1 - (tau/T)(1-e^-T/tau)])`
+       -- the exact OU result, not the `T >> tau` limit, because L9.3 exists
+       precisely to tell callers their step may be a few tau long.
+    4. Localization noise adds in quadrature and is usually smaller:
+       `sigma_loc / sqrt(frames in the step)`. Included when lens 2 has
+       supplied both numbers, reported separately either way, since which term
+       dominates decides what to change.
+    5. One step therefore gives `eps_1 = sigma_total / x_eq`, and N
+       independent steps give `eps_1/sqrt(N)`. **Steps really are independent
+       in the way frames inside a step are not** -- each is a fresh approach
+       to a fresh offset -- which is why `1/sqrt(N)` is honest here and was
+       not honest in G11.
+
+    SOFT, and the kind is the argument: too few steps is VARIANCE, not bias.
+    The answer is noisy, not wrong, and it trades against the other axes at
+    §2 precedence level 3. L9.3 next door is HARD for the opposite reason --
+    a short step biases kappa systematically, and no amount of repetition
+    removes that.
+
+    No constant appears here. Every bound comes from the caller's own
+    `target_relative_error`, which is why this lens still has no `LIMITS`.
+    """
+    gamma = setup.resolved_drag_pn_s_per_um
+    kappa = setup.stiffness_pn_per_um
+    target = setup.target_relative_error
+    tau_s = setup.relaxation_time_ms / 1000.0
+    step_s = setup.step_duration_ms / 1000.0
+    v = setup.commanded_velocity_um_per_s
+
+    x_eq_um = equilibrium_offset_um(gamma, v, kappa)
+    sigma_thermal_um = thermal_position_sigma_um(setup.kt_pn_um, kappa)
+    sigma_mean_um = averaged_sigma_um(sigma_thermal_um, tau_s, step_s)
+
+    sigma_loc_mean_um = None
+    if setup.localization_sigma_nm and setup.achieved_fps:
+        frames = step_s * setup.achieved_fps
+        if frames > 0:
+            sigma_loc_mean_um = (setup.localization_sigma_nm / 1000.0) / math.sqrt(frames)
+    sigma_total_um = (
+        sigma_mean_um
+        if sigma_loc_mean_um is None
+        else math.hypot(sigma_mean_um, sigma_loc_mean_um)
+    )
+
+    if x_eq_um <= 0:
+        return CheckResult(
+            "velocity.step_count",
+            INFO,
+            MAX_MARGIN,
+            "info",
+            "The commanded velocity produces no steady offset, so there is no "
+            "kappa to be precise about.",
+            numbers={"equilibrium_offset_um": x_eq_um},
+        )
+
+    per_step = sigma_total_um / x_eq_um
+    needed = steps_for_relative_error(per_step, target)
+    needed_int = max(1, math.ceil(needed))
+
+    numbers = {
+        "equilibrium_offset_um": round(x_eq_um, 5),
+        "thermal_sigma_um": round(sigma_thermal_um, 5),
+        "averaged_sigma_um": round(sigma_mean_um, 6),
+        "localization_sigma_mean_um": (
+            None if sigma_loc_mean_um is None else round(sigma_loc_mean_um, 6)
+        ),
+        "total_sigma_um": round(sigma_total_um, 6),
+        "per_step_relative_error": round(per_step, 5),
+        "steps_required": needed_int,
+        "n_steps": setup.n_steps,
+        "target_relative_error": target,
+        "relaxation_time_ms": round(setup.relaxation_time_ms, 4),
+        "step_duration_ms": setup.step_duration_ms,
+        #: Which term dominates decides what to change: a thermal-limited
+        #: measurement wants longer steps or a stiffer trap, a
+        #: localization-limited one wants photons.
+        "limited_by": (
+            "thermal"
+            if sigma_loc_mean_um is None or sigma_mean_um >= sigma_loc_mean_um
+            else "localization"
+        ),
+    }
+
+    if setup.n_steps is None:
+        return CheckResult(
+            "missing.n_steps",
+            INFO,
+            MAX_MARGIN,
+            "info",
+            f"One {setup.step_duration_ms:.0f} ms step reads x_eq to "
+            f"{per_step:.1%} ({numbers['limited_by']}-limited), so "
+            f"**{needed_int} steps** are needed for the {target:.0%} asked "
+            f"for. Not graded: the run's step count has not been decided.",
+            action=f"Set n_steps (>= {needed_int} at this velocity), or accept "
+            f"{per_step:.1%} from a single step. Note the lever: x_eq grows "
+            f"with velocity, so a faster sweep needs fewer steps -- L9.2 "
+            f"bounds how fast.",
+            numbers=numbers,
+        )
+
+    margin = setup.n_steps / needed
+    if margin >= 1.0:
+        return _ok(
+            "velocity.step_count",
+            SOFT,
+            margin,
+            f"{setup.n_steps} steps against the {needed_int} the {target:.0%} "
+            f"target needs at {per_step:.1%} per step "
+            f"({numbers['limited_by']}-limited). Achieved: "
+            f"{per_step / math.sqrt(setup.n_steps):.2%}.",
+            **numbers,
+        )
+
+    return CheckResult(
+        "velocity.step_count.insufficient",
+        SOFT,
+        margin,
+        "fail",
+        f"{setup.n_steps} steps reach {per_step / math.sqrt(setup.n_steps):.1%} "
+        f"on kappa, short of the {target:.0%} asked for -- {needed_int} steps "
+        f"are needed at {per_step:.1%} per step ({numbers['limited_by']}-"
+        f"limited). This is variance and not bias: the answer is noisy, not "
+        f"wrong.",
+        action=(
+            f"Add steps to {needed_int}, lengthen each step (the averaging "
+            f"gain runs as sqrt(T) once T >> tau = "
+            f"{setup.relaxation_time_ms:.1f} ms), or raise the velocity, which "
+            f"grows x_eq directly -- L9.2 bounds how far."
+            if numbers["limited_by"] == "thermal"
+            else f"Add steps to {needed_int}, or buy photons: this one is "
+            f"localization-limited, so a brighter probe or a longer exposure "
+            f"moves it where more steps only move it as sqrt(N)."
+        ),
+        numbers=numbers,
+    )
+
+
 CHECKS: list[Check] = [
     Check("time_base", HARD, (), check_time_base),
     Check(
@@ -445,6 +606,14 @@ CHECKS: list[Check] = [
         HARD,
         ("velocity", "drag", "stiffness", "localization", "target_error"),
         check_displacement_window,
+    ),
+    # L9.6: the same inputs as L9.3 plus the velocity, because it needs the
+    # offset the step settles TO and not only the time it takes to get there.
+    Check(
+        "step_count",
+        SOFT,
+        ("velocity", "drag", "stiffness", "target_error", "step_duration"),
+        check_step_count,
     ),
     Check(
         "steady_state",

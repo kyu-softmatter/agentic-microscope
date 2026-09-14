@@ -116,6 +116,9 @@ EXPECTED_CHECKS: dict[str, tuple[tuple[str, str], ...]] = {
         # Reports G16/G16b/G16c/G17's bounds as one band, and is the only
         # thing that can express an EMPTY window (2026-09-10).
         ("depth_window", "info"),
+        # 2026-09-14. The LOWER bound on concentration, which L4.6's own
+        # docstring said was G11's -- and G11 went on 2026-09-11.
+        ("count_sufficiency", "soft"),
     ),
     # G10 (photobleaching) and G20 (saturation) were both removed 2026-09-09.
     # A REPORTING SECTION since 2026-09-10, not a judging lens: every check
@@ -143,6 +146,10 @@ EXPECTED_CHECKS: dict[str, tuple[tuple[str, str], ...]] = {
         ("bias_ledger", "hard"),
         ("pixel_calibration", "hard"),
         ("photometric_calibration", "bias"),
+        # 2026-09-14. G11's question, with the correlation time it never had.
+        # `soft`, where G11 certified; and `LIMITS` stays empty, because the
+        # target precision is the caller's.
+        ("independent_samples", "soft"),
     ),
     # A REPORTING SECTION SINCE 2026-09-10, like photo above: every check INFO.
     # G31 and G32 became reports (a trapped bead does not settle, and the free
@@ -158,6 +165,9 @@ EXPECTED_CHECKS: dict[str, tuple[tuple[str, str], ...]] = {
     "velocity": (
         ("time_base", "hard"),
         ("displacement_window", "hard"),
+        # 2026-09-14. `soft` on purpose: too few steps is VARIANCE. L9.3 next
+        # door is `hard` because a short step is BIAS.
+        ("step_count", "soft"),
         ("steady_state", "hard"),
         ("reynolds", "info"),
         ("time_axis_owner", "info"),
@@ -365,6 +375,7 @@ EXPECTED_ADDRESSES: dict[str, tuple[tuple[str, str], ...]] = {
         ("L4.5", "ri_mismatch"),
         ("L4.6", "count_in_field"),
         ("L4.7", "depth_window"),
+        ("L4.8", "count_sufficiency"),
     ),
     "photo": (
         ("L5.1", "light_driving"),
@@ -376,6 +387,7 @@ EXPECTED_ADDRESSES: dict[str, tuple[tuple[str, str], ...]] = {
         ("L6.2", "bias_ledger"),
         ("L6.3", "pixel_calibration"),
         ("L6.4", "photometric_calibration"),
+        ("L6.5", "independent_samples"),
     ),
     "trapping": (
         ("L7.1", "effective_na"),
@@ -391,6 +403,7 @@ EXPECTED_ADDRESSES: dict[str, tuple[tuple[str, str], ...]] = {
         ("L9.3", "steady_state"),
         ("L9.4", "reynolds"),
         ("L9.5", "time_axis_owner"),
+        ("L9.6", "step_count"),
     ),
     "stability": (
         ("L8.1", "convening"),
@@ -471,9 +484,11 @@ def test_every_check_in_every_lens_is_addressed() -> None:
         mapped = {code for _, code in EXPECTED_ADDRESSES[lens]}
         assert addressed == mapped, f"lens {lens}: {addressed ^ mapped} unaddressed"
     # 43 before lens 9 arrived on 2026-09-11, 48 after, 49 once L2.6 gave the
-    # system's own characteristic scales somewhere to be asked for
-    # (2026-09-14).
-    assert sum(len(v) for v in EXPECTED_ADDRESSES.values()) == 49
+    # system's own characteristic scales somewhere to be asked for, and 52
+    # when L4.8, L6.5 and L9.6 landed the three deferred additions -- all on
+    # 2026-09-14. L6.5 is G11's question with the correlation time it never
+    # had; G11's NUMBER is still retired and still unused.
+    assert sum(len(v) for v in EXPECTED_ADDRESSES.values()) == 52
 
 
 def test_addresses_are_dense_and_lens_numbered() -> None:

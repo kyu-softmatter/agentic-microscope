@@ -1,6 +1,7 @@
 """Individual sample-geometry checks -- L4.1 (NA feasibility), L4.2 (working
 distance), L4.3 (depth within chamber), L4.4 (near-wall drag bound),
-L4.5 (refractive-index mismatch), L4.6 (count in field), plus the depth window
+L4.5 (refractive-index mismatch), L4.6 (count in field), L4.8 (enough of
+them), plus the depth window
 that reports L4.2/L4.3/L4.4/L4.5's bounds as one band.
 
 G18 (coverslip thickness) was REMOVED 2026-09-10 and its number is not reused
@@ -854,6 +855,137 @@ def check_count_in_field(setup: "SampleSetup") -> CheckResult:
     )
 
 
+def check_count_sufficiency(setup: "SampleSetup") -> CheckResult:
+    """L4.8: are there ENOUGH particles in the field to measure anything?
+
+    L4.6 bounds crowding from above. **Nothing bounded it from below**, and
+    L4.6's own docstring named the owner of that half -- G11 -- which was
+    removed on 2026-09-11 for counting correlated frames as independent
+    samples. The lower bound went with it and stayed gone, so the operator
+    inventory's "너무 희석하면 실험하기가 힘듦" was unchecked from then until
+    2026-09-14.
+
+    The arithmetic is L4.6's, not a second model: the same settled areal
+    density `sigma = c * H`, the same total-sedimentation premise, so the two
+    checks cannot disagree about how many particles there are. They disagree
+    only about which direction is bad, which is the point of having both.
+
+    **The threshold is the experiment's, not this file's.**
+    `target_particles_in_field` defaults to 1.0, and that default originates
+    nothing: below one particle in the field there is no measurement, which is
+    definitional rather than chosen. An ensemble experiment raises it in the
+    brief (CLAUDE.md §2: a new gate's threshold comes from the brief).
+
+    SOFT, not HARD. A dilute sample still yields data, just less of it, and
+    what a shortfall costs is precision -- so it is graded and can be traded
+    against the other axes at §2 precedence level 3, where a hard gate could
+    not be.
+
+    **The count is the FREE population's.** A trapped probe is put in the
+    field by the trap and is not drawn from this concentration; where a brief
+    carries both, the concentration is the tracers' and so is this number.
+    """
+    h = setup.chamber_height_um
+    w, hf = setup.field_width_um, setup.field_height_um
+    c, source = setup.resolved_concentration_per_ml
+    target = setup.target_particles_in_field
+
+    missing = [
+        n
+        for n, v in (
+            ("chamber_height_um", h),
+            ("concentration (solids_fraction_w_v + density_g_cm3, or concentration_per_ml)", c),
+            ("field_width_um / field_height_um (lens 2 computes these)", w if w and hf else None),
+        )
+        if v is None
+    ]
+    if missing:
+        # INFO-kind and severity "info", NOT "ok": an `ok` result is dropped
+        # from `findings` entirely, and a check that did not evaluate must not
+        # read as one that passed (CLAUDE.md §3).
+        return CheckResult(
+            "count_sufficiency.unevaluated",
+            INFO,
+            MAX_MARGIN,
+            "info",
+            "How many particles land in the field was not evaluated (missing: "
+            + ", ".join(missing)
+            + "). This is the LOWER bound on concentration; L4.6's upper bound "
+            "needs the same inputs and is equally silent.",
+            action="Supply the concentration and chamber height, and run lens 2 "
+            "first -- the field is its ROI times its pixel.",
+            numbers={"evaluated": False, "target_particles_in_field": target},
+        )
+
+    if target <= 0:
+        return CheckResult(
+            "count_sufficiency.unevaluated",
+            INFO,
+            MAX_MARGIN,
+            "info",
+            f"target_particles_in_field is {target:g}, so there is no lower "
+            "bound to grade against.",
+            numbers={"evaluated": False, "target_particles_in_field": target},
+        )
+
+    sigma = settled_areal_density_per_um2(c, h)
+    count = sigma * w * hf
+    margin = count / target
+
+    numbers = {
+        "evaluated": True,
+        "expected_count": round(count, 3),
+        "target_particles_in_field": target,
+        "field_width_um": round(w, 1),
+        "field_height_um": round(hf, 1),
+        "settled_areal_density_per_um2": round(sigma, 6),
+        "concentration_per_ml": c,
+        "concentration_source": source,
+        "dilution_factor": setup.dilution_factor,
+        #: The actionable form, and the exact inverse of L4.6's
+        #: `min_dilution_factor`: the two bounds move the same dial in
+        #: opposite directions.
+        "max_dilution_factor": (
+            round(setup.dilution_factor * count / target, 1) if count > 0 else 0.0
+        ),
+    }
+
+    if margin >= 1.0:
+        # Severity "info" and not `_ok`, matching L4.6's passing branch two
+        # functions up. The 2026-09-11 rule PERMITS a passing fact to stay
+        # silent; it does not require it, and this one is a number the reader
+        # acts on -- how far the stock may be diluted. Reporting it where L4.6
+        # reports the same count is worth more than the brevity.
+        return CheckResult(
+            "count_sufficiency",
+            SOFT,
+            margin,
+            "info",
+            f"Once settled, about {count:.1f} particles in the "
+            f"{w:.0f}x{hf:.0f} um field against {target:g} wanted. "
+            f"Concentration from {source}, diluted {setup.dilution_factor:g}x. "
+            f"Dilute no further than {numbers['max_dilution_factor']:g}x.",
+            numbers=numbers,
+        )
+
+    return CheckResult(
+        "count_sufficiency.too_dilute",
+        SOFT,
+        margin,
+        "fail",
+        f"Once settled, about {count:.2f} particles in the "
+        f"{w:.0f}x{hf:.0f} um field -- below the {target:g} this experiment "
+        f"asked for. And this is the OPTIMISTIC end: the estimate assumes "
+        f"total sedimentation with no losses to the walls or the pipette, so "
+        f"the real field is emptier than this.",
+        action=f"Concentrate the stock, enlarge the field (lens 2's ROI), or "
+        f"lower target_particles_in_field if fewer will do. At this dilution "
+        f"({setup.dilution_factor:g}x) the field needs "
+        f"{target / count:.1f}x the concentration.",
+        numbers=numbers,
+    )
+
+
 CHECKS: list[Check] = [
     Check("na_feasibility", HARD, ("na",), check_na_feasibility),
     Check("working_distance", HARD, ("imaging_depth", "working_distance"), check_working_distance),
@@ -867,6 +999,10 @@ CHECKS: list[Check] = [
     Check("ri_mismatch", INFO, (), check_ri_mismatch),
     Check("count_in_field", INFO, (), check_count_in_field),
     Check("depth_window", INFO, (), check_depth_window),
+    # L4.8: SOFT, and `requires` is empty for the same reason as L4.3/L4.4/L4.6
+    # -- a missing input must skip this check, not BLOCK the lens. It returns
+    # an INFO-kind result in that case so it is neither graded nor silent.
+    Check("count_sufficiency", SOFT, (), check_count_sufficiency),
 ]
 
 

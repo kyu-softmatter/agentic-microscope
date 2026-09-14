@@ -69,3 +69,43 @@ def roi_speed_tradeoff(area_factor: float, frame_rate_gain: float) -> float:
     warns about. Returns the factor on ``N_p x N_f``: > 1 is a real gain.
     """
     return area_factor * frame_rate_gain
+
+
+# --------------------------------------------------------------------------
+# The independence correction -- what G11 was missing (added 2026-09-14, L6.5)
+# --------------------------------------------------------------------------
+
+
+def frames_per_correlation_time(frame_rate_hz: float, correlation_time_s: float) -> float:
+    """How many frames fall inside one correlation time.
+
+    This is the whole quantity G11 did not look at. On this instrument's own
+    drag calibration it is 6.3 -- 520 fps against tau = gamma/kappa = 12.1 ms
+    -- and treating those 6.3 frames as 6.3 independent samples is where the
+    3.5x overstatement came from.
+    """
+    return frame_rate_hz * correlation_time_s
+
+
+def independent_samples(
+    n_particles: float, n_frames: float, frames_per_tau: float
+) -> float:
+    """``N_p * N_f / (2 * frames_per_tau)`` -- the effective sample size.
+
+    The `2` is the standard statistical inefficiency of an exponentially
+    correlated series: for an autocovariance `exp(-t/tau)` the integrated
+    autocorrelation time is `tau`, and a run of length `T` holds `T/(2 tau)`
+    independent samples. It is a property of the exponential, not a factor
+    anybody here chose.
+
+    **Below half a frame per correlation time the correction turns off**, and
+    that is not a fudge: sampling slower than the process decorrelates means
+    consecutive frames already are independent, and applying the formula there
+    would claim MORE samples than there are frames.
+    """
+    total = n_particles * n_frames
+    if total <= 0:
+        return 0.0
+    if frames_per_tau <= 0.5:
+        return total
+    return total / (2.0 * frames_per_tau)

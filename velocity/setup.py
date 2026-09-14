@@ -50,6 +50,20 @@ class VelocitySetup:
     #: requested (L3.2).
     achieved_fps: float | None = None
 
+    # -- the measurement's own shape ---------------------------------------
+    #: How many velocity steps the run takes. L9.6 grades against it; left
+    #: None the check reports the requirement instead of grading, because
+    #: nobody has decided yet and a gate that failed here would be failing a
+    #: decision that was never made (the same treatment L2.4 gives an
+    #: undecided frame rate).
+    n_steps: int | None = None
+    #: Absolute temperature. 293.15 K is this project's standing
+    #: room-temperature assumption (2026-08-10), the same default and the same
+    #: citation as `trapping.dynamics.TrapSetup.temperature_k` -- and, like
+    #: that one, it is the temperature of the ROOM. The trap only heats, so a
+    #: kT taken from here is a lower bound.
+    temperature_k: float = 293.15
+
     # -- the experiment's own criterion ------------------------------------
     #: Target relative error on the quantity being measured, e.g. 0.05.
     #: **Every bound in this lens is derived from it**, which is why there is
@@ -76,6 +90,20 @@ class VelocitySetup:
         if self.particle_radius_um is None or self.viscosity_pa_s is None:
             return None
         return drag_coefficient_pn_s_per_um(self.particle_radius_um, self.viscosity_pa_s)
+
+    @property
+    def kt_pn_um(self) -> float:
+        """``kT`` in this lens's units, pN*um.
+
+        `K_BOLTZMANN` is imported from `trapping.dynamics` rather than
+        redefined: lens 9 already takes the stiffness and the trap model from
+        lens 7, and a second copy of a physical constant is how the two would
+        eventually disagree (CLAUDE.md §7).
+        """
+        from trapping.dynamics import K_BOLTZMANN
+
+        # 1 J = 1e12 pN * 1e6 um, so J -> pN*um is 1e18.
+        return K_BOLTZMANN * self.temperature_k * 1e18
 
     @property
     def relaxation_time_ms(self) -> float | None:

@@ -281,19 +281,37 @@ class ValiditySetup:
     #: primary input.
     upstream: dict[str, VerdictLike] = field(default_factory=dict)
 
-    # -- statistical power: NO FIELDS, G11 IS GONE -------------------------
-    # `target_relative_error`, `n_particles` and `n_frames` fed G11 and left
-    # with it on 2026-09-11. The arithmetic is not wrong and still lives in
-    # `validity/power.py` behind `python -m validity.cli power`; what was wrong
-    # was certifying a measurement with it. `1/sqrt(N_p x N_f)` counts
-    # INDEPENDENT samples, and for one trapped bead at 520 fps the frames are
-    # correlated over 6.3 frames per relaxation time -- 3.5x optimistic, and
-    # the real precision of a drag calibration comes from the number of
-    # velocity steps instead. kb/decisions/2026-09-11-g11-and-g26-removed.md
+    # -- statistical power: BACK, WITH THE CORRECTION THAT WAS MISSING -----
     #
-    # Note what else went with it: `missing.target_error` and
-    # `missing.sample_size` were two of this lens's four Phase 0 refusals, and
-    # `resolved_n_particles` was its only consumer of lens 4's L4.6 estimate.
+    # These four fields fed G11 and left with it on 2026-09-11, because
+    # `1/sqrt(N_p x N_f)` counts INDEPENDENT samples and one trapped bead at
+    # 520 fps has 6.3 correlated frames per relaxation time -- 3.5x optimistic
+    # on this instrument's own calibration.
+    #
+    # They return on 2026-09-14 for L6.5, with `correlation_time_s` beside
+    # them, which is the number whose absence made G11 wrong. **G11's address
+    # is not reused** and its claim is not restored: L6.5 is SOFT where G11
+    # graded a measurement as certified, and the drag calibration's own
+    # precision is lens 9's L9.6 -- the number of velocity steps -- not this.
+    # kb/decisions/2026-09-11-g11-and-g26-removed.md
+    #: Particles contributing. Lens 4's L4.6 `expected_count` is where this
+    #: comes from when the designer wires it; 1.0 for a single trapped bead.
+    n_particles: float | None = None
+    #: Frames contributing -- duration x achieved rate. A REQUESTED rate makes
+    #: this a request too, which is lens 3's L3.2 seen from here.
+    n_frames: float | None = None
+    #: The rate those frames came at, needed to turn a correlation TIME into a
+    #: correlation length in frames.
+    frame_rate_hz: float | None = None
+    #: Over what time consecutive samples stay correlated. For a trapped bead
+    #: this is lens 7's `tau = gamma/kappa`; for a free one it is the
+    #: experiment's own characteristic time (lens 2's L2.6 asks for it).
+    #: **Without it there is no correction and L6.5 declines to grade** --
+    #: which is the state G11 gated in.
+    correlation_time_s: float | None = None
+    #: The precision the experiment asked for. Same field lens 9 derives every
+    #: one of its bounds from; here it sets a sample size.
+    target_relative_error: float | None = None
 
     # -- calibrations in hand ---------------------------------------------
     #: Measured pixel size at the sample. docs/06 A1: without it every

@@ -578,6 +578,7 @@ The `was` column is the old flat number, for anything written before the change
 | **L4.5** | `info` | Refractive-index mismatch | **INFO since 2026-09-10** — the mechanical-z → optical-depth converter, `h = Δz · n_s/n_i`, both directions. The old `depth × \|Δn\| ≤ 1.85 µm` screen is gone: 1.85 was `10 × 0.185`, a checklist trigger, and the operator has imaged past it | immersion n, medium n, depth | reported (INFO) | L4.5 |
 | **L4.6** | `info` | Count in field · overlap | nearest neighbour `≥ 3 ×` resolution | concentration, field size, λ_em | skipped (INFO) | L4.6 |
 | **L4.7** | `info` | **Depth window** | reports L4.2/L4.3/L4.4's bounds as one band, and the **empty-window** case no single margin can express. L4.5 stopped contributing a ceiling on 2026-09-10 | L4.2, L4.3, L4.4 | INFO | — |
+| **L4.8** | `soft` | Enough particles | expected count in the field ≥ `target_particles_in_field` — the LOWER bound on concentration, orphaned when G11 went on 2026-09-11 and restored 2026-09-14. Same `sigma = c·H` as L4.6, so the two bounds cannot disagree about the count | concentration, chamber height, field of view (lens 2) | skipped (INFO, visible) | — |
 | **L5.1** | `info` | Light-driving | **reports only** — irradiance against a per-sample measured threshold; was G21 until 2026-09-10 | irradiance, sample threshold | INFO | — |
 | **L5.2** | `info` | Total dose | **reports only** — accumulated J/cm² and the duty cycle that sets it; was G22 | irradiance, duty, duration | INFO | — |
 | **L5.3** | `info` | Trap-heating ownership | **reports only** — refuses to let the lens 5 → 7 handoff vanish silently (E3) | whether the trap is on | INFO | — |
@@ -585,6 +586,7 @@ The `was` column is the old flat number, for anything written before the change
 | **L6.2** | `hard` | Bias ledger | every bias that damages this quantity is absent, or cleared by a correction that exists | other lenses' verdicts, declared corrections | BLOCKED | L6.2 |
 | **L6.3** | `hard` | Pixel calibration | measured, when the quantity needs it | measured pixel size | BLOCKED | L6.3 |
 | **L6.4** | `bias` | Photometric calibration | background · dark · flat-field measured | those frames | BLOCKED | L6.4 |
+| **L6.5** | `soft` | Independent samples | `N_p·N_f / (2·f·tau)` against the caller's target — G11's question with the correlation time it never had. **Declines to grade without one**, which is the state G11 gated in | particle count, frame count, rate, correlation time, target error | skipped (INFO, visible) | — (G11 is retired, not reused) |
 | **L7.1** | `info` | Effective NA | **reports only** — design NA clipped to `n_sample` by TIR, and the three limits that ride along | NA, medium index | INFO | — |
 | **L7.2** | `hard` | Trap confinement | `κ > 0` — the trap restores toward the centre at all | measured κ, or a calibrated laser | BLOCKED | L7.2 |
 | **L7.3** | `hard` | Trap depth | `U ≥ 10 kT` | calibrated laser power, bead, medium | BLOCKED | L7.3 |
@@ -600,6 +602,7 @@ The `was` column is the old flat number, for anything written before the change
 | **L9.3** | `hard` | Steady state | step duration `≥ ln(1/target) · τ`, `τ = γ/κ`. Derived, so no "about five time constants" appears anywhere | step duration, γ, κ, target error | BLOCKED |
 | **L9.4** | `info` | Reynolds | **reports only** — `Re = ρva/η`; ungated on a computed argument, since `Re = 1` needs ~4×10⁵ µm/s for this bead | v, radius, viscosity | INFO |
 | **L9.5** | `info` | Time-axis owner | **reports only** — names lens 3's L3.2 as the owner of frame-period provenance and what L9.3 inherits from it | achieved fps | INFO |
+| **L9.6** | `soft` | Steps for the precision | `N ≥ (eps_1/target)²` where `eps_1 = sigma_mean/x_eq` and `sigma_mean` is the exact OU average of `sqrt(kT/kappa)` over one step. `soft` because too few steps is VARIANCE where L9.3's short step is BIAS | velocity, drag, stiffness, step duration, target error | skipped (INFO, reports the requirement) | — |
 
 ### Retired gate numbers
 

@@ -45,6 +45,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from .power import frames_per_correlation_time, independent_samples
 from .setup import UNCORRECTABLE
 
 if TYPE_CHECKING:
@@ -523,6 +524,140 @@ def check_committee_coverage(setup: "ValiditySetup") -> CheckResult:
     )
 
 
+def check_independent_samples(setup: "ValiditySetup") -> CheckResult:
+    """L6.5: how many INDEPENDENT samples does this run actually hold?
+
+    **This lens computed nothing between 2026-09-11 and 2026-09-14**, and the
+    entry that emptied it said why in terms that also said what a correct
+    version would need: *"`1/sqrt(N_p x N_f)` counts INDEPENDENT samples, and
+    for one trapped bead at 520 fps the frames are correlated over 6.3 frames
+    per relaxation time."* The missing input was the correlation time. It is a
+    field now, and without it this check **declines to grade** -- which is
+    exactly the state G11 gated in, so declining is the whole repair.
+
+    G11's number is not reused and neither is its claim:
+
+    | | G11 | L6.5 |
+    |---|---|---|
+    | samples | `N_p x N_f` | `N_p x N_f / (2 f tau)` |
+    | on the 2026-09-03 calibration | 31,200 -> 0.566 % | 2,479 -> 2.01 % |
+    | kind | graded a measurement as certified | `soft` |
+    | without a correlation time | did not ask | does not grade |
+
+    **And it is not the drag calibration's precision.** That comes from the
+    number of velocity steps and belongs to lens 9's L9.6, for the reason the
+    same entry gives: kappa is fitted across commanded velocities and the
+    frames within one step are averaged, not counted. What L6.5 answers is the
+    ensemble question -- an MSD, a diffusion coefficient, a modulus -- where
+    frames really are the samples and the only question is how many of them
+    are independent.
+
+    SOFT. Too few independent samples is variance: the answer is noisy, not
+    wrong, and it trades at §2 precedence level 3 against the axes that would
+    buy more of them.
+    """
+    n_p = setup.n_particles
+    n_f = setup.n_frames
+    rate = setup.frame_rate_hz
+    tau = setup.correlation_time_s
+    target = setup.target_relative_error
+
+    missing = [
+        name
+        for name, value in (
+            ("n_particles", n_p),
+            ("n_frames", n_f),
+            ("frame_rate_hz", rate),
+            ("correlation_time_s", tau),
+        )
+        if value is None
+    ]
+    if missing:
+        # INFO-kind, severity "info": not graded, and NOT silent. An `ok`
+        # severity would be dropped from `findings` altogether, and a check
+        # that did not evaluate must not read as one that passed (§3).
+        return CheckResult(
+            "missing.independence_inputs",
+            INFO,
+            MAX_MARGIN,
+            "info",
+            "Independent-sample count not evaluated (missing: "
+            + ", ".join(missing)
+            + "). Reporting nothing here is deliberate: G11 was removed for "
+            "answering this question without the correlation time.",
+            action="Supply the correlation time -- lens 7's tau = gamma/kappa "
+            "for a trapped bead, or the experiment's characteristic time "
+            "(lens 2's L2.6 asks for it) for a free one -- with the particle "
+            "and frame counts and the rate they were taken at.",
+            numbers={"evaluated": False},
+        )
+
+    per_tau = frames_per_correlation_time(rate, tau)
+    n_ind = independent_samples(n_p, n_f, per_tau)
+    naive = n_p * n_f
+    achieved = 1.0 / math.sqrt(n_ind) if n_ind > 0 else float("inf")
+
+    numbers = {
+        "evaluated": True,
+        "n_particles": n_p,
+        "n_frames": n_f,
+        "frames_per_correlation_time": round(per_tau, 3),
+        "independent_samples": round(n_ind, 1),
+        "naive_samples": naive,
+        "optimism_factor": round(math.sqrt(naive / n_ind), 3) if n_ind > 0 else None,
+        "relative_error": round(achieved, 5),
+        "target_relative_error": target,
+    }
+
+    correction = (
+        f"{per_tau:.1f} frames per correlation time, so {naive:.0f} frames are "
+        f"{n_ind:.0f} independent samples "
+        f"({numbers['optimism_factor']:.1f}x fewer than counting them all)"
+        if per_tau > 0.5
+        else f"{per_tau:.2f} frames per correlation time -- slower than the "
+        f"process decorrelates, so all {naive:.0f} count"
+    )
+
+    if target is None:
+        return CheckResult(
+            "validity.independent_samples",
+            INFO,
+            MAX_MARGIN,
+            "info",
+            f"{correction}, giving a {achieved:.2%} ensemble relative error. "
+            "Not graded: no target precision was stated.",
+            action="State target_relative_error to have this graded.",
+            numbers=numbers,
+        )
+
+    margin = target / achieved if achieved > 0 else MAX_MARGIN
+    if margin >= 1.0:
+        return _ok(
+            "validity.independent_samples",
+            SOFT,
+            margin,
+            f"{correction}, giving {achieved:.2%} against the {target:.0%} "
+            f"asked for.",
+            **numbers,
+        )
+
+    return CheckResult(
+        "validity.independent_samples.insufficient",
+        SOFT,
+        margin,
+        "fail",
+        f"{correction} -- {achieved:.2%} against the {target:.0%} asked for. "
+        f"Reaching it needs {(achieved / target) ** 2:.1f}x the independent "
+        f"samples, which is that factor in DURATION or in particles, not in "
+        f"frame rate: frames closer together than the correlation time are "
+        f"not new samples.",
+        action="Run longer, or put more particles in the field (lens 4's "
+        "L4.8). Raising the frame rate buys resolution, not statistics -- "
+        "that is what the correction above is measuring.",
+        numbers=numbers,
+    )
+
+
 CHECKS: list[Check] = [
     Check("committee_coverage", HARD, ("upstream",), check_committee_coverage),
     Check("bias_ledger", HARD, ("upstream",), check_bias_ledger),
@@ -533,6 +668,10 @@ CHECKS: list[Check] = [
         ("intended_quantity",),
         check_photometric_calibration,
     ),
+    # L6.5: `requires` is empty on purpose. Every other check in this lens
+    # reads a verdict; this one reads numbers, and a missing number must leave
+    # it reporting rather than BLOCK a lens whose job is to review.
+    Check("independent_samples", SOFT, (), check_independent_samples),
 ]
 
 

@@ -399,9 +399,10 @@ survives a clean checkout).
 pytest -q -rs
 ```
 
-1350 passed, 11 skipped on macOS, of 1,361 (re-measured 2026-09-14; was
-1329/11 of 1,340 on 2026-09-13, and the 21 added since are L2.6 and the
-designer's first tests, which is where the three broken handoffs were found. Windows printed 1195/10 on 2026-09-09 — one
+1367 passed, 11 skipped on macOS, of 1,378 (re-measured 2026-09-14; was
+1329/11 of 1,340 on 2026-09-13, and the 38 added since are L2.6, the
+designer's first tests -- which is where the three broken handoffs were found
+-- and L4.8, L6.5 and L9.6. Windows printed 1195/10 on 2026-09-09 — one
 Windows-only test — and has **not** been re-measured since). Two kinds of
 skip: three whole modules behind `pytest.importorskip("pymmcore_plus")`
 holding 56 tests (counted 2026-09-09, not re-counted today — the dependency is
@@ -435,10 +436,10 @@ python -m optics.cli check config/channels/proposed-2color.yaml
 
 Every lens has the same shape — `optics` · `detection` · `compute` · `sample` ·
 `photo` · `validity` · `stability` · `trapping` · `velocity`, each with `checks.py` ·
-`gate.py` · `setup.py` · `cli.py`. All **49 checks** are collected in
+`gate.py` · `setup.py` · `cli.py`. All **52 checks** are collected in
 [04](docs/04-decision-engine.md), addressed `L<lens>.<n>` since 2026-09-11 —
 the lens number from [01 §4](docs/01-architecture.md), then the check's
-position in it. **22 `hard` · 6 `bias` · 3 `soft` can fail; 18 `info` only
+position in it. **22 `hard` · 6 `bias` · 6 `soft` can fail; 18 `info` only
 report**, and the kind is printed beside the address, because an address is a
 location and not a claim that something can fail. That is what let the eleven
 previously unnumbered checks be documented at all — two of them `hard`, so a

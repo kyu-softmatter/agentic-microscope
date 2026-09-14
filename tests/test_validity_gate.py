@@ -95,10 +95,18 @@ def test_phase_0_blocks_on_two_things_and_no_longer_on_four():
     ]
 
 
-def test_the_setup_no_longer_accepts_the_g11_inputs():
+def test_the_g11_inputs_are_back_with_the_one_that_was_missing():
+    """They left with G11 on 2026-09-11 and returned for L6.5 on 2026-09-14.
+
+    What makes the return legitimate is the fourth field. G11 was not wrong
+    about `N_p x N_f`; it was wrong about calling the product independent, and
+    it could not have been right because nothing told it the correlation time.
+    So this asserts the three that came back AND the one that came with them --
+    the previous version of this test asserted all three raised TypeError.
+    """
     for field in ("target_relative_error", "n_particles", "n_frames"):
-        with pytest.raises(TypeError):
-            _setup(**{field: 1.0})
+        assert getattr(_setup(**{field: 1.0}), field) == 1.0
+    assert _setup(correlation_time_s=0.0121).correlation_time_s == 0.0121
 
 
 # ------------------------------------------- L6.1 committee coverage ------
@@ -403,12 +411,15 @@ def test_an_empty_bias_ledger_stays_silent() -> None:
     assert v.metrics["validity.bias_ledger"]["bias_findings"] == 0
 
 
-def test_exactly_four_branches_report_and_four_stay_silent() -> None:
+def test_exactly_five_branches_report_and_the_rest_stay_silent() -> None:
     """Pins the narrowness of option (a). `_ok` is the fact path; a direct
     `CheckResult(..., "ok", ...)` would bypass this count, so the helper is the
-    thing to look for."""
+    thing to look for.
+
+    Four until 2026-09-14; L6.5's passing branch is the fifth.
+    """
     src = (REPO / "validity" / "checks.py").read_text()
-    assert src.count("return _ok(") == 4
+    assert src.count("return _ok(") == 5
 
     # And `_ok` is the only place severity "ok" is constructed, so counting its
     # call sites really does count the silent branches. Everything after the
@@ -602,9 +613,17 @@ def test_nothing_in_this_lens_computes_a_sample_size_any_more():
     assert not any("statistical_power" in f.code for f in v.findings)
 
 
-def test_this_lens_computes_nothing_at_all():
-    """Every remaining check reads another lens's verdict or a declaration.
-    That is why `LIMITS` is empty -- there is no threshold of its own left."""
+def test_this_lens_computes_exactly_one_thing_again():
+    """Four checks read another lens's verdict or a declaration. L6.5, added
+    2026-09-14, reads numbers -- the first arithmetic in this lens since G11
+    left on 2026-09-11.
+
+    **`LIMITS` is still empty, and that is the part that matters.** G11 came
+    back as a computation and not as a threshold: L6.5 grades against the
+    caller's own `target_relative_error` and holds no number of its own, the
+    same way lens 9 does. A `LIMITS` entry appearing here would mean somebody
+    decided how many independent samples is enough for every experiment.
+    """
     import validity
 
     assert validity.LIMITS == {}
@@ -613,6 +632,7 @@ def test_this_lens_computes_nothing_at_all():
         "bias_ledger",
         "pixel_calibration",
         "photometric_calibration",
+        "independent_samples",
     }
 
 
@@ -625,11 +645,18 @@ def test_the_power_calculator_still_works_outside_the_gate():
     assert required_particles(0.05, 2000) == pytest.approx(0.2)
 
 
-def test_lens_4s_particle_count_is_no_longer_consumed_here():
-    """L4.6 fed G11, and that was the computational half of docs/01 §4's
-    'ROI vs statistics' 3 <-> 6 constraint. With G11 gone **the constraint has
-    no code left**: shrinking the ROI to buy frame rate still cuts the particle
-    count by the same factor, and nothing in the committee now notices."""
+def test_lens_4s_particle_count_is_not_consumed_through_a_derived_property():
+    """L4.6 fed G11 through `resolved_n_particles`, and that property is still
+    gone: L6.5 takes `n_particles` as a plain input for the designer to wire,
+    rather than reaching into another lens's metrics by key.
+
+    ⚠ The 3 <-> 6 'ROI vs statistics' constraint is no longer codeless, which
+    is what this test used to say. L6.5 reads `n_frames` and `frame_rate_hz`
+    and says in its own failure text that frames closer together than the
+    correlation time are not new samples -- which is exactly the trap
+    docs/01 §4 names. What is still missing is the WIRING: nothing yet fills
+    those fields from lenses 2, 3 and 4.
+    """
     up = _all_present(
         sample=_V(
             metrics={
@@ -726,3 +753,86 @@ def test_tolerates_an_upstream_verdict_with_no_feasibility_field():
     assert not hasattr(probe, "feasibility")
     v = evaluate(_setup(upstream=_all_present(trapping=probe)))
     assert v.status == "PASS"
+
+
+# ------------------------------------ L6.5 · independent samples ----------
+#
+# G11's question, with the input it never had. Built 2026-09-14; the numbers
+# below are the ones its removal entry worked by hand, which is why they are
+# pinned rather than recomputed.
+
+_G11_CASE = dict(
+    n_particles=1.0,
+    n_frames=520.0 * 60,        # one bead, 520 fps, 60 s
+    frame_rate_hz=520.0,
+    correlation_time_s=0.0121,  # tau = gamma/kappa = 0.04675/3.87
+)
+
+
+def test_l6_5_reproduces_the_numbers_that_retired_g11():
+    """kb/decisions/2026-09-11-g11-and-g26-removed.md: 6.3 frames per
+    relaxation time, ~2,480 independent samples, ~2.0 % where G11 said
+    0.566 % -- 3.5x optimistic."""
+    v = evaluate(_setup(**_G11_CASE))
+    f = next(f for f in v.findings if "independent_samples" in f.code)
+    n = f.numbers
+    assert n["frames_per_correlation_time"] == pytest.approx(6.29, rel=1e-2)
+    assert n["independent_samples"] == pytest.approx(2480, rel=1e-2)
+    assert n["relative_error"] == pytest.approx(0.0201, rel=1e-2)
+    assert n["optimism_factor"] == pytest.approx(3.55, rel=1e-2)
+
+    from validity.power import relative_error
+
+    assert relative_error(1, 31200) == pytest.approx(0.00566, rel=1e-3)
+
+
+def test_l6_5_declines_to_grade_without_a_correlation_time():
+    """The state G11 gated in. Declining is the repair, so it is pinned."""
+    case = dict(_G11_CASE)
+    case["correlation_time_s"] = None
+    v = evaluate(_setup(**case))
+    f = next(f for f in v.findings if f.code == "missing.independence_inputs")
+    assert f.severity == "info"
+    assert f.numbers["evaluated"] is False
+    assert "correlation time" in (f.action or "")
+
+
+def test_l6_5_reports_but_does_not_grade_without_a_target():
+    v = evaluate(_setup(**_G11_CASE))
+    f = next(f for f in v.findings if f.code == "validity.independent_samples")
+    assert f.kind == "info"
+
+
+def test_l6_5_grades_against_the_callers_own_target():
+    """2.01 % clears a 5 % target and misses a 1 % one. No threshold of this
+    lens's own is involved, which is why LIMITS is still empty.
+
+    The passing branch stays SILENT, on the 2026-09-11 line: it rests on "you
+    have the samples", which is a fact a reader can reconstruct, not a
+    decision that turned a check off. The numbers are in `metrics`.
+    """
+    ok = evaluate(_setup(target_relative_error=0.05, **_G11_CASE))
+    assert not any(f.code == "validity.independent_samples" for f in ok.findings)
+    assert ok.metrics["validity.independent_samples"]["relative_error"] == pytest.approx(
+        0.0201, rel=1e-2
+    )
+
+    tight = evaluate(_setup(target_relative_error=0.01, **_G11_CASE))
+    f = next(
+        f for f in tight.findings if f.code == "validity.independent_samples.insufficient"
+    )
+    assert f.kind == "soft"
+    assert f.margin == pytest.approx(0.01 / 0.0201, rel=1e-2)
+    assert "not new samples" in f.message
+
+
+def test_l6_5_turns_the_correction_off_below_half_a_frame_per_tau():
+    """Sampling slower than the process decorrelates means the frames already
+    are independent; correcting there would claim more samples than frames."""
+    case = dict(_G11_CASE)
+    case["frame_rate_hz"] = 10.0        # 0.121 frames per tau
+    case["n_frames"] = 600.0
+    v = evaluate(_setup(**case))
+    f = next(f for f in v.findings if "independent_samples" in f.code)
+    assert f.numbers["independent_samples"] == pytest.approx(600.0)
+    assert "all 600 count" in f.message

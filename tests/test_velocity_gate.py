@@ -237,3 +237,115 @@ def test_nothing_in_this_lens_has_a_threshold_of_its_own():
     import velocity
 
     assert velocity.LIMITS == {}
+
+
+# --------------------------------------------- L9.6 · how many steps ------
+#
+# The gate G11's removal entry named: "a Stokes-drag calibration's precision
+# does not come from N_p x N_f at all: it comes from the number of velocity
+# steps." Built 2026-09-14.
+
+_CALIBRATION = dict(
+    particle_radius_um=2.475,   # the 4.95 um bead of the 2026-09-03 calibration
+    viscosity_pa_s=1.002e-3,
+    stiffness_pn_per_um=3.87,
+    step_duration_ms=1000.0,
+    target_relative_error=0.05,
+)
+
+
+def test_l9_6_reproduces_the_hand_worked_calibration_numbers():
+    """kappa = 3.87 pN/um and a 4.95 um bead: sqrt(kT/kappa) = 32.3 nm, and
+    averaging 1 s of a tau = 12.1 ms process leaves 5.0 nm. At 30 um/s the
+    offset is 362 nm, so one step already reads kappa to 1.4 %."""
+    from velocity.checks import check_step_count
+    from velocity.setup import VelocitySetup
+
+    r = check_step_count(VelocitySetup(commanded_velocity_um_per_s=30.0, **_CALIBRATION))
+    n = r.numbers
+    assert n["thermal_sigma_um"] == pytest.approx(0.0323, rel=1e-2)
+    assert n["averaged_sigma_um"] == pytest.approx(0.0050, rel=2e-2)
+    assert n["equilibrium_offset_um"] == pytest.approx(0.362, rel=1e-2)
+    assert n["per_step_relative_error"] == pytest.approx(0.0138, rel=2e-2)
+    assert n["steps_required"] == 1
+
+
+def test_l9_6_needs_many_steps_at_a_small_offset():
+    """The whole point of the check: the same trap and the same step length at
+    1 um/s gives a 12 nm offset against the same 5 nm of noise, so one step
+    reads kappa to 41 % and the 5 % target needs 69 of them."""
+    from velocity.checks import check_step_count
+    from velocity.setup import VelocitySetup
+
+    r = check_step_count(VelocitySetup(commanded_velocity_um_per_s=1.0, **_CALIBRATION))
+    assert r.numbers["steps_required"] == 69
+    assert r.numbers["limited_by"] == "thermal"
+
+
+def test_l9_6_reports_rather_than_grades_when_the_step_count_is_undecided():
+    """Same treatment L2.4 gives an undecided frame rate: a gate that failed
+    here would be failing a decision nobody has made."""
+    from velocity.checks import check_step_count
+    from velocity.setup import VelocitySetup
+
+    r = check_step_count(VelocitySetup(commanded_velocity_um_per_s=1.0, **_CALIBRATION))
+    assert r.code == "missing.n_steps"
+    assert r.kind == "info"
+    assert r.severity == "info"
+
+
+def test_l9_6_grades_once_the_step_count_exists():
+    from velocity.checks import check_step_count
+    from velocity.setup import VelocitySetup
+
+    short = check_step_count(
+        VelocitySetup(commanded_velocity_um_per_s=1.0, n_steps=10, **_CALIBRATION)
+    )
+    assert short.code == "velocity.step_count.insufficient"
+    assert short.kind == "soft"
+    assert short.margin == pytest.approx(10 / 69, rel=1e-2)
+
+    enough = check_step_count(
+        VelocitySetup(commanded_velocity_um_per_s=1.0, n_steps=100, **_CALIBRATION)
+    )
+    assert enough.code == "velocity.step_count"
+    assert enough.margin > 1.0
+
+
+def test_l9_6_is_soft_where_l9_3_is_hard():
+    """Too few steps is variance; too short a step is bias. Repetition fixes
+    the first and cannot touch the second, and the kinds say so."""
+    import velocity
+
+    kinds = {c.code: c.kind for c in velocity.CHECKS}
+    assert kinds["step_count"] == "soft"
+    assert kinds["steady_state"] == "hard"
+
+
+def test_l9_6_names_the_localization_limit_when_photons_are_the_problem():
+    """Which term dominates decides what to change, so the check says which."""
+    from velocity.checks import check_step_count
+    from velocity.setup import VelocitySetup
+
+    r = check_step_count(
+        VelocitySetup(
+            commanded_velocity_um_per_s=1.0,
+            localization_sigma_nm=500.0,
+            achieved_fps=100.0,
+            n_steps=10,
+            **_CALIBRATION,
+        )
+    )
+    assert r.numbers["limited_by"] == "localization"
+    assert "photons" in (r.action or "")
+
+
+def test_the_averaging_formula_is_exact_and_not_the_long_time_limit():
+    """At T = tau the T >> tau form overstates the benefit; at T -> 0
+    averaging must buy nothing at all."""
+    from velocity.kinematics import averaged_sigma_um
+
+    assert averaged_sigma_um(1.0, 0.0121, 1e-6) == pytest.approx(1.0, rel=1e-3)
+    assert averaged_sigma_um(1.0, 0.0121, 0.0121) == pytest.approx(0.858, rel=1e-2)
+    # sqrt(2 tau/T) with tau = T would give 1.41; the exact form gives 0.86.
+    assert averaged_sigma_um(1.0, 0.0121, 0.0121) < 2.0**0.5

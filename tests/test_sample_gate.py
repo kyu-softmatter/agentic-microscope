@@ -643,3 +643,71 @@ def test_verdict_serializes_with_the_lens_name():
     d = evaluate(_setup()).to_dict()
     assert d["lens"] == "sample"
     assert d["feasibility_note"]
+
+
+# ----------------------------------------- L4.8 · enough of them ----------
+#
+# The lower bound on concentration. L4.6's own docstring said it was G11's,
+# and G11 went on 2026-09-11, so from then until 2026-09-14 nothing checked
+# that the field had any particles in it at all.
+
+
+def _dilution_setup(**overrides):
+    """A 100 um chamber under an 83 x 83 um field -- the designer's 40x/512px
+    geometry, which is where these numbers will actually come from."""
+    defaults = dict(
+        chamber_height_um=100.0,
+        field_width_um=83.2,
+        field_height_um=83.2,
+        particle_radius_um=0.25,
+        concentration_per_ml=1.0e7,
+    )
+    defaults.update(overrides)
+    return _setup(**defaults)
+
+
+def test_l4_8_passes_when_the_field_has_enough_particles():
+    v = evaluate(_dilution_setup())
+    f = next(f for f in v.findings if f.code == "count_sufficiency")
+    assert f.numbers["expected_count"] == pytest.approx(6.92, rel=1e-2)
+    assert f.margin > 1.0
+
+
+def test_l4_8_fails_when_the_stock_is_diluted_past_the_field():
+    """1e7/ml in a 100 um chamber puts ~7 in this field; 100x less puts 0.07."""
+    v = evaluate(_dilution_setup(concentration_per_ml=1.0e5))
+    f = next(f for f in v.findings if f.code == "count_sufficiency.too_dilute")
+    assert f.margin < 1.0
+    assert "concentrate" in (f.action or "").lower()
+
+
+def test_l4_8_and_l4_6_cannot_disagree_about_how_many_there_are():
+    """Same sigma = c*H, same total-sedimentation premise. Two bounds on one
+    number, not two models of it."""
+    v = evaluate(_dilution_setup())
+    lower = next(f for f in v.findings if f.code.startswith("count_sufficiency"))
+    upper = next(f for f in v.findings if f.code.startswith("geometry.count_in_field"))
+    assert (
+        lower.numbers["settled_areal_density_per_um2"]
+        == upper.numbers["settled_areal_density_per_um2"]
+    )
+    assert lower.numbers["expected_count"] == upper.numbers["expected_count"]
+
+
+def test_l4_8_is_visible_rather_than_silent_when_it_cannot_evaluate():
+    """A check that did not run must not read as one that passed (CLAUDE.md
+    §3). `_ok` results are dropped from `findings` entirely, so the
+    unevaluated branch is severity "info" on purpose."""
+    v = evaluate(_setup(chamber_height_um=None))
+    f = next(f for f in v.findings if f.code == "count_sufficiency.unevaluated")
+    assert f.severity == "info"
+    assert f.numbers["evaluated"] is False
+
+
+def test_l4_8_is_soft_so_it_cannot_block_the_lens():
+    """A dilute sample yields less data, not impossible data."""
+    v = evaluate(_dilution_setup(concentration_per_ml=1.0e5))
+    assert v.status != "BLOCKED"
+    assert not any(
+        f.code.startswith("count_sufficiency") and f.kind == "hard" for f in v.findings
+    )
