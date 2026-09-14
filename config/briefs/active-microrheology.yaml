@@ -1,0 +1,293 @@
+# Experiment brief -- the experiment designer's INPUT (CLAUDE.md §2).
+#
+#   Hand-written 2026-09-13. The query refiner does not exist yet; when it
+#   does, this is the shape it must emit
+#   -> kb/decisions/2026-09-13-the-planning-layer.md
+#
+# THE ONE RULE THIS FILE OBEYS. Every value below carries the entry it came
+# from. Nothing here was originated by writing this file (CLAUDE.md rule 2),
+# so a fact with no source is NOT filled in -- it goes to `gaps` with a
+# resolver rank, and the designer is expected to BLOCK on the R2 ones rather
+# than proceed past them.
+#
+# Worked from config/channels/active-microrheology-probe-tracer.yaml
+# (2026-08-18), which settles the optical path. This file adds everything the
+# other eight lenses need and the channel file does not carry.
+
+meta:
+  id: active-microrheology
+  date: 2026-09-13
+  status: example              # example | proposed | run
+  written_by: hand
+  channel_config: config/channels/active-microrheology-probe-tracer.yaml
+
+goal:
+  in_operator_words: >-
+    One optically-driven 5 um PS probe and freely-diffusing 0.5 um PS tracers,
+    imaged simultaneously in two colours. Force is read as F = kappa * (x_bead
+    - x_trap); the probe is steered on a bounded random walk, 0-30 um/s.
+  intended_quantity: rheology  # validity/setup.py quantity table
+  why_this_quantity: >-
+    The tracers report the medium's response and the probe drives it. A
+    complex modulus is what comes out, so pixel size, frame period and the
+    drag all enter the answer directly.
+
+# ---------------------------------------------------------------------------
+# FACTS -- grouped by the lens that consumes them, which is also the order
+# CLAUDE.md §2 runs them in. `evidence` is the repo's own tier, not a
+# confidence: only `measured` lets a verdict advance (§3).
+# ---------------------------------------------------------------------------
+
+facts:
+
+  lens_1_optics:
+    # The channel file is the source for the whole light path; not restated.
+    channels_from: config/channels/active-microrheology-probe-tracer.yaml
+    objective:
+      value: "4-Apo LmbdS 40x WI"
+      na: 1.25
+      immersion: water
+      verified_na: true
+      source: "config/channels/active-microrheology-probe-tracer.yaml; kb/systems/current.md > objectives"
+      evidence: measured
+    detector:
+      value: Kinetix22
+      count: 2                 # Kinetix_red (probe) + Kinetix_blue (tracer)
+      source: "kb/systems/current.md > cameras (KH confirmation 2026-08-19)"
+      evidence: measured
+
+  lens_2_detection:
+    pixel_size_um_per_px:
+      value: 0.1625            # 40x, 1x intermediate, binning 1
+      source: data/pixel_size.yaml
+      evidence: measured
+    binning: {value: 1, source: "brief -- follows the pixel size row above", evidence: assumed}
+    row_time_ns:
+      value: 3531.2
+      mode: Sensitivity
+      roi_height_rows_at_measurement: 2400
+      source: kb/calibrations/camera-readout.yaml
+      evidence: measured
+    camera_mode:
+      value: null
+      note: >-
+        NOT DECIDED, and the channel file says why it matters more than the
+        exposure here: Sensitivity (12-bit) has 1.2 e- read noise but only
+        1,000 e- full well, and the 5 um probe is ~1000x brighter than a
+        0.5 um tracer. Dynamic Range (16-bit) gives 15,000 e- for 111 vs
+        118 fps. The two arms may want different modes, which the
+        single-camera DetectionSetup cannot express.
+      see: gaps.camera_mode
+
+  lens_3_compute:
+    disk_bandwidth_mb_s:
+      value: 206.8
+      source: kb/calibrations/disk-bandwidth.yaml
+      evidence: measured
+    disk_bandwidth_path_confirmed:
+      value: false
+      note: >-
+        Measured on D:\Kyu Hwan Choi\_bench, not confirmed to be the folder MM
+        streams into. Defaults false since 2026-08-19 and pins every lens-3
+        verdict to evidence: assumed until someone confirms it.
+      source: kb/calibrations/disk-bandwidth.yaml
+
+  lens_4_sample:
+    probe:
+      diameter_um: 5.0
+      material: polystyrene
+      trapped: true
+      source: config/channels/active-microrheology-probe-tracer.yaml
+      evidence: measured
+    tracer:
+      diameter_um: 0.5
+      material: polystyrene
+      trapped: false
+      source: config/channels/active-microrheology-probe-tracer.yaml
+      evidence: measured
+
+  lens_7_trapping:
+    laser_nm: 1064
+    instrument: "Aresis Tweez 300"
+    measured_stiffness_pn_per_um:
+      value: null
+      note: >-
+        3.65-4.5 pN/um was measured three independent ways on 2026-09-03
+        (kb/decisions/2026-09-10-lens-7-measured-stiffness-and-numbering.md),
+        and `TrapSetup.measured_stiffness_n_per_m` exists to carry it. NOT
+        entered here: that measurement's dial setting and objective are not
+        established for THIS configuration (40x WI), and a stiffness carried
+        across an objective change is not a measurement of this trap.
+      see: gaps.trap_stiffness_for_this_config
+
+  lens_9_velocity:
+    commanded_velocity_um_per_s:
+      value: [0, 30]           # bounded random walk, resampled
+      source: config/channels/active-microrheology-probe-tracer.yaml
+      evidence: measured       # it is a commanded value, so it is exactly known
+    velocity_time_base_verified:
+      value: false
+      note: >-
+        L9.1 FAILS on every real configuration and this one is no exception.
+        The DISTANCE half of the scale is corroborated to 0.24 % (2026-09-03,
+        two standards over 10 um); the TIME half has never been checked, and
+        kappa = gamma*v/x_eq multiplies commanded velocity straight into the
+        answer this experiment is for.
+      source: kb/decisions/2026-09-11-the-velocity-lens.md
+
+  environment:
+    temperature_c:
+      value: 20
+      kt_pn_um: 4.045e-3
+      note: "the LAB SETPOINT, which is the room and not the sample at the focus"
+      source: kb/expertise/microrheology-standard-conditions.md
+      evidence: measured
+
+# ---------------------------------------------------------------------------
+# GAPS -- what this brief could not fill, and who can.
+#   R0 the KB has it          (none left: they are in `facts` above)
+#   R1 only the operator knows
+#   R2 measurable, not measured  -> the designer BLOCKs; do not default these
+#   R3 nobody knows              -> proceed, recorded as ungated
+# ---------------------------------------------------------------------------
+
+gaps:
+
+  - field: chamber_height_um
+    rank: R1
+    consumed_by: [L4.3, L8.2]
+    why: >-
+      Asked once and used twice for different things -- lens 4 for whether the
+      requested focal plane still has sample in it, lens 8 for evaporation and
+      settling (01 §4). Absent today it produces SILENCE, not a question:
+      sample.gate returns PASS with L4.3 never having run (measured
+      2026-09-13, see the planning-layer entry's Correction).
+
+  - field: imaging_depth_um
+    rank: R1
+    consumed_by: [L4.2, L4.4, L4.7]
+
+  - field: particle_radius_um__for_wall_drag
+    rank: R1
+    consumed_by: [L4.4]
+    why: "the probe is 5 um and the tracer 0.5 um; L4.4 needs to know which population it is bounding"
+
+  - field: tracer_concentration_per_ml
+    rank: R1
+    consumed_by: [L4.6]
+
+  - field: acquisition_duration_s
+    rank: R1
+    consumed_by: [L3.5, L8.1, L8.3, L8.4]
+    why: "also decides whether lens 8 is convened at all (~30 min)"
+
+  - field: free_disk_gb
+    rank: R1
+    consumed_by: [L3.5]
+
+  - field: exposure_ms
+    rank: R1
+    consumed_by: [L2.2, L2.4, L2.5, L3.x]
+    why: >-
+      The channel file's header reasons at 1.5 ms but the file body does not
+      carry it, so it is an intent and not a decision. It also DEPARTS from
+      the standing 20.0 ms -- see `departures`.
+
+  - field: camera_mode
+    rank: R1
+    consumed_by: [L2.2, L2.3, L2.5]
+    why: "see facts.lens_2_detection.camera_mode -- a real trade, not an omission"
+
+  - field: target_relative_error
+    rank: R1
+    consumed_by: [L9.2, L9.3]
+    why: "both ends of L9.2's displacement window derive from the precision asked for"
+
+  - field: chamber_sealed
+    rank: R1
+    consumed_by: [L8.3]
+
+  - field: illuminated_area_um2__at_40x
+    rank: R2
+    consumed_by: [L5.1, L5.2]
+    why: >-
+      kb/calibrations/illumination-power.yaml records areas at 20x ONLY,
+      because that is the magnification the fields were established at. With
+      no area there is no irradiance at 40x, so lens 5 reports nothing
+      quantitative for this configuration. Lens 5 is a reporting section
+      (2026-09-10), so this costs a report and not a gate.
+    action: "establish the illuminated field at 40x, or state the scaling and its basis"
+
+  - field: velocity_time_base
+    rank: R2
+    consumed_by: [L9.1]
+    why: "L9.1 is `hard` and FAILS; this brief cannot resolve it and must not pretend to"
+    action: "drive a known distance at a known commanded velocity and time it independently"
+
+  - field: disk_bandwidth_folder
+    rank: R2
+    consumed_by: [L3.1]
+    action: "re-measure pointed at the folder MM actually streams into"
+
+  - field: trap_stiffness_for_this_config
+    rank: R2
+    consumed_by: [L7.2, L7.4, L9.2, L9.3]
+    why: "a kappa measured at another objective is not this trap's kappa"
+    action: "record the 2026-09-03 measurement's dial and objective, or re-calibrate at 40x WI"
+
+  - field: light_driving_threshold_w_cm2
+    rank: R3
+    consumed_by: [L5.1]
+    why: >-
+      Per-dye, and empty for every proprietary bead colourant here. This is
+      the missing input that made lens 5 a reporting section.
+      ⚠ AND IT IS BOTH ARMS, not only the dim one. Checked 2026-09-13 against
+      data/fluorophores.yaml: Dragon Green has neither ext_coeff nor quantum
+      yield, and ATTO647N has a quantum yield (0.65) but NO ext_coeff either.
+      So the absolute photon budget is uncomputable for the probe as well as
+      the tracer, and every SNR number this proposal produces is relative.
+
+  - field: sample_temperature_at_focus
+    rank: R3
+    consumed_by: []
+    why: >-
+      Ungated by decision (CLAUDE.md E3). dD/D = 2.74 %/K and the trap only
+      heats, so the sign is known and the size is not.
+
+  - field: vibration
+    rank: R3
+    consumed_by: []
+    why: "no measurement channel exists (01 §7 item 4)"
+
+# ---------------------------------------------------------------------------
+# DEPARTURES from kb/expertise/microrheology-standard-conditions.md (KH,
+# 2026-09-07). Stated because H1 says a concession is reported by name and
+# never spent silently.
+# ---------------------------------------------------------------------------
+
+departures:
+
+  - condition: objective
+    standing: "100x Oil"
+    here: "4-Apo LmbdS 40x WI"
+    basis: >-
+      The channel file's own reasoning: the 40x WI is index-matched to water,
+      which removes the RI-mismatch depth cap that makes 100x Oil in water
+      clip to effective NA 1.333 near 10 um. This is a two-population
+      experiment needing field, not the single-particle case the standing
+      choice was set for.
+    costs: "rank 1. Pixel size goes 0.06453 -> 0.1625 um/px, 2.5x coarser."
+
+  - condition: frame rate / exposure
+    standing: "20.0 ms exposure => ~50 fps"
+    here: "undecided; the channel file reasons at 1.5 ms"
+    basis: "0.5 um tracers are photon-starved; a shorter exposure is bought with light"
+    costs: >-
+      ⚠ Every script in analysis/matlab/ HARDCODES frame_time = 0.02. A run at
+      any other period needs the analysis changed, and lens 6 owns
+      settings-versus-analysis mismatches. This is not a free departure.
+
+  - condition: illumination
+    standing: "Aura GREEN ~80/1000"
+    here: "SpectraIII 488 + 640"
+    basis: "two-colour simultaneous; the Aura is single-line at a time"
