@@ -134,6 +134,8 @@ inside is [05 §6](docs/05-consensus-gate.md).
 ### Run order
 
 ```
+brief.yaml                      hand-written today     goal · constraints · sources
+      ↓
 1 · 2 · 3  (+7 if trapping)     code, in parallel      deterministic, fast
            (+9 if anything moves)
       ↓        any hard gate m < 1 → stop here, return a revision
@@ -141,7 +143,7 @@ inside is [05 §6](docs/05-consensus-gate.md).
       ↓
 6                               subagent, alone        reviews all of the above
       ↓
-synthesis → verdict
+synthesis → verdict             →  plan.md + plan.yaml
 ```
 
 **The computational lenses run first** so that no subagent deliberates over a
@@ -151,6 +153,50 @@ judgment lenses — a judgment lens never generates the number it is judging.
 ⚠ [05 §6](docs/05-consensus-gate.md)'s diagram puts 4·5·6·8 in one parallel
 block. **This supersedes that**: lens 6 reviews the other lenses' verdicts, so
 it cannot run beside them.
+
+### The experiment designer — the same order, run by code
+
+**Planned 2026-09-13, not built.** Nothing here runs the order above: a human
+runs each CLI by hand and carries lens 2's numbers into lens 3 and lens 7
+([01 §7](docs/01-architecture.md) item 1). `committee/` inspects the wiring
+*between* lenses and never executes them, and `hardware/orchestrator.py` is for
+devices. Read every line below as a contract to build against, not a
+description of what runs
+→ [`2026-09-13-the-planning-layer.md`](kb/decisions/2026-09-13-the-planning-layer.md).
+
+**Input — `brief.yaml`.** The goal, the constraints, and every fact with the
+entry it came from. **Hand-written until the query refiner exists**, and the
+refiner is deliberately second: the designer is what fixes this schema, so
+building the refiner first would make it guess at its own output.
+
+**Output — two files, because the plan has two readers with opposite needs.**
+
+| File | Reader | Shape |
+|---|---|---|
+| `plan.md` | the operator | the `kb/plans/_template.md` shape, so `knowledge.cli plan-check` already validates it — including the `Confirmed by` column that refuses a step resting on a return code (E9) |
+| `plan.yaml` | the plan interpreter, and any re-check | tier 3. `config/channels` schema verbatim under `channels:`, and **no device property that no check reads** — admitting one makes the plan tier 2 and ends its portability (01 §3 Principle 2) |
+
+`unevaluated` and `unresolved` are **required keys in `plan.yaml` even when
+empty.** An absent key reads as a cleared one, which is §3 exactly.
+
+**Stage 1 is the code half only.** All nine lenses have a `gate.py`, so the
+order runs end to end with no subagent convened. The subagents — the
+qualitative half of 4 · 5 · 6 · 8 — and `plan.md`'s prose are stage 2. So a
+stage-1 verdict has every judgment row `unevaluated`, which is **a hole and not
+a pass** (E4), and the file has to say so rather than omit them.
+
+**The handoffs are the work, not the nine calls.** Lens 2's `fps_usable_max` is
+what L3.2, L7.4 and L9.3 are judged against, and a *requested* rate is not
+evidence (E5). 01 §4 lists nine cross-lens constraints and **two of them have no
+code**: particle count 4 → 6 died with G11 on 2026-09-11, and ROI-versus-
+statistics 3 ↔ 6 never had any. Wiring the designer is what will establish how
+many of the nine are real.
+
+**After `plan.yaml`.** The plan interpreter applies what the plan decided,
+**leaves every parameter no check reads at its current value**, and records the
+whole machine state as `as_set.yaml`. It originates nothing and is code, not a
+model — rule 2 does not stop at the committee, and the last stage before the
+hardware is the one with no reviewer.
 
 ### Precedence — the kind of gate outranks the lens
 
@@ -309,11 +355,14 @@ survives a clean checkout).
 pytest -q -rs
 ```
 
-1194 passed, 11 skipped on macOS, of 1,205 (measured 2026-09-09 after G20's
-removal took 16 tests with it; Windows prints 1195/10 — one Windows-only test,
-not re-measured there). Two kinds of skip: three whole
-modules behind `pytest.importorskip("pymmcore_plus")` holding 56 tests that need
-a Micro-Manager device-adapter install, and seven `requires_cv2` tests in
+1329 passed, 11 skipped on macOS, of 1,340 (re-measured 2026-09-13; was
+1194/11 of 1,205 on 2026-09-09, and the 135 added since are lens 9,
+`committee/` and the renumbering. Windows printed 1195/10 on 2026-09-09 — one
+Windows-only test — and has **not** been re-measured since). Two kinds of
+skip: three whole modules behind `pytest.importorskip("pymmcore_plus")`
+holding 56 tests (counted 2026-09-09, not re-counted today — the dependency is
+absent here, so they skip at import and cannot be collected) that need a
+Micro-Manager device-adapter install, and seven `requires_cv2` tests in
 `tests/test_objective_offsets.py` that call OpenCV
 (`requirements-analysis.txt`, not in CI). `-rs` keeps all ten named, so the
 count cannot quietly shrink. **The instrument is not required to run any test.**
@@ -424,6 +473,7 @@ Do not duplicate what the repo already records. Pick the right home:
 | `data/*.yaml`, `kb/calibrations/` | a measured constant |
 | `kb/decisions/YYYY-MM-DD-<slug>.md` | a design choice or a scope decision, dated |
 | `kb/plans/YYYY-MM-DD-<slug>.md` | one hardware run, **before** it happens. Copy `_template.md`; `plan-check` refuses a shape a skill would misread. Graduates into `kb/decisions/` once run → [05 §6](docs/05-consensus-gate.md) |
+| `kb/plans/YYYY-MM-DD-<slug>.yaml` | the same run, for a reader that is not a person — the experiment designer's machine half (§2). Same slug as the `.md`, deliberately: one run, one name, two readers. Not written by anything yet |
 | `kb/expertise/<id>.md` | durable expert judgment. `Why` and `Falsifying condition` are **mandatory** ([09 §2](docs/09-knowledge-capture.md)) |
 | `kb/sessions/YYYY-MM-DD.md` | the day's narrative. **A failed session gets a *longer* entry, not a shorter one.** Numbers, not adjectives |
 
