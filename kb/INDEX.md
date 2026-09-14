@@ -101,6 +101,15 @@ Dated design and scope choices, in the order they were made.
 - **[2026-09-09-g10-photobleaching-removed](decisions/2026-09-09-g10-photobleaching-removed.md)** · 2026-09-09
   Should the photobleaching gate stay, given that it has never returned anything but BLOCKED and its only unshared lever is the dye?
 
+## `kb/plans/` — 2 entries
+
+One hardware run each, before it happens — 05 §6 stage 5.
+
+- **[2026-09-14-passive-microrheology-dna-sucrose](plans/2026-09-14-passive-microrheology-dna-sucrose.md)** · 2026-09-14 · planned
+  What is the linear microrheology of 3c* lambda-DNA in 55% sucrose, from the fluctuations of a trapped 5 um probe
+- **[2026-09-14-plugflow-microrheology-dna-sucrose](plans/2026-09-14-plugflow-microrheology-dna-sucrose.md)** · 2026-09-14 · planned
+  How does the mobility of a trapped 5 um probe in 3c* lambda-DNA / 55% sucrose change with Weissenberg number under plug flow
+
 ## `kb/literature/` — 1 entries
 
 Published values nobody here has measured.

@@ -350,6 +350,44 @@ throws away the only number that says whether a small surprise is survivable.
 
 ---
 
+## Designing an experiment, not just checking one
+
+The committee answers *"is this proposal physically possible on this
+instrument?"* It does **not** answer *"is this the right proposal?"* — and the
+gap between those two questions is where a session is lost. A configuration can
+clear every gate and still be unable to see the phenomenon it was built for.
+
+The protocol is [CLAUDE.md §2b](CLAUDE.md), D1–D12, and it is read **before**
+any setting is proposed. Four of its rules carry most of the weight:
+
+- **Estimate the observable first.** Compute the expected signal against the
+  noise floor *at the standing conditions* before proposing anything. When it
+  lands below the floor, the standing conditions are wrong for that sample and
+  the answer is a revision, not a patch. This is the step that most often
+  changes an experiment, and it costs a minute.
+- **A setting is a proposal; a fact is not yours to invent.** Viscosity,
+  refractive index and temperature come from the operator or from `kb/`. ROI,
+  duration and velocity are proposed and labelled as such. An invented setting
+  fed to a gate returns a verdict that *looks* measured — which is worse than a
+  refusal, because a refusal is visible.
+- **A gate that passes on a placeholder has not passed.** Read the `assumed:`
+  line of every verdict; it is the verdict's real content. Where an input is
+  unknown, **sweep it** and report the range over which the verdict changes,
+  rather than picking a value. "Unknown" becomes "this measurement decides it".
+- **Check that the analysis can consume the data before acquiring it.** A
+  pipeline that detrends, filters or rescales can remove precisely the signal
+  the run exists to produce, and nothing upstream will notice.
+
+None of this is microrheology-specific. The recurring failure is the same in
+every experiment: a proposal that is *feasible* and *not informative*, which
+the gates are not built to catch and a human reviewer usually is.
+
+Worked examples, written before the runs and checked with
+`python -m knowledge.cli plan-check`:
+[`kb/plans/`](kb/plans/).
+
+---
+
 ## Architecture
 
 Every stage either **reads** evidence out of the knowledge base or **writes**
