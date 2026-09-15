@@ -36,7 +36,6 @@ from .aberration import (
     max_na,
     mean_areal_spacing_um,
     paraxial_focal_shift_ratio,
-    settled_areal_density_per_um2,
     ri_mismatch,
     wall_drag_suppression,
 )
@@ -766,7 +765,7 @@ def check_count_in_field(setup: "SampleSetup") -> CheckResult:
             evaluated=False,
         )
 
-    sigma = settled_areal_density_per_um2(c, h)
+    sigma = setup.settled_areal_density_per_um2
     coverage = areal_coverage_fraction(sigma, a)
     spacing = mean_areal_spacing_um(sigma)
 
@@ -928,7 +927,7 @@ def check_count_sufficiency(setup: "SampleSetup") -> CheckResult:
             numbers={"evaluated": False, "target_particles_in_field": target},
         )
 
-    sigma = settled_areal_density_per_um2(c, h)
+    sigma = setup.settled_areal_density_per_um2
     count = sigma * w * hf
     margin = count / target
 

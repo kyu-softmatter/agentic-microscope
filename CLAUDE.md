@@ -399,10 +399,10 @@ survives a clean checkout).
 pytest -q -rs
 ```
 
-1367 passed, 11 skipped on macOS, of 1,378 (re-measured 2026-09-14; was
-1329/11 of 1,340 on 2026-09-13, and the 38 added since are L2.6, the
+1374 passed, 11 skipped on macOS, of 1,385 (re-measured 2026-09-14; was
+1329/11 of 1,340 on 2026-09-13, and the 45 added since are L2.6, the
 designer's first tests -- which is where the three broken handoffs were found
--- and L4.8, L6.5 and L9.6. Windows printed 1195/10 on 2026-09-09 — one
+-- and L4.8, L6.5, L9.6 with their wiring. Windows printed 1195/10 on 2026-09-09 — one
 Windows-only test — and has **not** been re-measured since). Two kinds of
 skip: three whole modules behind `pytest.importorskip("pymmcore_plus")`
 holding 56 tests (counted 2026-09-09, not re-counted today — the dependency is

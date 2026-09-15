@@ -260,6 +260,15 @@ def build_sample(brief: Brief, detection=None):
         concentration_per_ml=brief.value("lens_4_sample.tracer_concentration_per_ml"),
         field_width_um=field_w,
         field_height_um=field_h,
+        # Only passed when the brief states it. The dataclass default of 1.0
+        # is "one particle or there is no measurement", which is definitional;
+        # overwriting it with None would break L4.8 rather than default it.
+        **(
+            {"target_particles_in_field": wanted}
+            if (wanted := brief.value("lens_4_sample.target_particles_in_field"))
+            is not None
+            else {}
+        ),
     )
 
 
@@ -279,8 +288,47 @@ def build_photo(brief: Brief):
     )
 
 
-def build_validity(brief: Brief, upstream: dict | None = None):
+def build_validity(brief: Brief, upstream: dict | None = None, setups: dict | None = None):
+    """Lens 6, with L6.5's four numbers carried down from the lenses that own them.
+
+    Everything else this lens reads is a VERDICT. L6.5 reads numbers, and it
+    takes them as plain fields rather than reaching into another lens's
+    ``metrics`` dict by string key -- a lookup that would break silently the
+    first time a check renamed one of its own numbers. The carrying is the
+    designer's job, which is what this function is.
+
+    Where each one comes from, and why that lens owns it:
+
+    ``n_particles``   lens 4. `SampleSetup.expected_count_in_field`, the same
+                      settled density L4.6 and L4.8 bound from either side.
+    ``n_frames``      duration x the rate lens 2 decided. A REQUESTED rate
+                      makes this a request too -- lens 3's L3.2 seen from here.
+    ``frame_rate_hz`` lens 2's decided rate, needed to turn a correlation TIME
+                      into a correlation length in frames.
+    ``correlation_time_s``  lens 7's `tau = gamma/kappa` where there is a trap,
+                      by way of lens 9 which already computes it; otherwise the
+                      experiment's own characteristic time, which is the number
+                      L2.6 exists to ask for.
+    """
     from validity.setup import ValiditySetup
+
+    setups = setups or {}
+    sample = setups.get("sample")
+    detection = setups.get("detection")
+    velocity = setups.get("velocity")
+
+    fps = None if detection is None else detection.acquisition.decided_fps
+    duration_s = brief.value("environment.acquisition_duration_s")
+    n_frames = None if (fps is None or duration_s is None) else fps * duration_s
+
+    # A trapped bead's own relaxation time beats a stated characteristic time:
+    # it is the thing that actually decorrelates consecutive frames, and lens 9
+    # computes it from lens 7's stiffness rather than re-deriving it.
+    tau_s = None
+    if velocity is not None and velocity.relaxation_time_ms is not None:
+        tau_s = velocity.relaxation_time_ms / 1000.0
+    if tau_s is None:
+        tau_s = brief.value("system.characteristic_time_s")
 
     return ValiditySetup(
         intended_quantity=brief.intended_quantity,
@@ -289,6 +337,17 @@ def build_validity(brief: Brief, upstream: dict | None = None):
             (f := brief.get("lens_2_detection.pixel_size_um_per_px")) is not None
             and f.evidence == "measured"
         ),
+        # NOTE this counts the FREE population. A trapped probe is one particle
+        # put there by the trap, not drawn from this concentration, and L6.5's
+        # question -- an ensemble average -- is about the free one.
+        n_particles=None if sample is None else sample.expected_count_in_field,
+        n_frames=n_frames,
+        frame_rate_hz=fps,
+        correlation_time_s=tau_s,
+        # Lives under lens 9 because that lens introduced it, but it is the
+        # experiment's criterion and not lens 9's: L9.2, L9.3, L9.6 and now
+        # L6.5 all derive their bounds from this one number.
+        target_relative_error=brief.value("lens_9_velocity.target_relative_error"),
     )
 
 
@@ -335,6 +394,7 @@ def build_velocity(brief: Brief):
         target_relative_error=brief.value("lens_9_velocity.target_relative_error"),
         step_duration_ms=brief.value("lens_9_velocity.step_duration_ms"),
         localization_sigma_nm=brief.value("lens_9_velocity.localization_sigma_nm"),
+        n_steps=brief.value("lens_9_velocity.n_steps"),
         velocity_time_base_verified=bool(
             brief.value("lens_9_velocity.velocity_time_base_verified")
         ),

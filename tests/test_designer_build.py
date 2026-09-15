@@ -278,3 +278,152 @@ def test_lens_4_reaches_phase_1_now_that_it_has_a_working_distance(tmp_path):
     count = next(f for f in verdict.findings if "count_in_field" in f.code)
     assert count.numbers["evaluated"] is True
     assert count.numbers["expected_count"] > 0
+
+
+# --------------------------------- carrying L6.5's numbers down -----------
+#
+# Lens 6 reads verdicts everywhere else; L6.5 reads NUMBERS, and it takes them
+# as plain fields rather than reaching into another lens's `metrics` by string
+# key. Carrying them is this module's job, so it is tested here.
+
+FULL = """
+meta: {id: full, date: 2026-09-14}
+goal: {intended_quantity: msd}
+facts:
+  system:
+    characteristic_time_s: {value: 0.5, source: "test"}
+  lens_1_optics:
+    detector: {value: Kinetix22, count: 1, source: "test", evidence: measured}
+    objective: {value: "4-Apo LmbdS 40x WI", source: "test", evidence: measured}
+  lens_2_detection:
+    exposure_ms: {value: 10.0, source: "test"}
+    task_kind: {value: tracking, source: "test"}
+    camera_mode: {value: "Sensitivity", source: "test"}
+    roi_width_px: {value: 512, source: "test"}
+    roi_height_px: {value: 512, source: "test"}
+    row_time_ns: {value: 3531.2, source: "test"}
+    achieved_fps: {value: 100.0, source: "timestamps"}
+  lens_4_sample:
+    probe: {diameter_um: 0.5, source: "test"}
+    imaging_depth_um: {value: 8.0, source: "test"}
+    chamber_height_um: {value: 100.0, source: "test"}
+    tracer_concentration_per_ml: {value: 10000000.0, source: "test"}
+  lens_9_velocity:
+    target_relative_error: {value: 0.05, source: "test"}
+  environment:
+    acquisition_duration_s: {value: 60.0, source: "test"}
+gaps: []
+"""
+
+
+def _full(tmp_path, extra_lens_4="", extra_lens_9=""):
+    text = textwrap.dedent(FULL)
+    if extra_lens_4:
+        text = text.replace("  lens_9_velocity:", extra_lens_4 + "  lens_9_velocity:")
+    if extra_lens_9:
+        text = text.replace("  environment:", extra_lens_9 + "  environment:")
+    path = tmp_path / "full.yaml"
+    path.write_text(text, encoding="utf-8")
+    return brief_mod.load(path)
+
+
+def _validity_for(brief):
+    from designer.build import build_sample, build_validity
+
+    detection = build_detection(brief)
+    sample = build_sample(brief, detection=detection)
+    return build_validity(brief, setups={"sample": sample, "detection": detection})
+
+
+def test_l6_5_gets_the_particle_count_from_lens_4(tmp_path):
+    """The same settled density L4.6 and L4.8 bound from either side, so the
+    three readers cannot disagree about how many particles there are."""
+    from designer.build import build_sample
+
+    brief = _full(tmp_path)
+    sample = build_sample(brief, detection=build_detection(brief))
+    v = _validity_for(brief)
+    assert v.n_particles == pytest.approx(sample.expected_count_in_field)
+    assert v.n_particles == pytest.approx(6.92, rel=1e-2)
+
+
+def test_l6_5_gets_the_frames_from_the_duration_and_the_decided_rate(tmp_path):
+    v = _validity_for(_full(tmp_path))
+    assert v.frame_rate_hz == 100.0
+    assert v.n_frames == pytest.approx(6000.0)
+
+
+def test_l6_5_has_no_particle_count_when_lens_2_did_not_run(tmp_path):
+    """The field is lens 2's, so without it there is no count -- and L6.5 then
+    reports rather than grading, which is the whole repair over G11."""
+    from designer.build import build_sample, build_validity
+
+    brief = _full(tmp_path)
+    sample = build_sample(brief, detection=None)
+    v = build_validity(brief, setups={"sample": sample})
+    assert v.n_particles is None
+    assert v.n_frames is None
+
+
+def test_a_trapped_beads_own_tau_beats_the_stated_characteristic_time(tmp_path):
+    """tau = gamma/kappa is what actually decorrelates consecutive frames.
+    The brief's characteristic time is the fallback, for a free particle."""
+    from designer.build import build_sample, build_validity
+    from velocity.setup import VelocitySetup
+
+    brief = _full(tmp_path)
+    detection = build_detection(brief)
+    sample = build_sample(brief, detection=detection)
+    setups = {"sample": sample, "detection": detection}
+
+    assert build_validity(brief, setups=setups).correlation_time_s == 0.5
+
+    trapped = VelocitySetup(
+        particle_radius_um=2.475, viscosity_pa_s=1.002e-3, stiffness_pn_per_um=3.87
+    )
+    with_trap = build_validity(brief, setups={**setups, "velocity": trapped})
+    assert with_trap.correlation_time_s == pytest.approx(0.0121, rel=1e-2)
+
+
+def test_the_carried_numbers_make_l6_5_grade(tmp_path):
+    """End to end: 6.9 particles x 6000 frames is 41,533 naive samples, and 50
+    frames per correlation time makes that 415 -- 4.9 % against a 5 % target
+    where counting every frame would have claimed 0.49 %."""
+    from validity.checks import check_independent_samples
+
+    r = check_independent_samples(_validity_for(_full(tmp_path)))
+    assert r.kind == "soft"
+    assert r.numbers["independent_samples"] == pytest.approx(415, rel=1e-2)
+    assert r.numbers["optimism_factor"] == pytest.approx(10.0, rel=1e-2)
+    assert r.margin > 1.0
+
+
+# ---------------------------------------- the two new brief fields --------
+
+
+def test_target_particles_in_field_is_passed_only_when_stated(tmp_path):
+    """Its dataclass default of 1.0 is definitional -- one particle or there is
+    no measurement -- so passing None would break L4.8 rather than default it."""
+    from designer.build import build_sample
+
+    silent = build_sample(_full(tmp_path), detection=None)
+    assert silent.target_particles_in_field == 1.0
+
+    stated = build_sample(
+        _full(
+            tmp_path,
+            extra_lens_4='    target_particles_in_field: {value: 5.0, source: "test"}\n',
+        ),
+        detection=None,
+    )
+    assert stated.target_particles_in_field == 5.0
+
+
+def test_n_steps_reaches_lens_9(tmp_path):
+    from designer.build import build_velocity
+
+    assert build_velocity(_full(tmp_path)).n_steps is None
+    stated = build_velocity(
+        _full(tmp_path, extra_lens_9='    n_steps: {value: 40, source: "test"}\n')
+    )
+    assert stated.n_steps == 40

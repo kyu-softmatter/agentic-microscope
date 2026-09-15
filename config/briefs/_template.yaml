@@ -188,9 +188,13 @@ facts:
     chamber_sealed:             # R1 -> L8.3
       value: null
       source: ""
-    tracer_concentration_per_ml:  # R1 -> L4.6
+    tracer_concentration_per_ml:  # R1 -> L4.6 (crowding) and L4.8 (too dilute)
       value: null
       source: ""
+    target_particles_in_field:  # R1 -> L4.8. Left null it is 1.0, which is not
+      value: null               #    a chosen threshold: below one particle in
+      source: ""                #    the field there is no measurement. Raise
+                                #    it for an ensemble experiment
 
   # -------------------------------------------------------------------------
   # LENS 5 · photo. A REPORTING SECTION since 2026-09-10 -- every check INFO,
@@ -228,12 +232,19 @@ facts:
       value: null                 #    the worst case (the fastest) is judged
       source: ""
       evidence: measured          #    commanded, therefore exactly known
-    target_relative_error:      # R1 -> L9.2 L9.3. EVERY bound in lens 9 derives
-      value: null               #    from it, which is why lens 9 has no LIMITS
-      source: ""
+    target_relative_error:      # R1 -> L9.2 L9.3 L9.6 **and L6.5**. EVERY bound
+      value: null               #    in lens 9 derives from it, which is why
+      source: ""                #    that lens has no LIMITS -- and lens 6 now
+                                #    sizes its sample count from the same
+                                #    number. It lives here because lens 9
+                                #    introduced it; it is the EXPERIMENT's
+                                #    criterion, not that lens's
     step_duration_ms:           # R1 -> L9.3 (the offset has to arrive)
       value: null
       source: ""
+    n_steps:                    # R1 -> L9.6. Left null the check REPORTS how
+      value: null               #    many steps the target error needs instead
+      source: ""                #    of grading -- nobody has decided yet
     localization_sigma_nm:      # R0 -> L9.2's floor. Lens 2 computes it
       value: null
       source: ""
@@ -241,10 +252,24 @@ facts:
       value: null                 #    real configuration until this is done
       source: ""
 
+  # -------------------------------------------------------------------------
+  # LENS 6 · validity has NO block here, and that is not an omission. Three of
+  # its four L6.5 inputs are other lenses' numbers -- the particle count from
+  # lens 4, the frame count and rate from lens 2, the correlation time from
+  # lens 7 by way of lens 9 -- and `designer/build.py` carries them down. The
+  # fourth, `target_relative_error`, is stated once above.
+  #
+  # A brief that restated them would be inventing a second source for a number
+  # a lens already computes, which is the failure the objective registry taught
+  # on 2026-09-14.
+  # -------------------------------------------------------------------------
+
   environment:
-    acquisition_duration_s:     # R1 -> L3.5 L8.1 L8.3 L8.4, and it decides whether
-      value: null               #    lens 8 is convened at all (~30 min). Absent,
-      source: ""                #    the seat is `undecided`, not `absent`
+    acquisition_duration_s:     # R1 -> L3.5 L8.1 L8.3 L8.4 **L6.5**, and it
+      value: null               #    decides whether lens 8 is convened at all
+      source: ""                #    (~30 min). Absent, the seat is
+                                #    `undecided`, not `absent`. L6.5 multiplies
+                                #    it by the decided rate to get the frames
     temperature_c:              # R0 -> drag, kT. The LAB SETPOINT, which is the
       value: null               #    room and not the sample at the focus
       source: kb/expertise/microrheology-standard-conditions.md

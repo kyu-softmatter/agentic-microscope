@@ -28,7 +28,12 @@ INTRA_TIER = {("detection", "compute"): "L3.2 is judged against lens 2's fps_usa
 #: nothing but the brief.
 CROSS_TIER = {
     ("detection", "sample"): "L4.6's particle count needs the field, which is "
-    "lens 2's ROI times lens 2's pixel"
+    "lens 2's ROI times lens 2's pixel",
+    ("sample", "validity"): "L6.5 counts the particles L4.6 and L4.8 bound",
+    ("detection", "validity"): "L6.5 needs the decided rate to turn a "
+    "correlation time into a correlation length in frames",
+    ("velocity", "validity"): "L6.5's correlation time is lens 7's tau = "
+    "gamma/kappa, which lens 9 already computes",
 }
 
 
@@ -121,7 +126,9 @@ def run(brief: Brief) -> Result:
     for index, tier in enumerate(tiers, start=1):
         for lens in _sequence(tier):
             if lens == "validity":
-                built = _build.build_validity(brief, upstream=_upstream(result))
+                built = _build.build_validity(
+                    brief, upstream=_upstream(result), setups=_setups(result)
+                )
             elif lens == "sample":
                 built = _build.build_sample(brief, detection=_setup_of(result, "detection"))
             else:
@@ -165,6 +172,11 @@ def _evaluate(lens: str, setup):
         channels = setup
         return gate.evaluate(channels[0], others=channels[1:])
     return gate.evaluate(setup)
+
+
+def _setups(result: Result) -> dict:
+    """Every Setup built so far, for a lens that needs another's numbers."""
+    return {lens: run.setup for lens, run in result.runs.items() if run.setup is not None}
 
 
 def _setup_of(result: Result, lens: str):

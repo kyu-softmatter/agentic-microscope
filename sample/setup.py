@@ -169,6 +169,37 @@ class SampleSetup:
         return None, "unavailable"
 
     @property
+    def settled_areal_density_per_um2(self) -> float | None:
+        """``sigma = c * H`` -- particles per um^2 once everything has settled.
+
+        On the setup rather than inside a check because **three readers need
+        the same number**: L4.6 bounds it from above, L4.8 from below, and
+        lens 6's L6.5 counts the particles contributing to an ensemble
+        average. Two of those computing it separately is how the upper and
+        lower bounds would eventually disagree about one quantity
+        (CLAUDE.md §7).
+        """
+        from .aberration import settled_areal_density_per_um2
+
+        c, _ = self.resolved_concentration_per_ml
+        if c is None or self.chamber_height_um is None:
+            return None
+        return settled_areal_density_per_um2(c, self.chamber_height_um)
+
+    @property
+    def expected_count_in_field(self) -> float | None:
+        """How many particles land in the field, once settled.
+
+        ``None`` when the concentration, the chamber height or the field is
+        missing -- and the field is lens 2's (`DetectionSetup.field_of_view_um`),
+        so through the designer this is None until lens 2 has run.
+        """
+        sigma = self.settled_areal_density_per_um2
+        if sigma is None or self.field_width_um is None or self.field_height_um is None:
+            return None
+        return sigma * self.field_width_um * self.field_height_um
+
+    @property
     def resolved_n_sample(self) -> float:
         return DEFAULT_N_SAMPLE if self.n_sample is None else self.n_sample
 

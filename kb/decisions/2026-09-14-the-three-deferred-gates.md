@@ -172,10 +172,17 @@ means the bound needs a loss term rather than a caveat.
 
 ## Not decided here
 
-- **The wiring.** Nothing yet fills L6.5's four fields from lenses 2, 3 and 4,
-  or L9.6's `n_steps` from a brief. The checks report `missing.*` until the
-  designer carries them, which is the same shape as the three handoffs the
-  audit repaired this morning and should be fixed the same way.
+- ~~**The wiring.**~~ **Done the same day.** `designer/build.py` carries
+  L6.5's four numbers down -- the particle count from
+  `SampleSetup.expected_count_in_field` (the same settled density L4.6 and
+  L4.8 bound from either side, moved onto the setup so all three readers share
+  one definition), the frame count from duration x lens 2's decided rate, and
+  the correlation time from lens 9's `tau = gamma/kappa` where there is a trap
+  and the brief's stated characteristic time otherwise. `n_steps` and
+  `target_particles_in_field` are brief fields. Worked end to end on a real
+  geometry: 6.9 particles x 6,000 frames is 41,533 naive samples, and 50
+  frames per correlation time makes that **415** -- 4.9 % against a 5 %
+  target, where counting every frame would have claimed 0.49 %.
 - **Whether L6.5 should read upstream metrics directly.** It takes plain
   fields instead, so the designer wires it. Reaching into another lens's
   `metrics` dict by string key was the alternative and is more fragile.
