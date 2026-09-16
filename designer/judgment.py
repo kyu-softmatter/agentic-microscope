@@ -124,6 +124,18 @@ class Packet:
     #: number it will cite has to arrive with it.
     carried: list[dict] = field(default_factory=list)
     must_rule_on: list[Subject] = field(default_factory=list)
+    #: Checks that RAN and emitted nothing -- a pass the gate did not think
+    #: worth a finding. **Optional**, and the split is the whole point.
+    #:
+    #: Lens 6 asked for these, about itself: "`validity.bias_ledger` at 10.0
+    #: and `validity.pixel_calibration` at 10.0 appear in `margins` and in
+    #: `metrics` but emitted no finding, so the two checks where my judgement
+    #: differs most from the gate's had to go into `unevaluated` with
+    #: `code: null`." It needed the ABILITY to rule on them, not an
+    #: obligation -- lens 4 had already complained about being handed eight
+    #: subjects that wanted eight identical answers. So silence here is not
+    #: refused; only `must_rule_on` is.
+    may_rule_on: list[Subject] = field(default_factory=list)
     #: D7: read the `assumed:` line of every verdict, it is the verdict's real
     #: content. Listed separately from the rulings because an assumed input is
     #: not a finding and cannot be ruled on -- it is what the rulings rest on.
@@ -172,6 +184,11 @@ _RETURN_SCHEMA = {
     ],
     "unevaluated": "REQUIRED KEY EVEN WHEN EMPTY. What this lens could not "
     "judge, and why -- an absent key reads as a cleared one (§3)",
+    "_on_the_two_lists": "every code in `must_rule_on` must appear in "
+    "`rulings` or in `unevaluated`; silence on one is refused. A code from "
+    "`may_rule_on` may be ruled on and may be left alone -- it is a check "
+    "that ran and emitted nothing, offered because a margin with no finding "
+    "reads as headroom.",
 }
 
 
@@ -324,6 +341,33 @@ def _skipped_checks(lens: str, verdict) -> list[Subject]:
     ]
 
 
+def _silent_passes(lens: str, verdict) -> list[Subject]:
+    """Checks that produced a result and no finding.
+
+    Every gate drops `severity == "ok"` from `findings`, so these exist only
+    in `margins` and `metrics` -- which no CLI prints and, as lens 6 observed
+    of its own ledger, a reader takes for headroom.
+
+    Derived from `margins` minus the emitted codes, so it needs no gate change
+    and cannot drift. Phase 0b (2026-09-15) made MORE checks run and therefore
+    more of them pass quietly, so this list grew as a direct consequence of
+    that fix.
+    """
+    emitted = {f.code for f in verdict.findings}
+    return [
+        Subject(
+            code=code,
+            kind=None,
+            severity="ok",
+            m=margin,
+            because="ran and emitted no finding -- in `margins` and `metrics` "
+            "only, where a margin is read as headroom. Optional to rule on",
+        )
+        for code, margin in verdict.margins.items()
+        if code not in emitted
+    ]
+
+
 def _ledger_subjects(setup) -> list[Subject]:
     """Lens 6's review list, from `validity.setup`'s own ledger.
 
@@ -425,6 +469,7 @@ def build_packets(result: Result, judgments: dict[str, Any] | None = None) -> di
             carried=_carried_into(lens),
             must_rule_on=subjects,
             assumed_inputs=list(run.verdict.assumed_inputs),
+            may_rule_on=_silent_passes(lens, run.verdict),
             unevaluated_in_scope=_scope_unevaluated(result, lens),
             cross_lens=_cross_lens(result, lens),
         )
@@ -547,6 +592,10 @@ def check_judgment(
         ))
 
     subjects = {s.code: s for s in packet.must_rule_on}
+    #: Rulable but not obligatory. A ruling on one of these is checked exactly
+    #: as an obligatory one is -- basis required, `cleared-a-stop` applied --
+    #: and silence about it is not refused.
+    optional = {s.code: s for s in packet.may_rule_on}
 
     for r in judgment.rulings:
         if r.ruling in AMBIGUOUS_RULINGS:
@@ -571,7 +620,7 @@ def check_judgment(
                 "state what the ruling rests on. A judgment with no Why is not "
                 "storable (§6) and not reviewable",
             ))
-        if r.code not in subjects:
+        if r.code not in subjects and r.code not in optional:
             out.append(Refusal(
                 "invented-subject",
                 f"{r.code}: nothing in this packet asked about it",
@@ -594,7 +643,7 @@ def check_judgment(
         ))
 
     for r in judgment.rulings:
-        subject = subjects.get(r.code)
+        subject = subjects.get(r.code) or optional.get(r.code)
         if subject is None or r.ruling != "overruled":
             continue
         if subject.kind == "hard" and subject.m is not None and subject.m < 1.0:

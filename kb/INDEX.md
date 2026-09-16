@@ -48,7 +48,7 @@ Durable expert judgment. Each carries a `Why` and a falsifier.
 - **[microrheology-standard-conditions](expertise/microrheology-standard-conditions.md)** · 2026-09-07
   What conditions does a microrheology run on this instrument default to, and which of them are choices rather than constants
 
-## `kb/decisions/` — 52 entries
+## `kb/decisions/` — 53 entries
 
 Dated design and scope choices, in the order they were made.
 
@@ -144,6 +144,8 @@ Dated design and scope choices, in the order they were made.
   Which of the operator's parameters can the committee actually decide, and where should the gates that decide the rest get their thresholds?
 - **[2026-09-14-the-three-deferred-gates](decisions/2026-09-14-the-three-deferred-gates.md)** · 2026-09-14
   What arithmetic do L4.8, L6.5 and L9.6 rest on, and what stops L6.5 from being G11 again?
+- **[2026-09-15-an-empty-ledger-is-not-a-clean-one](decisions/2026-09-15-an-empty-ledger-is-not-a-clean-one.md)** · 2026-09-15
+  A check passes and emits nothing. Where does that go, and when is the silence a claim about the proposal rather than about the committee?
 - **[2026-09-15-l1-3-read-a-notch-as-an-overlap](decisions/2026-09-15-l1-3-read-a-notch-as-an-overlap.md)** · 2026-09-15 · corrected by [2026-09-15-l1-5-explained-nothing](decisions/2026-09-15-l1-5-explained-nothing.md)
   L1.3 failed the lab's only real proposal at m=0.00 on both channels. Was it right?
 - **[2026-09-15-l1-5-explained-nothing](decisions/2026-09-15-l1-5-explained-nothing.md)** · 2026-09-15

@@ -184,7 +184,7 @@ in code is the part that can be checked either side of that
 
 | Half | What it does |
 |---|---|
-| `packets` | writes what each judgment lens is handed: its own gate's `Verdict` **to interpret, not recompute**, who carried it which number, and the list it must rule on. That list is **derived** — the gate's own findings, and for lens 6 `validity.setup`'s three ledger states — never declared here |
+| `packets` | writes what each judgment lens is handed: its own gate's `Verdict` **to interpret, not recompute**, who carried it which number, the lens 01 §4 pairs it with, and **two** rulable lists. `must_rule_on` is obligatory — silence on one is refused; `may_rule_on` is the checks that ran and emitted nothing, offered because a margin with no finding reads as headroom. Every entry on both is **derived** — the gate's own findings, its skipped and its silent checks, and for lens 6 `validity.setup`'s three ledger states — never declared here |
 | `emit --judgment` | reads the verdicts back and **refuses nine ways**. One refusal writes nothing: a refused judgment is not a missing one, and writing the plan without it would record a review that did not happen |
 
 The refusals worth knowing without opening the file: a ruling with no `basis` ·
@@ -442,10 +442,11 @@ survives a clean checkout).
 pytest -q -rs
 ```
 
-1465 passed, 11 skipped on macOS, of 1,476 (re-measured 2026-09-15; was
+1471 passed, 11 skipped on macOS, of 1,482 (re-measured 2026-09-15; was
 1374/11 of 1,385 on 2026-09-14, and the 91 added since are the plan emitter's,
 stage 2's seam, L1.3/L1.5, the four defects that convening the real agents
-found, and Phase 0b in all nine gates -- the emitter is where the previous four broken handoffs were found, one
+found, Phase 0b in all nine gates, and the
+third subject source -- the emitter is where the previous four broken handoffs were found, one
 of them a number the run order already claimed to carry. Windows printed 1195/10 on 2026-09-09 — one Windows-only test — and has
 **not** been re-measured since). Two kinds of
 skip: three whole modules behind `pytest.importorskip("pymmcore_plus")`

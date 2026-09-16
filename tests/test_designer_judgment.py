@@ -741,3 +741,60 @@ def test_an_unjudged_lens_is_still_named_in_the_plan(tmp_path, result):
     assert "`awaiting`" in body
     assert "`absent`" in body
     assert "`convened`" in body
+
+
+# ------------------------------------- the third subject source, optional --
+
+
+def test_a_check_that_passed_quietly_is_offered_but_not_obligatory(real):
+    """Lens 6 asked for these, about itself: the two checks where its
+    judgement differed most from the gate's "appear in `margins` and in
+    `metrics` but emitted no finding, so they had to go into `unevaluated`
+    with `code: null`."
+
+    It needed the ABILITY to rule on them, not an obligation -- lens 4 had
+    already complained about eight subjects that wanted eight identical
+    answers. So they arrive on a second list and silence about them is not
+    refused.
+    """
+    packet = judgment_mod.build_packets(real)["sample"]
+
+    assert packet.may_rule_on, "checks that ran and emitted nothing"
+    assert all(s.severity == "ok" for s in packet.may_rule_on)
+    assert all(s.m is not None for s in packet.may_rule_on)
+    assert not ({s.code for s in packet.may_rule_on}
+                & {s.code for s in packet.must_rule_on}), "disjoint"
+
+    # A verdict answering only the obligatory list is accepted.
+    assert judgment_mod.check_judgment(_judgment(packet), packet) == []
+
+
+def test_an_optional_subject_may_be_ruled_on_and_is_checked_the_same_way(real):
+    """Offered is not unchecked: a ruling on one needs a basis like any other,
+    and `cleared-a-stop` applies to it."""
+    packet = judgment_mod.build_packets(real)["sample"]
+    quiet = packet.may_rule_on[0]
+
+    ruled = _judgment(packet, rulings=list(_judgment(packet).rulings) + [
+        Ruling(code=quiet.code, ruling="overruled",
+               basis="the gate passed it and I do not accept the pass")
+    ])
+    assert judgment_mod.check_judgment(ruled, packet) == []
+
+    baseless = _judgment(packet, rulings=list(_judgment(packet).rulings) + [
+        Ruling(code=quiet.code, ruling="overruled", basis="")
+    ])
+    assert [r.rule for r in judgment_mod.check_judgment(baseless, packet)] == ["no-basis"]
+
+
+def test_phase_0b_is_what_made_this_list_grow(real):
+    """Stated as a consequence rather than a coincidence. Phase 0b makes more
+    checks run, so more of them pass quietly -- it widened exactly the gap
+    this list closes."""
+    sample = real.runs["sample"]
+    assert sample.verdict.status == "BLOCKED"
+    #: Margins on a BLOCKED verdict exist only because of Phase 0b, and every
+    #: optional subject is drawn from them.
+    assert sample.verdict.margins
+    codes = {s.code for s in judgment_mod.build_packets(real)["sample"].may_rule_on}
+    assert codes <= set(sample.verdict.margins)

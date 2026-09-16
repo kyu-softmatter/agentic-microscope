@@ -195,6 +195,10 @@ def check_bias_ledger(setup: "ValiditySetup") -> CheckResult:
         #: which one ran. Filled in below when there is anything uncorrected.
         "worst_uncorrected_margin": None,
         "ungraded_uncorrected_codes": [],
+        #: Which upstream lenses produced no verdict to report a bias from.
+        #: Empty means the ledger's silence is a finding about the proposal;
+        #: non-empty means it is a finding about the committee.
+        "ledger_empty_because": [],
     }
 
     scoped_note = ""
@@ -207,12 +211,45 @@ def check_bias_ledger(setup: "ValiditySetup") -> CheckResult:
         )
 
     if not all_bias:
+        # AN EMPTY LEDGER IS NOT A CLEAN ONE, and until 2026-09-15 this branch
+        # could not tell them apart. Lens 6, convened on a real proposal:
+        # "bias_findings: 0, applicable: 0, uncorrected_codes: [] -- because
+        # the four lenses that emit bias-kind findings BLOCKED before Phase 1
+        # and produced none. Anyone reading `margins` without `metrics` on
+        # this verdict reads the opposite of the truth." On that run lens 4
+        # had already identified an UNCORRECTABLE near-wall drag on the
+        # intended quantity, in prose, while this gate reported full headroom.
+        #
+        # The distinction is available: `blocked_lenses` and
+        # `missing_standing_lenses` both exist on the setup. What was missing
+        # was that `_ok` vanishes -- the same defect the `not applicable`
+        # branch below had, corrected on 2026-09-11 for the same reason.
+        silent = setup.blocked_lenses() + setup.missing_standing_lenses()
+        numbers["ledger_empty_because"] = silent
+        if silent:
+            return CheckResult(
+                "validity.bias_ledger",
+                HARD,
+                MAX_MARGIN,
+                "info",
+                "No upstream lens reported a bias finding -- but "
+                f"{', '.join(silent)} produced no verdict to report one from, "
+                "so this ledger is EMPTY rather than clean. The margin is "
+                "MAX because nothing was weighed, not because nothing was "
+                "found.",
+                action="Read `metrics`, not this margin: bias_findings is 0 "
+                "because the lenses that emit them did not run. Convene them "
+                "and re-run before treating the intended quantity as "
+                "unbiased -- `unevaluated` != `cleared` (CLAUDE.md §3).",
+                numbers=numbers,
+            )
         return _ok(
             "validity.bias_ledger",
             HARD,
             MAX_MARGIN,
-            "No upstream lens reported a bias finding, so there is nothing "
-            "biasing the intended quantity that the committee knows about.",
+            "No upstream lens reported a bias finding, and every standing lens "
+            "returned a verdict, so there is nothing biasing the intended "
+            "quantity that the committee knows about.",
             **numbers,
         )
 

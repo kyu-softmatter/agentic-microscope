@@ -191,9 +191,10 @@ the strongest available: an **empty** bias ledger reports full headroom, while
 lens 4 had identified an uncorrectable bias on the intended quantity in prose.
 
 Phase 0b makes more checks run and therefore makes *more* of them pass quietly.
-So it widens this gap slightly rather than narrowing it. A third subject source
-— checks that ran and emitted nothing — is the repair, and it is not written
-here.
+So it widens this gap slightly rather than narrowing it.
+
+**Closed the same day, and in the two places it turned out to live** →
+[`2026-09-15-an-empty-ledger-is-not-a-clean-one.md`](2026-09-15-an-empty-ledger-is-not-a-clean-one.md).
 
 ## ⚠ This stales the plan it was found from
 

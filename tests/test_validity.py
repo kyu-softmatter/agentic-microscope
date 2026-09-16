@@ -73,3 +73,86 @@ def test_a_wash_leaves_the_relative_error_unchanged():
     base = relative_error(400, 1000)
     quartered_area_four_x_frames = relative_error(100, 4000)
     assert quartered_area_four_x_frames == pytest.approx(base)
+
+
+# ------------------------------------ an empty ledger is not a clean one --
+
+
+def _ledger(**kwargs):
+    from validity.checks import check_bias_ledger
+    from validity.setup import ValiditySetup
+
+    return check_bias_ledger(ValiditySetup(**kwargs))
+
+
+def test_an_empty_bias_ledger_says_it_is_empty():
+    """Lens 6 reported this about its own gate on 2026-09-15: "bias_findings:
+    0, applicable: 0, uncorrected_codes: [] -- because the four lenses that
+    emit bias-kind findings BLOCKED before Phase 1 and produced none. Anyone
+    reading `margins` without `metrics` on this verdict reads the opposite of
+    the truth."
+
+    On that run lens 4 had already identified an UNCORRECTABLE near-wall drag
+    on the intended quantity, in prose, while this gate reported full headroom.
+    """
+    from optics.gate import Verdict as OpticsVerdict
+
+    result = _ledger(
+        intended_quantity="msd",
+        upstream={
+            "optics": OpticsVerdict(status="PASS"),
+            "sample": OpticsVerdict(status="BLOCKED"),
+            "photo": OpticsVerdict(status="BLOCKED"),
+        },
+    )
+
+    #: `info`, NOT `ok` -- every gate drops `ok` from findings, which is how
+    #: this vanished. The same correction the neighbouring `not applicable`
+    #: branch received on 2026-09-11, for the same reason.
+    assert result.severity == "info"
+    assert "EMPTY rather than clean" in result.message
+    assert "nothing was weighed" in result.message
+
+    #: TWO reasons a lens reports no bias, and both belong here: it BLOCKED
+    #: (sample, photo) or it is a standing lens that never reported at all
+    #: (detection, compute -- absent from `upstream`). The second is the
+    #: quieter of the two and is why `missing_standing_lenses` is included.
+    because = result.numbers["ledger_empty_because"]
+    assert {"sample", "photo"} <= set(because), "blocked"
+    assert {"detection", "compute"} <= set(because), "never reported"
+    assert "optics" not in because, "it returned a verdict and no bias"
+
+
+def test_a_genuinely_clean_ledger_still_passes_quietly():
+    """The distinction has to cut both ways or it is just a louder gate. Where
+    every standing lens returned a verdict and none reported a bias, silence
+    IS the finding about the proposal."""
+    from optics.gate import Verdict as OpticsVerdict
+
+    result = _ledger(
+        intended_quantity="msd",
+        upstream={
+            name: OpticsVerdict(status="PASS")
+            for name in ("optics", "detection", "compute", "sample", "validity")
+        },
+    )
+
+    assert result.severity == "ok"
+    assert result.numbers["ledger_empty_because"] == []
+    assert "every standing lens returned a verdict" in result.message
+
+
+def test_the_metrics_shape_does_not_depend_on_the_branch():
+    """`ledger_empty_because` is present in every branch, as the comment above
+    `numbers` requires -- a key that appears only on one path is a key a
+    reader cannot rely on."""
+    from optics.gate import Finding as OpticsFinding
+    from optics.gate import Verdict as OpticsVerdict
+
+    biased = {"sample": OpticsVerdict(
+        status="PASS_WITH_CHANGES",
+        findings=[OpticsFinding("warn", "geometry.ri_mismatch", "m", kind="bias")],
+    )}
+    for upstream in (biased, {}):
+        numbers = _ledger(intended_quantity="msd", upstream=upstream).numbers
+        assert "ledger_empty_because" in numbers
