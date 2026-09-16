@@ -144,18 +144,39 @@ Six heights on one bead, `a` = 2.475 µm. `s = 9a/(16h)` from
 returning a number there, and whose truncation after `9a/(16h)` over-states the
 drag:
 
-| h | s | gamma/gamma_0 | Faxen | v µm/s | f_c Hz | needs fps | blur on var(x) |
+| h | s | gamma/gamma_0 | Faxen | v µm/s | f_c Hz | needs fps | blur on var(x), `u/3` |
 |---|---|---|---|---|---|---|---|
-| 3.0 µm | 0.464 | 1.866 | +86.6 % | 14.9 | 6.4 | 64 | 1.21 % |
-| 3.5 | 0.398 | 1.660 | +66.0 % | 16.8 | 7.2 | 72 | 1.36 % |
-| 4.5 | 0.309 | 1.448 | +44.8 % | 19.2 | 8.2 | 82 | 1.56 % |
-| 6.0 | 0.232 | 1.302 | +30.2 % | 21.4 | 9.2 | 92 | 1.73 % |
-| 8.0 | 0.174 | 1.211 | +21.1 % | 23.0 | 9.9 | 99 | 1.86 % |
-| 10.0 | 0.139 | 1.162 | +16.2 % | 24.0 | 10.3 | 103 | 1.94 % |
+| 3.0 µm | 0.464 | 1.866 | +86.6 % | 14.9 | 6.4 | 64 | 0.60 % |
+| 3.5 | 0.398 | 1.660 | +66.0 % | 16.8 | 7.2 | 72 | 0.68 % |
+| 4.5 | 0.309 | 1.448 | +44.8 % | 19.2 | 8.2 | 82 | 0.78 % |
+| 6.0 | 0.232 | 1.302 | +30.2 % | 21.4 | 9.2 | 92 | 0.87 % |
+| 8.0 | 0.174 | 1.211 | +21.1 % | 23.0 | 9.9 | 99 | 0.93 % |
+| 10.0 | 0.139 | 1.162 | +16.2 % | 24.0 | 10.3 | 103 | 0.97 % |
 
-- **Lever arm: 1.43x in gamma** between h = 3.5 and 10 µm, against a ~3 %
-  per-point statistical error. The effect is 14 sigma from flat; this is
-  measurable, not marginal.
+⚠ **The blur column was exactly twice too large until 2026-09-15, and the error
+started here.** This plan and r1 of the bridge thread both quoted
+`2*D*t_exp/3`, which is the **free-particle MSD** term. For a bead *in a trap*
+the exposure-averaged variance is exact and different:
+`var_blur/var = 2(u - 1 + e^-u)/u^2 -> 1 - u/3` with `u = t_exp/tau_k`. Checked
+against exact-OU boxcar averaging at five values of `u` from 0.028 to 3, the
+exact form holds within 3.3 sigma and `2u/3` is rejected at 16 to 358 sigma
+→ [`trap-stiffness-recovery.r4`](../external/bd/trap-stiffness-recovery.r4.md)
+§2. Every row above is now half what it was (0.60 → 0.97 %, was 1.21 → 1.94 %).
+**No gate ever checked this number** — it was prose arithmetic in a plan, which
+is why it survived two rounds.
+
+- **Lever arm: 1.43x in gamma** between h = 3.5 and 10 µm, against a per-point
+  statistical error of **~3 % that is this repository's own unverified estimate**
+  — 400 numpy realisations, passed through r2 as `sigma_gamma_per_rung` and
+  returned explicitly *not* corroborated (r2 `gaps[2]`). The 14-sigma-from-flat
+  claim below rests entirely on it, so it is an assumption and not a result.
+  ⚠ What *has* now been measured is the neighbouring estimator: one bead's
+  **fitted `f_c` scatters 29.1 ± 0.9 %** at the planned 5 s per rung, falling to
+  **9.2 ± 0.3 %** at 32.3 s (r4 `requirements[0]`). That is the PSD route, not
+  the drag slope, and the two must not be conflated — but the per-rung `gamma`
+  is formed as `slope x alpha_equipartition` (§Analysis), so it inherits
+  whatever `kT/var(x)` does on the same 5 s block, and **nobody has measured
+  that.** See D-3.
 - **The far end is capped at ~10 µm** by lens 4's RI-mismatch screening limit
   `1.85/|dn|` for an oil objective in water. The near end is capped by
   `h > a` — the expansion's own domain — plus the bead's physical radius.
@@ -223,15 +244,21 @@ parameters — so the declaration is now true, for this run, on this bias, and f
 exactly the stated reason. ⚠ It is true only for the **parallel** correction and
 only inside the ladder's 3-10 µm span; extrapolating either way re-opens it.
 
-### What Brownian dynamics answered, and the three decisions it hands back
+### What Brownian dynamics answered, what it corrected, and what is still ours
 
-This plan was sent to the simulation agent as a question, not as numbers, and its
-answer landed at
-[`kb/external/bd/trap-stiffness-recovery.r2`](../external/bd/trap-stiffness-recovery.r2.md)
-— `evidence_class: simulated`, `may_be_gate_threshold: false`. **Nothing below is
+This plan was sent to the simulation agent as a question, not as numbers, over
+three rounds. The answers landed at
+[`r2`](../external/bd/trap-stiffness-recovery.r2.md) ·
+[`r4`](../external/bd/trap-stiffness-recovery.r4.md) ·
+[`r5`](../external/bd/trap-stiffness-recovery.r5.md) — all three
+`evidence_class: simulated`, `may_be_gate_threshold: false`. **Nothing below is
 a gate threshold here.** Each item is a design motivation and, where the two
-repositories disagree about a convention, a decision this plan leaves to the
-operator rather than settling by itself.
+repositories disagreed, either a decision left to the operator or — twice now —
+a number one side had to withdraw.
+
+**Read them in order r4, r5, then r2.** r2 is the oldest and two of its numbers
+are wrong; it is kept because this plan cites it, and it carries a
+`corrected_by` link at the top rather than an edited body.
 
 It **refused the headline question**: BD has no wall and one height, so it makes
 no claim about `h0`, about the Faxén separation, or about per-bead error bars.
@@ -239,7 +266,25 @@ The `±0.195 µm` in §Error budget therefore remains **this repository's own to
 estimate, uncorroborated** — the round did not verify it, and BD returned it
 unverified rather than endorsing it.
 
-**D-1 · The sampling convention differs by exactly 2π, and that is a decision.**
+⚠ **r2 has since been corrected, by r4, and one of the two wrong numbers was
+ours.** Read [`trap-stiffness-recovery.r4`](../external/bd/trap-stiffness-recovery.r4.md)
+before this section, not after: the r2 entry it supersedes is kept only because
+this plan cites it. Both corrections were settled on **exact
+Ornstein-Uhlenbeck data, whose `f_c` is known in closed form** — no simulation
+run, so no integration error is mixed into the verdict.
+
+- **`f_c` recoverable to +1.17 % is withdrawn and NOT replaced.** Exact OU fed
+  through the archived run's own estimator returns +0.8 to +1.2 %: the
+  simulation reproduced the *estimator*, and the estimator was read as physics.
+  It is a bias — `T_obs x 26` does not remove it. **How well `f_c` can be
+  recovered is not known** until the fit is fixed, and r4 offers no number in
+  its place. Every sentence below that used to lean on 1.17 % now leans on a
+  direct scatter measurement instead.
+- **The `2*D*t_exp/3` blur term was ours, and it was twice too large** — see the
+  ladder table. `u/3` is the trapped-bead coefficient.
+
+**D-1 · The sampling convention differs by exactly 2π — and it is no longer a
+decision, because the convention is not what binds.**
 
 | convention | requirement at a = 4.95 µm | 520 fps against it |
 |---|---|---|
@@ -247,19 +292,35 @@ unverified rather than endorsing it.
 | BD's, `10/tau_k` (i.e. `10 f_c * 2*pi`) | **620 Hz** | **16 % short** (8.39 samples per `tau_k`) |
 
 `f_c = 1/(2*pi*tau_k)`, so the two rules are the same rule with and without the
-`2*pi` — neither is wrong and they are not interchangeable. G14 asks the corner
-frequency to be resolved; the BD convention asks the *relaxation* to be sampled
-ten times. **Which one governs this run is the operator's call**, and
-`REQUIRED_SAMPLING_RATIO = 10.0` is not edited here: a constant in that table is
-a claim about every future experiment. If the BD convention is chosen, 620 fps
-needs the ROI height cut further, and lenses 2 and 3 are re-run together (E5).
+`2*pi`. Neither is wrong, and **r4 settled which one matters by measuring
+instead of arguing**: turning the camera model on and off at 5 s per rung moves
+one bead's `f_c` scatter from **28.5 % to 29.1 %** — about 2 % relative — while
+`T_obs` moves it by a factor of **3.2**.
+
+**r5 then closed it from the other side: BD withdrew its own 620 Hz in favour of
+this instrument's 99 Hz**, because the `tau_k/10` convention does not bind at
+this envelope
+→ [`trap-stiffness-recovery.r5`](../external/bd/trap-stiffness-recovery.r5.md).
+So there is **nothing left to decide here**: 520 fps stands, the ROI height is
+not cut, and lenses 2 and 3 are not re-run for this reason.
+
+⚠ **This is not corroboration of G14.** The 99 Hz is our own gate's number
+coming home — the r5 entry marks it `round_trip` for exactly that reason — and a
+number that returns is not a second measurement of itself. What the round
+actually established is the *ranking* (observation length ≫ sampling rate), not
+the threshold. `REQUIRED_SAMPLING_RATIO = 10.0` is therefore still not edited,
+in either direction.
 
 **D-2 · The localisation budget is already spent at the assumed epsilon, and it
 is a bias.** BD puts a **hard** ceiling at `epsilon <= 7.6 nm`, from
-`(epsilon/l_k)^2 <= 0.05` at `l_k = 33.98 nm`. The assumed 10 nm here is above
-that and is worth ~8 % on `alpha` — and because it is a **bias, not a variance**,
-it does not average down over rungs or segments, which is the direction §Error
-budget's "cancels only if epsilon is size-independent" was already pointing.
+`(epsilon/l_k)^2 <= 0.05` at `l_k = 33.98 nm`. **r4 leaves this one standing
+unchanged**: it is analytic, and depends on neither of the withdrawn numbers.
+The assumed 10 nm here is above that and is worth ~8 % on `alpha` — and because
+it is a **bias, not a variance**, it does not average down over rungs or
+segments, which is the direction §Error budget's "cancels only if epsilon is
+size-independent" was already pointing. The blur fix moves the *net* camera
+effect on `alpha` from ~8.0 % to **~7.7 %**: still epsilon-dominated, so the
+ceiling does not move and this is the half of the camera budget that matters.
 **Proposal, for the operator: promote P8's epsilon from a correction to a hard
 precondition** — the run does not start until the stuck bead's centroid variance
 is measured and is at or under the ceiling the analysis needs. Not done
@@ -267,22 +328,89 @@ unilaterally: a hard gate keyed to an imported number would be exactly the
 `may_be_gate_threshold` violation the entry forbids. What is recorded here is the
 proposal and its basis.
 
-**D-3 · 5 s per rung is short of the point where the simulated precision was
-demonstrated.** `T_obs/tau_k` is **310** at 5 s against the **2000** at which BD
-measured `f_c` to +1.17 % — **6.4× short** — while clearing BD's own soft floor
-of 100. BD's soft requirement is `T_obs >= 32.3 s` per rung. The cost of buying
-it is the reason this is a decision and not an edit: 5 s → 32.3 s is paid at
-**every rung of every size**, six rungs and (P0) at least three sizes, so it is
-~8 min of held bead per size before drive segments, against a drift witness
-(P10) that has to hold for all of it. Cheaper alternatives to weigh first:
-accept the shorter `T_obs` and inflate the stated error on the equipartition
-`alpha`, or take `f_c` from the drive-on blocks of step 9b instead of only 9c.
+**D-3 · 5 s per rung is thin, and the number that says so is now a measurement
+rather than a comparison.** The original form of this item — "`T_obs/tau_k` is
+310 against the 2000 at which BD measured `f_c` to +1.17 %, 6.4× short" — was
+**arithmetic against a number that measured nothing**, and r4 voids it. The
+requirement survives at the *same value* on a stronger basis: `T_obs >= 32.3 s`,
+because the per-realisation scatter of one bead's fitted `f_c`, with exposure
+and localisation noise applied, is
 
-**D-4 · The simulated error bar is not comparable to a single bead.** BD's
-1.17 % is an **ensemble of 1000 replicas**; one bead at the same `T_obs/tau_k`
-scatters about **32×** more. Any comparison between this run's per-rung scatter
-and that figure is invalid as stated — the entry says so about its own result.
-Recorded here so the number is not read as a target this run has already met.
+| `T_obs` per rung | `T_obs/tau_k` | one bead's `f_c` scatter |
+|---|---|---|
+| **5 s**, as planned | 310 | **29.1 ± 0.9 %** |
+| **32.3 s** | 2001 | **9.2 ± 0.3 %** |
+
+a factor of 3.2 for a factor of 6.5 in time. **Weigh the cost against that, not
+against 1.17 %.** The cost is unchanged and is why this is a decision and not an
+edit: 5 s → 32.3 s is paid at **every rung of every size**, six rungs and (P0)
+at least three sizes — ~8 min of held bead per size before drive segments,
+against a drift witness (P10) that has to hold for all of it, and drift is the
+one nuisance that has the same shape as the measurand.
+
+⚠ **And buying it does not reach 3 % anyway** (r5). Scatter goes as
+`1/sqrt(T_obs)`, so 3 % from observation length alone needs about
+`(9.2/3)^2 x 32.3 s ≈ 300 s per rung` — thirty minutes of held bead per size,
+which the cost argument above rules out by a wide margin, and which would put
+lens 8 back in play on duration grounds as well as on the ladder. **So the
+decision is not "5 s or 32.3 s".** See D-5.
+
+Two things to settle before paying it, in this order. **First, fix the
+estimator** (§Analysis): the 29.1 % was measured through an unweighted fit over
+the whole band, the same fit that produced the withdrawn +1.17 %, so part of
+that scatter may be the fit rather than the window — and an analysis change
+costs no instrument time. **Second, note what this figure is and is not**: it is
+the PSD route on the 9c block. The per-rung `gamma` is `slope x
+alpha_equipartition`, and `kT/var(x)` on the same block has never been measured
+by either side. Cheaper alternatives still worth weighing: take `f_c` from the
+drive-on blocks of 9b as well as 9c, or accept a shorter `T_obs` and inflate the
+stated error — but not until the estimator question is closed, because right now
+it is not known which of the two is being bought.
+
+**D-4 · The simulated error bar is not comparable to a single bead — and the
+ratio r2 gave for that was wrong too.** r2 said one bead scatters about **32×**
+more, i.e. `sqrt(1000)`. r4 measured **21.1×** at `T_obs/tau_k = 2000` and
+**15.5×** at 310: `f_c` is fitted to the `min(250, N)` subset rather than to all
+1000 particles, and averaging spectra before a non-linear fit is not averaging
+fits, so it was never a `sqrt(n)` law. **The ratio was the wrong thing to
+carry** — the absolute figures are the ones in D-3, 9.2 % per bead at 2000 and
+29.1 % at 310. Recorded so that no ensemble number is read as a target this run
+has already met.
+
+**D-5 · Where per-rung precision comes from is now the open design question,
+and it replaces the one this plan was asking.** r5 answered the question this
+repository sent in r3 — *how much does one bead's fitted `f_c` scatter at this
+envelope, with the camera in the model?* — with **29.1 ± 0.9 %** over 512
+single-bead realisations, against the `<= 3 %` that was hypothesised.
+
+**The hypothesis split cleanly: the mechanism was right and the number was out
+by about 10×.** Observation length binds and the sampling convention does not —
+that part held. What did not hold is the premise underneath the whole error
+budget, that ~3 % per rung is *available*. With D-3's 300 s ruled out, it is
+not, from this route.
+
+Two candidates remain, and **BD can simulate neither without a wall runner**, so
+this one does not come back from the bridge:
+
+- **More beads per rung.** Independent beads average as `1/sqrt(n)`, so ~10
+  beads per rung would reach 9 % at 32.3 s, or ~95 at 5 s. That is a different
+  run — P6 currently *enforces* one isolated bead per ROI precisely because six
+  blobs in one field produced six plausible and wrong fits on 2026-09-03 — and
+  it trades the isolation the run relies on for statistics.
+- **`gamma` from the drag slope rather than from `f_c`.** This is already this
+  plan's **primary** route (`alpha = gamma*v/x_eq`, §Analysis), with the
+  equipartition/PSD block as the cross-check. r5's 29.1 % is about the
+  *cross-check*, not about the primary route — **and the primary route's own
+  per-rung precision has never been measured by either side.** The ~3 % it is
+  assumed to have is the same unverified numpy figure flagged in the ladder
+  section.
+
+**So the honest next step is on this side, not the simulator's:** measure what
+the drag slope actually returns per rung, on the 2026-09-03 data, before buying
+any more observation time (P7 already requires that fit to exist before
+acquiring — this makes it load-bearing rather than tidy). Nothing above changes
+a gate, and none of these numbers may become one: they are `simulated` and the
+entries carry `may_be_gate_threshold: false`.
 
 **What did transfer.** The regimes are different systems and that is the point:
 `k*` 60 358 there against 21 221 here, `l_k/d` 0.004070 against 0.006865 — BD's
@@ -382,10 +510,15 @@ Checked before anything moves. Each refuses the run on its own.
       against the stuck bead of P8. Without it a monotonic z drift is
       indistinguishable from the Faxen curve the run exists to measure.
       — *checked by:* the witness trace, per height
-- [ ] **P7 · The x_eq(v) slope fit exists before acquiring.** `alpha = gamma*v/x_eq`
-      is implemented nowhere, and `creepx` detrends the mean displacement away by
-      design — see §Analysis. — *checked by:* running the fit on the 2026-09-03
-      drag data first
+- [ ] **P7 · The x_eq(v) slope fit exists before acquiring**, *and returns its own
+      per-rung scatter.* `alpha = gamma*v/x_eq` is implemented nowhere, and
+      `creepx` detrends the mean displacement away by design — see §Analysis.
+      ⚠ **This is now load-bearing rather than tidy** (D-5): the ~3 % per-rung
+      error the whole error budget rests on is an unverified numpy figure, and
+      the neighbouring route's measured scatter is 29.1 % at the planned 5 s. The
+      fit on existing data is what says which regime this run is actually in, and
+      it costs no instrument time. — *checked by:* running the fit on the
+      2026-09-03 drag data first, and reporting the spread it returns per rung
 
 ## Sequence
 
@@ -464,8 +597,25 @@ observation in every row.
 - **The wall fit is a second thing to write:** `gamma(dz) = gamma_0/(1 - 9a/(16(dz+h0)))`
   by least squares over the rungs, with `gamma` at each rung formed as
   `slope x alpha_equipartition` and `alpha` corrected for epsilon (P8) and for
-  the `2*D*t_exp/3` blur term. Report `gamma_0`, `h0`, and the residuals against
-  the first-order series — the residuals are where the truncation shows up.
+  the blur term **`u/3`, not `2u/3`** (`u = t_exp/tau_k`) — see the ladder table.
+  Correcting by `2u/3` over-corrects `alpha` by `u/3`, and **that is not a flat
+  offset**: `u` varies monotonically along the ladder, so it writes a
+  monotonic-in-`h` error into the very quantity being fitted. Its size is
+  0.60 % at h = 3.0 to 0.97 % at h = 10 — a 0.37 percentage-point swing against
+  a Faxen signal of +86.6 % to +16.2 %, so it is a correction to make and not a
+  threat to `h0` (r4 §2, stated with its size so it is not over-read).
+  Report `gamma_0`, `h0`, and the residuals against the first-order series — the
+  residuals are where the truncation shows up.
+- **Name the Lorentzian estimator, in writing, before acquiring.** Neither this
+  repository nor BD had ever stated which fit it uses, and measured on exact OU
+  that choice is worth **up to +7.9 %** on `f_c` — more than every declared
+  physics difference in the bridge thread except the wall. An unweighted
+  `curve_fit` over the whole one-sided PSD is dominated by points far above the
+  corner, which carry no information about `f_c`; it is what produced r2's
+  withdrawn +1.17 %. Weighted, or a band restricted to the corner. Until both
+  sides name it, an agreement on `f_c` between them is uninterpretable at the
+  ~1 % level → [`trap-stiffness-recovery.r4`](../external/bd/trap-stiffness-recovery.r4.md).
+  This is an **analysis** change; no trajectory needs re-taking for it.
 - **Identifying the trapped bead:** brightness does not do it. The trapped bead
   is the only object that does not translate with the stage — and this run
   translates the stage, so the discriminator is free here.

@@ -26,9 +26,22 @@ thread: trap-stiffness-recovery/r2
 imported: 2026-09-15
 supersedes: null
 superseded_by: null
-corrected_by: null
+corrected_by: trap-stiffness-recovery.r4
 confirmed_by: null
 ---
+
+<!-- CORRECTED 2026-09-15 by trap-stiffness-recovery.r4, and kept rather than
+deleted because kb/plans/2026-09-15-drag-calibration-stiffness-vs-size.md cites
+it: lifecycle is supersession, not deletion. Two of its numbers are wrong.
+  * "f_c to +1.17 %" measured the ESTIMATOR, not the physics. Withdrawn and NOT
+    replaced -- recoverability is unknown until the Lorentzian fit is fixed.
+  * "T_obs >= 32.3 s" survives at the same value on a different basis: one
+    bead's fitted f_c scatters 29.1 +/- 0.9 % at 5 s and 9.2 +/- 0.3 % at
+    32.3 s. The "6.4x short of 2000" reasoning below is void.
+  * "one bead scatters ~32x more" is 21.1x at 2000 and 15.5x at 310.
+  * "f_s >= 620 Hz" was withdrawn by r5 in favour of this instrument's own
+    99 Hz. The body below is unedited on purpose. -->
+
 
 # Acquisition requirements for recovering f_c, from Brownian dynamics (imported from BD)
 
