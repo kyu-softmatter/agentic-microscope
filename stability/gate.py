@@ -157,6 +157,28 @@ def _assumed_inputs(setup: StabilitySetup) -> list[str]:
 # --------------------------------------------------------------------------
 
 
+def _as_findings(results: list[CheckResult]) -> list[Finding]:
+    """Check results as findings, `ok` dropped.
+
+    One definition because Phase 0b and Phase 2 both need it: a partial run
+    reported in a different shape from a full one is a partial run nobody can
+    compare.
+    """
+    return [
+        Finding(
+            severity=r.severity,
+            code=r.code,
+            message=r.message,
+            action=r.action,
+            numbers=r.numbers,
+            kind=r.kind,
+            margin=r.margin,
+        )
+        for r in results
+        if r.severity != "ok"
+    ]
+
+
 def evaluate(setup: StabilitySetup) -> Verdict:
     assumed = _assumed_inputs(setup)
     evidence = "measured" if not assumed else "assumed"
@@ -182,13 +204,24 @@ def evaluate(setup: StabilitySetup) -> Verdict:
                         "would be fiction.",
                     )
                 )
+        # ---- Phase 0b -- the checks whose OWN inputs are present ---------
+        #
+        # A block used to discard these. Reported by all three judgment
+        # subagents independently on 2026-09-15 and called architectural by
+        # lens 6. The status does not move: BLOCKED and `confidence: none`, so
+        # nothing advances and no feasibility is claimed. What changes is that
+        # a runnable check's result is reported instead of thrown away.
+        # -> kb/decisions/2026-09-15-phase-0-was-all-or-nothing.md
+        partial = [c.run(setup) for c in CHECKS if set(c.requires).issubset(facts)]
         return Verdict(
             status="BLOCKED",
             feasibility="UNKNOWN",
             evidence=evidence,
             confidence="none",
             assumed_inputs=assumed,
-            findings=blocking_findings,
+            findings=blocking_findings + _as_findings(partial),
+            margins={r.code: round(r.margin, 3) for r in partial},
+            metrics={r.code: r.numbers for r in partial},
         )
 
     # ---- Phase 1 -- every check runs -------------------------------------
@@ -208,19 +241,7 @@ def evaluate(setup: StabilitySetup) -> Verdict:
     feasibility = "N/A"
     bottleneck = None
 
-    findings = [
-        Finding(
-            severity=r.severity,
-            code=r.code,
-            message=r.message,
-            action=r.action,
-            numbers=r.numbers,
-            kind=r.kind,
-            margin=r.margin,
-        )
-        for r in results
-        if r.severity != "ok"
-    ]
+    findings = _as_findings(results)
 
     if assumed:
         findings.append(

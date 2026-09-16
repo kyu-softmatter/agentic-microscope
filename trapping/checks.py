@@ -87,6 +87,19 @@ def available_facts(setup: "TrapSetup") -> set[str]:
     #                     from the model on a real power
     if setup.calibration.measured:
         facts.add("laser.calibrated")
+    # Added 2026-09-15 for the same reason the two below it were added on
+    # 2026-09-10: a check was reading something its `requires` did not
+    # declare. `check_confinement` and `check_trap_depth` both go through
+    # `trapping.goa`, which REFUSES BY RAISING outside the ray-optics regime
+    # -- "a GOA force number here would be fiction". The gate already computes
+    # the regime for its `missing.regime` blocking finding, so the fact exists
+    # and was simply not in this vocabulary; every path into those checks went
+    # through a gate that had already returned, so the omission was
+    # unreachable until a block stopped discarding the runnable checks.
+    from .goa import ray_optics_regime
+
+    if ray_optics_regime(setup.bead, setup.beam, setup.medium)[0] == "ray_optics":
+        facts.add("regime.ray_optics")
     if setup.calibration.measured or setup.measured_stiffness_n_per_m is not None:
         facts.add("stiffness")
     return facts
@@ -541,11 +554,26 @@ CHECKS: list[Check] = [
     # L7.2/b/c and their `requires`, both added 2026-09-10. Until then these
     # two had EMPTY requires and so always ran -- grading a stiffness derived
     # from a placeholder dial -> mW map. Two hard gates on fiction.
-    Check("confinement", HARD, ("stiffness",), check_confinement),
-    Check("trap_depth", HARD, ("laser.calibrated",), check_trap_depth),
-    Check("sampling", HARD, ("stiffness", "medium.viscosity"), check_sampling),
+    Check("confinement", HARD, ("stiffness", "regime.ray_optics"), check_confinement),
+    Check(
+        "trap_depth",
+        HARD,
+        ("laser.calibrated", "regime.ray_optics"),
+        check_trap_depth,
+    ),
+    Check(
+        "sampling",
+        HARD,
+        ("stiffness", "medium.viscosity", "regime.ray_optics"),
+        check_sampling,
+    ),
     # Proposes rather than judges -- see check_power_window.
-    Check("power_window", INFO, ("medium.viscosity",), check_power_window),
+    Check(
+        "power_window",
+        INFO,
+        ("medium.viscosity", "regime.ray_optics"),
+        check_power_window,
+    ),
     Check("temperature_basis", INFO, (), check_temperature_basis),
 ]
 

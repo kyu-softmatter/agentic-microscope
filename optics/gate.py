@@ -265,6 +265,28 @@ def _suggest_filters(channel: Channel) -> list[str]:
 # --------------------------------------------------------------------------
 
 
+def _as_findings(results: list[CheckResult]) -> list[Finding]:
+    """Check results as findings, `ok` dropped.
+
+    One definition because Phase 0b and Phase 2 both need it: a partial run
+    reported in a different shape from a full one is a partial run nobody can
+    compare.
+    """
+    return [
+        Finding(
+            severity=r.severity,
+            code=r.code,
+            message=r.message,
+            action=r.action,
+            numbers=r.numbers,
+            kind=r.kind,
+            margin=r.margin,
+        )
+        for r in results
+        if r.severity != "ok"
+    ]
+
+
 def evaluate(
     channel: Channel,
     others: list[Channel] | None = None,
@@ -296,13 +318,25 @@ def evaluate(
                         "would be fiction.",
                     )
                 )
+        # ---- Phase 0b -- the checks whose OWN inputs are present ---------
+        #
+        # A block used to discard these. Reported by all three judgment
+        # subagents independently on 2026-09-15 and called architectural by
+        # lens 6 -- which named it in THIS gate too, among others. The status
+        # does not move: BLOCKED and `confidence: none`, so nothing advances
+        # and no feasibility is claimed. What changes is that a runnable
+        # check's result is reported instead of thrown away.
+        # -> kb/decisions/2026-09-15-phase-0-was-all-or-nothing.md
+        partial = [c.run(channel, others) for c in CHECKS if set(c.requires).issubset(facts)]
         return Verdict(
             status="BLOCKED",
             feasibility="UNKNOWN",
             evidence=evidence,
             confidence="none",
             assumed_inputs=assumed,
-            findings=blocking_findings,
+            findings=blocking_findings + _as_findings(partial),
+            margins={r.code: round(r.margin, 3) for r in partial},
+            metrics={r.code: r.numbers for r in partial},
             suggestions=[
                 "Fill the missing hardware facts before any optical verdict is "
                 "meaningful. See docs/02 §10 for the outstanding list."
@@ -320,19 +354,7 @@ def evaluate(
     feasibility = grade(worst.margin) if worst else "UNKNOWN"
     bottleneck = worst.code if worst else None
 
-    findings = [
-        Finding(
-            severity=r.severity,
-            code=r.code,
-            message=r.message,
-            action=r.action,
-            numbers=r.numbers,
-            kind=r.kind,
-            margin=r.margin,
-        )
-        for r in results
-        if r.severity != "ok"
-    ]
+    findings = _as_findings(results)
 
     ablations = ablate(
         channel,

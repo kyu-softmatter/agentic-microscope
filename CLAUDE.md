@@ -445,7 +445,7 @@ pytest -q -rs
 1465 passed, 11 skipped on macOS, of 1,476 (re-measured 2026-09-15; was
 1374/11 of 1,385 on 2026-09-14, and the 91 added since are the plan emitter's,
 stage 2's seam, L1.3/L1.5, the four defects that convening the real agents
-found, and Phase 0b in two of the nine gates -- the emitter is where the previous four broken handoffs were found, one
+found, and Phase 0b in all nine gates -- the emitter is where the previous four broken handoffs were found, one
 of them a number the run order already claimed to carry. Windows printed 1195/10 on 2026-09-09 — one Windows-only test — and has
 **not** been re-measured since). Two kinds of
 skip: three whole modules behind `pytest.importorskip("pymmcore_plus")`

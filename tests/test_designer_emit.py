@@ -280,20 +280,28 @@ def test_a_blocked_lens_still_names_what_decided_it(result, identity):
     assert compute["deciding_check"] == "missing.streams"
 
 
-def test_a_reporting_section_is_not_recorded_as_refusing(result, identity):
+def test_a_reporting_section_is_not_recorded_as_refusing(tmp_path, identity):
     """`photo/gate.py`'s `advances` returns None with the comment "Consumers
     must not read this as False; a reporting section neither advances nor
     refuses" -- and this emitter is a consumer. In `plan.yaml` a bare `null`
     in a column of `false` reads as the same thing, so the gate's own
-    `reporting_only` flag travels beside it."""
+    `reporting_only` flag travels beside it.
+
+    On the minimal brief rather than the real one: as of Phase 0b the real
+    brief stops in tier 1 on L9.1, so lens 5 is `not_reached` there and has no
+    row to assert on -> test_designer_judgment.py::test_the_real_brief_stops_on_l9_1.
+    """
+    result = _minimal(tmp_path)
     doc = emit_mod.plan_yaml(result, identity)
     photo = next(r for r in doc["lenses"] if r["name"] == "photo")
-    optics = next(r for r in doc["lenses"] if r["name"] == "optics")
+    validity = next(r for r in doc["lenses"] if r["name"] == "validity")
 
     assert photo["advances"] is None
     assert photo["reporting_only"] is True
-    assert optics["advances"] is False
-    assert optics["reporting_only"] is False
+    #: A judging lens for contrast: `False` means it refused to advance, which
+    #: is a different claim from lens 5's `None`.
+    assert validity["advances"] is False
+    assert validity["reporting_only"] is False
 
     assert "reports only, neither advances nor refuses" in emit_mod.plan_md(
         result, identity

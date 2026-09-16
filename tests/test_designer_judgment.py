@@ -70,16 +70,45 @@ def packets(result):
     return judgment_mod.build_packets(result)
 
 
-@pytest.fixture
-def real():
-    """The repository's own brief, which reaches stage 2 as of the L1.3 repair.
+#: A REAL two-colour light path -- the repository's own channel file -- with
+#: nothing commanding a motion, so lens 9 is absent.
+#:
+#: The repository's own BRIEF cannot serve this any more. As of Phase 0b
+#: (2026-09-15) it stops in tier 1 on L9.1 `velocity.time_base` at m=0.00, a
+#: `hard` gate, so no tier-2 lens is reached and stage 2 has no packets. That
+#: is correct and is the point of `test_the_real_brief_stops_on_l9_1` below --
+#: it is just not a fixture for the seam.
+#:
+#: The synthetic `REACHES_TIER_2` cannot stand in either: it names no channel
+#: file, so its lens 1 is `not_constructible` and there is no per-channel
+#: verdict to carry across a cross-lens row.
+TWO_COLOUR = """
+meta:
+  id: two-colour-no-motion
+  date: 2026-09-15
+  channel_config: config/channels/active-microrheology-probe-tracer.yaml
+goal: {intended_quantity: rheology, in_operator_words: "two arms, nothing commanded"}
+facts:
+  lens_1_optics:
+    detector: {value: Kinetix22, count: 2, source: "test", evidence: measured}
+    objective: {value: "4-Apo LmbdS 40x WI", source: "test", evidence: measured}
+  lens_4_sample:
+    probe: {diameter_um: 0.5, source: "test"}
+    tracer_concentration_per_ml: {value: 10000000.0, source: "test"}
+gaps: []
+"""
+#: No `imaging_depth_um` and no `acquisition_duration_s`, deliberately: those
+#: two absences are what put lens 4 in BLOCKED and lens 8 in `undecided`, which
+#: is the tier-2 state the repository's own brief had before Phase 0b surfaced
+#: L9.1. Dropping them keeps this fixture a stand-in for that state rather
+#: than a cleaner proposal than the real one.
 
-    Used where the assertion is about a REAL two-colour light path -- lens 1
-    with two arms, lens 8 undecided for want of a duration. The synthetic
-    fixture cannot stand in: it names no channel file, so its lens 1 is
-    `not_constructible`.
-    """
-    return run_mod.run(brief_mod.load("config/briefs/active-microrheology.yaml"))
+
+@pytest.fixture
+def real(tmp_path):
+    path = tmp_path / "two-colour.yaml"
+    path.write_text(textwrap.dedent(TWO_COLOUR), encoding="utf-8")
+    return run_mod.run(brief_mod.load(path))
 
 
 def _judgment(packet, *, rulings=None, status="PASS", unevaluated=(), lens=None):
@@ -112,22 +141,34 @@ def _judgment(packet, *, rulings=None, status="PASS", unevaluated=(), lens=None)
 # ----------------------------------------------- the real brief, end to end
 
 
-def test_the_real_brief_reaches_stage_2():
-    """It did not until the L1.3 repair on 2026-09-15.
+def test_the_real_brief_stops_on_l9_1():
+    """Phase 0b surfaced a hard stop the block had been hiding.
 
-    Both channels FAILed `spectral.overlap` at m=0.00 and precedence level 1
-    stopped the run in tier 1, so this file's only subject was a synthetic
-    fixture. The falsifier that entry set for itself is partly retired here:
-    a real proposal now produces real packets.
+    The brief's own text says L9.1 "FAILS on every real configuration": the
+    distance half of the velocity scale is corroborated to 0.24 % and the TIME
+    half has never been checked. But a Phase-0 block discarded the check, and
+    a `missing.*` finding carries `kind: None`, so the tier-1 hard-failure scan
+    saw nothing to stop on. The lens read BLOCKED and the run continued.
+
+    It now reads BLOCKED **and reports the hard failure**, so §2 precedence
+    level 1 applies: stop and return a revision. That is a sharper statement
+    than five missing inputs -- `velocity_time_base` is R2, a measurement
+    somebody must make, not a question somebody must answer.
     """
     result = run_mod.run(brief_mod.load("config/briefs/active-microrheology.yaml"))
-    assert result.stopped_after is None
 
-    packets = judgment_mod.build_packets(result)
-    assert packets, "a real brief must reach at least one judgment lens"
-    for packet in packets.values():
-        assert packet.must_rule_on
-        assert packet.verdict is not None
+    assert result.stopped_after == "tier 1"
+    assert "velocity.time_base" in result.stop_reason
+
+    velocity = result.runs["velocity"].verdict
+    assert velocity.status == "BLOCKED"
+    assert velocity.margins["velocity.time_base"] == 0.0
+    hard = [f for f in velocity.findings if f.kind == "hard" and f.severity == "fail"]
+    assert [f.code for f in hard] == ["velocity.time_base"]
+
+    #: And therefore no stage-2 packet, which is the roster being honest
+    #: rather than a regression.
+    assert judgment_mod.build_packets(result) == {}
 
 
 # ------------------------------------------------------- what is handed over

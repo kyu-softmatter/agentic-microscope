@@ -9,7 +9,11 @@ status: current
 
 **No.** Every gate's Phase 0 returned `BLOCKED` and threw away every check
 result, including the results of checks whose own inputs were all present.
-**Two of the nine now run what they can.** Seven remain — §Not done.
+**All nine now run what they can.**
+
+And converting the last seven surfaced the thing that matters most in this
+entry: **a block was hiding a genuine `hard` stop on the repository's own
+brief.** See §The stop nobody could see.
 
 ## Who found it
 
@@ -113,20 +117,66 @@ In both cases the single remaining entry is the check the block is *actually
 about*. That is the list doing what it was built for rather than restating the
 block eight times.
 
-## Not done — seven gates
+## The stop nobody could see
 
-`optics` · `detection` · `compute` · `validity` · `trapping` · `stability` ·
-`velocity` still discard their runnable checks. The Phase-0 block is
-byte-identical in all nine, **but the fix is not**, for the reason above: each
-gate needs its own `requires` audit, and the two audited so far produced two
-different repairs. A `sed` across the remaining seven would convert two silent
-omissions into seven crashes.
+`config/briefs/active-microrheology.yaml` now **stops in tier 1**:
 
-`trapping` also has a differently-shaped BLOCKED return — an exception handler
-with an inline findings list — so it needs its own reading rather than the same
-patch.
+```
+velocity velocity.time_base: a `hard` gate at m < 1 stops the run
+                             and returns a revision (§2 precedence level 1)
+```
 
-**Lens 6's own gate is among the seven**, and it named the defect in itself.
+L9.1, at m = 0.00. The brief's own text says it — *"L9.1 FAILS on every real
+configuration … the distance half of the scale is corroborated to 0.24 %; the
+TIME half has never been checked"* — and CLAUDE.md's memory of this repository
+says it. **Nothing enforced it**, because:
+
+- Phase 0 discarded `velocity.time_base` along with every other check;
+- and the `missing.*` findings that survived carry **`kind: None`**, so
+  `designer.run._first_hard_failure` — which filters on `kind == "hard"` —
+  found nothing to stop on.
+
+So the lens read `BLOCKED`, the run continued, and every later lens deliberated
+past a hard failure that §2 precedence level 1 says stops everything. **Two
+mechanisms had to agree for it to hide, and both were incidental.**
+
+The corrected reading is also the more useful one. "BLOCKED on five missing
+inputs" is a list of questions; "L9.1 at m = 0.00" is one **R2 measurement**
+somebody must make — *drive a known distance at a known commanded velocity and
+time it independently* — and until it exists this proposal cannot proceed at
+all. That is a different instruction.
+
+## The third and fourth `requires` repairs
+
+Converting the last seven produced two more, and the third is a **new kind**:
+
+### Lens 7 · a check that refuses by *raising*
+
+`trapping.goa` raises `ValueError` outside the ray-optics regime — *"a GOA
+force number here would be fiction; use Rayleigh scattering or GLMT instead."*
+Four checks go through it (`confinement`, `trap_depth`, `sampling`,
+`power_window`) and none declared it. The gate already computed the regime for
+its own `missing.regime` blocking finding, so **the fact existed and was simply
+not in the vocabulary**; every path into those four went through a gate that had
+already returned.
+
+Repaired as lens 4's was — `available_facts` gains `regime.ray_optics` and the
+four checks declare it. Note the precedent in that same registry: `confinement`
+and `trap_depth` had **empty** `requires` until 2026-09-10 and were *"grading a
+stiffness derived from a placeholder dial -> mW map. Two hard gates on
+fiction."* This is the third round of the same audit on the same six checks.
+
+### Lens 7 · and one return that correctly gets no Phase 0b
+
+`evaluate`'s first BLOCKED return is a `ValueError` handler for a dial above the
+calibrated range (5–80 %; 100 % over-ranged the meter). **No Phase 0b there**,
+deliberately: every check either takes `stiffness` or `laser.calibrated`, both
+of which come from the power, or is one of the two audited `requires=()`
+checks, which would report the same thing at any dial. *A dial above the
+calibrated range is not a partial answer; it is a request the curve cannot
+serve at all.*
+
+**Lens 6's own gate was among the nine**, and it named the defect in itself.
 
 ## And one gap Phase 0b does not close
 
@@ -159,6 +209,12 @@ the registered codes, because that is what they were handed. So every recovered
 check is now an `invented-subject` in the old verdict and a `silence` in the
 new packet — both correct.
 
+⚠ **And after the last seven gates, the plan is stale in a second and larger
+way**: that brief no longer reaches stage 2 at all. It stops in tier 1 on L9.1,
+so there are no packets, no judgment halves, and the plan's three `judged` rows
+describe a stage that cannot now run on it. Re-emitting it is not a re-pin and
+not a re-convening — **it needs the velocity time base measured first.**
+
 **Left as is rather than hand-edited.** The plan is `emit`'s output and
 patching a generated file to match code it was not generated from is the one
 thing the `brief.sha256` pin exists to make visible. Refreshing it means
@@ -169,12 +225,24 @@ gates mean it would stale again anyway when they land.
 
 ## Falsifying condition
 
-**If a third `requires` audit produces a third kind of repair, the two patterns
-above are not the taxonomy.** Two lenses gave two answers: declare the missing
-fact, or handle the absence internally. A check needing a fact that is
-*conditionally* required **and** expensive to compute would fit neither, and
-the honest response then is a `requires` that can express a condition, not a
-third convention.
+**The taxonomy already needed a third entry, so assume a fourth.** The
+falsifier as first written said "if a third audit produces a third kind of
+repair, the two patterns above are not the taxonomy" — and the trapping audit,
+run within the hour, produced exactly that: a check that refuses by raising,
+on a fact the gate computes and the vocabulary omits. Three kinds now:
+
+| | repair |
+|---|---|
+| declares `()` and has a requirement | declare it (`depth_window`, and lens 7's four) |
+| needs a fact only *conditionally* | the check handles its own absence (`light_driving`) |
+| refuses by **raising** on a computed condition | put the condition in `available_facts` |
+
+⚠ The second is the one with no mechanism behind it. `requires` is a static
+tuple and cannot say "only when `photoresponsive` is True", so that repair
+rests on a convention — four of lens 4's checks and one of lens 5's — that
+nothing enforces. **A check adopting it silently and then not handling its
+absence would crash exactly as `depth_window` did**, and only a Phase-0b run
+with that input missing would notice.
 
 **And if a recovered check is ever read as a partial clearance, the status
 guard is insufficient.** The defence today is that `status`, `feasibility`,

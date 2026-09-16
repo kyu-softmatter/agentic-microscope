@@ -210,6 +210,28 @@ def _assumed_inputs(setup: TrapSetup) -> list[str]:
 # --------------------------------------------------------------------------
 
 
+def _as_findings(results: list[CheckResult]) -> list[Finding]:
+    """Check results as findings, `ok` dropped.
+
+    One definition because Phase 0b and Phase 2 both need it: a partial run
+    reported in a different shape from a full one is a partial run nobody can
+    compare.
+    """
+    return [
+        Finding(
+            severity=r.severity,
+            code=r.code,
+            message=r.message,
+            action=r.action,
+            numbers=r.numbers,
+            kind=r.kind,
+            margin=r.margin,
+        )
+        for r in results
+        if r.severity != "ok"
+    ]
+
+
 def evaluate(setup: TrapSetup) -> Verdict:
     assumed = _assumed_inputs(setup)
     evidence = "measured" if not assumed else "assumed"
@@ -220,6 +242,12 @@ def evaluate(setup: TrapSetup) -> Verdict:
     # dial above the calibrated range is a perfectly ordinary thing to ask
     # for and it deserves a verdict saying why not (KH: "앞으로 파워를 모를
     # 일이 있나?" -- rarely; THIS is the case that replaces it).
+    # ⚠ NO PHASE 0b ON THIS RETURN, deliberately. Every check below either
+    # takes `stiffness` or `laser.calibrated` -- both of which come from the
+    # power -- or is one of the two audited `requires=()` checks, and
+    # `effective_na` and `temperature_basis` would report the same thing they
+    # report on any dial. A dial above the calibrated range is not a partial
+    # answer; it is a request the curve cannot serve at all.
     try:
         setup.weakest_power_w()
     except ValueError as exc:
@@ -264,13 +292,28 @@ def evaluate(setup: TrapSetup) -> Verdict:
                     "would be fiction.",
                 )
             )
+        # ---- Phase 0b -- the checks whose OWN inputs are present ---------
+        #
+        # A block used to discard these. Reported by all three judgment
+        # subagents independently on 2026-09-15 and called architectural by
+        # lens 6. In this lens `effective_na` and `temperature_basis` both
+        # carry `requires=()` -- and, unlike the two above them, they mean it:
+        # L7.2/b/c had empty requires until 2026-09-10 and were grading a
+        # stiffness derived from a placeholder dial, which is why theirs were
+        # filled in. So the two that remain empty are the audited ones.
+        #
+        # The status does not move: BLOCKED and `confidence: none`.
+        # -> kb/decisions/2026-09-15-phase-0-was-all-or-nothing.md
+        partial = [c.run(setup) for c in CHECKS if set(c.requires).issubset(facts)]
         return Verdict(
             status="BLOCKED",
             feasibility="UNKNOWN",
             evidence=evidence,
             confidence="none",
             assumed_inputs=assumed,
-            findings=blocking_findings,
+            findings=blocking_findings + _as_findings(partial),
+            margins={r.code: round(r.margin, 3) for r in partial},
+            metrics={r.code: r.numbers for r in partial},
         )
 
     # ---- Phase 1 — every check runs -------------------------------------
@@ -282,19 +325,7 @@ def evaluate(setup: TrapSetup) -> Verdict:
     worst = min(gradeable, key=lambda r: r.margin) if gradeable else None
     bottleneck = worst.code if worst else None
 
-    findings = [
-        Finding(
-            severity=r.severity,
-            code=r.code,
-            message=r.message,
-            action=r.action,
-            numbers=r.numbers,
-            kind=r.kind,
-            margin=r.margin,
-        )
-        for r in results
-        if r.severity != "ok"
-    ]
+    findings = _as_findings(results)
 
     if assumed:
         findings.append(
