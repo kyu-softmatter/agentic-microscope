@@ -481,10 +481,16 @@ before writing the next ask**; it is the only part of these documents that
 carries what no number reveals, which is exactly why it is where an answer can
 sit unnoticed.
 
-⚠ Derived here, from the definition of `k*` — **not imported.** The other side
-reports the same conclusion, but it has not crossed as a round document, and a
-conclusion relayed in conversation is not a source (09 §7). Cite this paragraph,
-or the entry that supersedes it when one lands.
+⚠ **Derived here, from the definition of `k*` — and independently confirmed by
+the other side.** When this paragraph was written the other side's identical
+conclusion had only been relayed in conversation, which is not a source (09 §7),
+so it was written as this repository's own arithmetic and said so. It has since
+crossed properly: r8's `gaps[0]` is `kind: not_buildable_here`, `owner: nobody`
+— *"No simulation on this side will ever measure a wall factor it was not
+given"*
+→ [`trap-stiffness-recovery.r8`](../external/bd/trap-stiffness-recovery.r8.md).
+Two independent derivations of the same structural fact, which is stronger than
+either. Cite this paragraph for the arithmetic and the import for their half.
 
 **D-7 · The ladder fit tolerates 4.48 % per rung, the route that measures
 `gamma` delivers 7.2–9.5 %, and r1's own falsifier has fired.**
@@ -664,8 +670,13 @@ Checked before anything moves. Each refuses the run on its own.
       3. **Run the fit wherever the file is.** numpy only — no instrument, no
          Micro-Manager, no MATLAB, no edit to `D:\codes`. `requirements.txt` is
          three packages, so a clone runs it anywhere; **where it runs is
-         incidental** (operator, 2026-09-16) and is recorded as provenance
-         rather than required. In place or on a copy, whichever is easier.
+         incidental** and is recorded as provenance rather than required. In
+         place or on a copy, whichever is easier. That shape is the operator's
+         instruction (KH, 2026-09-16): expand P7 in the plan itself, and build
+         it so **a plan can be produced on another computer too** — read the
+         value from the file where it lives, then store it in `kb`. Refined the
+         same day: producing a plan does not require being on site, so the fit
+         is not tied to the instrument computer.
       4. **Commit the `kb/calibrations/` entry it writes**, after reading it. It
          carries the input's `source_hash`, the machine, `evidence_class:
          measured` and `verified: false`. Being measured *on this instrument* is
@@ -679,10 +690,14 @@ Checked before anything moves. Each refuses the run on its own.
       simulation side puts the route at 7.2–9.5 %, so the expected answer is
       *over* — which is exactly why it is worth measuring rather than assuming.
 
-      ⚠ **Not blocked on a data transfer** — corrected 2026-09-16. It is blocked
-      on **a person doing one of two interchangeable things**: run the fit where
-      the file is, or copy the file and run it here. The design does not care
-      which, so "transfer" was the wrong name for the blocker.
+      ⚠ **Not blocked on a data transfer** — corrected 2026-09-16 under the
+      instruction above. It is blocked on **a person doing one of two
+      interchangeable things**: run the fit where the file is, or copy the file
+      and run it here. The design does not care which, so "transfer" was the
+      wrong name for the blocker. r7's `gaps[0].kind` still says
+      `needs_data_transfer`; that document is sealed and cited, so the
+      correction travels in the next round with a `corrects[]` entry rather than
+      as an edit.
 
 ## Sequence
 
@@ -770,9 +785,22 @@ observation in every row.
   | `alpha(a)` across sizes | common to every size | cancels, as §Error budget already says |
 
   Both survivors sit well under the ~8 % that `epsilon` contributes as a **bias**
-  (D-2), so this is not what limits the run. ⚠ **Derived here, one line of
-  arithmetic — not imported and not an operator ruling.** It is checkable in the
-  table above and should be re-derived rather than trusted.
+  (D-2), so this is not what limits the run. ⚠ **The table is derived here, one
+  line of arithmetic** — checkable above, and to be re-derived rather than
+  trusted.
+
+  **And the operator has ruled on the mismatch generally.** KH, 2026-09-15:
+
+  > "이정도 오차는 오차라고 보지 않음"
+  >
+  > *("An error of this size I do not regard as an error.")*
+
+  That is broader than the derivation and it is the operator's call about their
+  own instrument, so it outranks a lens verdict (the precedent is
+  `kb/systems/current.md:1284`). It does **not** retire the row that says
+  `-1.44 %` on the equipartition `alpha`: a ruling that a number is tolerable is
+  not a claim that it is zero, and the two survivors stay in the table so a
+  later run at a tighter budget can find them.
 
   **So the pixel size is not a reason to move the data.** The reason is the next
   bullet and it stands alone: `alpha = gamma*v/x_eq` is implemented nowhere in

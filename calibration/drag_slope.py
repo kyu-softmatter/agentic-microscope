@@ -7,8 +7,10 @@ simulation side put the ladder fit's tolerance at 4.48 % and nobody here has
 measured what this instrument delivers. The whole plan's viability turns on
 which side of that the answer falls.
 
-**This module goes to the data rather than the other way round** (operator
-instruction, 2026-09-16). It needs numpy and nothing else -- no Micro-Manager,
+**This module goes to the data rather than the other way round** (KH,
+2026-09-16: expand P7 in the plan itself, and build it so a plan can be produced
+on another computer too -- read the value from the file where it lives, then
+store it in `kb`). It needs numpy and nothing else -- no Micro-Manager,
 no MATLAB, no instrument -- so a clone plus `requirements.txt` runs it wherever
 the tracked positions already are, and what comes back into version control is
 the result with its provenance rather than a second copy of the raw data.
@@ -57,9 +59,9 @@ a silent factor of something.
   not an estimate of it. Subtracting an *assumed* `epsilon` here would hide
   that, so it is left in and said instead.
 
-**Where this runs is incidental** (operator, 2026-09-16): producing a plan does
-not require being on site, so the machine and path are recorded as *provenance*
-rather than as a precondition. It runs the same on a copied file as on one in
+**Where this runs is incidental** (KH, 2026-09-16, refining the above):
+producing a plan does not require being on site, so the machine and path are
+recorded as *provenance* rather than as a precondition. It runs the same on a copied file as on one in
 place -- which is why the tool takes a path and knows nothing about a
 microscope.
 """

@@ -48,7 +48,7 @@ Durable expert judgment. Each carries a `Why` and a falsifier.
 - **[microrheology-standard-conditions](expertise/microrheology-standard-conditions.md)** · 2026-09-07
   What conditions does a microrheology run on this instrument default to, and which of them are choices rather than constants
 
-## `kb/decisions/` — 27 entries
+## `kb/decisions/` — 29 entries
 
 Dated design and scope choices, in the order they were made.
 
@@ -106,6 +106,10 @@ Dated design and scope choices, in the order they were made.
   Why could lens 7 not be told a stiffness it had measured, why did two hard gates grade a placeholder, and what should the unnumbered hard checks be called?
 - **[2026-09-11-wall-drag-reaches-the-bias-ledger](decisions/2026-09-11-wall-drag-reaches-the-bias-ledger.md)** · 2026-09-11
   Why did a bias that lens 4 measured and reported never reach the lens whose job is reviewing biases?
+- **[2026-09-15-numbers-from-another-repository](decisions/2026-09-15-numbers-from-another-repository.md)** · 2026-09-15
+  Where does a number computed in another repository live in this knowledge base, and what may it be used for that a measurement may not?
+- **[2026-09-16-a-number-in-prose-is-a-number-nothing-checks](decisions/2026-09-16-a-number-in-prose-is-a-number-nothing-checks.md)** · 2026-09-16
+  Hard rule 2 says a plan originates no physical number. What actually enforced that, and what does now?
 
 ## `kb/plans/` — 3 entries
 
