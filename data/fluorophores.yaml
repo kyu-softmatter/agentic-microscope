@@ -381,8 +381,27 @@ fluorophores:
     em_fwhm_nm: 45
     ext_coeff_M1cm1: 85000
     quantum_yield: 0.28
+    lifetime_ns: 2.2
     photostability: medium
     verified: false
+    note: >
+      lifetime_ns=2.2 is the free dye in PBS (Nanguneri 2014, Microsc Res Tech
+      77:510, doi 10.1002/jemt.22349), filed as literature ->
+      kb/literature/lifetime-ns-tritc.md. Independent cross-check in a
+      different solvent: 1.58 ns in ethanol (Brismar 1995, J Histochem Cytochem
+      43:699). The aqueous value is the one used because this instrument's
+      samples are aqueous; the two land 1.4x apart and agree in magnitude, not
+      to a figure.
+
+      The conjugated forms differ and the two papers disagree about which way:
+      TRITC-phalloidin 2.3 ns (flat, Nanguneri) versus TRITC-IgG 3.32 + 1.4 ns
+      (up, and double-exponential, Brismar). This single name spans all of
+      them, so check which form is in the sample before relying on the number.
+
+      G20 is unaffected by the spread at this instrument's imaging powers: its
+      boundary sits at 5.6e4 W/cm^2 for 2.2 ns, and Spectra>Green at 20x gives
+      153 W/cm^2 over a 100x100 um field. Which value is filed starts to matter
+      only near a diffraction-limited focus.
 
   AlexaFluor555:
     aliases: [AF555, Alexa555, "Alexa Fluor 555"]
