@@ -131,6 +131,34 @@ class PhotonBudget:
 TASK_KINDS = {"imaging", "tracking"}
 
 
+@dataclass(frozen=True)
+class FrameRateWindow:
+    """Both ends of the frame-rate window, and the usable rate between them.
+
+    A triple rather than one number because L2.4 and L2.5 each report one end
+    and lens 3 is judged against the pair (CLAUDE.md §2 E5): a rate that fits
+    the readout and busts the duty limit is not usable, and which of the two
+    binds is the actionable part.
+    """
+
+    #: 1/t_frame at this exposure and ROI -- the fastest the camera goes.
+    fps_hardware_max: float | None
+    #: 0.3/t_exp -- the fastest this exposure keeps motion blur under L2.4.
+    fps_at_duty_limit: float | None
+    #: The min of the two, or None where either end is unknown.
+    fps_usable_max: float | None
+
+    @property
+    def binding(self) -> str | None:
+        if self.fps_usable_max is None:
+            return None
+        return (
+            "blur (L2.4)"
+            if self.fps_at_duty_limit < self.fps_hardware_max
+            else "readout (L2.5)"
+        )
+
+
 @dataclass
 class DetectionSetup:
     objective: Objective
@@ -177,6 +205,44 @@ class DetectionSetup:
         return (
             None if cam.roi_width_px is None else cam.roi_width_px * pixel_um,
             None if cam.roi_height_px is None else cam.roi_height_px * pixel_um,
+        )
+
+    def frame_rate_window(self) -> "FrameRateWindow":
+        """The rate window this camera and this exposure allow, from both ends.
+
+        **One definition of three numbers that had two readers and now has
+        three.** L2.4 computed ``fps_at_duty_limit`` and L2.5 computed it again
+        beside ``fps_usable_max``; lens 3's ``usable_fps_ceiling`` is the third
+        reader, and it was getting ``None`` -- so L3.2, the check CLAUDE.md §2
+        E5 exists for, refused with `missing.usable_fps_ceiling` on every brief
+        the designer ever ran. ``designer/run.py``'s INTRA_TIER already ordered
+        lens 2 before lens 3 *for this number* and nothing carried it, which is
+        a broken handoff wearing a missing gate's clothes.
+
+        Every field is ``None`` where an input is. The duty limit needs only the
+        exposure, so it can exist while the hardware ceiling does not.
+        """
+        from .checks import LIMITS
+        from .timing import frame_period_s, max_fps, readout_time_s
+
+        cam, acq = self.camera, self.acquisition
+        row_time = cam.effective_row_time_us()
+        hardware = None
+        if row_time is not None and cam.roi_height_px is not None:
+            readout_s = readout_time_s(row_time, cam.roi_height_px)
+            hardware = max_fps(
+                frame_period_s(acq.exposure_ms, readout_s, cam.frame_overhead_ms)
+            )
+
+        exposure_s = acq.exposure_ms * 1e-3
+        duty = LIMITS["duty_cycle_max"] / exposure_s if exposure_s > 0 else float("inf")
+
+        # The min is the usable rate ONLY where both ends exist. With one end
+        # missing the other is not the window -- reporting it as such is how a
+        # single bound starts reading as a cleared pair (§3).
+        usable = min(hardware, duty) if hardware is not None else None
+        return FrameRateWindow(
+            fps_hardware_max=hardware, fps_at_duty_limit=duty, fps_usable_max=usable
         )
 
     def pixel_size_nm(self) -> tuple[float, str]:

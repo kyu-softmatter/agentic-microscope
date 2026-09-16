@@ -307,6 +307,24 @@ gaps:
     rank: R1
     consumed_by: [L8.3]
 
+  - field: photons.signal_e_per_s
+    rank: R2
+    consumed_by: [L2.2, L2.3]
+    why: >-
+      Added 2026-09-15, when the brief first had anywhere to put it. It cannot
+      be computed here in either arm -- Dragon Green has neither ext_coeff nor
+      quantum yield and ATTO647N has no ext_coeff (see
+      light_driving_threshold_w_cm2 below) -- so it is measured or it is
+      nothing. ⚠ Its absence does not cost two checks: lens 2's Phase 0 is
+      all-or-nothing, so L2.1, L2.4, L2.5 and L2.6 BLOCK with it.
+    action: "one test frame, photometered -> kb/calibrations/frame-photometry.yaml"
+
+  - field: photons.background_e_per_s
+    rank: R2
+    consumed_by: [L2.3]
+    why: "not computable at all (docs/04 §4); the same frame gives it"
+    action: "the same measurement as photons.signal_e_per_s"
+
   - field: illuminated_area_um2__at_40x
     rank: R2
     consumed_by: [L5.1, L5.2]

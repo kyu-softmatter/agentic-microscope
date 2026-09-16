@@ -20,6 +20,16 @@ from .roster import Seat, convene, order
 
 #: Inside tier 1, who must finish before whom, and why. Empty for every pair
 #: not listed -- those really are parallel.
+#:
+#: ⚠ AN ORDER IS NOT A HANDOFF. This table said "L3.2 is judged against lens
+#: 2's fps_usable_max" from the day it was written and nothing passed the
+#: number, so lens 3 ran second and received nothing: L3.2 refused with
+#: `missing.usable_fps_ceiling` on every brief, which reads from outside like
+#: a gate waiting on a calibration rather than a wire that was never run
+#: (2026-09-15, the fourth of these). The carry is `build_compute`'s
+#: `detection=` argument. It is NOT in CROSS_TIER, which is for edges that
+#: cross a tier boundary; this one is inside tier 1, which is why the order
+#: alone looked sufficient.
 INTRA_TIER = {("detection", "compute"): "L3.2 is judged against lens 2's fps_usable_max"}
 
 #: Handoffs that cross a tier boundary. The tiers already sequence these, so
@@ -131,6 +141,8 @@ def run(brief: Brief) -> Result:
                 )
             elif lens == "sample":
                 built = _build.build_sample(brief, detection=_setup_of(result, "detection"))
+            elif lens == "compute":
+                built = _build.build_compute(brief, detection=_setup_of(result, "detection"))
             else:
                 built = _build.BUILDERS[lens](brief)
             if isinstance(built, _build.NotConstructible):

@@ -97,6 +97,13 @@ def available_facts(setup: "DetectionSetup") -> set[str]:
         facts.add("objective.na")
     if setup.mag_objective and setup.mag_objective > 0:
         facts.add("magnification")
+    #: L2.1 divides by it (`resolution_nm`, `psf_sigma_nm`). Absent from this
+    #: set until 2026-09-15, so a setup with no emission wavelength cleared
+    #: Phase 0 and `check_sampling` raised a TypeError instead of the lens
+    #: refusing by name -- invisible for as long as the only caller was a CLI
+    #: with a required `--wavelength-em-nm`.
+    if setup.wavelength_em_nm:
+        facts.add("wavelength")
     if cam.detector.pixel_um:
         facts.add("pixel")
     if setup.acquisition.task_kind in {"imaging", "tracking"}:
@@ -378,7 +385,8 @@ def check_motion_blur(setup: "DetectionSetup") -> CheckResult:
     # exposure -- hence a MINIMUM ROI height rather than a minimum frame rate.
     duty_max = LIMITS["duty_cycle_max"]
     exposure_s = acq.exposure_ms * 1e-3
-    fps_at_duty_limit = duty_max / exposure_s if exposure_s > 0 else float("inf")
+    window = setup.frame_rate_window()
+    fps_at_duty_limit = window.fps_at_duty_limit
     roi_min_px = (
         math.ceil(exposure_s / (duty_max * row_time * 1e-6))
         if row_time and duty_max > 0
@@ -398,7 +406,7 @@ def check_motion_blur(setup: "DetectionSetup") -> CheckResult:
         #: under the duty limit. Below it, no frame rate satisfies L2.4.
         "roi_height_min_px": roi_min_px,
         #: What the camera can actually do, so the pair brackets the window.
-        "fps_hardware_max": max_fps(t_frame_min),
+        "fps_hardware_max": window.fps_hardware_max,
     }
     d = setup.photons.diffusion_coefficient_m2_s
     if d is not None:
@@ -422,7 +430,7 @@ def check_motion_blur(setup: "DetectionSetup") -> CheckResult:
             f"needs fps <= {fps_at_duty_limit:.0f} at this {acq.exposure_ms:.3f} ms "
             f"exposure, and the camera ceiling is "
             f"{max_fps(t_frame_min):.0f} fps -- so "
-            f"{min(fps_at_duty_limit, max_fps(t_frame_min)):.0f} fps is the "
+            f"{window.fps_usable_max:.0f} fps is the "
             f"usable rate, set by "
             f"{'blur' if fps_at_duty_limit < max_fps(t_frame_min) else 'the camera'}. "
             f"At that ceiling the duty would be {duty * 100:.0f}% "
@@ -480,15 +488,15 @@ def check_frame_rate(setup: "DetectionSetup") -> CheckResult:
     t_frame = frame_period_s(acq.exposure_ms, readout_s, cam.frame_overhead_ms)
     fps = max_fps(t_frame)
 
-    # The blur ceiling, restated here so the two gates report the same window
-    # from both ends and synthesis can take a min without re-deriving it.
-    duty_max = LIMITS["duty_cycle_max"]
-    exposure_s = acq.exposure_ms * 1e-3
-    fps_at_duty_limit = duty_max / exposure_s if exposure_s > 0 else float("inf")
+    # Both ends of the window, from the ONE place that derives them
+    # (`DetectionSetup.frame_rate_window`), so this gate, L2.4 and lens 3's
+    # `usable_fps_ceiling` cannot disagree about what is usable.
+    window = setup.frame_rate_window()
+    fps_at_duty_limit = window.fps_at_duty_limit
 
     decided = acq.decided_fps
     if decided is None:
-        binding = "blur (L2.4)" if fps_at_duty_limit < fps else "readout (this gate)"
+        binding = window.binding
         return CheckResult(
             "frame_rate.unconfirmed",
             INFO,
@@ -497,7 +505,7 @@ def check_frame_rate(setup: "DetectionSetup") -> CheckResult:
             f"Window, both ends: the camera reaches {fps:.0f} fps "
             f"(t_frame={t_frame * 1e3:.2f} ms, readout={readout_s * 1e3:.2f} ms) "
             f"and L2.4's duty limit allows {fps_at_duty_limit:.0f} fps at this "
-            f"{acq.exposure_ms:.3f} ms exposure, so **{min(fps, fps_at_duty_limit):.0f} fps** "
+            f"{acq.exposure_ms:.3f} ms exposure, so **{window.fps_usable_max:.0f} fps** "
             f"is usable and {binding} is what binds. No rate decided yet, so "
             "nothing is graded.",
             action="Decide the rate in synthesis -- lens 3's bandwidth (at the "
@@ -507,7 +515,7 @@ def check_frame_rate(setup: "DetectionSetup") -> CheckResult:
                 "max_fps": fps,
                 "fps_hardware_max": fps,
                 "fps_at_duty_limit": fps_at_duty_limit,
-                "fps_usable_max": min(fps, fps_at_duty_limit),
+                "fps_usable_max": window.fps_usable_max,
                 "frame_period_s": t_frame,
                 "readout_s": readout_s,
                 "fps_source": acq.fps_source,
@@ -525,7 +533,7 @@ def check_frame_rate(setup: "DetectionSetup") -> CheckResult:
         "max_fps": fps,
         "fps_hardware_max": fps,
         "fps_at_duty_limit": fps_at_duty_limit,
-        "fps_usable_max": min(fps, fps_at_duty_limit),
+        "fps_usable_max": window.fps_usable_max,
         "target_fps": acq.target_fps,
         "achieved_fps": acq.achieved_fps,
         "decided_fps": decided,
@@ -702,7 +710,12 @@ def check_scale_coverage(setup: "DetectionSetup") -> CheckResult:
 
 
 CHECKS: list[Check] = [
-    Check("sampling", SOFT, ("objective.na", "magnification", "pixel", "task_kind"), check_sampling),
+    Check(
+        "sampling",
+        SOFT,
+        ("objective.na", "magnification", "pixel", "task_kind", "wavelength"),
+        check_sampling,
+    ),
     Check(
         "saturation",
         HARD,

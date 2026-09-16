@@ -132,8 +132,37 @@ facts:
       source: ""                #    substitute for the measurement
       evidence: measured
     wavelength_em_nm:           # R0 -> L2.1 (the PSF that pixel size is judged against)
-      value: null
-      source: ""
+      value: null               #    REQUIRED: L2.1 divides by it, and with it absent
+      source: ""                #    lens 2 BLOCKs with `missing.wavelength`
+
+    # THE PHOTON BUDGET. Added 2026-09-15, and its absence is why lens 2
+    # BLOCKED on every brief run before then: `build_detection` had no field
+    # to read, so `PhotonBudget` stayed at its defaults, `missing.photon
+    # .signal` fired, and Phase 0 being all-or-nothing took L2.1, L2.4, L2.5
+    # and L2.6 down with it -- on inputs that were all present.
+    #
+    # The first two are R2 and cannot be computed: this lens TAKES k_det, it
+    # does not re-derive the chain lens 1 owns (docs/04 §3, §4). Filling them
+    # from a datasheet would make every SNR number below fiction.
+    photons:
+      signal_e_per_s:           # R2 -> L2.2 L2.3. Detected rate at the
+        value: null             #    brightest pixel. kb/calibrations/
+        source: ""              #    frame-photometry.yaml is the measurement
+      background_e_per_s:       # R2 -> L2.3. Not computable (docs/04 §4)
+        value: null
+        source: ""
+      n_pix_spot:               # R1 -> the read-noise term. Default 1 is the
+        value: null             #    floor and a definition, not a guess
+        source: ""
+      target_snr:               # R1 -> L2.3's threshold. The EXPERIMENT's, so
+        value: null             #    no LIMITS entry claims one for it
+        source: ""
+      target_localization_precision_nm:   # R1 -> L2.1's tracking direction
+        value: null
+        source: ""
+      diffusion_coefficient_m2_s:         # R1 -> reports the ABSOLUTE motion-blur
+        value: null                       #    MSD bias, not just the relative one
+        source: ""
 
   # -------------------------------------------------------------------------
   # LENS 3 · compute. The operator inventory's 컴퓨터 block, one field per row.

@@ -106,6 +106,181 @@ def test_compute_setup_gets_the_streams(tmp_path):
     assert len(setup.streams) == 1
 
 
+# --------------------------------------------------- the rate ceiling ------
+#
+# The handoff INTRA_TIER claimed and nothing carried (2026-09-15). Ordering
+# lens 2 before lens 3 is not the same as handing lens 3 a number: L3.2 warned
+# and graded nothing on every brief with a requested rate, which reads from
+# outside like a bias nobody could bound rather than a wire never run.
+
+REQUESTED = """
+meta: {id: requested, date: 2026-09-15}
+facts:
+  lens_1_optics:
+    detector: {value: Kinetix22, count: 1, source: "test", evidence: measured}
+    objective: {value: "4-Apo LmbdS 40x WI", source: "test", evidence: measured}
+  lens_2_detection:
+    exposure_ms: {value: 10.0, source: "test"}
+    task_kind: {value: tracking, source: "test"}
+    camera_mode: {value: "Sensitivity", source: "test"}
+    wavelength_em_nm: {value: 520.0, source: "test"}
+    roi_width_px: {value: 512, source: "test"}
+    roi_height_px: {value: 512, source: "test"}
+    row_time_ns: {value: 3531.2, source: "test"}
+    target_fps: {value: 100.0, source: "test"}
+    photons:
+      signal_e_per_s: {value: 50000.0, source: "test"}
+      background_e_per_s: {value: 2000.0, source: "test"}
+  lens_3_compute:
+    disk_bandwidth_mb_s: {value: 206.8, source: "test"}
+    free_disk_gb: {value: 500.0, source: "test"}
+    circular_buffer_frames: {value: 10000, source: "test"}
+  environment:
+    acquisition_duration_s: {value: 60.0, source: "test"}
+gaps: []
+"""
+
+
+def _requested(tmp_path):
+    path = tmp_path / "requested.yaml"
+    path.write_text(textwrap.dedent(REQUESTED), encoding="utf-8")
+    return brief_mod.load(path)
+
+
+def test_l3_2_grades_the_requested_rate_once_the_ceiling_is_carried(tmp_path):
+    """Without `detection=` L3.2 can only warn; with it the shortfall gets a
+    margin. Same arrangement as trapping.checks.check_sampling's detector_fps.
+    """
+    import compute.gate as compute_gate
+
+    b = _requested(tmp_path)
+    detection = build_detection(b)
+
+    alone = compute_gate.evaluate(build_compute(b))
+    assert any(f.code == "fps_provenance.requested" for f in alone.findings)
+    assert "fps_provenance" not in alone.margins
+
+    carried = compute_gate.evaluate(build_compute(b, detection=detection))
+    assert not any(f.code == "fps_provenance.requested" for f in carried.findings)
+    # 30 fps usable against a 100 fps request. Unrealizable, and now SAID so
+    # with a margin instead of warned about without one.
+    assert carried.margins["fps_provenance.unrealizable"] == pytest.approx(0.3)
+
+
+def test_the_ceiling_is_the_duty_limit_not_the_hardware_maximum(tmp_path):
+    """At a 10 ms exposure this camera reaches 100 fps and L2.4 allows 30.
+
+    Passing the hardware figure would let L3.2 clear a 100 fps stream L2.4
+    refuses -- the rename recorded in `compute/setup.py`'s own comment (KH,
+    2026-09-10), held here by a number instead of by a comment.
+    """
+    detection = build_detection(_requested(tmp_path))
+    window = detection.frame_rate_window()
+
+    assert window.fps_hardware_max == pytest.approx(100.0)
+    assert window.fps_at_duty_limit == pytest.approx(30.0)
+    assert window.fps_usable_max == pytest.approx(30.0)
+    assert window.binding == "blur (L2.4)"
+
+    setup = build_compute(_requested(tmp_path), detection=detection)
+    assert setup.usable_fps_ceiling == pytest.approx(30.0)
+
+
+def test_lens_3_survives_lens_2_not_being_buildable(tmp_path):
+    """Same rule as lens 4's: None is the honest argument, and it must make
+    L3.2 fall back to warning rather than make the whole lens unbuildable."""
+    setup = build_compute(_requested(tmp_path), detection=None)
+    assert setup.usable_fps_ceiling is None
+    assert len(setup.streams) == 1
+
+
+def test_one_end_of_the_window_is_not_the_window(tmp_path):
+    """With no ROI height there is no readout time, so there is no hardware
+    ceiling -- and the duty limit alone must not be reported as the usable
+    rate. A single bound reading as a cleared pair is §3 exactly."""
+    b = _requested(tmp_path)
+    b.facts["lens_2_detection"]["roi_height_px"] = {"value": None}
+    window = build_detection(b).frame_rate_window()
+
+    assert window.fps_at_duty_limit == pytest.approx(30.0)
+    assert window.fps_hardware_max is None
+    assert window.fps_usable_max is None
+    assert window.binding is None
+
+
+def test_l2_4_l2_5_and_lens_3_read_one_definition_of_the_window(tmp_path):
+    """Three readers, one derivation.
+
+    `fps_at_duty_limit` was derived separately in L2.4 and L2.5 before this,
+    and lens 3's ceiling is the third reader. Two bounds that disagree about
+    the usable rate is the failure one copy away.
+    """
+    import detection.gate as detection_gate
+
+    detection = build_detection(_requested(tmp_path))
+    window = detection.frame_rate_window()
+    verdict = detection_gate.evaluate(detection)
+
+    ends = [
+        numbers["fps_at_duty_limit"]
+        for numbers in verdict.metrics.values()
+        if "fps_at_duty_limit" in numbers
+    ]
+    assert len(ends) >= 2
+    assert all(v == pytest.approx(window.fps_at_duty_limit) for v in ends)
+
+    usable = [
+        numbers["fps_usable_max"]
+        for numbers in verdict.metrics.values()
+        if "fps_usable_max" in numbers
+    ]
+    assert usable and all(v == pytest.approx(window.fps_usable_max) for v in usable)
+
+
+# ------------------------------------------------ lens 2 actually runs -----
+
+
+def test_lens_2_reaches_phase_1(tmp_path):
+    """It never did. `build_detection` passed no `PhotonBudget` and the brief
+    had nowhere to carry one, so lens 2 BLOCKED with `missing.photon.signal`
+    on every brief the designer ever ran -- and Phase 0 is all-or-nothing, so
+    L2.1, L2.4, L2.5 and L2.6 never executed either, on inputs all present."""
+    import detection.gate as detection_gate
+
+    verdict = detection_gate.evaluate(build_detection(_requested(tmp_path)))
+    assert verdict.status != "BLOCKED"
+    assert {"sampling", "motion_blur", "frame_rate"} <= {
+        code.split(".")[0] for code in verdict.metrics
+    }
+
+
+def test_a_brief_with_no_photometry_still_blocks_lens_2(tmp_path):
+    """Signal and background must be MEASURED (kb/calibrations/frame-
+    photometry.yaml). Wiring the field through is not permission to default
+    it: a brief that is silent still BLOCKs, which is the correct answer."""
+    import detection.gate as detection_gate
+
+    b = _requested(tmp_path)
+    del b.facts["lens_2_detection"]["photons"]
+    findings = detection_gate.evaluate(build_detection(b)).findings
+    assert any(f.code == "missing.photon.signal" for f in findings)
+
+
+def test_no_emission_wavelength_refuses_by_name_instead_of_raising(tmp_path):
+    """L2.1 divides by it, and `available_facts` did not list it -- so a setup
+    with no wavelength cleared Phase 0 and `check_sampling` raised a
+    TypeError. Invisible while the only caller was a CLI whose
+    `--wavelength-em-nm` was required."""
+    import detection.gate as detection_gate
+
+    b = _requested(tmp_path)
+    b.facts["lens_2_detection"]["wavelength_em_nm"] = {"value": None}
+    verdict = detection_gate.evaluate(build_detection(b))
+
+    assert verdict.status == "BLOCKED"
+    assert any(f.code == "missing.wavelength" for f in verdict.findings)
+
+
 # ----------------------------------------------------- characteristic ------
 
 

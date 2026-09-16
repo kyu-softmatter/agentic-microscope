@@ -103,7 +103,21 @@ def build_optics(brief: Brief):
 
 
 def build_detection(brief: Brief):
-    from detection.setup import Acquisition, Camera, DetectionSetup
+    """Lens 2.
+
+    ⚠ **The photon budget had no place in the brief until 2026-09-15**, so
+    `PhotonBudget` was left at its defaults and lens 2 BLOCKED with
+    `missing.photon.signal` on every brief the designer ever ran -- the same
+    shape as the objective registry hole found the day before, and larger:
+    Phase 0 is all-or-nothing, so L2.1, L2.4, L2.5 and L2.6 never executed
+    either, on inputs that were all present.
+
+    Two of those fields cannot be computed and have to be measured
+    (`kb/calibrations/frame-photometry.yaml`), so a brief that does not carry
+    them still BLOCKs lens 2 -- correctly. What changes here is that a brief
+    that DOES carry them is now believed.
+    """
+    from detection.setup import Acquisition, Camera, DetectionSetup, PhotonBudget
     from optics.components import find_detector
 
     exposure = brief.value("lens_2_detection.exposure_ms")
@@ -145,6 +159,20 @@ def build_detection(brief: Brief):
         # optics and the value DetectionSetup already carries. A brief that
         # means 1.5x has to say 1.5x.
         mag_intermediate=brief.value("lens_2_detection.mag_intermediate") or 1.0,
+        photons=PhotonBudget(
+            signal_e_per_s=brief.value("lens_2_detection.photons.signal_e_per_s"),
+            background_e_per_s=brief.value("lens_2_detection.photons.background_e_per_s"),
+            # `or 1` is the dataclass's own default and a definition, not a
+            # guess: a spot on one pixel is the read-noise term's floor.
+            n_pix_spot=brief.value("lens_2_detection.photons.n_pix_spot") or 1,
+            target_snr=brief.value("lens_2_detection.photons.target_snr"),
+            target_localization_precision_nm=brief.value(
+                "lens_2_detection.photons.target_localization_precision_nm"
+            ),
+            diffusion_coefficient_m2_s=brief.value(
+                "lens_2_detection.photons.diffusion_coefficient_m2_s"
+            ),
+        ),
         characteristic_length_um=brief.value("system.characteristic_length_um"),
         characteristic_time_s=brief.value("system.characteristic_time_s"),
     )
@@ -154,11 +182,24 @@ def _ns_to_us(ns):
     return None if ns is None else ns / 1000.0
 
 
-def build_compute(brief: Brief):
+def build_compute(brief: Brief, detection=None):
+    """Lens 3, with lens 2's rate ceiling carried in rather than looked up.
+
+    ``detection`` is lens 2's **Setup**, not its verdict: the ceiling comes
+    from ``DetectionSetup.frame_rate_window()``, one definition, and not from
+    a ``metrics`` lookup by string key that renames out from under this the
+    first time a check renames one of its own numbers.
+
+    ``None`` is the honest argument when lens 2 was not constructible, and it
+    leaves L3.2 refusing by name -- which is the answer. What it must not do is
+    make lens 3 unbuildable too.
+    """
     from compute.setup import AcquisitionResourceSetup
 
+    ceiling = None if detection is None else detection.frame_rate_window().fps_usable_max
     return AcquisitionResourceSetup(
         streams=_streams(brief),
+        usable_fps_ceiling=ceiling,
         disk_bandwidth_mb_s=brief.value("lens_3_compute.disk_bandwidth_mb_s"),
         disk_bandwidth_path_confirmed=bool(
             brief.value("lens_3_compute.disk_bandwidth_path_confirmed")

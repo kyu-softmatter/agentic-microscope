@@ -115,6 +115,19 @@ def _missing_inputs(setup: DetectionSetup) -> list[Finding]:
                 action=f"Add '{cam.detector.label}' pixel pitch to data/detectors.yaml.",
             )
         )
+    if not setup.wavelength_em_nm:
+        out.append(
+            Finding(
+                "fail",
+                "missing.wavelength",
+                "No emission wavelength. L2.1's resolution and PSF sigma are "
+                "both proportional to it, so there is no pixel-size question "
+                "without it.",
+                action="State the emission wavelength of the dye being imaged "
+                "-- a property of the experiment, not of the objective "
+                "(data/fluorophores.yaml has it per dye).",
+            )
+        )
     if setup.acquisition.task_kind not in {"imaging", "tracking"}:
         out.append(
             Finding(
