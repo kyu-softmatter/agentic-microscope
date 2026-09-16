@@ -48,6 +48,14 @@ class Seat:
     lens: str
     state: str  # convened | absent | undecided
     why: str
+    #: For an `undecided` seat: the brief field that would settle it.
+    #:
+    #: Carried rather than re-derived. `designer/questions.py` first recovered
+    #: it by string-matching this `why` sentence and got it wrong -- the field
+    #: is `acquisition_duration_s` and the prose says "no acquisition
+    #: duration", so no substitution of underscores for spaces reaches it.
+    #: `convene` below already knows which gap it consulted, so it says so.
+    decided_by: str | None = None
 
     @property
     def runs(self) -> bool:
@@ -68,7 +76,9 @@ def convene(brief: Brief) -> dict[str, Seat]:
         seats["trapping"] = Seat("trapping", "convened", "the probe is trapped")
     elif trapped is None:
         seats["trapping"] = Seat(
-            "trapping", "undecided", "the brief does not say whether anything is trapped"
+            "trapping", "undecided",
+            "the brief does not say whether anything is trapped",
+            decided_by="lens_4_sample.probe.trapped",
         )
     else:
         seats["trapping"] = Seat("trapping", "absent", "nothing is trapped")
@@ -91,6 +101,7 @@ def convene(brief: Brief) -> dict[str, Seat]:
             "undecided",
             "no acquisition duration, so the ~30 min threshold cannot be applied"
             + (f" -- {gap.rank}, the operator's to answer" if gap else ""),
+            decided_by="acquisition_duration_s",
         )
     elif float(minutes) / 60.0 > STABILITY_THRESHOLD_MIN:
         seats["stability"] = Seat(

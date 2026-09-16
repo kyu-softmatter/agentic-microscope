@@ -90,6 +90,49 @@ def cmd_run(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_questions(args: argparse.Namespace) -> int:
+    from . import questions as questions_mod
+
+    result = run_mod.run(brief_mod.load(args.brief))
+    asked = [q for q in questions_mod.questions(result) if q.answerable]
+
+    print(f"{len(asked)} R1 questions -- the operator's, answerable in one "
+          "sitting. Ordered by what answering unblocks, which is derived and "
+          "not chosen.")
+    tier = None
+    for q in asked:
+        if q.tier != tier:
+            tier = q.tier
+            print(f"\n== {tier} ==")
+        also = f"  (the builder calls it {', '.join(q.also_called)})" if q.also_called else ""
+        print(f"\n  {q.field}{also}")
+        if q.unblocks:
+            print(f"      unblocks : {q.unblocks}")
+        if q.consumed_by:
+            print(f"      consumed : {', '.join(q.consumed_by)}")
+        print(f"      ask      : {q.action or '⚠ NO INSTRUCTION -- see below'}")
+
+    blank = questions_mod.without_an_action(result)
+    if blank:
+        print(f"\n⚠ {len(blank)} of the {len(asked)} carry no `action`, so they are "
+              "questions with no way to answer them:")
+        for q in blank:
+            print(f"      {q.field}")
+        print("\n   CLAUDE.md §3: a refusal names what would resolve it, and a "
+              "BLOCKED with no\n   fix instruction is a bug. The rule is enforced "
+              "in the gates' `missing.*`\n   findings and NOT in the brief's own "
+              "gap list. What would resolve each of\n   these is the operator's to "
+              "say -- filling them in here would originate the\n   answer (rule 2).")
+
+    other = [q for q in questions_mod.questions(result) if not q.answerable]
+    if other:
+        print(f"\nand {len(other)} that are NOT on this list, because nobody can "
+              "answer them in conversation:")
+        for q in other:
+            print(f"      {q.rank:4} {q.field}")
+    return 0
+
+
 def cmd_packets(args: argparse.Namespace) -> int:
     from . import judgment as judgment_mod
 
@@ -229,6 +272,13 @@ def main(argv: list[str] | None = None) -> int:
              "before it is believed, and one refusal writes nothing",
     )
     emit_p.set_defaults(func=cmd_emit)
+
+    questions_p = sub.add_parser(
+        "questions",
+        help="the R1 gaps as one ordered list somebody can answer in one sitting",
+    )
+    questions_p.add_argument("brief")
+    questions_p.set_defaults(func=cmd_questions)
 
     packets_p = sub.add_parser(
         "packets", help="write what each judgment lens is to be handed (stage 2)"

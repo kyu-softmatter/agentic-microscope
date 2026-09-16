@@ -159,13 +159,21 @@ it cannot run beside them.
 **Planned 2026-09-13; both stages run as of 2026-09-15.**
 
 ```bash
-python -m designer.cli run     config/briefs/active-microrheology.yaml
-python -m designer.cli packets config/briefs/x.yaml --out <dir>
+python -m designer.cli run       config/briefs/active-microrheology.yaml
+python -m designer.cli questions config/briefs/active-microrheology.yaml
+python -m designer.cli packets   config/briefs/x.yaml --out <dir>
 python -m designer.cli emit    config/briefs/x.yaml --id <slug> --date <date> \
     --question "..." --out <dir> [--judgment <verdict.yaml> ...]
 ```
 
-`run` prints the nine verdicts and writes nothing. `emit` writes both halves of
+`run` prints the nine verdicts and writes nothing. **`questions` is the R1
+gaps as one ordered list** — the operator's, answerable in one sitting — and
+the ordering is *derived*: `NotConstructible` names the field that unblocks a
+whole lens (those first, because such a lens emits no `missing.*` code at all),
+then `Seat.decided_by` names the one that decides a convening, then the brief's
+own `consumed_by` count. It also reports the R1 gaps carrying **no `action`**,
+which is §3's rule unenforced on the brief's own gap list — 10 of 20 on the
+active brief. `emit` writes both halves of
 the plan and then **validates the `.md` it just wrote** with the same check
 `knowledge.cli plan-check` runs. `--out` has no default and `kb/plans/` is not
 one: writing there also means running `knowledge.cli write` and reviewing the
@@ -177,8 +185,12 @@ and `hardware/orchestrator.py` is still for devices
 → [`2026-09-13-the-planning-layer.md`](kb/decisions/2026-09-13-the-planning-layer.md).
 
 **Stage 2 is two commands and a conversation in between, because code cannot
-convene a subagent** and `designer/judgment.py` does not pretend to. The four
-agents in `.claude/agents/` have Read/Grep/Glob; **you** convene them. What is
+convene a subagent** and `designer/judgment.py` does not pretend to. The
+`.claude/agents/` roster has **five** files and `JUDGMENT_LENSES` is **four** —
+`compute-resources.md` is lens 3's interpretive half and stage 2 never convenes
+it, though its own description says it must be invoked with lens 2 whenever
+frame rate is in play (E5). **The roster and the pipeline disagree, and that is
+open.** All five have Read/Grep/Glob; **you** convene them. What is
 in code is the part that can be checked either side of that
 → [`2026-09-15-stage-2-the-judgment-seam.md`](kb/decisions/2026-09-15-stage-2-the-judgment-seam.md).
 
@@ -461,11 +473,12 @@ survives a clean checkout).
 pytest -q -rs
 ```
 
-1478 passed, 11 skipped on macOS, of 1,489 (re-measured 2026-09-15; was
+1485 passed, 11 skipped on macOS, of 1,496 (re-measured 2026-09-15; was
 1374/11 of 1,385 on 2026-09-14, and the 91 added since are the plan emitter's,
 stage 2's seam, L1.3/L1.5, the four defects that convening the real agents
 found, Phase 0b in all nine gates, the
-third subject source, and the tolerance band -- the emitter is where the previous four broken handoffs were found, one
+third subject source, the tolerance band, and the R1
+question list -- the emitter is where the previous four broken handoffs were found, one
 of them a number the run order already claimed to carry. Windows printed 1195/10 on 2026-09-09 — one Windows-only test — and has
 **not** been re-measured since). Two kinds of
 skip: three whole modules behind `pytest.importorskip("pymmcore_plus")`
