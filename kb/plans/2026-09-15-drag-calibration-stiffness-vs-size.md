@@ -433,6 +433,18 @@ realistic per-rung noise. That is an estimator question, not a physics one, and
 it is exactly what would replace the unverified ±0.195 µm in §Error budget. So
 the outstanding request to the other side is a *fit test*, not a wall.
 
+⚠ **And this repository wrote that fallback down in round 1, then spent four
+rounds asking for the wall instead.** r1's `wall_drag` assumption says
+verbatim: *"If BD cannot put a wall in, it can still test the FIT PROCEDURE on a
+synthetic gamma(h) — say so rather than reporting a number from an infinite
+medium."* The answer was in the first document this side sent. Nothing read it
+back — the `assumptions[]` block was treated as a declaration to be filed rather
+than a list to be re-read each round, and the cost was four rounds of asking for
+something no runner could ever deliver. **Re-read your own assumptions block
+before writing the next ask**; it is the only part of these documents that
+carries what no number reveals, which is exactly why it is where an answer can
+sit unnoticed.
+
 ⚠ Derived here, from the definition of `k*` — **not imported.** The other side
 reports the same conclusion, but it has not crossed as a round document, and a
 conclusion relayed in conversation is not a source (09 §7). Cite this paragraph,
