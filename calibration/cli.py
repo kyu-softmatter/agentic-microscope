@@ -187,6 +187,65 @@ def cmd_ram_burst(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_drag_slope(args: argparse.Namespace) -> int:
+    """P7, run where the data already is.
+
+    numpy only: no Micro-Manager, no instrument, no edit to the analysis PC's
+    own code. What returns to version control is the `kb/calibrations/` entry
+    with the input's hash, not a copy of the raw positions.
+    """
+    import platform
+    from datetime import date as _date
+
+    from .drag_slope import as_calibration_entry, fit_file, summarise
+
+    path = Path(args.positions)
+    if not path.is_file():
+        print(f"no such file: {path}", file=sys.stderr)
+        return 2
+
+    try:
+        fits = fit_file(
+            path,
+            settle_s=args.settle_s,
+            pixel_size_um=args.pixel_size_um,
+            temperature_c=args.temperature_c,
+        )
+    except ValueError as exc:
+        print(f"refused: {exc}", file=sys.stderr)
+        return 1
+
+    print(summarise(fits))
+
+    entry = as_calibration_entry(
+        path,
+        fits,
+        settle_s=args.settle_s,
+        pixel_size_um=args.pixel_size_um,
+        temperature_c=args.temperature_c,
+        date=_date.today().isoformat(),
+        machine=f"{platform.node()} ({platform.system()})",
+    )
+
+    import yaml
+
+    text = "# Written by `python -m calibration.cli drag-slope`. Review before committing:\n" \
+           "# `verified: false` until a person has read it, and the entry may be a gate\n" \
+           "# threshold only because it was measured on this instrument.\n" \
+           + yaml.safe_dump([entry], sort_keys=False, allow_unicode=True, width=88)
+
+    if args.out:
+        out = Path(args.out)
+        if out.exists():
+            print(f"{out} exists -- refusing to overwrite", file=sys.stderr)
+            return 1
+        out.write_text(text, encoding="utf-8")
+        print(f"\nwrote {out}")
+    else:
+        print("\n" + text)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
         prog="calibration", description=__doc__,
@@ -252,6 +311,26 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--n-frames", type=int, required=True, help="frames to capture into RAM")
     b.add_argument("--out", help="if given, flush the captured burst to this .npy path after capture")
     b.set_defaults(func=cmd_ram_burst)
+
+    s = sub.add_parser(
+        "drag-slope",
+        help="fit x_eq(v) on tracked positions and report the per-rung scatter on gamma (P7)",
+    )
+    s.add_argument("positions", help="tracked-positions file -- see calibration/drag_slope.py for the contract")
+    s.add_argument(
+        "--settle-s", type=float, required=True,
+        help="seconds to discard after each segment starts; the plan uses 3.5/(2*pi*f_c), 0.056 at a = 4.95 um. Required, because it is a physical number",
+    )
+    s.add_argument(
+        "--pixel-size-um", type=float,
+        help="needed only when the file gives x_px. Never defaulted",
+    )
+    s.add_argument(
+        "--temperature-c", type=float,
+        help="measured sample temperature. Without it the equipartition cross-check is BLOCKED rather than computed from an assumed 20 C (plan P3)",
+    )
+    s.add_argument("--out", help="write the kb/calibrations/ entry here as YAML instead of printing it")
+    s.set_defaults(func=cmd_drag_slope)
 
     args = p.parse_args(argv)
     return args.func(args)

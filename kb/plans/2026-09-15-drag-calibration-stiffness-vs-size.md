@@ -645,15 +645,44 @@ Checked before anything moves. Each refuses the run on its own.
       error the whole error budget rests on is an unverified numpy figure, and
       the neighbouring route's measured scatter is 29.1 % at the planned 5 s. The
       fit on existing data is what says which regime this run is actually in, and
-      it costs no instrument time. — *checked by:* running the fit on the
-      2026-09-03 drag data first, and reporting the spread it returns per rung
-      ⚠ **Blocked on a data transfer, not on analysis time** (checked
-      2026-09-15): this repository holds **no trajectory data at all** — no
-      `.mat`, `.npy`, `.csv` or `.tif` anywhere in it, and `data/` is instrument
-      constants only. The 2026-09-03 acquisition is on the instrument PC under
-      `D:\codes`, which is not this repository's to edit (CLAUDE.md §3). So the
-      cheapest decisive step in this plan is **an operator action**: move the
-      tracked positions of that run into reach, and the fit follows in minutes.
+      it costs no instrument time. — *checked by:* `python -m calibration.cli
+      drag-slope <tracked-positions> --settle-s 0.056`, and the
+      `kb/calibrations/` entry it writes
+
+      **The procedure, because this is the cheapest decisive step in the run.**
+
+      1. **Find the tracked positions of the 2026-09-03 drag run, from *before*
+         `creepx`.** That pipeline detrends the mean displacement away by design
+         and the mean displacement is the measurand, so its output cannot be
+         used however it is post-processed. This is the one step no code here
+         can do.
+      2. **Export them to the contract in `calibration/drag_slope.py`** —
+         `t_s`, `x_px` or `x_um`, `v_um_s` (the *commanded* velocity, since a
+         requested rate is not evidence), `segment`, and `rung` if there is more
+         than one height. Comma or tab separated with a header. A missing column
+         is refused by name rather than guessed.
+      3. **Run the fit wherever the file is.** numpy only — no instrument, no
+         Micro-Manager, no MATLAB, no edit to `D:\codes`. `requirements.txt` is
+         three packages, so a clone runs it anywhere; **where it runs is
+         incidental** (operator, 2026-09-16) and is recorded as provenance
+         rather than required. In place or on a copy, whichever is easier.
+      4. **Commit the `kb/calibrations/` entry it writes**, after reading it. It
+         carries the input's `source_hash`, the machine, `evidence_class:
+         measured` and `verified: false`. Being measured *on this instrument* is
+         what makes it admissible as a gate threshold, which no
+         `kb/external/bd/` entry is.
+
+      **What the number decides.** `sigma_gamma_rel` per rung against the
+      **4.48 %** the ladder fit tolerates (D-7). Under it, the ladder stands;
+      over it, r1's falsifier is confirmed on measured evidence rather than
+      simulated and the run is redesigned around a direct z datum. The
+      simulation side puts the route at 7.2–9.5 %, so the expected answer is
+      *over* — which is exactly why it is worth measuring rather than assuming.
+
+      ⚠ **Not blocked on a data transfer** — corrected 2026-09-16. It is blocked
+      on **a person doing one of two interchangeable things**: run the fit where
+      the file is, or copy the file and run it here. The design does not care
+      which, so "transfer" was the wrong name for the blocker.
 
 ## Sequence
 
