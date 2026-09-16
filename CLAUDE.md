@@ -519,6 +519,28 @@ no provenance. It was added because three citations in
 that existed only on `version2` — including the one the ROI, the exposure and
 the 520 fps all come from — and every check passed, because nothing read a link.
 
+```bash
+python -m knowledge.cli plan-sidecar kb/plans/<slug>.md
+```
+
+Scaffolds **`kb/plans/<slug>.json`, the structured half of a plan** — one entry
+per number, each carrying `symbol · value · unit · source · evidence · role`.
+**The structured block is authoritative and the prose cites it.** Where a
+sidecar exists, `plan-check` refuses a number in the settings table that has no
+entry, a `threshold` sourced from `kb/external/` (rule 3, held where provenance
+still exists — a gate receives a bare float and cannot know), and an `assumed`
+fact whose source does not name what would resolve it. It **refuses to
+overwrite** an existing sidecar, so a re-scaffold is a decision.
+
+A sidecar is optional and this is **not retroactive**: backfilling one from
+prose would put numbers in a structured block with nobody re-deriving them,
+which is the act that produced the wrong blur coefficient. ⚠ **Scope, stated
+because it is narrower than it sounds**: only the `Value` column of *Proposed
+setting + rationale*. The plan's **derived** tables are not covered, so the
+`2*D*t_exp/3` error that motivated all of this would still get through —
+catching that class needs the declaration to be per column and to carry the
+formula, which is the next step (`tests/test_plan_sidecar.py` pins the limit).
+
 ---
 
 ## 9. Writing anything down
@@ -530,6 +552,8 @@ Do not duplicate what the repo already records. Pick the right home:
 | `data/*.yaml`, `kb/calibrations/` | a measured constant |
 | `kb/decisions/YYYY-MM-DD-<slug>.md` | a design choice or a scope decision, dated |
 | `kb/plans/YYYY-MM-DD-<slug>.md` | one hardware run, **before** it happens. Copy `_template.md`; `plan-check` refuses a shape a skill would misread. Graduates into `kb/decisions/` once run → [05 §6](docs/05-consensus-gate.md) |
+| `kb/plans/YYYY-MM-DD-<slug>.json` | the same run's **structured half** — one entry per number, `symbol · value · unit · source · evidence · role`. Same slug on purpose: one run, one name, two readers. Scaffold it with `plan-sidecar`, never by hand from the prose |
+| `kb/external/bd/<thread>.r<N>.md` | a number **computed in another repository**. The path carries the foreignness, because plans cite by path. `may_be_gate_threshold: false`, and **never `kb/calibrations/`**, whose path already claims "measured on this instrument" |
 | `kb/expertise/<id>.md` | durable expert judgment. `Why` and `Falsifying condition` are **mandatory** ([09 §2](docs/09-knowledge-capture.md)) |
 | `kb/sessions/YYYY-MM-DD.md` | the day's narrative. **A failed session gets a *longer* entry, not a shorter one.** Numbers, not adjectives |
 

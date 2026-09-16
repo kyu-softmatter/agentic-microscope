@@ -1,0 +1,162 @@
+{
+  "plan": "2026-09-15-drag-calibration-stiffness-vs-size",
+  "_note": "The structured block is authoritative; the prose cites it. Scaffolded by `knowledge.cli plan-sidecar` and then filled by hand -- every `source` names the entry the number came from, because a plan originates none of them (CLAUDE.md rule 2). `evidence` uses the bridge protocol's vocabulary so an exported ask does not translate it: `assumed` is a standing choice or a proposal, `computed` is derived from the envelope, `measured` is this instrument.",
+
+  "facts": [
+    {
+      "symbol": "pixel_size",
+      "value": 0.06453,
+      "unit": "um/px",
+      "source": "data/pixel_size.yaml, 100x at 1x1. Two length standards driven 10 um on 2026-09-03 -- closed-loop piezo 0.06460, AOD trap 0.06445, agreeing to 0.24 %. Not from the 2025-04 spreadsheet, which gives 0.065 for this row (0.73 % away).",
+      "evidence": "measured",
+      "role": "fact"
+    }
+  ],
+
+  "settings": [
+    {
+      "symbol": "objective_position",
+      "value": 6,
+      "unit": "dimensionless",
+      "source": "kb/expertise/microrheology-standard-conditions.md -- 100x-Oil is the standing objective and sits at nosepiece position 6. Loading happens at 4x or 10x regardless (SAFETY §2, E7).",
+      "evidence": "assumed",
+      "role": "setting"
+    },
+    {
+      "symbol": "binning",
+      "value": 1,
+      "unit": "dimensionless",
+      "source": "kb/expertise/microrheology-standard-conditions.md, standing 1x1. Defended at rank 1 and explicitly not to be changed to 2x2 on SNR grounds (CLAUDE.md H4).",
+      "evidence": "assumed",
+      "role": "setting"
+    },
+    {
+      "symbol": "readout_depth",
+      "value": 16,
+      "unit": "bit",
+      "source": "data/detectors.yaml, Kinetix_red `DynamicRange`. A datasheet value, which is why the lens 2 verdict in this plan reads `assumed`.",
+      "evidence": "handbook",
+      "role": "setting"
+    },
+    {
+      "symbol": "roi_width_px",
+      "value": 256,
+      "unit": "px",
+      "source": "kb/decisions/2026-09-10-drag-calibration-operating-envelope.md -- the width sets the data rate, whose ceiling is 271 px.",
+      "evidence": "computed",
+      "role": "setting"
+    },
+    {
+      "symbol": "roi_height_px",
+      "value": 512,
+      "unit": "px",
+      "source": "kb/decisions/2026-09-10-drag-calibration-operating-envelope.md -- the height sets the frame rate.",
+      "evidence": "computed",
+      "role": "setting"
+    },
+    {
+      "symbol": "t_exp",
+      "value": 0.45,
+      "unit": "ms",
+      "source": "kb/decisions/2026-09-10-drag-calibration-operating-envelope.md, its chosen operating point -- off the 0.576 ms boundary on purpose. This camera takes the exposure as the frame period.",
+      "evidence": "computed",
+      "role": "setting"
+    },
+    {
+      "symbol": "fps",
+      "value": 520,
+      "unit": "Hz",
+      "source": "kb/decisions/2026-09-10-drag-calibration-operating-envelope.md, from the ROI height. A rank 3 concession against the standing 50 fps, named in the prose rather than spent silently (CLAUDE.md H1).",
+      "evidence": "computed",
+      "role": "setting"
+    },
+    {
+      "symbol": "illumination_level",
+      "value": 36,
+      "unit": "per-mille",
+      "source": "kb/decisions/2026-09-10-drag-calibration-operating-envelope.md, Aura CYAN. Per-mille and not percent -- SAFETY §6.",
+      "evidence": "assumed",
+      "role": "setting"
+    },
+    {
+      "symbol": "circular_buffer_frames",
+      "value": 3200,
+      "unit": "frames",
+      "source": "kb/decisions/2026-09-10-drag-calibration-operating-envelope.md, lens 3 margin 1.23.",
+      "evidence": "computed",
+      "role": "setting"
+    },
+    {
+      "symbol": "drive_amplitude",
+      "value": 10,
+      "unit": "um",
+      "source": "SAFETY §3 -- plus or minus 10 um about piezo mid-travel.",
+      "evidence": "assumed",
+      "role": "setting"
+    },
+    {
+      "symbol": "x_eq_over_a",
+      "value": 0.15,
+      "unit": "dimensionless",
+      "source": "Proposal. Keeps the bead inside the linear region of the trap; a velocity stops if x_eq exceeds about 0.3a. r2 noted a simulation cannot validate this choice, since it has no anharmonicity to detect.",
+      "evidence": "assumed",
+      "role": "setting"
+    },
+    {
+      "symbol": "n_velocities",
+      "value": 4,
+      "unit": "dimensionless",
+      "source": "Proposal -- the slope of x_eq(v) is the measurand, not any single point.",
+      "evidence": "assumed",
+      "role": "setting"
+    },
+    {
+      "symbol": "v_fraction_1",
+      "value": 0.25,
+      "unit": "dimensionless",
+      "source": "Proposal, first of four fractions of the table velocity for this size.",
+      "evidence": "assumed",
+      "role": "setting"
+    },
+    {
+      "symbol": "v_fraction_2",
+      "value": 0.5,
+      "unit": "dimensionless",
+      "source": "Proposal, second of four fractions of the table velocity for this size.",
+      "evidence": "assumed",
+      "role": "setting"
+    },
+    {
+      "symbol": "v_fraction_3",
+      "value": 0.75,
+      "unit": "dimensionless",
+      "source": "Proposal, third of four fractions of the table velocity for this size.",
+      "evidence": "assumed",
+      "role": "setting"
+    },
+    {
+      "symbol": "v_fraction_4",
+      "value": 1.0,
+      "unit": "dimensionless",
+      "source": "Proposal, fourth of four fractions -- the table velocity itself, which is the one giving x_eq = 0.15a.",
+      "evidence": "assumed",
+      "role": "setting"
+    },
+    {
+      "symbol": "n_segments",
+      "value": 3,
+      "unit": "dimensionless",
+      "source": "Proposal, CLAUDE.md D8 -- several short acquisitions rather than one long one, with the sample region moved between segments.",
+      "evidence": "assumed",
+      "role": "setting"
+    },
+    {
+      "symbol": "t_segment",
+      "value": 5,
+      "unit": "s",
+      "source": "Proposal. ⚠ Under active revision: r5 and r8 put one bead's fitted f_c scatter at 29.1 % at this length, and the drag route's per-rung scatter at 7.2-9.5 % against a 4.48 % tolerance. See D-3 and D-7 -- this value is what the open decision is about.",
+      "evidence": "assumed",
+      "role": "setting"
+    }
+  ]
+}

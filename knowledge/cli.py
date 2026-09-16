@@ -4,6 +4,7 @@
     python -m knowledge.cli write       # regenerate kb/INDEX.md
     python -m knowledge.cli problems    # only the files the index cannot describe
     python -m knowledge.cli plan-check  # refuse a kb/plans/ entry a skill would misread
+    python -m knowledge.cli plan-sidecar kb/plans/<slug>.md   # scaffold its .json half
 
 `check` is what CI runs through `tests/test_kb_index.py`. It exits non-zero when
 the committed index differs from what the frontmatter says, or when any file in
@@ -16,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import json
 import sys
 from pathlib import Path
 
@@ -87,6 +89,47 @@ def cmd_plan_check(args: argparse.Namespace) -> int:
     return 1
 
 
+def cmd_plan_sidecar(args: argparse.Namespace) -> int:
+    """Scaffold the structured half of a plan. Refuses to overwrite one.
+
+    Overwriting is refused rather than prompted for, the same way
+    `config/micromanager/set_pixel_size.py` refuses a differing preset: a
+    sidecar that exists has been filled in by a person, and regenerating it
+    from the prose would invert which half is authoritative.
+    """
+    from .index import read_entry
+    from .plans import split_frontmatter
+    from .sidecar import scaffold, sidecar_path
+
+    plan_path = Path(args.plan)
+    if not plan_path.is_file():
+        print(f"no such plan: {plan_path}", file=sys.stderr)
+        return 2
+
+    out = sidecar_path(plan_path)
+    if out.exists():
+        print(
+            f"{out} exists -- refusing to overwrite. Edit it, or delete it "
+            "deliberately first.",
+            file=sys.stderr,
+        )
+        return 1
+
+    entry, problems = read_entry(plan_path, root=plan_path.parent.parent)
+    if entry is None:
+        _report_problems(problems)
+        return 1
+
+    _, body = split_frontmatter(plan_path.read_text(encoding="utf-8"))
+    out.write_text(
+        json.dumps(scaffold(plan_path, entry.id, body), indent=2, ensure_ascii=False)
+        + "\n",
+        encoding="utf-8",
+    )
+    print(f"wrote {out} -- every empty field is yours to fill; nothing was guessed")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m knowledge.cli", description=__doc__.splitlines()[0]
@@ -108,6 +151,11 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("plan-check", help="validate kb/plans/ entries").set_defaults(
         func=cmd_plan_check
     )
+    scaffold = sub.add_parser(
+        "plan-sidecar", help="write a first kb/plans/<slug>.json for a plan"
+    )
+    scaffold.add_argument("plan", help="path to the plan's .md")
+    scaffold.set_defaults(func=cmd_plan_sidecar)
     return parser
 
 

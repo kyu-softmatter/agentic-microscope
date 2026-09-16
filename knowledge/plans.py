@@ -227,6 +227,10 @@ def check_plan(path: Path, root: Path | None = None) -> list[Problem]:
 
     problems.extend(_check_citations(path, body))
 
+    from .sidecar import check as _check_sidecar  # local: sidecar imports this module
+
+    problems.extend(_check_sidecar(path, entry.id, body))
+
     if "Sequence" in present:
         problems.extend(_check_sequence(path, body))
 
