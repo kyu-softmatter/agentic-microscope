@@ -48,7 +48,7 @@ Durable expert judgment. Each carries a `Why` and a falsifier.
 - **[microrheology-standard-conditions](expertise/microrheology-standard-conditions.md)** · 2026-09-07
   What conditions does a microrheology run on this instrument default to, and which of them are choices rather than constants
 
-## `kb/decisions/` — 24 entries
+## `kb/decisions/` — 27 entries
 
 Dated design and scope choices, in the order they were made.
 
@@ -100,6 +100,12 @@ Dated design and scope choices, in the order they were made.
   What would a real-time particle-tracking GUI show, and why can the display and the measurement not be the same stream?
 - **[2026-09-09-g10-photobleaching-removed](decisions/2026-09-09-g10-photobleaching-removed.md)** · 2026-09-09
   Should the photobleaching gate stay, given that it has never returned anything but BLOCKED and its only unshared lever is the dye?
+- **[2026-09-10-drag-calibration-operating-envelope](decisions/2026-09-10-drag-calibration-operating-envelope.md)** · 2026-09-10
+  What frame rate, ROI and acquisition length can a Stokes-drag trap calibration on a 5 um DragonGreen bead actually use, and which constraint sets each one?
+- **[2026-09-10-lens-7-measured-stiffness-and-numbering](decisions/2026-09-10-lens-7-measured-stiffness-and-numbering.md)** · 2026-09-10
+  Why could lens 7 not be told a stiffness it had measured, why did two hard gates grade a placeholder, and what should the unnumbered hard checks be called?
+- **[2026-09-11-wall-drag-reaches-the-bias-ledger](decisions/2026-09-11-wall-drag-reaches-the-bias-ledger.md)** · 2026-09-11
+  Why did a bias that lens 4 measured and reported never reach the lens whose job is reviewing biases?
 
 ## `kb/plans/` — 3 entries
 
