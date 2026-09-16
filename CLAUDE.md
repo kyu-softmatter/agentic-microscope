@@ -425,6 +425,19 @@ settled 2026-09-09 after this repository had argued itself into the opposite.
 - **Nothing moves without its flag** (hard rule 4). The MCP server ships with
   `AGENTIC_MICROSCOPE_ALLOW_MOTION=0` and `..._ALLOW_LASER=0`
   ([`.mcp.json`](.mcp.json)) and refuses the two moving tools by default.
+  [`.claude/settings.json`](.claude/settings.json) is the belt and braces:
+  it **denies** `ALLOW_MOTION=1`, `ALLOW_LASER=1`, and edits to `.mcp.json`,
+  `kb/calibrations/**` and `SAFETY.md`. **It is committed on purpose** — it
+  existed only in the main checkout until 2026-09-16, untracked and unignored,
+  so the guard protected one directory and no worktree and was one `git add -A`
+  from being committed by accident. Per-machine overrides go in
+  `.claude/settings.local.json`, which is ignored.
+  ⚠ Two limits, because a guard read as wider than it is is worse than none.
+  The `Edit(...)` rules do not stop a **script** from writing those paths — a
+  `Bash` line or a `Write` reaches `kb/calibrations/` untouched, which is how
+  `calibration.cli drag-slope --out` is meant to work. And the allow list is
+  short on purpose: the other seven lens CLIs and `calibration.cli` are **not**
+  in it, so they prompt.
 - **No MCP tool has reached a device.** Do not write as though one has.
 - `hardware/lunf_power.py` is complete as transport and **refuses to transmit** —
   the LUN-F-XL DAC word format is undocumented and a guessed byte goes into a

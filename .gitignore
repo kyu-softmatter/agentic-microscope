@@ -43,6 +43,16 @@ reference/quotes/
 *.exe
 *.msi
 
+# Per-machine agent settings. `.claude/settings.json` IS committed — its deny
+# list is the belt-and-braces for hard rule 4 and has to follow the repository
+# rather than one working tree, which is exactly what went wrong: it existed
+# only in the main checkout, untracked and unignored, so the guard on SAFETY.md,
+# kb/calibrations/ and .mcp.json protected one directory and no worktree, and it
+# was one `git add -A` away from being committed by accident. The `.local.`
+# variant is where a machine-specific override belongs, and it is ignored so it
+# cannot be swept up the same way.
+.claude/settings.local.json
+
 # uv.lock — a by-product, not a decision. This rule was written when `.mcp.json`
 # launched the MCP server with `uv run`, which writes a lock file for the whole
 # dependency tree. Since 2026-09-04 it launches a venv interpreter directly and
