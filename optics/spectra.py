@@ -267,7 +267,16 @@ class Spectrum:
         return float(np.trapezoid(self.values * w.values, GRID))
 
     def support(self, threshold: float = 0.5) -> tuple[float, float] | None:
-        """(λ_low, λ_high) where the curve exceeds ``threshold`` of its peak."""
+        """(λ_low, λ_high) where the curve exceeds ``threshold`` of its peak.
+
+        ⚠ **An outer hull.** For a multiband element it runs from the bottom of
+        the lowest band to the top of the highest and **says nothing about the
+        notches in between** -- `MXR00724-EM` passes five bands and blocks
+        488 nm at 5e-6, and its support is one interval containing 488. Two
+        checks read this as "the band in use" and were wrong for it: L1.3 until
+        2026-09-15 and L1.5 until the same day. Use :meth:`bands` where the
+        question is about one passband.
+        """
         peak = self.values.max()
         if peak <= 0:
             return None
@@ -275,6 +284,31 @@ class Spectrum:
         if idx.size == 0:
             return None
         return float(GRID[idx[0]]), float(GRID[idx[-1]])
+
+    def bands(self, threshold: float = 0.5) -> list[tuple[float, float]]:
+        """Every *contiguous* run above ``threshold`` of the peak, in order.
+
+        :meth:`support` is ``(bands[0][0], bands[-1][1])`` -- the hull. This is
+        the decomposition, for the questions that are about a single passband
+        rather than about the whole element: whether a filter's band starts
+        past a dye's emission peak is a property of that one band, and the
+        hull's lower edge can belong to a band the dye never reaches.
+        """
+        peak = self.values.max()
+        if peak <= 0:
+            return []
+        above = self.values >= threshold * peak
+        out: list[tuple[float, float]] = []
+        start: int | None = None
+        for i, on in enumerate(above):
+            if on and start is None:
+                start = i
+            elif not on and start is not None:
+                out.append((float(GRID[start]), float(GRID[i - 1])))
+                start = None
+        if start is not None:
+            out.append((float(GRID[start]), float(GRID[-1])))
+        return out
 
 
 def overlap(a: Spectrum, b: Spectrum) -> float:

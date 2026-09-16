@@ -3,6 +3,7 @@ id: 2026-09-15-l1-3-read-a-notch-as-an-overlap
 question: "L1.3 failed the lab's only real proposal at m=0.00 on both channels. Was it right?"
 date: 2026-09-15
 status: current
+corrected_by: [2026-09-15-l1-5-explained-nothing]
 corrects: [2026-09-15-the-plan-emitter, 2026-09-15-stage-2-the-judgment-seam]
 ---
 
@@ -144,7 +145,19 @@ L1.3 had been standing in front of it.
 
 ⚠ And `advances` is `False` on both arms regardless: evidence is `assumed`.
 
-## A latent defect of the same root, not fixed here
+## A defect of the same root, not fixed here — and NOT latent
+
+⚠ **Corrected within the hour**
+([`2026-09-15-l1-5-explained-nothing.md`](2026-09-15-l1-5-explained-nothing.md)).
+The mechanism below is right and "latent" is wrong: it was already live on the
+red arm of this same proposal, where ATTO647N peaks at 669 nm and the band
+collecting its light starts at **677**. The hull started at 589 — the *green*
+channel's neighbouring band — so `589 > 669` was False and the clipping went
+unreported on the one channel failing L1.4. **The guess about which dye would
+be affected was wrong in the direction of comfort**, and checking took one
+script. The paragraph stands as written, as the record of that.
+
+### As written
 
 `check_emission_centering` (L1.5, `optics/checks.py`) takes the same hull:
 

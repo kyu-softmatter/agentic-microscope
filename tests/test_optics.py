@@ -629,3 +629,83 @@ def test_a_path_that_really_passes_its_excitation_is_still_caught():
                                             if c.name != channel.name])
         assert verdict.status == "FAIL"
         assert any(f.code == "blocking.insufficient" for f in verdict.findings)
+
+
+# --------------------------------- L1.5: the band in use, not the whole element --
+#
+# The same hull defect as L1.3's, one check over, and named as a latent hole in
+# that entry before it was found to be live.
+
+
+def test_bands_decompose_what_support_hulls():
+    """`support` is `(bands[0][0], bands[-1][1])`. For a single passband the
+    two agree, which is why reading the hull as "the band" went unnoticed."""
+    el = find_filter("MXR00724-EM")
+    bands = el.transmission.bands(0.5)
+    hull = el.transmission.support(0.5)
+
+    assert len(bands) >= 4
+    assert (bands[0][0], bands[-1][1]) == hull
+    for lo, hi in bands:
+        assert lo <= hi
+    assert all(a[1] < b[0] for a, b in zip(bands, bands[1:])), "disjoint, in order"
+
+
+def test_the_collecting_band_is_where_the_light_lands():
+    """Chosen by collected QE-weighted emission, not by which band contains
+    the peak -- that question begs the one L1.5 asks, since a clipped peak is
+    by definition outside its own band."""
+    green, red = _active_channels()
+
+    assert green.detection_band_nm() == (510.0, 529.0)
+    assert red.detection_band_nm() == (677.0, 701.0)
+
+    # And in both cases the hull's lower edge belongs to a band the dye never
+    # reaches, which is the whole defect.
+    assert green.emission_transmission().support(0.5)[0] == 420.0
+    assert red.emission_transmission().support(0.5)[0] == 589.0
+
+
+def test_l1_5_now_explains_the_red_arms_low_collection():
+    """It reported nothing. ATTO647N peaks at 669 nm, the band collecting its
+    light starts at 677, and the hull started at 589 -- so `589 > 669` was
+    False and the clipping went unsaid on the one channel failing L1.4
+    `collection.low` at m=0.871. `collection` owns the grade and this owns the
+    explanation; it was not explaining."""
+    red = _active_channels()[1]
+    verdict = evaluate(red, others=[_active_channels()[0]])
+
+    # Asserted as a list rather than `next(...)`: the regression is the
+    # finding being ABSENT, and a StopIteration out of a generator reads as a
+    # broken test rather than as the thing the test caught.
+    found = [f for f in verdict.findings if f.code == "emission.peak_clipped"]
+    assert found, "the clipping must be reported, not merely be true"
+    clipped = found[0]
+    assert clipped.numbers["band_start_nm"] == 677.0
+    assert clipped.numbers["em_peak_nm"] == pytest.approx(669.0)
+    #: Half the QE-weighted emission sits below the band edge. The actionable
+    #: half of "the peak is clipped": 1 nm past a narrow dye's peak and 8 nm
+    #: past a broad one cost very different amounts.
+    assert clipped.numbers["fraction_below_band_nm"] == pytest.approx(0.498, abs=0.01)
+
+
+def test_l1_5_is_unchanged_where_the_hull_was_already_one_band():
+    """`proposed-2color`'s 647 arm was clipped before and is clipped now; its
+    emitter has one passband, so hull and band are the same interval."""
+    for channel in build_channels("config/channels/proposed-2color.yaml"):
+        assert channel.detection_band_nm() == channel.emission_transmission().support(0.5)
+
+
+def test_l1_3_does_not_use_the_band_edge_and_must_not():
+    """The reverse substitution is worse. On a path with no emission filter the
+    whole grid is ONE band, so its edge is 300 nm and every dye would "overlap"
+    its own excitation -- the hull bug again by a different route. L1.3 asks
+    where the detected LIGHT starts (dye-weighted); L1.5 asks where the
+    FILTER's band starts (the band's own edge)."""
+    channels = build_channels("config/channels/demo-probe-tracer-2color.yaml")
+    for channel in channels:
+        band = channel.detection_band_nm()
+        assert band[1] - band[0] > 180, "effectively no emission filter"
+        # The band edge would put this back at -188 / -79; the dye-weighted
+        # support does not.
+        assert channel.stokes_headroom_nm() > 0

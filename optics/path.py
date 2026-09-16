@@ -168,6 +168,48 @@ class Channel:
         leak = cross_ex * other.objective.collection_efficiency() * em_leak
         return float(leak / own) if own > 0 else 0.0
 
+    def detection_band_nm(self) -> tuple[float, float] | None:
+        """The one passband this channel's light is actually collected in.
+
+        Chosen by **where the light lands**: of the emission path's contiguous
+        bands, the one collecting the most QE-weighted dye emission. Not by
+        which band contains the peak -- that question begs the one L1.5 asks,
+        since a clipped peak is by definition outside its own band.
+
+        ``None`` where the path passes nothing.
+
+        **Why a band edge and not** :meth:`stokes_headroom_nm`'s dye-weighted
+        support. The two ask different questions and the answers differ:
+
+        * L1.3 asks *where does the detected light start* -- about the light,
+          so the dye's spectrum weights it.
+        * L1.5 asks *where does the filter's passband start* -- about the
+          filter, so it is the band's own edge. Weighting would move that edge
+          inward, and a dye peaking 0.5 nm inside its band would then read as
+          clipped when the filter is not clipping it.
+
+        The reverse substitution is worse, which is why `stokes_headroom_nm`
+        does not use this: on a path with no emission filter the whole grid is
+        ONE band, so the edge is 300 nm and every dye would "overlap" its own
+        excitation -- the hull bug again, by a different route.
+        """
+        path = self.emission_transmission()
+        bands = path.bands(0.5)
+        if not bands:
+            return None
+
+        weight = (
+            self.dye.emission.area_normalized().values
+            * path.values
+            * self.detector.qe.values
+        )
+
+        def collected(band: tuple[float, float]) -> float:
+            inside = (GRID >= band[0]) & (GRID <= band[1])
+            return float(np.trapezoid(weight[inside], GRID[inside]))
+
+        return max(bands, key=collected)
+
     def stokes_headroom_nm(self) -> float:
         """Gap between the excitation band edge and the emission band edge.
 

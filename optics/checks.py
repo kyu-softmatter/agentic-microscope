@@ -302,7 +302,21 @@ def check_filter_centering(channel: "Channel", others: list["Channel"]) -> Check
     quantity as :func:`check_collection`, just decomposed. Grading both would
     double-count one weakness, and a filter passing 49% instead of a nominal
     50% would drag the whole experiment's feasibility down for no physical
-    reason. ``collection`` owns the grade; this owns the explanation.
+    reason. ``collection`` owns the grade; **this owns the explanation** -- and
+    until 2026-09-15 it was not explaining, see below.
+
+    ⚠ **The band comes from** ``Channel.detection_band_nm()``, not from the
+    emission path's ``support(0.5)``. The hull's lower edge belongs to the
+    LOWEST band the path passes, which on a multiband emitter is a band the dye
+    never reaches. On this bench's real two-colour proposal the red arm's hull
+    started at 589 nm, ATTO647N peaks at 669, and the band actually collecting
+    the light starts at **677** -- so the peak was 8 nm outside its own
+    passband, **49.8 % of the QE-weighted emission was below the band edge**,
+    and `clipped` came out False because 589 < 669. That channel is precisely
+    the one failing L1.4 ``collection.low`` at m=0.871: the clipping is the
+    reason collection is low, and the check whose job is to say so was silent.
+    Same root cause as L1.3's, one check over
+    -> kb/decisions/2026-09-15-l1-5-explained-nothing.md
     """
     qe = channel.detector.qe
     em = channel.dye.emission.area_normalized()
@@ -311,24 +325,34 @@ def check_filter_centering(channel: "Channel", others: list["Channel"]) -> Check
     efficiency = achieved / ceiling if ceiling > 0 else 0.0
     margin = efficiency / LIMITS["filter_efficiency"]
 
-    band = channel.emission_transmission().support(0.5)
+    band = channel.detection_band_nm()
     peak = channel.dye.emission.peak_nm()
     clipped = bool(band and band[0] > peak)
 
     if clipped:
+        # How much of what the camera could see falls below the band edge. The
+        # actionable half of "the peak is clipped": 1 nm past the peak of a
+        # narrow dye and 8 nm past a broad one cost very different amounts.
+        weighted = em.values * qe.values
+        below = float(np.trapezoid(weighted[GRID < band[0]], GRID[GRID < band[0]]))
+        lost = below / ceiling if ceiling > 0 else 0.0
         return CheckResult(
             "emission.peak_clipped",
             INFO,
             min(margin, 0.9),
             "warn",
             f"The detection band starts at {band[0]:.0f} nm, past "
-            f"{channel.dye.name}'s emission peak ({peak:.0f} nm). The brightest "
-            "part of the emission is being thrown away.",
+            f"{channel.dye.name}'s emission peak ({peak:.0f} nm) -- "
+            f"{lost * 100:.0f}% of the QE-weighted emission is below the band "
+            f"edge, and the filters pass {efficiency * 100:.0f}% of the "
+            "ceiling. The brightest part of the emission is being thrown away.",
             action="Move to an emission filter whose band starts below the peak, "
             "or a long-pass if crosstalk allows.",
             numbers={
                 "band_start_nm": band[0],
+                "band_end_nm": band[1],
                 "em_peak_nm": peak,
+                "fraction_below_band_nm": lost,
                 "filter_efficiency": efficiency,
             },
         )

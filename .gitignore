@@ -51,3 +51,6 @@ reference/quotes/
 # files deliberately carry loose bounds, and a committed lock would quietly
 # become the real specification.
 uv.lock
+
+# Harness-created git worktrees. Nested repositories, not this one's content.
+.claude/worktrees/
