@@ -441,12 +441,14 @@ this one does not come back from the bridge:
   more beads per rung, a longer 9c block, or an estimator that does better than
   `kT/var(x)` on a short record.
 
-**So the honest next step is on this side, not the simulator's:** measure what
-the drag slope actually returns per rung, on the 2026-09-03 data, before buying
-any more observation time (P7 already requires that fit to exist before
-acquiring — this makes it load-bearing rather than tidy). Nothing above changes
-a gate, and none of these numbers may become one: they are `simulated` and the
-entries carry `may_be_gate_threshold: false`.
+**So the number that decides this is on this side, not the simulator's:** what
+the drag slope actually returns per rung. ⚠ **And it is not going to be measured
+from existing data** — the operator has withdrawn the 2026-09-03 route (KH,
+2026-09-16; see P7), so the ~3 % this budget rests on stays unverified as a
+standing state rather than as a gap someone will close. P7 keeps the procedure
+for a future acquisition. Nothing above changes a gate, and none of these
+numbers may become one: they are `simulated` and the entries carry
+`may_be_gate_threshold: false`.
 
 **D-6 · `h0` is not waiting on a wall runner. No runner can answer it, and that
 is a property of the question.** Five rounds recorded the wall as a *missing
@@ -536,9 +538,13 @@ formality here: 4.48 % is a **design target**, not a check, and nothing in
    armed. What a direct z datum means on this bench is not settled and is the
    next design question — the stuck bead of P8 is already a z reference for
    `dz_piezo`, so the question is whether it can be made an *absolute* one.
-2. **P7 still decides**, and it is still blocked on a data transfer (the
-   2026-09-03 run is on the instrument PC). It is now worth more than before:
-   it is the one number that converts this from a warning into a verdict.
+2. **Nothing converts this into a verdict from existing data.** P7 was the
+   route — the per-rung scatter measured on the 2026-09-03 run — and the
+   operator has withdrawn that source (KH, 2026-09-16: the positions in
+   `D:\codes` will not be looked for). So the redesign in step 1 proceeds on
+   simulated evidence, deliberately, and the plan says so rather than waiting
+   for a confirmation that is not coming. A future acquisition can still supply
+   the number; the tool for it is built.
 3. **Do not declare the ladder dead in the KB.** Nothing here measured this
    instrument, and `unevaluated` is not `cleared` in either direction.
 
@@ -650,15 +656,35 @@ Checked before anything moves. Each refuses the run on its own.
 - [ ] **P7 · The x_eq(v) slope fit exists before acquiring**, *and returns its own
       per-rung scatter.* `alpha = gamma*v/x_eq` is implemented nowhere, and
       `creepx` detrends the mean displacement away by design — see §Analysis.
-      ⚠ **This is now load-bearing rather than tidy** (D-5): the ~3 % per-rung
-      error the whole error budget rests on is an unverified numpy figure, and
-      the neighbouring route's measured scatter is 29.1 % at the planned 5 s. The
-      fit on existing data is what says which regime this run is actually in, and
-      it costs no instrument time. — *checked by:* `python -m calibration.cli
-      drag-slope <tracked-positions> --settle-s 0.056`, and the
-      `kb/calibrations/` entry it writes
+      ⚠ **This is load-bearing rather than tidy** (D-5): the ~3 % per-rung error
+      the whole error budget rests on is an unverified numpy figure, and the
+      neighbouring route's measured scatter is 29.1 % at the planned 5 s.
+      — *checked by:* `python -m calibration.cli drag-slope <tracked-positions>
+      --settle-s 0.056`, and the `kb/calibrations/` entry it writes
 
-      **The procedure, because this is the cheapest decisive step in the run.**
+      **⚠ The 2026-09-03 route is withdrawn, by decision, not deferred.**
+      Operator (KH, 2026-09-16): **the tracked positions in `D:\codes` will not
+      be looked for.** So step 1 below is not going to be done, and this
+      precondition is **not waiting on anybody** — read the steps as the
+      procedure for whatever acquisition does supply an input, not as a task
+      list somebody owes.
+
+      What that leaves standing, stated rather than left to inference:
+
+      - **The primary route's per-rung scatter is unmeasured, and stays so.**
+        The error budget continues to rest on the unverified ~3 %. That is now a
+        **standing state** and not a gap awaiting closure.
+      - **r1's falsifier stays decided on simulated evidence alone** — r8's
+        7.2–9.5 % against the 4.48 % the fit tolerates. D-7's posture is
+        unchanged: start the redesign, do not record the ladder as dead. What is
+        no longer true is "P7 converts the warning into a verdict". Nothing
+        converts it from existing data.
+      - **The tool is built, tested and waiting on an input.** `drag-prepare`
+        and `drag-slope` are not wasted by this — only their 2026-09-03 input
+        is. Any future acquisition that writes two columns and a frame period
+        produces the number.
+
+      **The procedure, for an acquisition that supplies an input.**
 
       1. **Find the tracked positions of the 2026-09-03 drag run, from *before*
          `creepx`.** That pipeline detrends the mean displacement away by design
@@ -716,14 +742,17 @@ Checked before anything moves. Each refuses the run on its own.
       simulation side puts the route at 7.2–9.5 %, so the expected answer is
       *over* — which is exactly why it is worth measuring rather than assuming.
 
-      ⚠ **Not blocked on a data transfer** — corrected 2026-09-16 under the
-      instruction above. It is blocked on **a person doing one of two
-      interchangeable things**: run the fit where the file is, or copy the file
-      and run it here. The design does not care which, so "transfer" was the
-      wrong name for the blocker. r7's `gaps[0].kind` still says
-      `needs_data_transfer`; that document is sealed and cited, so the
-      correction travels in the next round with a `corrects[]` entry rather than
-      as an edit.
+      **How this blocker has been named, twice wrongly.** It was first written
+      as a data transfer; corrected 2026-09-16 to *a person doing one of two
+      interchangeable things*, because the fit reads a path and the design does
+      not care where it runs; and the same day the operator withdrew the source,
+      so **it is not blocked at all** — the decision has been taken. r9 carries
+      the first correction to r7's `gaps[0].kind` (`needs_data_transfer` →
+      `needs_human_action`), and that value still stands: the gap is **the
+      scatter**, which is still wanted from a future acquisition, not **the
+      2026-09-03 file**, which is out of scope. A withdrawn *route* does not make
+      the quantity out of scope, and writing `out_of_scope` there would say the
+      number no longer matters — it does.
 
 ## Sequence
 
