@@ -30,11 +30,12 @@ coefficient.
 
 from __future__ import annotations
 
+import importlib
 import json
 import re
 from pathlib import Path
 
-from .index import Problem
+from .index import REPO_ROOT, Problem
 from .plans import _section
 
 #: The section whose numbers a hardware skill acts on. This is the enforced
@@ -62,6 +63,24 @@ ROLES = ("fact", "setting", "threshold")
 #: clearing against a simulated ceiling emits a margin that reads as measured,
 #: which is the disease CLAUDE.md rule 3 already names.
 EXTERNAL_PREFIX = "kb/external/"
+
+#: Tokens that a unit library parses **as the wrong thing**, so a `unit` field
+#: carrying one is worse than an unparseable string: it is dimensionally
+#: plausible and silently wrong. Measured in `pint` by the bridge session,
+#: 2026-09-16: `fps` is feet per second, 0.3048 m/s, and `px` is 1/96 inch,
+#: 0.2646 mm -- against this instrument's 0.06453 um that is a factor of ~4100,
+#: and because `px` has dimension [length] nothing raises.
+#:
+#: A **count** is not a unit. Write `dimensionless` and let the symbol carry the
+#: meaning (`roi_width_px`), which is also why this sidecar is the emitter's
+#: input rather than the prose: the plan says "520 fps" and "256 x 512 px"
+#: correctly, and a field that travels has to say `Hz` and `dimensionless`.
+UNIT_TRAPS = {
+    "px": "a count, not a length. Use `dimensionless` and name the pixel in the symbol",
+    "fps": "feet per second in pint. Use `Hz`",
+    "um/px": "carries `px`. A pixel size is `um` per pixel, i.e. `um`",
+    "count": "not a unit. Use `dimensionless`",
+}
 
 #: Numeric literals in a table cell. Deliberately does not match a bare `x` in
 #: `1x1` or a unit -- only the numbers.
@@ -120,6 +139,233 @@ def tables(text: str) -> list[list[list[str]]]:
     return out
 
 
+#: A cell that is a *value* rather than prose: a number, optionally signed, a
+#: range, and a short trailing unit. Markup and code spans are stripped first.
+_VALUE_CELL = re.compile(
+    r"""^[~<>±+-]?\s*
+        \d+(?:\.\d+)?(?:e[+-]?\d+)?
+        (?:\s*(?:[-–]|to|\+/-|±)\s*\d+(?:\.\d+)?)?
+        \s*(?:%|per-mille|[A-Za-zµ°/·^0-9*]{0,12})?$
+    """,
+    re.X | re.I,
+)
+
+#: A value column has to carry at least one cell with one of these. Without it,
+#: `| 1 optics |` and a sequence step's `| 9a |` read as values -- they are
+#: labels, and declaring a provenance for a row number would be noise that
+#: hides the columns where provenance matters.
+_QUANTITY_MARKS = (".", "%", "±")
+
+
+def _is_value_cell(cell: str) -> bool:
+    text = _CODE.sub(" ", cell)
+    text = re.sub(r"\*\*|\*|_", "", text)
+    text = re.sub(r"\s*\(.*?\)\s*", " ", text).strip()
+    return bool(text) and bool(_VALUE_CELL.match(text))
+
+
+def value_columns(rows: list[list[str]]) -> list[str]:
+    """The headers of the columns in one table that carry physical values.
+
+    Half its non-empty cells have to read as values, and at least one has to
+    carry a decimal point, a percent or a plus-minus. Both clauses are needed:
+    the first alone keeps `Lens` (`1 optics`, `2 detection`) and a sequence
+    step's `#`, which are labels that happen to start with a digit.
+    """
+    if len(rows) < 2:
+        return []
+    header, *data = rows
+    out: list[str] = []
+    for i, name in enumerate(header):
+        cells = [row[i] for row in data if i < len(row) and row[i].strip()]
+        if not cells:
+            continue
+        if sum(_is_value_cell(cell) for cell in cells) * 2 < len(cells):
+            continue
+        if not any(mark in cell for cell in cells for mark in _QUANTITY_MARKS):
+            continue
+        out.append(name.strip() or f"col{i}")
+    return out
+
+
+#: How a value column's numbers came to exist. Exactly one per declaration, and
+#: every one of them is **mechanically checkable** -- which is the whole point:
+#: a formula written into a field is one more number in prose, and the failure
+#: this module exists for was an exponent nobody checked. A dotted path can be
+#: imported; a formula string can only be read.
+TABLE_SOURCES = (
+    "computed_by",    # `module.function` in this repository. Must import.
+    "imported_from",  # a path under kb/external/. Must exist.
+    "measured_in",    # a path under data/ or kb/calibrations/. Must exist.
+    "declared_in",    # "facts" or "settings" of this sidecar.
+    "unbacked",       # nothing computes it. Allowed, and must say what would.
+)
+
+
+def sections(body: str) -> list[tuple[str, str]]:
+    """`(heading, text)` for every `##` and `###`, so a table belongs to its own.
+
+    `plans._section` stops at `## ` only, which puts every `###` subsection of
+    *Proposed setting + rationale* inside it -- five tables under one heading,
+    and no way to say which one a declaration is about.
+    """
+    out: list[tuple[str, str]] = []
+    current, buf = "(top)", []
+    for line in body.splitlines():
+        if line.startswith("## ") or line.startswith("### "):
+            out.append((current, "\n".join(buf)))
+            current, buf = line.lstrip("#").strip(), []
+        else:
+            buf.append(line)
+    out.append((current, "\n".join(buf)))
+    return out
+
+
+def value_column_inventory(body: str) -> list[tuple[str, str, list[str]]]:
+    """Every `(section, column, cells)` in the plan that carries physical values."""
+    found: list[tuple[str, str, list[str]]] = []
+    for section, text in sections(body):
+        for rows in tables(text):
+            header, *data = rows if rows else [[]]
+            for column in value_columns(rows):
+                i = [name.strip() or f"col{n}" for n, name in enumerate(header)].index(column)
+                cells = [row[i] for row in data if i < len(row) and row[i].strip()]
+                found.append((section, column, cells))
+    return found
+
+
+def _check_one_table_source(
+    path: Path, where: str, entry: dict, cells: list[str], declared_values: list[float]
+) -> list[Problem]:
+    kinds = [key for key in TABLE_SOURCES if key in entry]
+    if len(kinds) != 1:
+        return [
+            Problem(
+                path,
+                f"{where} declares {len(kinds)} sources {kinds or ''} -- exactly "
+                f"one of {list(TABLE_SOURCES)} is required, because a column with "
+                "two provenances has neither",
+            )
+        ]
+
+    kind = kinds[0]
+    value = str(entry[kind]).strip()
+
+    if kind == "computed_by":
+        module, _, func = value.rpartition(".")
+        if not module or not func:
+            return [Problem(path, f"{where}: computed_by {value!r} is not module.function")]
+        try:
+            imported = importlib.import_module(module)
+        except ImportError as exc:
+            return [
+                Problem(
+                    path,
+                    f"{where}: computed_by {value!r} does not import ({exc}). This "
+                    "is the check that a formula in a field cannot have -- a named "
+                    "function can be run",
+                )
+            ]
+        if not callable(getattr(imported, func, None)):
+            return [Problem(path, f"{where}: {value!r} is not a callable in {module}")]
+        return []
+
+    if kind in ("imported_from", "measured_in"):
+        allowed = ("kb/external/",) if kind == "imported_from" else ("data/", "kb/calibrations/")
+        if not value.startswith(allowed):
+            return [
+                Problem(path, f"{where}: {kind} {value!r} is not under {list(allowed)}")
+            ]
+        if not (REPO_ROOT / value).exists():
+            return [Problem(path, f"{where}: {kind} {value!r} does not exist")]
+        return []
+
+    if kind == "declared_in":
+        if value not in ("facts", "settings"):
+            return [Problem(path, f"{where}: declared_in {value!r} is not facts or settings")]
+        #: and the values have to actually be there. Checking only the word
+        #: would make this the weakest of the five kinds -- a claim about where
+        #: something is, with nothing looking.
+        missing = sorted(
+            {
+                literal
+                for cell in cells
+                for literal in numbers_in(cell)
+                if not _covers(float(literal), declared_values)
+            }
+        )
+        if missing:
+            return [
+                Problem(
+                    path,
+                    f"{where}: declared_in {value!r}, but {', '.join(missing)} "
+                    "appear in no entry",
+                )
+            ]
+        return []
+
+    if len(value) < 20:
+        return [
+            Problem(
+                path,
+                f"{where}: unbacked needs to say what would back it. A refusal "
+                "names what would resolve it (CLAUDE.md rule 2); an unbacked "
+                "column with no remedy is the state that let `2*D*t_exp/3` live",
+            )
+        ]
+    return []
+
+
+def _check_tables(plan_path: Path, sidecar: dict, body: str) -> list[Problem]:
+    """Every value column is declared, and every declaration resolves.
+
+    **Undeclared is refused, not skipped.** A column nobody declared is a
+    column nothing checks, and a check whose field of view excludes a case
+    reports exactly like one that covered it (CLAUDE.md §10).
+    """
+    declared = {
+        (str(entry.get("section", "")).strip(), str(entry.get("column", "")).strip()): entry
+        for entry in sidecar.get("tables", [])
+    }
+    problems: list[Problem] = []
+    inventory = value_column_inventory(body)
+    present = {(section, column) for section, column, _ in inventory}
+    declared_values = _values(sidecar)
+
+    for key in sorted(declared):
+        if key not in present:
+            problems.append(
+                Problem(
+                    sidecar_path(plan_path),
+                    f"declares a table column {key[1]!r} in {key[0]!r} that the "
+                    "plan does not have. A declaration matching nothing is how a "
+                    "renamed column stops being checked without anybody noticing",
+                )
+            )
+
+    for section, column, cells in inventory:
+        entry = declared.get((section, column))
+        where = f"table column {column!r} in {section!r}"
+        if entry is None:
+            problems.append(
+                Problem(
+                    plan_path,
+                    f"{where} carries values and is declared nowhere in the "
+                    f"sidecar. Add a `tables` entry naming one of "
+                    f"{list(TABLE_SOURCES)} -- an undeclared column is one "
+                    "nothing checks",
+                )
+            )
+            continue
+        problems.extend(
+            _check_one_table_source(
+                sidecar_path(plan_path), where, entry, cells, declared_values
+            )
+        )
+
+    return problems
+
+
 def _settings_table(body: str) -> list[list[str]] | None:
     """The one table in the settings section that has a `Value` column."""
     for rows in tables(_section(body, SETTINGS_SECTION)):
@@ -168,6 +414,17 @@ def _check_shape(path: Path, sidecar: dict, plan_id: str) -> list[Problem]:
             for key in ("symbol", "value", "unit", "source", "evidence", "role"):
                 if key not in entry:
                     problems.append(Problem(path, f"{where} has no {key!r}"))
+
+            unit = str(entry.get("unit", "")).strip()
+            if unit in UNIT_TRAPS:
+                problems.append(
+                    Problem(
+                        path,
+                        f"{symbol}: unit {unit!r} is {UNIT_TRAPS[unit]}. A unit "
+                        "library parses it as something else and nothing raises, "
+                        "because the wrong reading is dimensionally plausible",
+                    )
+                )
 
             evidence = entry.get("evidence")
             if evidence is not None and evidence not in EVIDENCE:
@@ -239,6 +496,7 @@ def check(plan_path: Path, plan_id: str, body: str) -> list[Problem]:
         return [Problem(path, "is not a JSON object")]
 
     problems = _check_shape(path, sidecar, plan_id)
+    problems.extend(_check_tables(plan_path, sidecar, body))
     declared = _values(sidecar)
 
     rows = _settings_table(body)

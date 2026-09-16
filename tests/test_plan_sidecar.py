@@ -43,12 +43,6 @@ Track one bead.
 |---|---|---|
 | Exposure | **20 ms** | `data/detectors.yaml` |
 
-### A derived table, in the same section
-
-| h | blur |
-|---|---|
-| 3.0 | 1.21 % |
-
 ## Committee verdict
 | Lens | Verdict |
 |---|---|
@@ -204,18 +198,20 @@ def test_tables_are_split_rather_than_concatenated():
     assert [len(rows) for rows in tables(text)] == [2, 2]
 
 
-def test_a_derived_table_is_not_covered_and_that_is_stated(tmp_path):
-    """The blur coefficient would still get through, and the docstring says so.
+def test_the_derived_table_limit_is_closed(tmp_path):
+    """This replaces a test that pinned the opposite, and that is the point.
 
-    `1.21 %` sits in a derived table inside the settings section and no sidecar
-    entry declares it. Catching that class needs the declaration to be per
-    column and to carry the formula -- `u/3, u = t_exp/tau_k` -- which is also
-    the artefact that would have made the wrong coefficient reviewable. Until
-    that exists this test pins the limit, so nobody reads the check as covering
-    more than it does.
+    Until 2026-09-16 the scope was the settings table only, and a test here
+    asserted that a derived column passed unchecked -- so the limit could not
+    quietly become untrue. `tables` closed it, every value column of every
+    table now needs a declaration, and the test that guarded the gap fails
+    when the gap closes. That is the guard working, not a broken test.
+
+    The rule itself lives in tests/test_sidecar_tables.py.
     """
-    sidecar = {"plan": "2026-09-09-example", "settings": [ONE_SETTING]}
-    assert not problems_for(tmp_path, sidecar)
+    from knowledge.sidecar import TABLE_SOURCES
+
+    assert "computed_by" in TABLE_SOURCES
 
 
 def test_scaffold_fills_the_value_and_nothing_else(tmp_path):

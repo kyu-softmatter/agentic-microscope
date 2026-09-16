@@ -1,18 +1,99 @@
 {
   "plan": "2026-09-15-drag-calibration-stiffness-vs-size",
   "_note": "The structured block is authoritative; the prose cites it. Scaffolded by `knowledge.cli plan-sidecar` and then filled by hand -- every `source` names the entry the number came from, because a plan originates none of them (CLAUDE.md rule 2). `evidence` uses the bridge protocol's vocabulary so an exported ask does not translate it: `assumed` is a standing choice or a proposal, `computed` is derived from the envelope, `measured` is this instrument.",
-
+  "_tables_note": "Every table column that carries physical values names where its numbers come from, and each kind is mechanically checkable: `computed_by` is imported and called, `imported_from` and `measured_in` are opened, `declared_in` is checked against the entries below. **No kind carries a formula string** -- a formula in a JSON field is one more number in prose, which is what this file exists to end; a named function can be run. `unbacked` is the honest state for a column no function computes, and it has to say what would back it. Six of the sixteen are unbacked, and that is the finding rather than a gap in the schema: the plan's derived tables are largely arithmetic that no code performs, which is the soil `2*D*t_exp/3` grew in.",
+  "tables": [
+    {
+      "section": "The frame rate is not the standing 50 fps, and that is a concession",
+      "column": "diameter",
+      "unbacked": "The size list is precondition P0 and BLOCKED: only two products are registered, spanning 1.24x. These seven are a sweep over plausible diameters to show where the sampling gate bites, not a chosen list. Backed when P0 is resolved and the sizes come from data/particles.yaml."
+    },
+    {
+      "section": "The frame rate is not the standing 50 fps, and that is a concession",
+      "column": "Mie x",
+      "computed_by": "trapping.goa.ray_optics_regime"
+    },
+    {
+      "section": "The frame rate is not the standing 50 fps, and that is a concession",
+      "column": "alpha_model pN/µm",
+      "computed_by": "trapping.goa.radial_stiffness_n_per_m"
+    },
+    {
+      "section": "The frame rate is not the standing 50 fps, and that is a concession",
+      "column": "Faxen on gamma",
+      "computed_by": "sample.aberration.wall_drag_suppression"
+    },
+    {
+      "section": "The frame rate is not the standing 50 fps, and that is a concession",
+      "column": "x_eq = 0.15a",
+      "unbacked": "0.15a converted to pixels. Both inputs are declared -- x_eq_over_a in settings, pixel_size in facts -- but no function performs the conversion, so the px figures are arithmetic done in prose. Backed by a helper that takes a radius and a pixel size and returns the displacement in both units."
+    },
+    {
+      "section": "The frame rate is not the standing 50 fps, and that is a concession",
+      "column": "f_c Hz",
+      "computed_by": "trapping.dynamics.corner_frequency_hz"
+    },
+    {
+      "section": "The height ladder, and what it returns",
+      "column": "h",
+      "declared_in": "settings"
+    },
+    {
+      "section": "The height ladder, and what it returns",
+      "column": "s",
+      "computed_by": "sample.aberration.wall_drag_suppression"
+    },
+    {
+      "section": "The height ladder, and what it returns",
+      "column": "gamma/gamma_0",
+      "unbacked": "1/(1 - s) from the s column beside it. wall_drag_suppression returns s; nothing returns the inflation, so this column is one division done in prose. Backed by a function in sample/aberration.py returning the drag factor itself."
+    },
+    {
+      "section": "The height ladder, and what it returns",
+      "column": "Faxen",
+      "unbacked": "The same 1/(1 - s) as the column before it, expressed as a percentage. Two prose renderings of one uncomputed quantity, which is also why they can disagree without anything noticing. Backed by the same function."
+    },
+    {
+      "section": "The height ladder, and what it returns",
+      "column": "v µm/s",
+      "unbacked": "The velocity giving x_eq = 0.15a at each rung: alpha * 0.15a / gamma_corr. Every input is declared or computed elsewhere in this table, and the product is not. Backed by a helper that returns the drive velocity for a target displacement."
+    },
+    {
+      "section": "The height ladder, and what it returns",
+      "column": "f_c Hz",
+      "computed_by": "trapping.dynamics.corner_frequency_hz"
+    },
+    {
+      "section": "The height ladder, and what it returns",
+      "column": "blur on var(x), `u/3`",
+      "unbacked": "⚠ THE COLUMN THIS WHOLE MECHANISM EXISTS FOR. `u/3` with `u = t_exp/tau_k` is computed nowhere in this repository, which is why every entry was exactly twice too large for two rounds of an inter-repository exchange -- it was `2u/3`, the free-particle MSD term, and no gate read it. Backed by a function in trapping/dynamics.py taking an exposure and a relaxation time and returning the exposure-averaged variance ratio 2(u - 1 + e^-u)/u^2."
+    },
+    {
+      "section": "What Brownian dynamics answered, what it corrected, and what is still ours",
+      "column": "`T_obs` per rung",
+      "imported_from": "kb/external/bd/trap-stiffness-recovery.r8.md"
+    },
+    {
+      "section": "What Brownian dynamics answered, what it corrected, and what is still ours",
+      "column": "one bead's `f_c` scatter",
+      "imported_from": "kb/external/bd/trap-stiffness-recovery.r8.md"
+    },
+    {
+      "section": "What Brownian dynamics answered, what it corrected, and what is still ours",
+      "column": "value",
+      "imported_from": "kb/external/bd/trap-stiffness-recovery.r8.md"
+    }
+  ],
   "facts": [
     {
       "symbol": "pixel_size",
       "value": 0.06453,
-      "unit": "um/px",
-      "source": "data/pixel_size.yaml, 100x at 1x1. Two length standards driven 10 um on 2026-09-03 -- closed-loop piezo 0.06460, AOD trap 0.06445, agreeing to 0.24 %. Not from the 2025-04 spreadsheet, which gives 0.065 for this row (0.73 % away).",
+      "unit": "um",
+      "source": "data/pixel_size.yaml, 100x at 1x1. Two length standards driven 10 um on 2026-09-03 -- closed-loop piezo 0.06460, AOD trap 0.06445, agreeing to 0.24 %. Not from the 2025-04 spreadsheet, which gives 0.065 for this row (0.73 % away). Unit is `um` and not `um/px`: a pixel is a count, so um-per-pixel is dimensionally um, and `px` parses in a unit library as 1/96 inch -- a factor of 4100 against this value, dimensionally plausible and silent.",
       "evidence": "measured",
       "role": "fact"
     }
   ],
-
   "settings": [
     {
       "symbol": "objective_position",
@@ -41,16 +122,16 @@
     {
       "symbol": "roi_width_px",
       "value": 256,
-      "unit": "px",
-      "source": "kb/decisions/2026-09-10-drag-calibration-operating-envelope.md -- the width sets the data rate, whose ceiling is 271 px.",
+      "unit": "dimensionless",
+      "source": "kb/decisions/2026-09-10-drag-calibration-operating-envelope.md -- the width sets the data rate, whose ceiling is 271 px. A pixel count, so the unit is dimensionless and the symbol carries the pixel.",
       "evidence": "computed",
       "role": "setting"
     },
     {
       "symbol": "roi_height_px",
       "value": 512,
-      "unit": "px",
-      "source": "kb/decisions/2026-09-10-drag-calibration-operating-envelope.md -- the height sets the frame rate.",
+      "unit": "dimensionless",
+      "source": "kb/decisions/2026-09-10-drag-calibration-operating-envelope.md -- the height sets the frame rate. A pixel count, so the unit is dimensionless and the symbol carries the pixel.",
       "evidence": "computed",
       "role": "setting"
     },
@@ -147,6 +228,54 @@
       "value": 3,
       "unit": "dimensionless",
       "source": "Proposal, CLAUDE.md D8 -- several short acquisitions rather than one long one, with the sample region moved between segments.",
+      "evidence": "assumed",
+      "role": "setting"
+    },
+    {
+      "symbol": "h_rung_1",
+      "value": 3.0,
+      "unit": "um",
+      "source": "The ladder's near rung. Capped by `h > a` -- the 9a/(16h) expansion's own domain -- plus the bead radius: 3.0 um on a 2.475 um-radius bead leaves 0.5 um of clearance, and the run starts at 3.5 and only goes lower if the bead is behaving.",
+      "evidence": "assumed",
+      "role": "setting"
+    },
+    {
+      "symbol": "h_rung_2",
+      "value": 3.5,
+      "unit": "um",
+      "source": "Proposal. The rung the ladder starts at, far-to-near order notwithstanding.",
+      "evidence": "assumed",
+      "role": "setting"
+    },
+    {
+      "symbol": "h_rung_3",
+      "value": 4.5,
+      "unit": "um",
+      "source": "Proposal. Spacing chosen from the height window and the piezo creep settle, not from the fit's conditioning -- r8 gaps[2] asks whether these are the right six.",
+      "evidence": "assumed",
+      "role": "setting"
+    },
+    {
+      "symbol": "h_rung_4",
+      "value": 6.0,
+      "unit": "um",
+      "source": "Proposal, as above.",
+      "evidence": "assumed",
+      "role": "setting"
+    },
+    {
+      "symbol": "h_rung_5",
+      "value": 8.0,
+      "unit": "um",
+      "source": "Proposal. The reference rung every bridge round quotes, and the one h_nominal names.",
+      "evidence": "assumed",
+      "role": "setting"
+    },
+    {
+      "symbol": "h_rung_6",
+      "value": 10.0,
+      "unit": "um",
+      "source": "The far rung, capped by lens 4's RI-mismatch screening limit 1.85/|dn| for an oil objective in water.",
       "evidence": "assumed",
       "role": "setting"
     },

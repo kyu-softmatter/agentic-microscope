@@ -558,12 +558,27 @@ overwrite** an existing sidecar, so a re-scaffold is a decision.
 
 A sidecar is optional and this is **not retroactive**: backfilling one from
 prose would put numbers in a structured block with nobody re-deriving them,
-which is the act that produced the wrong blur coefficient. ⚠ **Scope, stated
-because it is narrower than it sounds**: only the `Value` column of *Proposed
-setting + rationale*. The plan's **derived** tables are not covered, so the
-`2*D*t_exp/3` error that motivated all of this would still get through —
-catching that class needs the declaration to be per column and to carry the
-formula, which is the next step (`tests/test_plan_sidecar.py` pins the limit).
+which is the act that produced the wrong blur coefficient.
+
+**Derived tables are covered too, since 2026-09-16** — and by **naming the code,
+never a formula.** Every value column of every table declares exactly one of
+`computed_by` (a `module.function` that is imported and called) ·
+`imported_from` (a path under `kb/external/`) · `measured_in` (`data/` or
+`kb/calibrations/`) · `declared_in` (and the values have to be in the sidecar) ·
+`unbacked` (nothing computes it, and it must say what would). **A formula in a
+field is one more number in prose; a dotted path either resolves or it does
+not** — which is the check `2*D*t_exp/3` never had. An **undeclared** column is
+refused, because a column nobody declared is one nothing checks (§10).
+⚠ **Six of the drag-calibration plan's sixteen columns are `unbacked`, and that
+is the finding rather than a schema gap**: its derived tables are largely
+arithmetic no code performs, which is the soil the blur coefficient grew in.
+The `blur on var(x)` column is one of the six.
+⚠ **A `unit` may not be a token a unit library misreads.** `px` is 1/96 inch in
+`pint` and `fps` is feet per second — against this instrument's 0.06453 µm that
+is a factor of ~4100, dimensionally plausible, and nothing raises. A **count**
+is `dimensionless` with the symbol carrying the meaning (`roi_width_px`). Found
+by the bridge session and refused here; it had already caught three of this
+repository's own entries.
 
 ---
 
