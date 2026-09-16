@@ -21,8 +21,17 @@ derived_from:
     note: "the ask this answers -- so this entry is not independent evidence about the question it settles"
   - ref: "bd:verify/verify_ladder_tolerance.py"
     hash: "sha256:cd6bc109253678ad"
-    rev: "07d1048"
-    note: "branch microscope-link-survey, not on BD's main"
+    rev: "f952f18"
+    note: >-
+      branch microscope-link-survey, not on BD's main. ⚠ rev corrected
+      2026-09-16: this entry cited 07d1048, taken from hashes.json's _bd_note,
+      where THIS path does not yet exist -- the other three refs below do exist
+      there, checked one at a time in BD's own clone rather than inferred. The
+      content hash was always right and still is: the blob at f952f18 hashes to
+      cd6bc109253678ad. Found by the bridge's R6 --resolve, which opens the file
+      instead of comparing two strings this repository wrote; BD had already
+      corrected the same dead rev in r8's .json, and the .md twin carried it
+      because nothing could see it.
   - ref: "bd:verify/verify_drag_ladder.py"
     hash: "sha256:fdd1dae3588398a9"
     rev: "07d1048"
