@@ -8,10 +8,16 @@ falls. This module is how that gets measured, and it runs **where the data
 already is**: numpy only, no instrument, no Micro-Manager, no edit to the
 analysis PC's own code.
 
-Every test names the failure it stands for. Two are about refusals rather than
-results, because the input file's real format is not known here -- the one
-thing this code cannot supply is which file holds the tracked positions
-*before* `creepx` detrends the mean displacement away.
+Every test names the failure it stands for, and more of them are about refusals
+than about results. That is the shape of the problem: what is on disk is **two
+columns `x y` in pixels with no time column** and the speed in the filename
+(`analysis/matlab/README.md`), so the time axis has to be *constructed* from a
+frame period that the MATLAB scripts hardcode at 0.02 s and never read from
+metadata. Every number that cannot be recovered afterwards is refused here
+rather than defaulted.
+
+The one thing this code still cannot supply is **which** file holds the tracked
+positions *before* `creepx` detrends the mean displacement away.
 """
 
 from __future__ import annotations
@@ -23,11 +29,14 @@ import numpy as np
 import pytest
 
 from calibration.drag_slope import (
+    HARDCODED_FRAME_PERIOD_MS,
     as_calibration_entry,
     faxen_gamma_pn_s_um,
     fit_file,
+    prepare_rows,
     read_positions,
     sha256_prefix,
+    speed_from_filename,
 )
 
 #: gamma/alpha for the synthetic bead, in seconds. The slope the fit has to find.
@@ -247,3 +256,109 @@ def test_comments_and_blank_lines_are_skipped(tmp_path):
     )
     data = read_positions(path)
     assert data["t_s"].size == 2
+
+
+# --------------------------------------------------------------------------
+# the step between disk and the contract
+# --------------------------------------------------------------------------
+
+
+def two_column(path: Path, speed: float, n: int = 500, seed: int = 3) -> Path:
+    """What is actually on disk: two columns `x y` in pixels, no header, no time.
+
+    Per `analysis/matlab/README.md`. The speed lives in the filename, which is
+    why the name matters as much as the contents.
+    """
+    rng = np.random.default_rng(seed)
+    x_eq_px = SLOPE_S * speed / 0.06453
+    rows = []
+    for i in range(n):
+        settling = x_eq_px * (1.0 - math.exp(-(i / 520.0) / 0.016))
+        rows.append(f"{settling + rng.normal(0, 0.3):.4f}  {rng.normal(0, 0.3):.4f}")
+    path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+    return path
+
+
+def test_the_speed_comes_from_the_filename(tmp_path):
+    assert speed_from_filename("bead_creepx_17.25umps_80_OT1_1_5um.txt") == 17.25
+    assert speed_from_filename("bead_passive_80_OT1_1_5um.txt") == 0.0
+
+
+def test_an_unparseable_filename_is_refused_not_skipped(tmp_path):
+    """The MATLAB parsers skip a non-matching file "sometimes silently".
+
+    A skipped velocity is a missing point in a slope fit, and the fit does not
+    announce that it fitted three points instead of four.
+    """
+    with pytest.raises(ValueError, match="Refusing rather than skipping"):
+        speed_from_filename("bead_run3.txt")
+
+
+def test_prepare_round_trips_into_the_fit(tmp_path):
+    """Disk shape in, slope out -- the whole of P7 steps 2 and 3."""
+    paths = [
+        two_column(tmp_path / f"bead_creepx_{v}umps_80_OT1_1_5um.txt", v, seed=i)
+        for i, v in enumerate(VELOCITIES)
+    ]
+    prepared = tmp_path / "prepared.csv"
+    prepared.write_text(
+        "\n".join(prepare_rows(paths, frame_period_ms=1.923)) + "\n", encoding="utf-8"
+    )
+
+    (fit,) = fit_file(prepared, settle_s=0.056, pixel_size_um=0.06453)
+    assert fit.slope_s == pytest.approx(SLOPE_S, rel=0.02)
+    assert fit.n_segments == len(VELOCITIES)
+
+
+def test_a_two_bead_file_is_refused_rather_than_read_as_one(tmp_path):
+    """Those files are four columns WITH a header -- a different reader, not a guess."""
+    path = tmp_path / "bead_creepx_5.75umps_80_OT1_1_5um.txt"
+    path.write_text("Left_x Left_y Right_x Right_y\n1.0 2.0 3.0 4.0\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="does not start with a number"):
+        prepare_rows([path], frame_period_ms=1.923)
+
+
+def test_a_single_column_row_is_refused(tmp_path):
+    path = tmp_path / "bead_creepx_5.75umps_80_OT1_1_5um.txt"
+    path.write_text("1.0 2.0\n3.0\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="one column"):
+        prepare_rows([path], frame_period_ms=1.923)
+
+
+def test_the_cli_refuses_a_blank_frame_period_source(tmp_path, capsys):
+    """`t_s` is constructed, so its provenance is the one thing nothing recovers.
+
+    The frame period is hardcoded at 0.02 s in every MATLAB file and never read
+    from metadata (analysis/matlab/README.md), while the achieved period equals
+    the exposure on this camera -- so a blank source is exactly the state in
+    which a setting gets used as a measurement.
+    """
+    from calibration.cli import main
+
+    path = two_column(tmp_path / "bead_creepx_5.75umps_80_OT1_1_5um.txt", 5.75)
+    code = main(
+        [
+            "drag-prepare", str(path),
+            "--frame-period-ms", "1.923",
+            "--frame-period-source", "   ",
+        ]
+    )
+    assert code == 1
+    assert "cannot be told from one measured" in capsys.readouterr().err
+
+
+def test_the_cli_warns_when_the_period_is_the_hardcoded_one(tmp_path, capsys):
+    """20.0 ms is not an error -- the standing exposure is 20.0 ms -- so it warns."""
+    from calibration.cli import main
+
+    path = two_column(tmp_path / "bead_creepx_5.75umps_80_OT1_1_5um.txt", 5.75)
+    code = main(
+        [
+            "drag-prepare", str(path),
+            "--frame-period-ms", str(HARDCODED_FRAME_PERIOD_MS),
+            "--frame-period-source", "the exposure setting",
+            "--out", str(tmp_path / "out.csv"),
+        ]
+    )
+    assert code == 0
+    assert "G12b" in capsys.readouterr().err

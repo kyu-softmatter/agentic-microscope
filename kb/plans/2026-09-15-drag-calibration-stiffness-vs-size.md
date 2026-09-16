@@ -661,12 +661,35 @@ Checked before anything moves. Each refuses the run on its own.
          `creepx`.** That pipeline detrends the mean displacement away by design
          and the mean displacement is the measurand, so its output cannot be
          used however it is post-processed. This is the one step no code here
-         can do.
-      2. **Export them to the contract in `calibration/drag_slope.py`** —
-         `t_s`, `x_px` or `x_um`, `v_um_s` (the *commanded* velocity, since a
-         requested rate is not evidence), `segment`, and `rung` if there is more
-         than one height. Comma or tab separated with a header. A missing column
-         is refused by name rather than guessed.
+         can do. The files are kilobytes — two columns, one row per frame — so
+         whether they are copied or read in place is a matter of convenience and
+         not of design.
+      2. **Prepare them**, because what is on disk is not what the fit reads.
+         Per [`analysis/matlab/README.md`](../../analysis/matlab/README.md) the
+         position files are **two columns `x y` in pixels, one row per frame**,
+         with the speed in the filename and **no time column at all**:
+
+         ```bash
+         python -m calibration.cli drag-prepare <files...> \
+             --frame-period-ms <achieved> \
+             --frame-period-source "where that came from" --out prepared.csv
+         ```
+
+         ⚠ **The frame period is the number this step has to get right and
+         nothing downstream can recover.** That README's own warning: it is
+         hardcoded at `0.02` s in every MATLAB file and never read from
+         metadata, while on this instrument the achieved period *equals the
+         exposure*, so an acquisition at any other exposure silently puts every
+         frequency axis and every diffusivity out by the ratio. Take it from the
+         timestamp column, or from the run report's achieved rate over `n-1`
+         `ElapsedTime-ms` intervals — **not from the setting** (G12b). The
+         command requires a stated source, records it in the prepared file, and
+         warns when the value is exactly 20.0 ms.
+
+         It also **refuses a filename it cannot parse** rather than skipping it:
+         those parsers skip a non-matching file "sometimes silently", and a
+         skipped velocity is a missing point in a slope fit that the fit will
+         not report.
       3. **Run the fit wherever the file is.** numpy only — no instrument, no
          Micro-Manager, no MATLAB, no edit to `D:\codes`. `requirements.txt` is
          three packages, so a clone runs it anywhere; **where it runs is

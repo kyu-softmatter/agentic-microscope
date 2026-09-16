@@ -21,6 +21,29 @@ displacement *is* the measurand here, so what this needs is the tracked
 positions **before** that step. Identifying that file is the one prerequisite
 this code cannot supply.
 
+## Before the contract: what is actually on disk
+
+**The tracked positions do not arrive in this shape**, and the gap is the point
+rather than an inconvenience. Per
+[`analysis/matlab/README.md`](../analysis/matlab/README.md) the position files
+are **plain text, two columns `x y` in pixels, one row per frame** -- the speed
+is in the filename
+(`<tag>_creepx_<speed>umps_<power>_OT<otfactor>_<rep>_5um.txt`) and **there is
+no time column at all.**
+
+So a preparation step exists, and it carries exactly the quantity that README
+warns about: `frame_time` is hardcoded at `0.02` s in every MATLAB file and
+never read from metadata, while on this instrument the achieved period equals
+the exposure -- so an acquisition at any other exposure silently puts every
+frequency axis and every diffusivity out by the ratio. Its own instruction is
+to take the period **from the timestamp column, not from the setting** (G12b: a
+requested rate is not evidence).
+
+`python -m calibration.cli drag-prepare` is that step. It refuses a filename it
+cannot parse rather than skipping it silently, and it requires the frame period
+*and a stated source for it* -- because the one number the preparation has to
+supply is the one nobody can recover afterwards.
+
 ## The input contract
 
 A delimited text file with a header line, comma or tab separated. Refused --
@@ -69,6 +92,7 @@ microscope.
 from __future__ import annotations
 
 import math
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -394,6 +418,80 @@ def summarise(fits: list[RungFit]) -> str:
             for reason in fit.blocked:
                 lines.append(f"BLOCKED rung {fit.rung}: {reason}")
     return "\n".join(lines)
+
+
+#: The MATLAB parsers' own filename convention, and the reason this is strict:
+#: their README says "a file that does not match is skipped, sometimes
+#: silently", and a silently skipped velocity is a missing point in a slope fit.
+_CREEPX = re.compile(r"_creepx_(?P<speed>[0-9.]+)umps_", re.IGNORECASE)
+_PASSIVE = re.compile(r"_passive_", re.IGNORECASE)
+
+#: The value `analysis/matlab/README.md` warns about: hardcoded in every MATLAB
+#: file and never read from metadata. Equalling it is not an error -- the
+#: standing exposure really is 20.0 ms -- so it earns a warning and not a
+#: refusal.
+HARDCODED_FRAME_PERIOD_MS = 20.0
+
+
+def speed_from_filename(name: str) -> float:
+    """The commanded stage speed, in um/s, from the MATLAB filename convention.
+
+    `passive` means the trap was held with no drive, so the speed is zero --
+    those files carry `var(x)` for the equipartition route and no slope point.
+    Anything else is refused by name: a file silently skipped is a velocity
+    missing from the fit, and the fit will not say so.
+    """
+    hit = _CREEPX.search(name)
+    if hit:
+        return float(hit.group("speed"))
+    if _PASSIVE.search(name):
+        return 0.0
+    raise ValueError(
+        f"{name!r} matches neither <tag>_creepx_<speed>umps_... nor "
+        "<tag>_passive_... Refusing rather than skipping it: the MATLAB parsers "
+        "skip a non-matching file 'sometimes silently' (analysis/matlab/README.md), "
+        "and a skipped velocity is a missing point in a slope fit"
+    )
+
+
+def prepare_rows(
+    paths: list[Path],
+    frame_period_ms: float,
+    rung: str = "0",
+) -> list[str]:
+    """Turn the two-column position files into the input contract.
+
+    One segment per file, numbered in the order given. `t_s` is **constructed**
+    from the frame period, which is why the caller has to say where that period
+    came from -- this function cannot tell a measured period from a setting, and
+    neither can anything downstream once the column exists.
+    """
+    out = ["t_s,x_px,v_um_s,segment,rung"]
+    t = 0.0
+    dt = frame_period_ms / 1000.0
+    for segment, path in enumerate(paths):
+        speed = speed_from_filename(path.name)
+        for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            fields = stripped.replace(",", " ").split()
+            try:
+                x = float(fields[0])
+            except (IndexError, ValueError):
+                raise ValueError(
+                    f"{path}:{n} does not start with a number. The contract for "
+                    "these files is two columns `x y` in pixels, one row per "
+                    "frame -- a header or a four-column two-bead file needs a "
+                    "different reader, not a guess"
+                ) from None
+            if len(fields) < 2:
+                raise ValueError(
+                    f"{path}:{n} has one column; the position files are `x y`"
+                )
+            t += dt
+            out.append(f"{t:.6f},{x:.6f},{speed},{segment},{rung}")
+    return out
 
 
 def faxen_gamma_pn_s_um(

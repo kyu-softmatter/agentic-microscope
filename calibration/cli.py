@@ -187,6 +187,74 @@ def cmd_ram_burst(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_drag_prepare(args: argparse.Namespace) -> int:
+    """The step between what is on disk and what `drag-slope` reads.
+
+    The position files are two columns `x y` in pixels with no time column, and
+    the speed is in the filename. So `t_s` has to be constructed, and the period
+    it is constructed from is the one number `analysis/matlab/README.md` says is
+    hardcoded at 0.02 s and never read from metadata. This command therefore
+    refuses to invent it and records where it came from.
+    """
+    from .drag_slope import HARDCODED_FRAME_PERIOD_MS, prepare_rows
+
+    paths = [Path(p) for p in args.positions]
+    missing = [p for p in paths if not p.is_file()]
+    if missing:
+        print(f"no such file(s): {', '.join(str(p) for p in missing)}", file=sys.stderr)
+        return 2
+
+    if not args.frame_period_source.strip():
+        print(
+            "--frame-period-source is empty. Refusing: a constructed time axis "
+            "whose provenance is blank cannot be told from one measured, and "
+            "nothing downstream can recover it",
+            file=sys.stderr,
+        )
+        return 1
+
+    if args.frame_period_ms == HARDCODED_FRAME_PERIOD_MS:
+        print(
+            f"⚠ {HARDCODED_FRAME_PERIOD_MS} ms is exactly the value hardcoded in "
+            "every MATLAB file and never read from metadata "
+            "(analysis/matlab/README.md). That is not an error -- the standing "
+            "exposure is 20.0 ms -- but a requested rate is not evidence (G12b). "
+            f"Recorded source: {args.frame_period_source!r}",
+            file=sys.stderr,
+        )
+
+    try:
+        rows = prepare_rows(paths, frame_period_ms=args.frame_period_ms, rung=args.rung)
+    except ValueError as exc:
+        print(f"refused: {exc}", file=sys.stderr)
+        return 1
+
+    header = [
+        "# Prepared by `python -m calibration.cli drag-prepare` from two-column",
+        "# `x y` position files. x stays in PIXELS -- drag-slope needs",
+        "# --pixel-size-um, which it refuses to default.",
+        f"# frame_period_ms: {args.frame_period_ms}",
+        f"# frame_period_source: {args.frame_period_source}",
+        "# t_s is CONSTRUCTED from that period, not measured per frame. If a",
+        "# timestamp column exists for this acquisition, use it instead: the",
+        "# achieved period equals the exposure on this camera and a requested",
+        "# rate is not evidence (G12b).",
+        "# source files, in segment order:",
+    ] + [f"#   {i}: {p}" for i, p in enumerate(paths)]
+
+    text = "\n".join(header + rows) + "\n"
+    if args.out:
+        out = Path(args.out)
+        if out.exists():
+            print(f"{out} exists -- refusing to overwrite", file=sys.stderr)
+            return 1
+        out.write_text(text, encoding="utf-8")
+        print(f"wrote {out} -- {len(rows) - 1} rows from {len(paths)} file(s)")
+    else:
+        print(text)
+    return 0
+
+
 def cmd_drag_slope(args: argparse.Namespace) -> int:
     """P7, run where the data already is.
 
@@ -311,6 +379,23 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--n-frames", type=int, required=True, help="frames to capture into RAM")
     b.add_argument("--out", help="if given, flush the captured burst to this .npy path after capture")
     b.set_defaults(func=cmd_ram_burst)
+
+    q = sub.add_parser(
+        "drag-prepare",
+        help="two-column x y position files -> the drag-slope input contract (P7 step 2)",
+    )
+    q.add_argument("positions", nargs="+", help="position files, in the order they become segments")
+    q.add_argument(
+        "--frame-period-ms", type=float, required=True,
+        help="the ACHIEVED period, which equals the exposure on this camera. Required: there is no time column in these files and this is the number analysis/matlab/README.md says is hardcoded at 20 ms and never read from metadata",
+    )
+    q.add_argument(
+        "--frame-period-source", required=True,
+        help="where that period came from -- a timestamp column, a run report's achieved rate, or the exposure setting. Recorded in the output, because nothing downstream can recover it",
+    )
+    q.add_argument("--rung", default="0", help="height id, if the files are one rung of a ladder")
+    q.add_argument("--out", help="write here instead of printing")
+    q.set_defaults(func=cmd_drag_prepare)
 
     s = sub.add_parser(
         "drag-slope",
