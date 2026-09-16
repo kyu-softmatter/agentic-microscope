@@ -109,9 +109,17 @@ def _table_rows(text: str) -> list[list[str]]:
     return rows
 
 
-#: Markdown inline links, `[text](target)`. Reference-style links are not used
-#: anywhere in `kb/` and are not matched; if that changes this has to grow.
+#: Markdown inline links, `[text](target)`.
 _LINK = re.compile(r"\]\(([^)\s]+)")
+
+#: Reference-style links, `[text][label]`. **Refused rather than ignored.**
+#: This checker can only see the inline form, and a form it cannot see reports
+#: exactly like a clean result -- which is the failure this whole rule was added
+#: to catch, sitting inside the rule. No plan uses the reference form today, so
+#: refusing it costs nothing and keeps the checker's coverage equal to its
+#: claim. Growing the parser instead would be the wrong trade: a plan has one
+#: linking style, and two styles is two things to keep checked.
+_REF_LINK = re.compile(r"\]\[([^\]\n]+)\]")
 
 #: Link targets that are addresses rather than files, and are nobody's to
 #: resolve here.
@@ -134,6 +142,17 @@ def _check_citations(path: Path, body: str) -> list[Problem]:
     that would have changed the answer (09 §7).
     """
     problems: list[Problem] = []
+    for label in _REF_LINK.findall(body):
+        problems.append(
+            Problem(
+                path,
+                f"uses a reference-style link [...][{label}]. This check reads "
+                "the inline form `[text](target)` only, and a link form it "
+                "cannot see reports exactly like a resolved one -- so the form "
+                "is refused rather than skipped. Write the target inline",
+            )
+        )
+
     for raw in _LINK.findall(body):
         target = raw.split("#", 1)[0].strip()
         if not target or target.startswith(_NOT_A_FILE):

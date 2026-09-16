@@ -255,3 +255,24 @@ def test_a_url_is_not_a_citation_to_resolve(tmp_path):
         "100x Oil, 1x1, 20 ms — [vendor](https://example.invalid/datasheet.pdf).",
     )
     assert not check_plan(plan(tmp_path, text))
+
+
+def test_a_reference_style_link_is_refused_not_ignored(tmp_path):
+    """A link form the checker cannot see reports exactly like a resolved one.
+
+    `_check_citations` reads the inline form only. Reference-style links were
+    left unmatched with a comment saying no plan used them — which means the day
+    one did, `plan-check` would have reported clean on an unchecked citation.
+    That is the same failure the citation rule was added to catch, sitting
+    inside the citation rule: a tool that cannot match its target produces
+    output indistinguishable from success.
+
+    So the form is refused. No plan uses it, so this costs nothing today, and it
+    keeps the check's coverage equal to what it claims.
+    """
+    text = GOOD.replace(
+        "100x Oil, 1x1, 20 ms.",
+        "100x Oil, 1x1, 20 ms — [the envelope][env].\n\n[env]: ../decisions/x.md",
+    )
+    problems = check_plan(plan(tmp_path, text))
+    assert any("reference-style link" in str(problem) for problem in problems)
