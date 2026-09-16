@@ -4,6 +4,8 @@ split: Phase 0 refusals are right, Phase 1/2 aggregation is right.
 
 from __future__ import annotations
 
+import pytest
+
 from compute.gate import evaluate
 from compute.setup import AcquisitionResourceSetup, Stream
 
@@ -282,3 +284,63 @@ def test_raising_the_ram_budget_past_the_ceiling_is_an_assumption():
     assert v.evidence == "assumed"
     assert v.advances is False
     assert any("authorized ceiling" in i for i in v.assumed_inputs)
+
+
+# ------------------------------------------------- the tolerance band (L3.4) --
+
+
+def _buffered(frames):
+    return AcquisitionResourceSetup(
+        streams=[Stream(label="k", width_px=512, height_px=512, fps=100.0,
+                        bit_depth=12, fps_source="measured")],
+        disk_bandwidth_mb_s=206.8, disk_bandwidth_path_confirmed=True,
+        acquisition_duration_s=60.0, free_disk_gb=500.0,
+        circular_buffer_frames=frames, usable_fps_ceiling=200.0,
+    )
+
+
+def test_a_hard_failure_inside_the_band_continues_as_a_concession():
+    """KH, 2026-09-16: up to about 2x is acceptable where safety is not
+    involved, because "the point of the experiment is that we do not know the
+    value, so we measure it -- it is not a confirmation of a value already
+    known."
+
+    The 5 s buffer floor is a chosen depth, not a device limit, so a shorter
+    grace period before a disk stall drops frames is a degradation.
+    """
+    verdict = evaluate(_buffered(300))
+    buffer = next(f for f in verdict.findings if f.code == "buffer.too_small")
+
+    assert buffer.margin == pytest.approx(0.6)
+    assert buffer.severity == "fail", "still a failure, and still reported as one"
+    assert verdict.status == "PASS_WITH_CHANGES", "the run continues"
+
+
+def test_a_conceded_gate_still_cannot_advance():
+    """And this needs no extra rule: `grade()` returns HARD or worse for every
+    margin a band admits and `meets_grade` is False for all of them. A
+    concession reports; it does not authorise."""
+    for frames in (400, 300):
+        verdict = evaluate(_buffered(frames))
+        assert verdict.status == "PASS_WITH_CHANGES"
+        assert verdict.feasibility == "HARD"
+        assert verdict.advances is False
+
+
+def test_past_the_band_it_stops_exactly_as_before():
+    """0.5 is the edge. Below it the concession is not on offer."""
+    verdict = evaluate(_buffered(200))
+    assert verdict.margins["buffer.too_small"] == pytest.approx(0.4)
+    assert verdict.status == "FAIL"
+
+
+def test_a_threshold_with_no_band_is_untouched():
+    """`data_rate` grades against `disk_bandwidth_fraction`, which is already
+    0.7 of a MEASURED bandwidth -- doubling it plans for 1.4x the disk. It is
+    deliberately absent from TOLERANCE, and its absence is what keeps it
+    stopping."""
+    from compute.checks import TOLERANCE
+
+    assert not any(k.startswith("data_rate") for k in TOLERANCE)
+    assert not any(k.startswith("ram_capacity") for k in TOLERANCE)
+    assert not any(k.startswith("capacity") for k in TOLERANCE)

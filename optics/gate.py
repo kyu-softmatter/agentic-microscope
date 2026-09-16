@@ -32,6 +32,7 @@ from .checks import (
     CHECKS,
     GRADE_NOTES,
     HARD,
+    TOLERANCE,
     INFO,
     LIMITS,
     SOFT,
@@ -347,7 +348,14 @@ def evaluate(
     results: list[CheckResult] = [c.run(channel, others) for c in CHECKS]
 
     # ---- Phase 2 — aggregate ---------------------------------------------
-    hard_failed = [r for r in results if r.kind == HARD and r.margin < 1.0]
+    # A `hard` failure inside its check's TOLERANCE band is a CONCESSION, not
+    # a stop -- KH, 2026-09-16. It still appears as a `fail` finding with its
+    # margin, and it still cannot advance (`grade()` is HARD or worse for every
+    # margin a band admits), so what changes is only that the run continues and
+    # the concession is named. Every threshold without a band stops as before.
+    failed = [r for r in results if r.kind == HARD and r.margin < 1.0]
+    conceded = [r for r in failed if r.margin >= TOLERANCE.get(r.code, 1.0)]
+    hard_failed = [r for r in failed if r not in conceded]
     gradeable = [r for r in results if r.kind in (HARD, SOFT, BIAS)]
     worst = min(gradeable, key=lambda r: r.margin) if gradeable else None
 

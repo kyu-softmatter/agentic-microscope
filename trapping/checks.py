@@ -35,6 +35,55 @@ INFO = "info"
 
 MAX_MARGIN = 10.0
 
+#: HOW FAR BELOW ITS THRESHOLD A `hard` FAILURE IS A CONCESSION RATHER THAN A
+#: STOP. Keyed by check code; a check absent from this dict gets no band and
+#: stops at m < 1.0 exactly as before.
+#:
+#: **KH, 2026-09-16**: "안전에 위배되는게 아니면 2배정도 까지는 괜찮기도 할듯"
+#: -- up to about 2x is acceptable where safety is not involved -- and the
+#: reason he gave for it: "애초의 실험의 목적은 모르니까 측정하는것이지 정확한
+#: 값을 확인하는게 아니니까". The point of measuring is that the value is
+#: unknown; it is not a confirmation of a value already known.
+#:
+#: ⚠ A BAND BELONGS ONLY ON A THRESHOLD THIS REPOSITORY CHOSE. Four kinds of
+#: `hard` check are deliberately absent, and the distinction is the whole of
+#: why this is a dict and not a global constant:
+#:
+#:   physics or a boolean   NA <= n_immersion is "exact, not an approximation";
+#:                          a camera cannot run faster than it runs; L9.1 asks
+#:                          whether a time base was EVER measured, and 2x of
+#:                          "never" is never
+#:   already factored       `disk_bandwidth_fraction` is 0.7 of a MEASURED
+#:                          bandwidth and `full_well_fraction` 0.7 of full
+#:                          well -- doubling those plans for 1.4x the disk and
+#:                          clips the pixel. That is not a worse answer, it is
+#:                          no answer
+#:   safety                 L4.2's working distance is the objective and the
+#:                          coverslip (SAFETY §2). Never
+#:   the brief's own        L9.2 and L9.3 derive from `target_relative_error`.
+#:                          That is already the operator's number: 10 % instead
+#:                          of 5 % is written in the brief, not granted here
+#:
+#: THE PRECEDENT IS KH'S OWN. CLAUDE.md H4 records the ~17.6 % Faxen drag
+#: inflation accepted against a 10 % limit "with that bound stated" -- 1.76x,
+#: already granted, on exactly this kind of threshold.
+#:
+#: A conceded gate cannot advance, and that needs no extra rule: `grade()`
+#: returns HARD or worse for every margin a band admits, and `meets_grade` is
+#: False for all of them. It reports; it does not authorise.
+#: -> kb/decisions/2026-09-16-a-band-on-the-thresholds-we-chose.md
+TOLERANCE: dict[str, float] = {
+    #: L7.4. `f_s >= 10 f_c` is a chosen factor of ten on the PSD fit.
+    #: At five the corner frequency is still recoverable and less well
+    #: determined, which is the definition of a degradation.
+    #: ⚠ 0.5 IS 5*f_c AND THE PHYSICAL FLOOR IS 0.2. The chosen factor is
+    #: ten; Nyquist on the trap dynamics is two, so a band to 0.5 stays
+    #: comfortably above it and a band past 0.2 would genuinely alias. The
+    #: code says `aliased`, which is only literally true below 0.2 -- do
+    #: not widen this on the strength of the name.
+    "sampling.aliased": 0.5,
+}
+
 #: Rule of thumb (Ashkin 1992; Neuman & Block 2004), not a derived cutoff --
 #: see trapping.dynamics.trap_depth_kt.
 REQUIRED_TRAP_DEPTH_KT = 10.0

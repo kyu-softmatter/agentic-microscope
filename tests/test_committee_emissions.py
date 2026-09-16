@@ -309,3 +309,63 @@ def test_a_renamed_heading_fails_loudly():
 
     with pytest.raises(ValueError, match="cross-lens"):
         constraints._rows("# a document with no such heading\n")
+
+
+# ------------------------- the tolerance band, and the key it is keyed on --
+
+
+def test_every_tolerance_key_is_a_code_its_lens_actually_emits():
+    """The failure this catches was committed on the way in, 2026-09-16.
+
+    `TOLERANCE` was first keyed on the REGISTERED check code (`buffer`) while
+    results carry the EMITTED one (`buffer.too_small`), so the dict matched
+    nothing and every band was silently inert -- "a registry naming a code
+    nobody emits", the second of the two failure modes this package exists to
+    catch, arriving in a new table.
+
+    The relation cannot be recovered by string surgery: `buffer` -> 
+    `buffer.too_small` adds a suffix, `na_feasibility` ->
+    `geometry.na_feasibility` adds a prefix. So the check is against the
+    parsed emission sites, not against a rule.
+    """
+    import importlib
+
+    for lens in LENSES:
+        tolerance = getattr(importlib.import_module(f"{lens}.checks"), "TOLERANCE", {})
+        if not tolerance:
+            continue
+        emitted = {s.emitted_code for s in collect(lens)}
+        unknown = sorted(set(tolerance) - emitted)
+        assert not unknown, f"{lens}: TOLERANCE names {unknown}, which nothing emits"
+
+
+def test_a_band_is_only_on_a_failure_code():
+    """A band on an `ok` or `info` code would be inert in a different way --
+    those severities never reach `hard_failed`, so the entry would read as a
+    granted concession that can never be granted."""
+    import importlib
+
+    for lens in LENSES:
+        tolerance = getattr(importlib.import_module(f"{lens}.checks"), "TOLERANCE", {})
+        by_code: dict[str, set[str]] = {}
+        for site in collect(lens):
+            by_code.setdefault(site.emitted_code, set()).add(site.severity)
+        for code in tolerance:
+            assert "fail" in by_code.get(code, set()), f"{lens}: {code} never fails"
+
+
+def test_a_band_stays_within_its_own_bounds():
+    """Every band is a concession on a threshold this repository chose, so
+    none of them may reach a value where the failure stops being a
+    degradation. 0.5 is "2x past the threshold" -- KH, 2026-09-16 -- and
+    nothing is allowed below it without its own recorded reason."""
+    import importlib
+
+    for lens in LENSES:
+        tolerance = getattr(importlib.import_module(f"{lens}.checks"), "TOLERANCE", {})
+        for code, band in tolerance.items():
+            assert 0.0 < band < 1.0, f"{lens}: {code} band {band} is not a band"
+            assert band >= 0.5, (
+                f"{lens}: {code} band {band} is looser than 2x, which is the "
+                "operator's stated limit"
+            )

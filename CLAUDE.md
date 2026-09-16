@@ -273,6 +273,25 @@ so L4.6's count reported "not evaluated", which reads as a pass; and the
 **Repair the wiring before adding a gate** →
 [`2026-09-14-gate-audit-against-the-parameter-inventory.md`](kb/decisions/2026-09-14-gate-audit-against-the-parameter-inventory.md).
 
+**A near-miss on a threshold WE chose is a concession, not a stop** (KH,
+2026-09-16): *"안전에 위배되는게 아니면 2배정도 까지는 괜찮기도 할듯"*, because
+the point of the experiment is that the value is unknown. A per-lens
+`TOLERANCE` dict beside `LIMITS`, keyed by **emitted** code, says how far below
+1.0 a `hard` failure still lets the run continue — three entries today, all
+`0.5`. **A conceded gate cannot advance** and needs no rule for it: `grade()`
+is HARD or worse for every margin a band admits.
+
+⚠ **Four kinds of `hard` check deliberately have no band**, and the
+distinction is the decision: physics or a boolean (`na_feasibility` is exact;
+L9.1 asks whether a time base was *ever* measured) · already factored
+(`disk_bandwidth_fraction` is 0.7 of a **measured** bandwidth, `full_well` 0.7
+of full well — doubling those drops frames and clips pixels, which is no answer
+rather than a worse one) · **safety** (L4.2 is the objective and the coverslip)
+· and the brief's own (L9.2/L9.3 derive from `target_relative_error`, so 10 %
+instead of 5 % is written in the brief, not granted behind it). The band is
+also **not** what unblocks the active brief — that stops on a boolean and ~15
+R1 answers → [`2026-09-16-a-band-on-the-thresholds-we-chose.md`](kb/decisions/2026-09-16-a-band-on-the-thresholds-we-chose.md).
+
 **A new gate's threshold comes from the brief, not from `LIMITS`** (KH,
 2026-09-14). The operator's multiples — ROI at 1.5× the system, concentration
 at 3–5×, trap power at 1.2× — are per-experiment and are asked for, the way
@@ -294,7 +313,7 @@ first**, and only within one kind does anything else apply
 | | What it is | Who may overrule it |
 |---:|---|---|
 | **0** | [SAFETY.md](SAFETY.md) | nobody. Not a lens, not negotiable |
-| **1** | any `hard` gate at `m < 1` | nobody. Stop and return a revision |
+| **1** | any `hard` gate at `m < 1` | nobody — **except inside its check's `TOLERANCE` band**, where it is a named concession and the run continues (KH, 2026-09-16). Three checks have one, all at 2×; it still cannot advance. §3 |
 | **2** | any `bias` gate | proceed *only* where a correction formula exists; stop where none does |
 | **3** | `soft` gates in conflict | **§1's rank order decides which yields** |
 | **4** | lens 6's review | it may refuse to advance what 1–3 cleared; it may not clear what they stopped |
@@ -442,11 +461,11 @@ survives a clean checkout).
 pytest -q -rs
 ```
 
-1471 passed, 11 skipped on macOS, of 1,482 (re-measured 2026-09-15; was
+1478 passed, 11 skipped on macOS, of 1,489 (re-measured 2026-09-15; was
 1374/11 of 1,385 on 2026-09-14, and the 91 added since are the plan emitter's,
 stage 2's seam, L1.3/L1.5, the four defects that convening the real agents
-found, Phase 0b in all nine gates, and the
-third subject source -- the emitter is where the previous four broken handoffs were found, one
+found, Phase 0b in all nine gates, the
+third subject source, and the tolerance band -- the emitter is where the previous four broken handoffs were found, one
 of them a number the run order already claimed to carry. Windows printed 1195/10 on 2026-09-09 — one Windows-only test — and has
 **not** been re-measured since). Two kinds of
 skip: three whole modules behind `pytest.importorskip("pymmcore_plus")`

@@ -48,7 +48,7 @@ Durable expert judgment. Each carries a `Why` and a falsifier.
 - **[microrheology-standard-conditions](expertise/microrheology-standard-conditions.md)** · 2026-09-07
   What conditions does a microrheology run on this instrument default to, and which of them are choices rather than constants
 
-## `kb/decisions/` — 53 entries
+## `kb/decisions/` — 54 entries
 
 Dated design and scope choices, in the order they were made.
 
@@ -158,6 +158,8 @@ Dated design and scope choices, in the order they were made.
   The brief's own gap text said ATTO647N has no extinction coefficient. Does it?
 - **[2026-09-15-the-plan-emitter](decisions/2026-09-15-the-plan-emitter.md)** · 2026-09-15 · corrected by [2026-09-15-l1-3-read-a-notch-as-an-overlap](decisions/2026-09-15-l1-3-read-a-notch-as-an-overlap.md)
   What does the designer write down, and what did writing it find?
+- **[2026-09-16-a-band-on-the-thresholds-we-chose](decisions/2026-09-16-a-band-on-the-thresholds-we-chose.md)** · 2026-09-16
+  The operator says up to 2x past a threshold is acceptable where safety is not involved. Which thresholds does that apply to, and does it unblock anything?
 
 ## `kb/plans/` — 1 entries
 
