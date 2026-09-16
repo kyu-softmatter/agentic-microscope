@@ -196,3 +196,62 @@ def test_underscore_files_are_not_checked_as_plans(tmp_path):
 
 def test_a_missing_plans_directory_is_empty_not_an_error(tmp_path):
     assert check_all(tmp_path / "nothing-here") == []
+
+
+# --------------------------------------------------------------------------
+# citations -- a plan's numbers are only as good as the entries they came from
+# --------------------------------------------------------------------------
+
+
+def test_a_citation_that_resolves_to_nothing_is_refused(tmp_path):
+    """The failure this exists for happened here, silently, to three citations.
+
+    `kb/plans/2026-09-15-drag-calibration-stiffness-vs-size.md` cited three
+    `kb/decisions/` entries that existed only on another branch -- including the
+    one that is the source of the ROI, the exposure and the frame rate -- and
+    every check passed, because nothing read a link. Rule 2 says no number in a
+    plan was originated there; a citation resolving to nothing is a number with
+    no provenance wearing the costume of one.
+    """
+    text = GOOD.replace(
+        "100x Oil, 1x1, 20 ms.",
+        "100x Oil, 1x1, 20 ms — [the envelope](../decisions/not-here.md).",
+    )
+    problems = check_plan(plan(tmp_path, text))
+    assert any("does not exist" in str(problem) for problem in problems)
+
+
+def test_a_citation_that_resolves_passes(tmp_path):
+    (tmp_path / "decisions").mkdir()
+    (tmp_path / "decisions" / "real.md").write_text("# real\n", encoding="utf-8")
+    text = GOOD.replace(
+        "100x Oil, 1x1, 20 ms.",
+        "100x Oil, 1x1, 20 ms — [the envelope](../decisions/real.md).",
+    )
+    assert not check_plan(plan(tmp_path, text))
+
+
+def test_citing_the_index_is_refused_even_though_it_resolves(tmp_path):
+    """`kb/INDEX.md` is generated and is pointers only (09 §7).
+
+    Refused separately from the resolution check, because the index always
+    exists -- so this is the one bad citation that a resolution test cannot
+    catch, and it leaves the reader one indirection short of the entry that
+    would have changed the answer.
+    """
+    (tmp_path / "INDEX.md").write_text("# index\n", encoding="utf-8")
+    text = GOOD.replace(
+        "100x Oil, 1x1, 20 ms.",
+        "100x Oil, 1x1, 20 ms — [see the index](../INDEX.md).",
+    )
+    problems = check_plan(plan(tmp_path, text))
+    assert any("pointers only" in str(problem) for problem in problems)
+
+
+def test_a_url_is_not_a_citation_to_resolve(tmp_path):
+    """A plan may link outward; this check owns provenance, not link rot."""
+    text = GOOD.replace(
+        "100x Oil, 1x1, 20 ms.",
+        "100x Oil, 1x1, 20 ms — [vendor](https://example.invalid/datasheet.pdf).",
+    )
+    assert not check_plan(plan(tmp_path, text))

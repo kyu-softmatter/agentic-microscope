@@ -511,6 +511,14 @@ missing section, an unknown subsystem, a committee verdict silent on what was
 **not** evaluated, or a sequence step confirming on a return code. That last one
 is hard rule 1 held at the plan instead of at the instrument.
 
+**It also refuses a citation that resolves to nothing, and any citation of
+`kb/INDEX.md`** (added 2026-09-15). That is hard rule 2 held at the plan: every
+number in a plan came from a gate or from `kb/`, so a dead link is a number with
+no provenance. It was added because three citations in
+`kb/plans/2026-09-15-drag-calibration-stiffness-vs-size.md` pointed at entries
+that existed only on `version2` — including the one the ROI, the exposure and
+the 520 fps all come from — and every check passed, because nothing read a link.
+
 ---
 
 ## 9. Writing anything down

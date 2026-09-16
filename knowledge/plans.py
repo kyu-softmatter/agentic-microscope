@@ -7,7 +7,7 @@ skill acting on a misreading. This module is the check that runs first.
 
     python -m knowledge.cli plan-check
 
-Two of the checks are the repository's own rules, not formatting:
+Three of the checks are the repository's own rules, not formatting:
 
 **`unevaluated` is not `cleared`** (CLAUDE.md §3). A plan must carry the lenses
 that were *not* convened, so a conditional lens nobody ran cannot be mistaken
@@ -18,6 +18,13 @@ states and success are the same byte, so every step in the sequence has to name
 something *observed* as its confirmation. A plan that writes "returns 0" in that
 column is refused here rather than at the instrument.
 
+**Never originate a physical number** (CLAUDE.md rule 2). Every number in a
+plan came from a gate or from `kb/`, so every citation has to resolve -- one
+that does not is a number with no provenance wearing the costume of one. Added
+2026-09-15 after three of this repository's own citations were found pointing at
+entries that existed only on another branch, one of them the source of the ROI,
+the exposure and the frame rate.
+
 What this does not do is judge the plan. Whether the sequence is a good one is
 the committee's job and the operator's; this only holds the shape that makes
 those judgements readable.
@@ -25,6 +32,7 @@ those judgements readable.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from hardware.orchestrator import SUBSYSTEMS
@@ -101,6 +109,56 @@ def _table_rows(text: str) -> list[list[str]]:
     return rows
 
 
+#: Markdown inline links, `[text](target)`. Reference-style links are not used
+#: anywhere in `kb/` and are not matched; if that changes this has to grow.
+_LINK = re.compile(r"\]\(([^)\s]+)")
+
+#: Link targets that are addresses rather than files, and are nobody's to
+#: resolve here.
+_NOT_A_FILE = ("http://", "https://", "mailto:")
+
+
+def _check_citations(path: Path, body: str) -> list[Problem]:
+    """Every citation resolves, and none of them is the index.
+
+    A plan's numbers are only as good as the entries they came from -- rule 2
+    is that none of them was originated in the plan -- so a citation that
+    resolves to nothing is a number with no provenance wearing the costume of
+    one. It happened: three of this repository's own `kb/decisions/` citations
+    pointed at files that existed on another branch, and everything passed,
+    because nothing read them. The blur-coefficient error had the same shape:
+    information in prose that no check looks at.
+
+    `kb/INDEX.md` is refused outright. It is generated, it is pointers only,
+    and citing it is how a reader ends up one indirection short of the entry
+    that would have changed the answer (09 §7).
+    """
+    problems: list[Problem] = []
+    for raw in _LINK.findall(body):
+        target = raw.split("#", 1)[0].strip()
+        if not target or target.startswith(_NOT_A_FILE):
+            continue
+        if Path(target).name == "INDEX.md":
+            problems.append(
+                Problem(
+                    path,
+                    f"cites {target!r}. The index is pointers only and never a "
+                    "citation (09 §7) -- link the entry it points at",
+                )
+            )
+            continue
+        if not (path.parent / target).exists():
+            problems.append(
+                Problem(
+                    path,
+                    f"cites {target!r}, which does not exist. A citation that "
+                    "resolves to nothing leaves the number it carries with no "
+                    "provenance (CLAUDE.md rule 2)",
+                )
+            )
+    return problems
+
+
 def _check_sequence(path: Path, body: str) -> list[Problem]:
     """Every step names something observed as its confirmation, or none of it counts."""
     rows = _table_rows(_section(body, "Sequence"))
@@ -166,6 +224,8 @@ def check_plan(path: Path, root: Path | None = None) -> list[Problem]:
     missing = [name for name in REQUIRED_SECTIONS if name not in present]
     if missing:
         problems.append(Problem(path, f"missing sections: {', '.join(missing)}"))
+
+    problems.extend(_check_citations(path, body))
 
     if "Sequence" in present:
         problems.extend(_check_sequence(path, body))
