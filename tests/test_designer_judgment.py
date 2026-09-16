@@ -70,19 +70,31 @@ def packets(result):
     return judgment_mod.build_packets(result)
 
 
+@pytest.fixture
+def real():
+    """The repository's own brief, which reaches stage 2 as of the L1.3 repair.
+
+    Used where the assertion is about a REAL two-colour light path -- lens 1
+    with two arms, lens 8 undecided for want of a duration. The synthetic
+    fixture cannot stand in: it names no channel file, so its lens 1 is
+    `not_constructible`.
+    """
+    return run_mod.run(brief_mod.load("config/briefs/active-microrheology.yaml"))
+
+
 def _judgment(packet, *, rulings=None, status="PASS", unevaluated=(), lens=None):
     """A verdict that answers a packet completely, unless a test spoils it.
 
-    `refuse` for a `hard` finding below 1 and `accept` otherwise -- not a
-    convenience: accepting one is refused by `cleared-a-stop`, so a fixture
-    that accepted everything would trip that rule in every test rather than in
-    the one testing it.
+    `upheld` for a `hard` finding below 1 and `overruled` otherwise -- not a
+    convenience: OVERRULING one is refused by `cleared-a-stop`, so a fixture
+    that overruled everything would trip that rule in every test rather than
+    in the one testing it.
     """
     if rulings is None:
         rulings = [
             Ruling(
                 code=s.code,
-                ruling="refuse" if s.kind == "hard" and (s.m or 0) < 1.0 else "accept",
+                ruling="upheld" if s.kind == "hard" and (s.m or 0) < 1.0 else "overruled",
                 basis="fixture",
                 source="kb/x.md",
             )
@@ -165,6 +177,54 @@ def test_the_packet_lists_every_finding_and_not_just_the_failures(result, packet
     the filter would be this module's opinion about what matters."""
     emitted = {f.code for f in result.runs["sample"].verdict.findings}
     assert {s.code for s in packets["sample"].must_rule_on} >= emitted
+
+
+def test_the_packet_carries_the_lens_01_4_pairs_it_with(real):
+    """E6 in the packet. `sample-optics` says in its own description that it
+    "must be invoked together with optics (Lens 1)" and the packet carried no
+    lens 1 at all until 2026-09-15 -- found by convening it for real."""
+    packets = judgment_mod.build_packets(real)
+    sample = {row["name"] for row in packets["sample"].cross_lens}
+    photo = {row["name"] for row in packets["photo"].cross_lens}
+
+    assert "optics" in sample, "immersion vs depth, 4 <-> 1"
+    assert "optics" in photo, "light level vs light-driving, 1 <-> 5"
+
+
+def test_a_cross_lens_row_names_the_constraint_neither_lens_owns(real):
+    """`carried` is a NUMBER crossing; this is a constraint with no owner,
+    which is why both verdicts have to be read side by side and why one of
+    them cannot simply compute it."""
+    rows = judgment_mod.build_packets(real)["sample"].cross_lens
+    immersion = next(r for r in rows if r["constraint"] == "Immersion vs depth")
+
+    assert immersion["lens"] == 1
+    assert immersion["verdict"]["status"]
+    assert "Refractive-index mismatch" in immersion["content"]
+
+
+def test_lens_1s_two_arms_both_reach_the_partner(real):
+    """A two-colour proposal's arms differ -- on this brief the red arm fails
+    L1.4 and the green does not -- so handing over `verdict` alone would hand
+    over one arm and call it the lens."""
+    rows = judgment_mod.build_packets(real)["photo"].cross_lens
+    optics = next(r for r in rows if r["name"] == "optics")
+
+    assert set(optics["per_channel"]) == {"Tracer-DragonGreen", "Probe-ATTO647N"}
+    assert optics["per_channel"]["Probe-ATTO647N"]["bottleneck"] == "collection.low"
+
+
+def test_a_partner_that_did_not_run_is_a_row_with_its_reason(real):
+    """A constraint whose other half is unevaluated is `unevaluated`, not
+    cleared (§3). Lens 8 is `undecided` on this brief -- no duration -- and
+    lens 4 shares two constraints with it."""
+    rows = judgment_mod.build_packets(real)["sample"].cross_lens
+    eight = [r for r in rows if r["lens"] == 8]
+
+    assert len(eight) == 2, "Chamber and Particle count"
+    for row in eight:
+        assert row["verdict"] is None
+        assert "undecided" in row["why_absent"]
 
 
 def _validity_setup_with(*codes):
@@ -285,7 +345,7 @@ def test_a_ruling_with_no_basis_is_refused(packets):
     """A judgment with no Why is not storable (§6) and not reviewable."""
     packet = packets["sample"]
     spoiled = _judgment(packet, rulings=[
-        Ruling(code=s.code, ruling="accept", basis="") for s in packet.must_rule_on
+        Ruling(code=s.code, ruling="upheld", basis="") for s in packet.must_rule_on
     ])
     refusals = judgment_mod.check_judgment(spoiled, packet)
     assert {r.rule for r in refusals} == {"no-basis"}
@@ -296,7 +356,7 @@ def test_a_subject_the_packet_did_not_ask_about_is_refused(packets):
     judgment lens never generates the number it is judging (§2)."""
     packet = packets["sample"]
     spoiled = _judgment(packet, rulings=list(_judgment(packet).rulings) + [
-        Ruling(code="my.own.concern", ruling="refuse", basis="I thought of it")
+        Ruling(code="my.own.concern", ruling="overruled", basis="I thought of it")
     ])
     refusals = judgment_mod.check_judgment(spoiled, packet)
     assert [r.rule for r in refusals] == ["invented-subject"]
@@ -338,16 +398,90 @@ def test_it_may_not_clear_what_a_hard_gate_stopped(packets):
             m=0.42, because="this lens's own gate emitted it",
         )],
     )
-    accepted = _judgment(stopped, rulings=[
-        Ruling(code="geometry.na_feasibility", ruling="accept", basis="looks fine")
+    overruled = _judgment(stopped, rulings=[
+        Ruling(code="geometry.na_feasibility", ruling="overruled", basis="looks fine")
     ])
-    refusals = judgment_mod.check_judgment(accepted, stopped)
+    refusals = judgment_mod.check_judgment(overruled, stopped)
     assert [r.rule for r in refusals] == ["cleared-a-stop"]
 
-    refused = _judgment(stopped, rulings=[
-        Ruling(code="geometry.na_feasibility", ruling="refuse", basis="it stands")
+    upheld = _judgment(stopped, rulings=[
+        Ruling(code="geometry.na_feasibility", ruling="upheld", basis="it stands")
     ])
-    assert judgment_mod.check_judgment(refused, stopped) == []
+    assert judgment_mod.check_judgment(upheld, stopped) == []
+
+
+def test_the_withdrawn_words_are_refused_and_not_translated(packets):
+    """`accept` and `refuse` were withdrawn 2026-09-15 because the two agents
+    convened on the first real proposal used them in OPPOSITE senses for the
+    same act -- lens 4 ruled `accept` writing "the gate's refusal stands",
+    lens 5 ruled `refuse` writing "the finding stands".
+
+    Refused rather than translated. Reading an ambiguous verdict by picking
+    whichever sense happens to pass is the defect itself, applied once more.
+    """
+    packet = packets["sample"]
+    for word in ("accept", "refuse"):
+        spoiled = _judgment(packet, rulings=[
+            Ruling(code=s.code, ruling=word, basis="b") for s in packet.must_rule_on
+        ])
+        refusals = judgment_mod.check_judgment(spoiled, packet)
+        assert {r.rule for r in refusals} == {"ambiguous-ruling"}, word
+        assert "2026-09-15" in refusals[0].why
+
+
+def test_upholding_a_hard_stop_is_always_allowed(packets):
+    """The asymmetry falls out of the rule, not the word: `upheld` is agreeing
+    with the gate and can never be the act §2 precedence level 4 forbids."""
+    packet = packets["sample"]
+    upheld = _judgment(packet, rulings=[
+        Ruling(code=s.code, ruling="upheld", basis="the gate is right")
+        for s in packet.must_rule_on
+    ])
+    assert judgment_mod.check_judgment(upheld, packet) == []
+
+
+# ----------------------------------------- the checks that did not run
+
+
+def test_a_blocked_lens_lists_the_checks_that_never_ran(real):
+    """Reported by both agents from opposite sides. Lens 5: "my gate stopped
+    in Phase 0, so the list contains the two missing inputs and NOTHING about
+    light-driving, dose, or trap heating -- the three subjects this section
+    exists for." Lens 4, of its own L4.7: "`check_depth_window` does not read
+    `imaging_depth_um` at all … Phase 0 being all-or-nothing suppressed the
+    one check that would have told the operator which depths are allowed."
+    """
+    packets = judgment_mod.build_packets(real)
+    photo = {s.code for s in packets["photo"].must_rule_on}
+    sample = {s.code for s in packets["sample"].must_rule_on}
+
+    assert {"light_driving", "total_dose", "trap_heating"} <= photo
+    assert {"depth_window", "wall_drag", "na_feasibility"} <= sample
+
+
+def test_a_skipped_check_carries_its_registration_and_no_margin(real):
+    """A reviewer cannot rule on a number that does not exist; what it can do
+    is say whether the silence is acceptable, which is why it is on the list.
+    """
+    photo = {s.code: s for s in judgment_mod.build_packets(real)["photo"].must_rule_on}
+    skipped = photo["light_driving"]
+
+    assert skipped.severity == "skipped"
+    assert skipped.m is None
+    assert skipped.kind == "info", "the REGISTRATION's kind, lens 5 being a report"
+    assert "not a pass" in skipped.because
+
+
+def test_a_lens_that_reached_phase_1_lists_no_skipped_checks(tmp_path):
+    """Derived from `verdict.margins` against the registry, so it is empty by
+    construction wherever every check ran -- not by a special case."""
+    path = tmp_path / "tier2.yaml"
+    path.write_text(textwrap.dedent(REACHES_TIER_2), encoding="utf-8")
+    result = run_mod.run(brief_mod.load(path))
+
+    sample = judgment_mod.build_packets(result)["sample"]
+    assert result.runs["sample"].verdict.status != "BLOCKED"
+    assert not [s for s in sample.must_rule_on if s.severity == "skipped"]
 
 
 def test_an_unknown_ruling_word_is_refused(packets):

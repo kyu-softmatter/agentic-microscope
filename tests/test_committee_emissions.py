@@ -242,3 +242,70 @@ def test_the_new_lens_has_no_invisible_computations() -> None:
     """Lens 9 was built after the `_ok`-hides-it defect had appeared five
     times, so its `_ok` writes severity "info" from the start."""
     assert not [s for s in invisible_computations() if s.lens == "velocity"]
+
+
+# ------------------------------------ the nine cross-lens constraints, parsed --
+#
+# Found missing from the stage-2 packets on 2026-09-15 by convening the agents
+# for real: `sample-optics`'s own description says it "must be invoked together
+# with optics (Lens 1)" and the packet carried no lens 1 at all. E6, and no
+# code could see 01 §4's table.
+
+
+def test_the_nine_are_parsed_and_not_copied():
+    """A table transcribed into a dict here would be a second definition of
+    the nine and would drift from the prose -- the failure this package exists
+    to stop, and which its two bias registries had already committed twice."""
+    from committee import constraints
+
+    nine = constraints.all_constraints()
+    assert len(nine) == 9
+    assert all(len(c.lenses) >= 2 for c in nine)
+    assert all(1 <= n <= 9 for c in nine for n in c.lenses)
+    assert all(c.content for c in nine), "each row carries its own prose"
+
+
+def test_a_struck_through_half_is_not_resurrected():
+    """01 §4's `Particle count` row reads `~~4 → 6~~, 8 → 4`: the 4 -> 6 half
+    died with G11 on 2026-09-11 and the strikethrough is the document saying
+    so. A parser ignoring the markup would hand lens 6 a constraint nothing
+    implements."""
+    from committee import constraints
+
+    row = next(c for c in constraints.all_constraints() if c.name == "Particle count")
+    assert row.partly_retired
+    assert row.lenses == (8, 4)
+    assert 6 not in row.lenses
+
+
+def test_the_pairs_are_the_ones_e6_names():
+    """CLAUDE.md E6: "convene lenses 1 and 5 together, and 1 and 4 likewise".
+    Derived from the table rather than from E6's prose, so a constraint added
+    to 01 §4 reaches the packets with no edit and one removed stops."""
+    from committee import constraints
+
+    assert constraints.partners_of(4) == (1, 8)
+    assert constraints.partners_of(5) == (1,)
+    assert constraints.partners_of(1) == (4, 5)
+
+
+def test_lens_9_is_in_no_constraint_and_that_is_the_document_not_a_bug():
+    """Lens 9 was added 2026-09-11 and 01 §4's table predates it. Asserted so
+    the gap is a recorded fact rather than a parser suspicion: lens 9 DOES
+    hand lens 6 a correlation time, but that is a handoff in
+    `designer.run.CROSS_TIER`, not a constraint neither lens owns."""
+    from committee import constraints
+
+    from designer.run import CROSS_TIER
+
+    assert constraints.partners_of(9) == ()
+    assert ("velocity", "validity") in CROSS_TIER
+
+
+def test_a_renamed_heading_fails_loudly():
+    """Returning no constraints would read as "no lens is paired with any
+    other", which is the silence-as-agreement failure in its purest form."""
+    from committee import constraints
+
+    with pytest.raises(ValueError, match="cross-lens"):
+        constraints._rows("# a document with no such heading\n")

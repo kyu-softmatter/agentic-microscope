@@ -33,6 +33,8 @@ change -- which it had already done twice.
 
 from __future__ import annotations
 
+from . import constraints
+from .constraints import Constraint, all_constraints, for_lens, partners_of
 from .emissions import (
     LENSES,
     EmissionSite,
@@ -46,7 +48,12 @@ from .emissions import (
 )
 
 __all__ = [
+    "Constraint",
     "LENSES",
+    "all_constraints",
+    "constraints",
+    "for_lens",
+    "partners_of",
     "EmissionSite",
     "Reconciliation",
     "collect",

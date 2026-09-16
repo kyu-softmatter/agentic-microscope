@@ -55,13 +55,37 @@ AGENTS = {
 #: judgment verdict and a gate verdict can be read side by side.
 JUDGMENT_STATUSES = ("PASS", "PASS_WITH_CHANGES", "FAIL", "BLOCKED")
 
-#: What one ruling may be.
+#: What one ruling may be. **The ruling is about the FINDING**, which is the
+#: part the first vocabulary left unsaid.
 #:
-#: `unevaluated` is here and it is the important one: a reviewer who cannot
+#: It was `accept` / `refuse` / `unevaluated` until 2026-09-15, and the two
+#: agents convened on the first real proposal used the two words in OPPOSITE
+#: senses for the same act. Lens 4 ruled `accept` and wrote *"the gate's
+#: refusal stands"*; lens 5 ruled `refuse` and wrote *"the finding stands"*.
+#: Both meant the same thing. `accept` does not say whether what is accepted
+#: is the finding or the configuration in spite of it -- and `cleared-a-stop`,
+#: the rule that puts §2 precedence level 4 into code, keyed on exactly that
+#: word. Lens 4's honest agreement would have been refused had the subject
+#: carried `kind: hard` instead of a Phase-0 `None`.
+#:
+#: `unevaluated` is the third and it is not a formality: a reviewer who cannot
 #: rule on something must be able to say so, or the only way to return a
 #: verdict is to pretend. `unevaluated` != `cleared` (§3) holds inside a
 #: judgment verdict exactly as it holds between lenses.
-RULINGS = ("accept", "refuse", "unevaluated")
+RULINGS = ("upheld", "overruled", "unevaluated")
+
+#: The old words, and why each is now refused instead of guessed at.
+#:
+#: Refused rather than translated. A verdict written in an ambiguous
+#: vocabulary cannot be read by picking the reading that happens to pass --
+#: that is the whole defect, applied once more.
+AMBIGUOUS_RULINGS = {
+    "accept": "one convened lens used it for `upheld` (the finding stands) "
+    "and the rule encoding §2 precedence level 4 read it as `overruled` "
+    "(proceed in spite of the finding)",
+    "refuse": "one convened lens used it for `upheld` (the finding stands) "
+    "and its plain sense is `overruled`",
+}
 
 
 @dataclass(frozen=True)
@@ -107,6 +131,13 @@ class Packet:
     #: E4, inside the packet: what stage 1 could not evaluate in this lens's
     #: own scope, so the reviewer is not left to infer a pass from silence.
     unevaluated_in_scope: list[dict] = field(default_factory=list)
+    #: The lenses 01 §4 pairs this one with, each with the constraint neither
+    #: owns and that lens's verdict. **Not the same as `carried`**: that is a
+    #: number crossing, this is a constraint with no owner, which is why both
+    #: verdicts have to be read side by side (E6). Missing until 2026-09-15,
+    #: which left `sample-optics` without lens 1 -- the pairing its own file
+    #: names as mandatory.
+    cross_lens: list[dict] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         out = asdict(self)
@@ -124,6 +155,16 @@ _RETURN_SCHEMA = {
         {
             "code": "one of must_rule_on's codes -- a code not on that list is refused",
             "ruling": list(RULINGS),
+            "ruling_means": {
+                "upheld": "the gate's finding stands as reported -- including "
+                "where the finding IS a refusal",
+                "overruled": "this lens judges the finding does not hold for "
+                "this proposal. Forbidden on a `hard` finding at m < 1 (§2 "
+                "precedence level 4), permitted on a clean one, which is how "
+                "lens 6 refuses to advance what 1-3 cleared",
+                "unevaluated": "this lens cannot rule. Not the same as either "
+                "of the other two (§3)",
+            },
             "basis": "REQUIRED. A ruling with no basis is refused (§6: never "
             "store without a Why)",
             "source": "the kb/ entry or data file it rests on, where there is one",
@@ -148,6 +189,64 @@ def _carried_into(lens: str) -> list[dict]:
     ]
 
 
+def _cross_lens(result: Result, lens: str) -> list[dict]:
+    """The paired lenses' verdicts, from `committee.constraints`.
+
+    E6 in the packet. `sample-optics` says in its own description *"Must be
+    invoked together with optics (Lens 1) -- immersion vs depth is a
+    cross-constraint between the two lenses (01 §4)"*, and
+    `photo-perturbation` the same for lenses 1 and 2; until this existed the
+    packets carried neither, so the two agents were being asked to judge
+    without the lens their files say they cannot be judged without.
+
+    The pairs are **parsed** from 01 §4's table, so a constraint added there
+    reaches the packets with no edit here and one removed stops reaching them.
+
+    ⚠ A partner that did not run contributes a row with `verdict: null` and
+    the reason. That is not an omission: a constraint whose other half is
+    unevaluated is `unevaluated`, not cleared (§3).
+    """
+    from committee import constraints
+
+    by_number = {number: name for name, number in LENS_NUMBER.items()}
+    reasons = {row["lens"]: row for row in result.unevaluated}
+
+    out: list[dict] = []
+    for constraint in constraints.for_lens(LENS_NUMBER[lens]):
+        for number in constraint.lenses:
+            if number == LENS_NUMBER[lens]:
+                continue
+            other = by_number[number]
+            run = result.runs.get(other)
+            row = {
+                "constraint": constraint.name,
+                "content": constraint.content,
+                "partly_retired": constraint.partly_retired,
+                "lens": number,
+                "name": other,
+                "verdict": None,
+                "why_absent": None,
+            }
+            if run is not None and run.ran:
+                row["verdict"] = run.verdict.to_dict()
+                if run.per_channel:
+                    # Lens 1 is judged per channel, and a two-colour proposal's
+                    # arms differ: on the real brief the red arm fails L1.4 and
+                    # the green does not. Handing over `verdict` alone would
+                    # hand over one arm and call it the lens.
+                    row["per_channel"] = {
+                        name: v.to_dict() for name, v in run.per_channel.items()
+                    }
+            else:
+                absent = reasons.get(other)
+                row["why_absent"] = (
+                    f"{absent['state']}: {absent['why']}" if absent
+                    else "this lens produced no verdict"
+                )
+            out.append(row)
+    return out
+
+
 def _own_findings(verdict) -> list[Subject]:
     """Every finding the lens's own gate emitted.
 
@@ -164,6 +263,64 @@ def _own_findings(verdict) -> list[Subject]:
             because="this lens's own gate emitted it",
         )
         for f in verdict.findings
+    ]
+
+
+def _skipped_checks(lens: str, verdict) -> list[Subject]:
+    """The lens's registered checks that produced no result.
+
+    **Reported by both agents convened on the first real proposal, from
+    opposite sides.** Lens 5: *"my gate stopped in Phase 0 -- so the list
+    contains the two missing inputs and nothing about light-driving, dose, or
+    trap heating. The three subjects this section exists for produced no
+    findings, hence no subjects, hence no obligation to speak."* Lens 4, of
+    its own L4.7: *"`check_depth_window` does not read `imaging_depth_um` at
+    all … Phase 0 being all-or-nothing suppressed the one check that would
+    have told the operator which depths are allowed."*
+
+    They are right and the shortfall is structural: `must_rule_on` derived
+    only from emitted findings collapses to "what was missing" for any lens
+    whose Phase 0 stopped.
+
+    Derived from ``verdict.margins``, which is ``{result.code: margin}`` in all
+    nine gates, against the lens's own ``CHECKS`` registry -- so this needs no
+    change to any gate and cannot drift from one. A check with no margin did
+    not run.
+
+    ⚠ The subject is the check's registered code, not an emitted one, so it
+    carries the registration's `kind` and no margin. A reviewer cannot rule on
+    a number that does not exist; what it can do is say whether the silence is
+    acceptable, which is the whole point of putting it on the list.
+    """
+    import importlib
+
+    from committee import collect
+
+    checks = importlib.import_module(f"{lens}.checks").CHECKS
+    ran = set(verdict.margins) | {f.code for f in verdict.findings}
+
+    # A registered check's code is NOT its emitted code: lens 4's
+    # `na_feasibility` emits `geometry.na_feasibility`. The relation is a
+    # prefix in one lens and a suffix in another, so it is looked up in
+    # `committee/`, which parses it out of each `checks.py` -- rather than
+    # guessed at here with string surgery, which is what this did first and
+    # which reported every check of a lens that HAD run as skipped.
+    emits: dict[str, set[str]] = {}
+    for site in collect(lens):
+        if site.check:
+            emits.setdefault(site.check, set()).add(site.emitted_code)
+
+    return [
+        Subject(
+            code=c.code,
+            kind=c.kind,
+            severity="skipped",
+            m=None,
+            because="a registered check of this lens that produced NO result "
+            "-- the gate stopped in Phase 0, so its silence is not a pass (§3)",
+        )
+        for c in checks
+        if not (ran & (emits.get(c.code, set()) | {c.code}))
     ]
 
 
@@ -255,7 +412,7 @@ def build_packets(result: Result, judgments: dict[str, Any] | None = None) -> di
         if lens == "validity" and waiting:
             continue
 
-        subjects = _own_findings(run.verdict)
+        subjects = _own_findings(run.verdict) + _skipped_checks(lens, run.verdict)
         if lens == "validity" and run.setup is not None:
             subjects = _ledger_subjects(run.setup) + subjects
 
@@ -269,6 +426,7 @@ def build_packets(result: Result, judgments: dict[str, Any] | None = None) -> di
             must_rule_on=subjects,
             assumed_inputs=list(run.verdict.assumed_inputs),
             unevaluated_in_scope=_scope_unevaluated(result, lens),
+            cross_lens=_cross_lens(result, lens),
         )
     return packets
 
@@ -391,12 +549,20 @@ def check_judgment(
     subjects = {s.code: s for s in packet.must_rule_on}
 
     for r in judgment.rulings:
-        if r.ruling not in RULINGS:
+        if r.ruling in AMBIGUOUS_RULINGS:
+            out.append(Refusal(
+                "ambiguous-ruling",
+                f"{r.code}: {r.ruling!r} was withdrawn 2026-09-15 -- "
+                + AMBIGUOUS_RULINGS[r.ruling],
+                "say `upheld` if the finding stands, `overruled` if this lens "
+                "judges it does not hold. The ruling is about the FINDING",
+            ))
+        elif r.ruling not in RULINGS:
             out.append(Refusal(
                 "unknown-ruling",
                 f"{r.code}: ruling {r.ruling!r} is not one of {RULINGS}",
                 "`unevaluated` is the honest answer where a ruling is not "
-                "possible; it is not the same as `accept`",
+                "possible; it is not the same as either of the others",
             ))
         if not r.basis:
             out.append(Refusal(
@@ -429,12 +595,12 @@ def check_judgment(
 
     for r in judgment.rulings:
         subject = subjects.get(r.code)
-        if subject is None or r.ruling != "accept":
+        if subject is None or r.ruling != "overruled":
             continue
         if subject.kind == "hard" and subject.m is not None and subject.m < 1.0:
             out.append(Refusal(
                 "cleared-a-stop",
-                f"{r.code}: accepted a `hard` finding at m={subject.m:.2f}",
+                f"{r.code}: overruled a `hard` finding at m={subject.m:.2f}",
                 "§2 precedence level 4 -- this lens may refuse to advance what "
                 "1-3 cleared; it may not clear what they stopped. Return a "
                 "revision instead",
