@@ -519,6 +519,13 @@ Checked before anything moves. Each refuses the run on its own.
       fit on existing data is what says which regime this run is actually in, and
       it costs no instrument time. — *checked by:* running the fit on the
       2026-09-03 drag data first, and reporting the spread it returns per rung
+      ⚠ **Blocked on a data transfer, not on analysis time** (checked
+      2026-09-15): this repository holds **no trajectory data at all** — no
+      `.mat`, `.npy`, `.csv` or `.tif` anywhere in it, and `data/` is instrument
+      constants only. The 2026-09-03 acquisition is on the instrument PC under
+      `D:\codes`, which is not this repository's to edit (CLAUDE.md §3). So the
+      cheapest decisive step in this plan is **an operator action**: move the
+      tracked positions of that run into reach, and the fit follows in minutes.
 
 ## Sequence
 
