@@ -412,6 +412,32 @@ acquiring — this makes it load-bearing rather than tidy). Nothing above change
 a gate, and none of these numbers may become one: they are `simulated` and the
 entries carry `may_be_gate_threshold: false`.
 
+**D-6 · `h0` is not waiting on a wall runner. No runner can answer it, and that
+is a property of the question.** Five rounds have recorded the wall as a
+*missing capability* on the simulation side — "still no runner". Checked here,
+the limitation is stronger than that and does not expire:
+
+At a **fixed** height the wall's entire effect is a scalar multiplier on
+`gamma`. The dimensionless group that governs a trapped bead is
+`k* = k_t d^2 / kT`, which carries `k_t`, `d` and `kT` and **no drag at all** —
+21219 at our numbers, agreeing with the 21221 in r2's own regime table to
+0.01 %. Since `gamma` enters only through `tau_k = gamma/k_t`, and `tau_k` is
+the unit time, **all six rungs of the ladder are the same dimensionless run**.
+Faxén lives entirely in the back-transform out of those units. A simulation
+therefore cannot *learn* the wall: whatever wall factor it reports is the one
+that was put in.
+
+What a simulation **can** still do is the thing r1 asked for as a fallback and
+never got: **test the fit procedure** on a synthetic `gamma(h)` ladder with
+realistic per-rung noise. That is an estimator question, not a physics one, and
+it is exactly what would replace the unverified ±0.195 µm in §Error budget. So
+the outstanding request to the other side is a *fit test*, not a wall.
+
+⚠ Derived here, from the definition of `k*` — **not imported.** The other side
+reports the same conclusion, but it has not crossed as a round document, and a
+conclusion relayed in conversation is not a source (09 §7). Cite this paragraph,
+or the entry that supersedes it when one lands.
+
 **What did transfer.** The regimes are different systems and that is the point:
 `k*` 60 358 there against 21 221 here, `l_k/d` 0.004070 against 0.006865 — BD's
 case is stiffer with a smaller fluctuation relative to the bead, i.e. the
