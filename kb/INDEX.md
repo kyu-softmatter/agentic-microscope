@@ -125,7 +125,7 @@ Published values nobody here has measured.
 - **[literature-index](literature/README.md)** · living, since 2026-08-28 · index
   What published values are filed here, and what may a literature value be used for that a measurement may not?
 
-## `kb/external/` — 3 entries
+## `kb/external/` — 4 entries
 
 Imported from another repository — computed there, not measured here.
 
@@ -135,6 +135,8 @@ Imported from another repository — computed there, not measured here.
   Which of r2's numbers survive, now that the +1.17 % is known to be the estimator and the blur coefficient was twice too large?
 - **[trap-stiffness-recovery.r5](external/bd/trap-stiffness-recovery.r5.md)** · 2026-09-15
   How much does one bead's fitted f_c scatter at this instrument's envelope, and is 3 % per rung reachable at all?
+- **[trap-stiffness-recovery.r8](external/bd/trap-stiffness-recovery.r8.md)** · 2026-09-15
+  How much per-rung scatter can the height-ladder fit tolerate, and does the route that measures gamma stay under it?
 
 ## `kb/sessions/` — 2 entries
 

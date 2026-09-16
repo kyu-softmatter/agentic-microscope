@@ -193,9 +193,19 @@ trap centre is a constant nobody has measured, so `h = dz_piezo + h0` with `h0`
 unknown. Fitting `gamma(dz) = gamma_0/(1 - 9a/(16(dz + h0)))` over the six
 heights recovers both. Simulated over 400 realisations at 3 % per point
 (`numpy`, seed 3): **`h0` to ±0.195 µm and `gamma_bulk` to 2.1 %**, both
-unbiased. So this run's by-product is **the absolute trapping height**, which
-[SAFETY §9](../../SAFETY.md) lists as an open safety question and calls the
-quantity that dominates alpha.
+unbiased. So this run's by-product would be **the absolute trapping height**,
+which [SAFETY §9](../../SAFETY.md) lists as an open safety question and calls
+the quantity that dominates alpha.
+
+⚠ **That by-product does not survive D-7, and the fit is not what failed.**
+Independently propagated over 4000 ladders per sigma, the fit returns `h0` to
+0.131 µm at 3 % per rung — so the ±0.195 µm above was *conservative for the
+scatter it assumed*. The tolerance is **4.48 %**; the route that measures
+`gamma` delivers **7.2–9.5 %**; at that scatter `h0` comes back to
+**0.433–0.450 µm**, which trips the ~0.4 µm criterion r1 registered in round
+one. **Read D-7 before planning around a fitted `h0`** — and note that the
+numbers above are still the right *shape*: they were computed against an
+assumption about the input, and the assumption is what was wrong.
 
 **What this ladder does not measure.** The **perpendicular** Faxen coefficient.
 The drive is in x, so this is the parallel-to-wall correction only, and the
@@ -246,11 +256,17 @@ only inside the ladder's 3-10 µm span; extrapolating either way re-opens it.
 
 ### What Brownian dynamics answered, what it corrected, and what is still ours
 
+> **If you read one item, read D-7.** The height ladder's fitted `h0` does not
+> survive the scatter the measurement actually delivers, by the criterion this
+> plan's own first ask registered in round one. The rest of the run — `alpha(a)`
+> from the drag slope at fixed height — is not affected by it.
+
 This plan was sent to the simulation agent as a question, not as numbers, over
 three rounds. The answers landed at
 [`r2`](../external/bd/trap-stiffness-recovery.r2.md) ·
 [`r4`](../external/bd/trap-stiffness-recovery.r4.md) ·
-[`r5`](../external/bd/trap-stiffness-recovery.r5.md) — all three
+[`r5`](../external/bd/trap-stiffness-recovery.r5.md) ·
+[`r8`](../external/bd/trap-stiffness-recovery.r8.md) — all four
 `evidence_class: simulated`, `may_be_gate_threshold: false`. **Nothing below is
 a gate threshold here.** Each item is a design motivation and, where the two
 repositories disagreed, either a decision left to the operator or — twice now —
@@ -321,6 +337,18 @@ segments, which is the direction §Error budget's "cancels only if epsilon is
 size-independent" was already pointing. The blur fix moves the *net* camera
 effect on `alpha` from ~8.0 % to **~7.7 %**: still epsilon-dominated, so the
 ceiling does not move and this is the half of the camera budget that matters.
+
+**r8 gives the ceiling a second, independent reason — and moves what it
+threatens.** Measured there, the camera contributes **−4.8 to −6.9 % of bias on
+`gamma` per rung** (camera off: −0.1 to +2.6 %), entirely through `alpha`
+inheriting the 8.66 % variance inflation. But `h0` is set by the **shape** of
+`gamma(h)`, so a bias common to every rung **cancels out of it**: with the
+camera on, `h0` moves by nothing resolvable (1.106 against 1.136 at
+`h0_true = 1.0`, both ±0.03), while `gamma_0` moves by **−4.65 %**. So
+`epsilon` is a **`gamma_bulk` problem, not a trapping-height problem** — it puts
+the absolute drag about 5 % out and leaves the ladder's geometry alone. That
+sharpens P8 rather than softening it: `gamma_bulk` is what `alpha(a)` is
+normalised by, which is this run's actual question.
 **Proposal, for the operator: promote P8's epsilon from a correction to a hard
 precondition** — the run does not start until the stuck bead's centroid variance
 is measured and is at or under the ceiling the analysis needs. Not done
@@ -400,10 +428,18 @@ this one does not come back from the bridge:
 - **`gamma` from the drag slope rather than from `f_c`.** This is already this
   plan's **primary** route (`alpha = gamma*v/x_eq`, §Analysis), with the
   equipartition/PSD block as the cross-check. r5's 29.1 % is about the
-  *cross-check*, not about the primary route — **and the primary route's own
-  per-rung precision has never been measured by either side.** The ~3 % it is
-  assumed to have is the same unverified numpy figure flagged in the ladder
-  section.
+  *cross-check*, not about the primary route.
+  ⚠ **Superseded in part by D-7**: r8 decomposed the primary route's per-rung
+  error, and **it is not where this section guessed.** Of the 7.2–9.5 % total,
+  the **equipartition `alpha = kT/var(x)` contributes 7.3–9.5 %** and the
+  **drag slope only 1.3–1.6 %**. So the slope is not the weak half and
+  lengthening the drive segments buys little; the **variance estimate** is the
+  problem, and it is bounded by `T_obs/tau_k`, which this plan sets to 201–323.
+  Leaning on the slope does not escape it, because §Analysis forms `gamma` per
+  rung as `slope x alpha_equipartition` — the `alpha` is *inside* the primary
+  route, not beside it. What is left to change is the variance estimate itself:
+  more beads per rung, a longer 9c block, or an estimator that does better than
+  `kT/var(x)` on a short record.
 
 **So the honest next step is on this side, not the simulator's:** measure what
 the drag slope actually returns per rung, on the 2026-09-03 data, before buying
@@ -449,6 +485,60 @@ sit unnoticed.
 reports the same conclusion, but it has not crossed as a round document, and a
 conclusion relayed in conversation is not a source (09 §7). Cite this paragraph,
 or the entry that supersedes it when one lands.
+
+**D-7 · The ladder fit tolerates 4.48 % per rung, the route that measures
+`gamma` delivers 7.2–9.5 %, and r1's own falsifier has fired.**
+→ [`trap-stiffness-recovery.r8`](../external/bd/trap-stiffness-recovery.r8.md).
+Read this item before the two numbers, because taken alone the first one reads
+as good news:
+
+| | value | what it is |
+|---|---|---|
+| `sigma_gamma_max` | **4.48 %** | the tolerance — above it the six-rung fit stops returning `h0` to ±0.2 µm. A property **of the fit**, from 4000 ladders per sigma |
+| the route's per-rung scatter | **7.2–9.5 %** | what measuring `gamma` at these settings delivers. **1.8× the tolerance** |
+| forward fit at that scatter | **0.433–0.450 µm** on `h0` | stable across injected `h0` of 0.5, 1.0 and 2.0 µm |
+
+So the claim r7 sent — that the tolerance is at or above the 3 % this budget
+assumes — came back **confirmed with room**, and at 3 % the fit returns `h0` to
+**0.131 µm**. §Error budget's ±0.195 µm was therefore *conservative given its
+own assumption*: **the fit was never the problem, the input was.**
+
+**r1 pre-registered the decision in round one**, and this is the first round that
+could evaluate it: *"if its scatter exceeds ~0.4 µm once finite `T_obs`, motion
+blur and localisation noise are included, then the ladder does not produce a
+trapping height and the run should be redesigned around a direct z datum
+instead."* 0.433–0.450 µm, with exactly those three included. **The criterion
+fails.**
+
+⚠ **It fails on a simulated input, and that distinction decides what happens
+next.** r8 says so about its own result: the 1.8×-over-tolerance finding rests
+on a *simulated* per-rung error, while the 4.48 % does not — the tolerance is a
+property of the fit, and it is **the number P7's measurement on real data gets
+compared against**. So this is the strongest evidence available and it is not a
+measurement of this instrument. `may_be_gate_threshold: false` is not a
+formality here: 4.48 % is a **design target**, not a check, and nothing in
+`trapping/` has been changed to know about it.
+
+**What follows, in order.**
+
+1. **Start the redesign around a direct z datum now**, rather than after P7.
+   It is r1's own pre-registered response, the evidence for needing it is as
+   good as simulation gets, and the alternative is discovering it with the laser
+   armed. What a direct z datum means on this bench is not settled and is the
+   next design question — the stuck bead of P8 is already a z reference for
+   `dz_piezo`, so the question is whether it can be made an *absolute* one.
+2. **P7 still decides**, and it is still blocked on a data transfer (the
+   2026-09-03 run is on the instrument PC). It is now worth more than before:
+   it is the one number that converts this from a warning into a verdict.
+3. **Do not declare the ladder dead in the KB.** Nothing here measured this
+   instrument, and `unevaluated` is not `cleared` in either direction.
+
+**And the six heights are not necessarily the right six** (r8 `gaps[2]`). The
+4.48 % is for *this* ladder, and a different spacing would plausibly move it
+**upward**: the near rungs carry the most Faxén signal and currently get the
+least statistics — `T_obs/tau_k` is **201 at h = 3.0** against **323 at
+h = 10**. Re-weighting the ladder is seconds of work on the other side and is
+worth asking for once P7 says what scatter is actually achievable.
 
 **What did transfer.** The regimes are different systems and that is the point:
 `k*` 60 358 there against 21 221 here, `l_k/d` 0.004070 against 0.006865 — BD's
