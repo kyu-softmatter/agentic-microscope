@@ -16,10 +16,16 @@
 #                        BLOCKED lens has NO rows under `verdicts` (nothing
 #                        graded), so without this a refusing lens and a clean
 #                        one look alike.
-#   unevaluated_judgment 4 · 5 · 6 · 8's subagent halves, which stage 1 can
-#                        never convene. Separate from `unevaluated` because
-#                        the causes differ: the roster decided one, and stage
-#                        1 not existing decided the other.
+#   unevaluated_judgment 4 · 5 · 6 · 8's subagent halves. Separate from
+#                        `unevaluated` because the causes differ: the roster
+#                        decided one, and whether stage 2 ran decided the
+#                        other. FOUR states, and they are not one fact --
+#                        `judged` · `convened` (packet written, nothing came
+#                        back) · `awaiting` (gate ran, packet withheld under
+#                        E2) · `absent` (no gate verdict to interpret). A
+#                        `judged` row carries the agent, its status, and every
+#                        ruling with the basis it rests on
+#                        -> kb/decisions/2026-09-15-stage-2-the-judgment-seam.md
 #
 # And `verdicts` rows carry `subject`: lens 1 judges one channel against its
 # siblings, so a two-colour proposal is two subjects under one lens

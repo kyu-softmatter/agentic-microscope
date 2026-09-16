@@ -156,12 +156,13 @@ it cannot run beside them.
 
 ### The experiment designer — the same order, run by code
 
-**Planned 2026-09-13; stage 1 runs as of 2026-09-15.**
+**Planned 2026-09-13; both stages run as of 2026-09-15.**
 
 ```bash
-python -m designer.cli run  config/briefs/active-microrheology.yaml
-python -m designer.cli emit config/briefs/x.yaml --id <slug> --date <date> \
-    --question "..." --out <dir>
+python -m designer.cli run     config/briefs/active-microrheology.yaml
+python -m designer.cli packets config/briefs/x.yaml --out <dir>
+python -m designer.cli emit    config/briefs/x.yaml --id <slug> --date <date> \
+    --question "..." --out <dir> [--judgment <verdict.yaml> ...]
 ```
 
 `run` prints the nine verdicts and writes nothing. `emit` writes both halves of
@@ -170,16 +171,41 @@ the plan and then **validates the `.md` it just wrote** with the same check
 one: writing there also means running `knowledge.cli write` and reviewing the
 entry, which is a decision and not a side effect (§6).
 
-**Stage 1 is the code half only**, and an emitted plan says so in its own
-header. All nine lenses have a `gate.py`, so the order runs end to end with no
-subagent convened — which makes 4 · 5 · 6 · 8's judgment halves absent on
-*every* plan this emitter writes, and they are written out as `unevaluated`
-rather than omitted (E4). `plan.md`'s Preconditions, Sequence and Stop
-conditions are stage 2 and are emitted empty **with a line saying why**: a
-section empty because nobody wrote it looks exactly like one with nothing in
-it. `committee/` still only inspects the wiring between lenses, and
-`hardware/orchestrator.py` is still for devices
+**Stage 1 is the nine `gate.py` modules**, and it runs end to end with no
+subagent convened. `committee/` still only inspects the wiring between lenses,
+and `hardware/orchestrator.py` is still for devices
 → [`2026-09-13-the-planning-layer.md`](kb/decisions/2026-09-13-the-planning-layer.md).
+
+**Stage 2 is two commands and a conversation in between, because code cannot
+convene a subagent** and `designer/judgment.py` does not pretend to. The four
+agents in `.claude/agents/` have Read/Grep/Glob; **you** convene them. What is
+in code is the part that can be checked either side of that
+→ [`2026-09-15-stage-2-the-judgment-seam.md`](kb/decisions/2026-09-15-stage-2-the-judgment-seam.md).
+
+| Half | What it does |
+|---|---|
+| `packets` | writes what each judgment lens is handed: its own gate's `Verdict` **to interpret, not recompute**, who carried it which number, and the list it must rule on. That list is **derived** — the gate's own findings, and for lens 6 `validity.setup`'s three ledger states — never declared here |
+| `emit --judgment` | reads the verdicts back and **refuses nine ways**. One refusal writes nothing: a refused judgment is not a missing one, and writing the plan without it would record a review that did not happen |
+
+The refusals worth knowing without opening the file: a ruling with no `basis` ·
+a subject the packet never asked about (the lens generated a finding) · silence
+on a subject that is neither ruled nor in `unevaluated` · **`accept` on a
+`hard` finding at m < 1**, which is §2 precedence level 4 in code · and lens 6
+returning before 4 · 5 · 8, which is E2.
+
+**Lens 6 is refused a packet until the others return.** It reviews their
+verdicts, so a packet built early hands it the gate results and silently drops
+the judgment half of exactly what it is convened over.
+
+**A judgment half has four states and they are not one fact**: `judged` ·
+`convened` (packet written, nothing came back) · `awaiting` (gate ran, packet
+withheld under E2) · `absent` (no gate verdict to interpret, with the gate's
+own reason). Collapsing `awaiting` into `absent` said lens 6's gate had
+produced no verdict when it had returned FAIL.
+
+`plan.md`'s Preconditions, Sequence and Stop conditions are **still unwritten
+by either stage** and are emitted empty **with a line saying why**: a section
+empty because nobody wrote it looks exactly like one with nothing in it.
 
 **Input — `brief.yaml`.** The goal, the constraints, and every fact with the
 entry it came from. **Hand-written until the query refiner exists**, and the
@@ -416,11 +442,12 @@ survives a clean checkout).
 pytest -q -rs
 ```
 
-1405 passed, 11 skipped on macOS, of 1,416 (re-measured 2026-09-15; was
-1374/11 of 1,385 on 2026-09-14, and the 31 added since are the plan emitter's
--- which is where the next four broken handoffs were found, including one the
-run order already claimed to carry. Windows printed 1195/10 on 2026-09-09 — one
-Windows-only test — and has **not** been re-measured since). Two kinds of
+1432 passed, 11 skipped on macOS, of 1,443 (re-measured 2026-09-15; was
+1374/11 of 1,385 on 2026-09-14, and the 58 added since are the plan emitter's
+and stage 2's seam -- the emitter is where the next four broken handoffs were
+found, one of them a number the run order already claimed to carry. Windows
+printed 1195/10 on 2026-09-09 — one Windows-only test — and has **not** been
+re-measured since). Two kinds of
 skip: three whole modules behind `pytest.importorskip("pymmcore_plus")`
 holding 56 tests (counted 2026-09-09, not re-counted today — the dependency is
 absent here, so they skip at import and cannot be collected) that need a

@@ -1,8 +1,9 @@
 """The designer's command line: a brief in, a verdict or two plan files out.
 
-    python -m designer.cli run config/briefs/active-microrheology.yaml
-    python -m designer.cli emit config/briefs/x.yaml --id 2026-09-15-slug \\
-        --question "..." --out kb/plans
+    python -m designer.cli run     config/briefs/active-microrheology.yaml
+    python -m designer.cli packets config/briefs/x.yaml --out <dir>
+    python -m designer.cli emit    config/briefs/x.yaml --id <slug> \\
+        --question "..." --out <dir> [--judgment <verdict.yaml> ...]
 
 `run` prints and writes nothing. `emit` writes both halves of the plan and
 then **validates the `.md` it just wrote with `knowledge.plans.check_plan`** --
@@ -10,10 +11,18 @@ the same check `python -m knowledge.cli plan-check` runs, called on the output
 rather than trusted to be run later. A shape a hardware skill would misread is
 caught here, in the process that produced it.
 
-There is no default output directory, and `kb/plans/` is not one. An emitted
-plan is stage 1 only, and `kb/` is indexed: writing there also means running
-`python -m knowledge.cli write` and reviewing the entry, which is a decision
-and not a side effect of a CLI invocation (§9).
+There is no default output directory, and `kb/plans/` is not one. `kb/` is
+indexed: writing there also means running `python -m knowledge.cli write` and
+reviewing the entry, which is a decision and not a side effect of a CLI
+invocation (§6).
+
+STAGE 2 IS TWO COMMANDS AND A CONVERSATION IN BETWEEN. `packets` writes what
+each judgment lens is to be handed; the **main agent** convenes the four
+agents in `.claude/agents/`, because nothing in this process can; `emit
+--judgment` reads their verdicts back, refuses the ones that are not reviews,
+and fills in the rows a stage-1 plan leaves as holes. The middle step is not
+automatable from here, and the seam is shaped so that nothing has to pretend
+otherwise.
 """
 
 from __future__ import annotations
@@ -81,14 +90,95 @@ def cmd_run(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_packets(args: argparse.Namespace) -> int:
+    from . import judgment as judgment_mod
+
+    result = run_mod.run(brief_mod.load(args.brief))
+    written = judgment_mod.write_packets(result, Path(args.out))
+
+    if not written:
+        print("no packets: no judgment lens produced a verdict for an agent to "
+              "interpret.")
+        for row in result.unevaluated:
+            if row["lens"] in judgment_mod.JUDGMENT_LENSES:
+                print(f"  {row['lens']:12} {row['state']:18} {row['why']}")
+        #: Not an error. A run that stops in tier 1 has nothing for stage 2,
+        #: and saying so is the answer -- §2 precedence level 1 stops the run
+        #: and returns a revision.
+        return 0
+
+    packets = judgment_mod.build_packets(result)
+    for path in written:
+        packet = packets[path.stem.split("-", 2)[2]]
+        print(f"wrote {path}")
+        print(f"  agent {packet.agent}  ·  {len(packet.must_rule_on)} to rule "
+              f"on  ·  {len(packet.assumed_inputs)} assumed input(s)")
+    print()
+    print("Convene each agent with its packet, then pass the verdicts back:")
+    print("  python -m designer.cli emit <brief> ... " +
+          " ".join(f"--judgment <{p.stem}-verdict.yaml>" for p in written))
+    return 0
+
+
+def _load_judgments(paths, packets) -> tuple[dict, int]:
+    """Read every returned verdict and refuse the ones that are not reviews."""
+    from . import judgment as judgment_mod
+
+    accepted: dict = {}
+    refused = 0
+    for path in paths or ():
+        parsed = judgment_mod.read_judgment(path)
+        lens = parsed.lens if isinstance(parsed.lens, str) else next(
+            (name for name, pk in packets.items() if pk.number == parsed.lens), None
+        )
+        packet = packets.get(lens)
+        if packet is None:
+            print(f"REFUSED {path}: lens {parsed.lens!r} has no packet in this "
+                  "run, so there was nothing for it to review")
+            refused += 1
+            continue
+        problems = judgment_mod.check_judgment(parsed, packet, others=accepted)
+        if problems:
+            print(f"REFUSED {path} ({len(problems)}):")
+            for r in problems:
+                print(f"  [{r.rule}] {r.why}")
+                print(f"      -> {r.action}")
+            refused += 1
+            continue
+        print(f"accepted {path}: lens {packet.number} {lens}, {parsed.status}, "
+              f"{len(parsed.rulings)} ruling(s)")
+        accepted[lens] = parsed
+    return accepted, refused
+
+
 def cmd_emit(args: argparse.Namespace) -> int:
     from knowledge.plans import check_plan
+
+    from . import judgment as judgment_mod
 
     result = run_mod.run(brief_mod.load(args.brief))
     identity = emit_mod.Identity(
         id=args.id, date=args.date, question=args.question, title=args.title
     )
-    md, plan_yaml = emit_mod.write(result, identity, Path(args.out))
+
+    rows = None
+    if args.judgment:
+        accepted, refused = _load_judgments(
+            args.judgment, judgment_mod.build_packets(result)
+        )
+        if refused:
+            print()
+            print("nothing written. A refused judgment is not a missing one -- "
+                  "writing the plan without it would record a review that did "
+                  "not happen.")
+            return 1
+        # Lens 6's packet only exists once the others have returned (E2), so
+        # the roster is rebuilt here rather than reused from above.
+        packets = judgment_mod.build_packets(result, judgments=accepted)
+        rows = judgment_mod.judgment_rows(packets, accepted, result)
+        print()
+
+    md, plan_yaml = emit_mod.write(result, identity, Path(args.out), rows)
     print(f"wrote {md}")
     print(f"wrote {plan_yaml}")
 
@@ -128,7 +218,19 @@ def main(argv: list[str] | None = None) -> int:
         help="output directory. No default, and kb/plans/ is not one -- writing "
              "there is a decision (§9), not a side effect",
     )
+    emit_p.add_argument(
+        "--judgment", action="append", default=[],
+        help="a judgment lens's returned verdict. Repeatable. Each is checked "
+             "before it is believed, and one refusal writes nothing",
+    )
     emit_p.set_defaults(func=cmd_emit)
+
+    packets_p = sub.add_parser(
+        "packets", help="write what each judgment lens is to be handed (stage 2)"
+    )
+    packets_p.add_argument("brief")
+    packets_p.add_argument("--out", required=True)
+    packets_p.set_defaults(func=cmd_packets)
 
     args = parser.parse_args(argv)
     return args.func(args)

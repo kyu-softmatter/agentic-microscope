@@ -281,16 +281,21 @@ def _verdict_rows(result: Result) -> list[dict]:
 
 
 def _judgment_rows() -> list[dict]:
-    """Stage 2's half of the committee, written as holes.
+    """Stage 2's half of the committee when stage 2 did not run: four holes.
 
     Not a formality. E4: a lens that was not convened leaves a hole and not a
-    pass, and the qualitative halves of 4 · 5 · 6 · 8 are *never* convened by
+    pass, and the qualitative halves of 4 · 5 · 6 · 8 are never convened by
     stage 1 -- so omitting them would turn four permanent absences into four
     silent clearances on every plan this emitter writes.
+
+    `designer.judgment.judgment_rows` replaces this list once stage 2 has run,
+    and it is passed IN rather than imported: this module knows that the four
+    judgment halves exist and deliberately not how they are convened.
     """
     return [
         {
             "lens": LENS_NUMBER[lens],
+            "name": lens,
             "state": "absent",
             "why": "the judgment half of this lens is a subagent, and stage 1 "
             "runs the code half only -- no subagent was convened",
@@ -299,8 +304,15 @@ def _judgment_rows() -> list[dict]:
     ]
 
 
-def plan_yaml(result: Result, identity: Identity) -> dict:
-    """The machine half. Every key the template declares, present."""
+def plan_yaml(
+    result: Result, identity: Identity, judgment_rows: list[dict] | None = None
+) -> dict:
+    """The machine half. Every key the template declares, present.
+
+    ``judgment_rows`` is stage 2's, from `designer.judgment.judgment_rows`.
+    Absent, the four rows say the four halves were never convened -- which is
+    what a stage-1 plan is, and it has to say so (E4).
+    """
     brief_path = Path(result.brief.path)
     return {
         "id": identity.id,
@@ -317,7 +329,8 @@ def plan_yaml(result: Result, identity: Identity) -> dict:
         #: different causes: the roster decided one, and stage 1 not existing
         #: decided the other.
         "unevaluated": result.unevaluated,
-        "unevaluated_judgment": _judgment_rows(),
+        "unevaluated_judgment": judgment_rows if judgment_rows is not None
+        else _judgment_rows(),
         "unresolved": result.unresolved,
         "stopped_after": result.stopped_after,
         "stop_reason": result.stop_reason,
@@ -409,7 +422,20 @@ def _committee_table(result: Result) -> list[str]:
     return lines
 
 
-def _not_evaluated(result: Result) -> list[str]:
+def _one_line(row) -> str:
+    """A judgment's own `unevaluated` entry, in prose.
+
+    A dict repr in a markdown bullet is the shape a reader skips, and this
+    list is the one part of a judgment verdict that must not be skipped.
+    """
+    if not isinstance(row, dict):
+        return str(row)
+    code = row.get("code")
+    why = row.get("why") or row.get("reason") or ""
+    return f"`{code}` — {why}" if code else str(why)
+
+
+def _not_evaluated(result: Result, judgment_rows: list[dict] | None = None) -> list[str]:
     """The section `plan-check` refuses to let be silent."""
     lines = [
         "**Not evaluated.** `unevaluated` is not `cleared` (CLAUDE.md §3).",
@@ -431,16 +457,35 @@ def _not_evaluated(result: Result) -> list[str]:
 
     lines.append("")
     lines.append(
-        "*The judgment half* — the four subagents stage 1 can never convene. "
+        "*The judgment half* — the four subagents stage 1 cannot convene. "
         "A lens can appear in both lists, and that is not a duplicate: its "
         "gate and its subagent are two evaluations. Written out rather than "
         "omitted (E4), because a permanent absence omitted is a permanent "
         "silent clearance:"
     )
     lines.append("")
-    for row in _judgment_rows():
-        name = next(k for k, v in LENS_NUMBER.items() if v == row["lens"])
-        lines.append(f"- **{_lens_label(name)}** — `unevaluated`: {row['why']}")
+    for row in (judgment_rows if judgment_rows is not None else _judgment_rows()):
+        name = row.get("name") or next(
+            k for k, v in LENS_NUMBER.items() if v == row["lens"]
+        )
+        if row["state"] == "judged":
+            lines.append(
+                f"- **{_lens_label(name)}** — `{row['status']}` from "
+                f"`{row['agent']}`, {len(row['rulings'])} ruling(s), "
+                f"{len(row['unevaluated'])} left unevaluated by it"
+            )
+            for ruling in row["rulings"]:
+                source = f" — {ruling['source']}" if ruling.get("source") else ""
+                lines.append(
+                    f"  - `{ruling['code']}` **{ruling['ruling']}**: "
+                    f"{ruling['basis']}{source}"
+                )
+            for skipped in row["unevaluated"]:
+                lines.append(f"  - ⚠ `unevaluated`: {_one_line(skipped)}")
+        else:
+            lines.append(
+                f"- **{_lens_label(name)}** — `{row['state']}`: {row['why']}"
+            )
     return lines
 
 
@@ -457,7 +502,35 @@ def _handoffs() -> list[str]:
     return lines
 
 
-def plan_md(result: Result, identity: Identity) -> str:
+def _stage_line(judgment_rows: list[dict] | None) -> str:
+    """Which stages produced this file, said in the file.
+
+    A plan that does not say how much of the committee ran is a plan whose
+    holes a reader has to find.
+    """
+    judged = [row for row in (judgment_rows or ()) if row["state"] == "judged"]
+    if not judged:
+        return (
+            "**Written by `python -m designer.cli`, stage 1.** The committee's "
+            "code half only: all nine lenses have a `gate.py` and every one of "
+            "them ran or said why it did not, but the subagents — the "
+            "qualitative half of 4 · 5 · 6 · 8 — were not convened and the "
+            "prose sections below were not written. Both facts are "
+            "load-bearing, not caveats."
+        )
+    names = ", ".join(f"{row['lens']} {row['name']}" for row in judged)
+    return (
+        f"**Written by `python -m designer.cli`, stages 1 and 2.** All nine "
+        f"gates ran or said why they did not, and {len(judged)} of the four "
+        f"judgment halves returned a reviewed verdict ({names}). The prose "
+        "sections below are still unwritten, and any judgment half not listed "
+        "here is still a hole (E4)."
+    )
+
+
+def plan_md(
+    result: Result, identity: Identity, judgment_rows: list[dict] | None = None
+) -> str:
     """The operator's half, in the `kb/plans/_template.md` shape."""
     subs = subsystems(result)
     out: list[str] = [
@@ -471,11 +544,7 @@ def plan_md(result: Result, identity: Identity) -> str:
         "",
         f"# {identity.heading}",
         "",
-        "**Written by `python -m designer.cli`, stage 1.** The committee's "
-        "code half only: all nine lenses have a `gate.py` and every one of "
-        "them ran or said why it did not, but the subagents — the qualitative "
-        "half of 4 · 5 · 6 · 8 — were not convened and the prose sections "
-        "below were not written. Both facts are load-bearing, not caveats.",
+        _stage_line(judgment_rows),
         "",
         f"**Machine half:** `{identity.id}.yaml`, same slug — one run, one "
         "name, two readers.",
@@ -505,7 +574,7 @@ def plan_md(result: Result, identity: Identity) -> str:
         "",
     ]
     out += _committee_table(result)
-    out += ["", *_not_evaluated(result)]
+    out += ["", *_not_evaluated(result, judgment_rows)]
 
     if result.stopped_after:
         out += [
@@ -558,7 +627,12 @@ def plan_md(result: Result, identity: Identity) -> str:
 # --------------------------------------------------------------------------
 
 
-def write(result: Result, identity: Identity, out_dir: Path) -> tuple[Path, Path]:
+def write(
+    result: Result,
+    identity: Identity,
+    out_dir: Path,
+    judgment_rows: list[dict] | None = None,
+) -> tuple[Path, Path]:
     """Both halves, same slug. Returns `(md, yaml)` in that order.
 
     Refuses to overwrite, on the same grounds as
@@ -579,9 +653,13 @@ def write(result: Result, identity: Identity, out_dir: Path) -> tuple[Path, Path
             "one is a decision, so delete it or choose another id."
         )
 
-    md_path.write_text(plan_md(result, identity), encoding="utf-8")
+    md_path.write_text(plan_md(result, identity, judgment_rows), encoding="utf-8")
     yaml_path.write_text(
-        yaml.safe_dump(plan_yaml(result, identity), sort_keys=False, allow_unicode=True),
+        yaml.safe_dump(
+            plan_yaml(result, identity, judgment_rows),
+            sort_keys=False,
+            allow_unicode=True,
+        ),
         encoding="utf-8",
     )
     return md_path, yaml_path
