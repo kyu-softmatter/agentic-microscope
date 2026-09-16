@@ -3,13 +3,15 @@
 # NOT in kb/calibrations/ — that directory means "measured on this instrument",
 # and a simulated f_c placed there would be a lie the path itself tells.
 id: trap-stiffness-recovery.r2
-# `question` and `date` are NOT in the bridge's kb_external_entry schema, which
-# is `additionalProperties: false`. They are here because knowledge/index.py
-# requires both of every indexed entry, and an imported number that never
-# appears in kb/INDEX.md is one CLAUDE.md §0 tells the reader to start from and
-# would never find. The body below is a mechanical copy; these two lines are
-# this repository's index metadata, not content. Closing the gap properly means
-# adding both keys to the bridge schema -- proposed, not edited (ownership rule).
+# `question` and `date` are here because knowledge/index.py requires both of
+# every indexed entry, and an imported number that never appears in kb/INDEX.md
+# is one CLAUDE.md §0 tells the reader to start from and would never find. The
+# body below is a mechanical copy; these two lines are this repository's index
+# metadata, not content.
+# They were proposed to the bridge rather than edited in (ownership rule), and
+# kb_external_entry.schema.json accepted them as optional on 2026-09-15 -- the
+# wire stopped forbidding them and each repository still enforces its own
+# requirement. So this file no longer departs from the schema it declares.
 question: "What does Brownian dynamics require of an acquisition that is to recover f_c, and what does that license for the drag-calibration plan?"
 date: 2026-09-15
 origin: bd
