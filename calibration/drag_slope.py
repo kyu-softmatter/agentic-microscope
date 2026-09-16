@@ -492,23 +492,3 @@ def prepare_rows(
             t += dt
             out.append(f"{t:.6f},{x:.6f},{speed},{segment},{rung}")
     return out
-
-
-def faxen_gamma_pn_s_um(
-    radius_um: float, height_um: float, viscosity_pa_s: float
-) -> float:
-    """`gamma = 6*pi*eta*a / (1 - 9a/(16h))`, in pN*s/um.
-
-    Here only so a slope can be turned into an `alpha` without importing the
-    trapping lens, which pulls in the gate machinery. It is the same first-order
-    parallel correction `sample.aberration.wall_drag_suppression` reports, and
-    it refuses `h <= a` the same way rather than returning a number.
-    """
-    if height_um <= radius_um:
-        raise ValueError(
-            f"h = {height_um} um is not above a = {radius_um} um; the 9a/(16h) "
-            "expansion has no meaning there"
-        )
-    bulk = 6.0 * math.pi * viscosity_pa_s * (radius_um * 1e-6)  # N*s/m
-    bulk_pn_s_um = bulk * 1e12 / 1e6
-    return bulk_pn_s_um / (1.0 - 9.0 * radius_um / (16.0 * height_um))

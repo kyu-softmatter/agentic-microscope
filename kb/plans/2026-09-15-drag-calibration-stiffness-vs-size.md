@@ -449,19 +449,22 @@ a gate, and none of these numbers may become one: they are `simulated` and the
 entries carry `may_be_gate_threshold: false`.
 
 **D-6 · `h0` is not waiting on a wall runner. No runner can answer it, and that
-is a property of the question.** Five rounds have recorded the wall as a
-*missing capability* on the simulation side — "still no runner". Checked here,
-the limitation is stronger than that and does not expire:
+is a property of the question.** Five rounds recorded the wall as a *missing
+capability* on the simulation side — "still no runner". The limitation is
+stronger than that and does not expire.
 
-At a **fixed** height the wall's entire effect is a scalar multiplier on
-`gamma`. The dimensionless group that governs a trapped bead is
-`k* = k_t d^2 / kT`, which carries `k_t`, `d` and `kT` and **no drag at all** —
-21219 at our numbers, agreeing with the 21221 in r2's own regime table to
-0.01 %. Since `gamma` enters only through `tau_k = gamma/k_t`, and `tau_k` is
-the unit time, **all six rungs of the ladder are the same dimensionless run**.
-Faxén lives entirely in the back-transform out of those units. A simulation
-therefore cannot *learn* the wall: whatever wall factor it reports is the one
-that was put in.
+**The claim is the other side's, and it crossed as a round document**: r8's
+`gaps[0]`, `kind: not_buildable_here`, `owner: nobody` — *"No simulation on this
+side will ever measure a wall factor it was not given. `h0` as a physical
+quantity is not reachable here, in this round or any later one."*
+→ [`trap-stiffness-recovery.r8`](../external/bd/trap-stiffness-recovery.r8.md).
+
+Their stated reason, copied rather than re-derived: at a **fixed** height the
+wall's whole effect is a scalar on `gamma`, which enters no dimensionless group
+a trapped-bead case carries — `k*` is **21221.4 at all six rungs, identically**,
+in r2's own regime table — so all six are the same dimensionless run and Faxén
+lives entirely in the back-transform. Whatever wall factor a simulation reports
+is the one that was put into it.
 
 What a simulation **can** still do is the thing r1 asked for as a fallback and
 never got: **test the fit procedure** on a synthetic `gamma(h)` ladder with
@@ -481,16 +484,16 @@ before writing the next ask**; it is the only part of these documents that
 carries what no number reveals, which is exactly why it is where an answer can
 sit unnoticed.
 
-⚠ **Derived here, from the definition of `k*` — and independently confirmed by
-the other side.** When this paragraph was written the other side's identical
-conclusion had only been relayed in conversation, which is not a source (09 §7),
-so it was written as this repository's own arithmetic and said so. It has since
-crossed properly: r8's `gaps[0]` is `kind: not_buildable_here`, `owner: nobody`
-— *"No simulation on this side will ever measure a wall factor it was not
-given"*
-→ [`trap-stiffness-recovery.r8`](../external/bd/trap-stiffness-recovery.r8.md).
-Two independent derivations of the same structural fact, which is stronger than
-either. Cite this paragraph for the arithmetic and the import for their half.
+⚠ **On how this item got written, because the route matters more than the
+conclusion.** It first stood on arithmetic done in-session — `k*` re-derived
+from its definition — while the other side's identical conclusion had only been
+relayed in conversation, which is not a source (09 §7). That was the wrong
+shape twice over: **an agent's own inference is not a source** (09 §7 again),
+and a closed-form result is the code's to compute and the operator's to state,
+not a paragraph's to assert. Rewritten 2026-09-16 to rest on the import, which
+is citable, and to carry the other side's reason as a copy. The arithmetic
+agreed, and that is worth exactly as much as one cross-check and not one line
+more — the blur coefficient also agreed with itself for two rounds.
 
 **D-7 · The ladder fit tolerates 4.48 % per rung, the route that measures
 `gamma` delivers 7.2–9.5 %, and r1's own falsifier has fired.**
@@ -808,9 +811,18 @@ observation in every row.
   | `alpha(a)` across sizes | common to every size | cancels, as §Error budget already says |
 
   Both survivors sit well under the ~8 % that `epsilon` contributes as a **bias**
-  (D-2), so this is not what limits the run. ⚠ **The table is derived here, one
-  line of arithmetic** — checkable above, and to be re-derived rather than
-  trusted.
+  (D-2), so this is not what limits the run.
+
+  **Where those four rows come from, since none of them is this file's to
+  assert.** The first is computed and pinned by
+  `tests/test_drag_slope.py::test_the_scatter_is_exactly_invariant_to_the_pixel_size`,
+  which runs the same data at 0.065 and at 0.06453 and holds the scatter equal
+  to 1e-12 while the slope moves by exactly the ratio. The fourth is §Error
+  budget's existing row. The two middle rows are the exponents of `px` in
+  `alpha = gamma*v/x_eq` and in `kT/var(x)` — **and the lesson of the blur
+  coefficient is that an exponent in prose is exactly what nobody checks**, so
+  they are stated here as a reading of those two expressions and not as a
+  result. If either matters to a verdict, it belongs in a check first.
 
   **And the operator has ruled on the mismatch generally.** KH, 2026-09-15:
 

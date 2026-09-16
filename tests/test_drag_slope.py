@@ -31,7 +31,6 @@ import pytest
 from calibration.drag_slope import (
     HARDCODED_FRAME_PERIOD_MS,
     as_calibration_entry,
-    faxen_gamma_pn_s_um,
     fit_file,
     prepare_rows,
     read_positions,
@@ -199,19 +198,6 @@ def test_the_equipartition_crosscheck_runs_with_a_measured_temperature(tmp_path)
     (fit,) = fit_file(synthetic(tmp_path / "p.csv"), settle_s=0.056, temperature_c=20.0)
     assert not fit.blocked
     assert fit.alpha_equipartition_pn_um == pytest.approx(10.1, rel=0.05)
-
-
-def test_faxen_refuses_inside_the_bead(tmp_path):
-    """`sample.aberration.wall_drag_suppression` refuses h <= a; so does this."""
-    with pytest.raises(ValueError, match="not above"):
-        faxen_gamma_pn_s_um(radius_um=2.475, height_um=2.0, viscosity_pa_s=1.0016e-3)
-
-
-def test_faxen_matches_the_plans_own_ladder_row(tmp_path):
-    """The plan's table gives gamma/gamma_0 = 1.211 at h = 8 um, a = 2.475 um."""
-    bulk = faxen_gamma_pn_s_um(2.475, 1e9, 1.0016e-3)
-    near = faxen_gamma_pn_s_um(2.475, 8.0, 1.0016e-3)
-    assert near / bulk == pytest.approx(1.211, rel=0.001)
 
 
 # --------------------------------------------------------------------------
