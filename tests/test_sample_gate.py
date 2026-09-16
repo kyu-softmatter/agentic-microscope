@@ -711,3 +711,78 @@ def test_l4_8_is_soft_so_it_cannot_block_the_lens():
     assert not any(
         f.code.startswith("count_sufficiency") and f.kind == "hard" for f in v.findings
     )
+
+
+# ------------------------------------- Phase 0b: a block is not a blackout --
+#
+# Three lenses reported the all-or-nothing Phase 0 return independently on
+# 2026-09-15, the first time the committee's judgment subagents were convened
+# on a real proposal, and lens 6 called the pattern architectural rather than
+# three incidents.
+
+
+def test_a_block_no_longer_discards_the_checks_that_could_run():
+    """Lens 4's own words: "check_depth_window does not read imaging_depth_um
+    at all ... Phase 0 being all-or-nothing suppressed the one check that would
+    have told the operator which depths are allowed." That is D6 inverted --
+    refusing for want of a value instead of reporting where the verdict
+    changes."""
+    from optics.components import find_objective
+
+    setup = SampleSetup(objective=find_objective("4-Apo LmbdS 40x WI"),
+                        particle_radius_um=2.5)
+    verdict = evaluate(setup)
+
+    assert verdict.status == "BLOCKED", "the block itself does not move"
+    assert verdict.feasibility == "UNKNOWN"
+    assert verdict.advances is False
+    assert any(f.code == "missing.imaging_depth" for f in verdict.findings)
+
+    # And the window is reported anyway, because it never needed the depth.
+    window = next(f for f in verdict.findings if f.code == "geometry.depth_window")
+    assert window.numbers["depth_min_um"] > 0
+    assert window.numbers["depth_max_um"] == 160.0
+
+
+def test_depth_window_declares_the_requirement_it_actually_has():
+    """`requires=()` was conflating two things. Four of this lens's checks mean
+    "I handle my own absences" and return `evaluated=False`; `depth_window`
+    meant "I have no requirements" while calling `free_working_distance_um`,
+    which raises on a `wd_um` of None. Every path into it went through a gate
+    that had already returned, so the difference was invisible."""
+    from optics.components import Objective
+
+    from sample.checks import CHECKS
+
+    depth_window = next(c for c in CHECKS if c.code == "depth_window")
+    assert "working_distance" in depth_window.requires
+
+    # With no working distance the check is SKIPPED, not crashed.
+    setup = SampleSetup(
+        objective=Objective(label="mystery", magnification=40.0, na=1.25,
+                            immersion="water"),
+        particle_radius_um=2.5,
+    )
+    verdict = evaluate(setup)
+    assert verdict.status == "BLOCKED"
+    assert "geometry.depth_window" not in verdict.margins
+
+
+def test_a_partial_run_is_reported_in_the_same_shape_as_a_full_one():
+    """`_as_findings` is one definition for Phase 0b and Phase 2. A partial run
+    reported in a different shape from a full one is a partial run nobody can
+    compare."""
+    from optics.components import find_objective
+
+    blocked = evaluate(SampleSetup(objective=find_objective("4-Apo LmbdS 40x WI"),
+                                   particle_radius_um=2.5))
+    ran = evaluate(SampleSetup(objective=find_objective("4-Apo LmbdS 40x WI"),
+                               particle_radius_um=2.5, imaging_depth_um=20.0))
+
+    shared = set(blocked.margins) & set(ran.margins)
+    assert "geometry.depth_window" in shared
+    for f in blocked.findings:
+        if f.code.startswith("missing."):
+            continue
+        assert f.kind is not None, f.code
+        assert f.margin is not None, f.code

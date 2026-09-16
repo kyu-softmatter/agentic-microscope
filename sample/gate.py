@@ -200,6 +200,28 @@ def _assumed_inputs(setup: SampleSetup) -> list[str]:
 # --------------------------------------------------------------------------
 
 
+def _as_findings(results: list["CheckResult"]) -> list[Finding]:
+    """Check results as findings, `ok` dropped.
+
+    One definition because Phase 0b and Phase 2 both need it, and a partial
+    run reported in a different shape from a full one is a partial run nobody
+    can compare.
+    """
+    return [
+        Finding(
+            severity=r.severity,
+            code=r.code,
+            message=r.message,
+            action=r.action,
+            numbers=r.numbers,
+            kind=r.kind,
+            margin=r.margin,
+        )
+        for r in results
+        if r.severity != "ok"
+    ]
+
+
 def evaluate(setup: SampleSetup) -> Verdict:
     assumed = _assumed_inputs(setup)
     evidence = "measured" if not assumed else "assumed"
@@ -225,13 +247,32 @@ def evaluate(setup: SampleSetup) -> Verdict:
                         "would be fiction.",
                     )
                 )
+        # ---- Phase 0b -- the checks whose OWN inputs are present ---------
+        #
+        # A block used to discard these, and three lenses said so independently
+        # on 2026-09-15 when the committee's judgment subagents were first
+        # convened on a real proposal. In this lens the loss was specific:
+        # `check_depth_window` never reads `imaging_depth_um` -- its ceiling is
+        # the free working distance and the chamber height, its floor the
+        # particle radius -- so the check that ANSWERS "which depths are
+        # allowed" was suppressed in order to demand one depth as input. That
+        # is D6 inverted. `check_ri_mismatch`'s matched branch likewise needs
+        # nothing missing, and what was lost there was the one POSITIVE
+        # statement supporting the proposal.
+        #
+        # The status does not move: BLOCKED, UNKNOWN, `confidence: none`, so
+        # nothing advances and no feasibility is claimed. What changes is that
+        # a runnable check's result is reported instead of thrown away.
+        partial = [c.run(setup) for c in CHECKS if set(c.requires).issubset(facts)]
         return Verdict(
             status="BLOCKED",
             feasibility="UNKNOWN",
             evidence=evidence,
             confidence="none",
             assumed_inputs=assumed,
-            findings=blocking_findings,
+            findings=blocking_findings + _as_findings(partial),
+            margins={r.code: round(r.margin, 3) for r in partial},
+            metrics={r.code: r.numbers for r in partial},
         )
 
     # ---- Phase 1 -- every check runs -------------------------------------
@@ -245,19 +286,7 @@ def evaluate(setup: SampleSetup) -> Verdict:
     feasibility = grade(worst.margin) if worst else "UNKNOWN"
     bottleneck = worst.code if worst else None
 
-    findings = [
-        Finding(
-            severity=r.severity,
-            code=r.code,
-            message=r.message,
-            action=r.action,
-            numbers=r.numbers,
-            kind=r.kind,
-            margin=r.margin,
-        )
-        for r in results
-        if r.severity != "ok"
-    ]
+    findings = _as_findings(results)
 
     if assumed:
         findings.append(

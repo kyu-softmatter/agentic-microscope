@@ -443,20 +443,39 @@ def test_upholding_a_hard_stop_is_always_allowed(packets):
 # ----------------------------------------- the checks that did not run
 
 
-def test_a_blocked_lens_lists_the_checks_that_never_ran(real):
-    """Reported by both agents from opposite sides. Lens 5: "my gate stopped
-    in Phase 0, so the list contains the two missing inputs and NOTHING about
-    light-driving, dose, or trap heating -- the three subjects this section
-    exists for." Lens 4, of its own L4.7: "`check_depth_window` does not read
-    `imaging_depth_um` at all … Phase 0 being all-or-nothing suppressed the
-    one check that would have told the operator which depths are allowed."
+def test_a_blocked_lens_lists_only_the_checks_that_REALLY_could_not_run(real):
+    """Retargeted 2026-09-15 when Phase 0b landed, and the retarget is the
+    point.
+
+    Both agents reported that a Phase-0 block discarded checks needing nothing
+    missing -- lens 5 of `trap_heating`, lens 4 of `depth_window`. Those now
+    RUN under the block, so they are no longer skipped: they arrive as
+    reported findings instead. What is left in the skipped list is exactly one
+    check per lens, and in both cases it is the check the block is actually
+    about.
+
+    Before Phase 0b this asserted `{light_driving, total_dose, trap_heating}`
+    were all skipped in lens 5 and eight checks in lens 4. Now two are.
     """
     packets = judgment_mod.build_packets(real)
-    photo = {s.code for s in packets["photo"].must_rule_on}
-    sample = {s.code for s in packets["sample"].must_rule_on}
 
-    assert {"light_driving", "total_dose", "trap_heating"} <= photo
-    assert {"depth_window", "wall_drag", "na_feasibility"} <= sample
+    def by_severity(lens):
+        subjects = packets[lens].must_rule_on
+        return ({s.code for s in subjects if s.severity == "skipped"},
+                {s.code for s in subjects if s.severity != "skipped"})
+
+    photo_skipped, photo_reported = by_severity("photo")
+    sample_skipped, sample_reported = by_severity("sample")
+
+    #: `light_driving` requires `irradiance`, which is what lens 5 is blocked
+    #: on -- so it alone genuinely cannot run.
+    assert photo_skipped == {"light_driving"}
+    assert {"perturbation.total_dose", "perturbation.trap_heating_unowned"} <= photo_reported
+
+    #: `working_distance` requires the imaging depth, which is what lens 4 is
+    #: blocked on. Everything else ran.
+    assert sample_skipped == {"working_distance"}
+    assert {"geometry.depth_window", "geometry.ri_mismatch"} <= sample_reported
 
 
 def test_a_skipped_check_carries_its_registration_and_no_margin(real):

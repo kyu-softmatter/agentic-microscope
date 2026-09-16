@@ -266,3 +266,46 @@ def test_verdict_serializes_with_the_lens_name():
     assert d["lens"] == "photo"
     assert d["reporting_only"] is True
     assert d["advances"] is None
+
+
+# ------------------------------------- Phase 0b: a block is not a blackout --
+
+
+def test_trap_heating_survives_a_block_on_an_unrelated_number():
+    """Lens 5 overruled its own SKIP over this on 2026-09-15.
+    `Check("trap_heating", INFO, (), ...)` requires nothing and reads only
+    `setup.trap_on`, so a check whose entire purpose is to stop the unowned
+    5 -> 7 heating handoff from vanishing was silenced by a missing
+    irradiance. E3 says lens 7 silent on heating is not heating cleared, and
+    this was the only thing that said so per-run."""
+    setup = IlluminationSetup(trap_on=True)
+    verdict = evaluate(setup)
+
+    assert verdict.status == "BLOCKED", "the block itself does not move"
+    assert verdict.feasibility == "UNKNOWN", "only Phase 2 may claim N/A"
+    assert verdict.advances is None, "a reporting section still neither advances nor refuses"
+    assert any(f.code == "missing.power_at_sample" for f in verdict.findings)
+
+    heating = next(f for f in verdict.findings if "trap_heating" in f.code)
+    assert "1064" in heating.message
+
+
+def test_light_driving_handles_its_own_missing_threshold():
+    """The `requires` tuple cannot express it: the threshold is needed only
+    when `photoresponsive` is True, and declaring it unconditionally would
+    block a sample confirmed NOT photoresponsive, which needs no threshold at
+    all. So the check handles its own absence -- the convention four of lens
+    4's checks already follow. Before Phase 0b it divided by None, which no
+    caller could reach."""
+    setup = IlluminationSetup(
+        power_mw_at_sample=1.0, illuminated_area_um2=1000.0,
+        exposure_ms=10.0, n_frames=100, photoresponsive=True,
+    )
+    verdict = evaluate(setup)
+
+    assert verdict.status == "BLOCKED"
+    assert any(f.code == "missing.light_driving_threshold" for f in verdict.findings)
+    driving = next(f for f in verdict.findings if f.code == "perturbation.light_driving")
+    assert driving.numbers["evaluated"] is False
+    assert driving.numbers["threshold_w_cm2"] is None
+    assert "not cleared" in driving.message

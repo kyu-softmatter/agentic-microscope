@@ -192,6 +192,28 @@ def _assumed_inputs(setup: IlluminationSetup) -> list[str]:
 # --------------------------------------------------------------------------
 
 
+def _as_findings(results: list[CheckResult]) -> list[Finding]:
+    """Check results as findings, `ok` dropped.
+
+    One definition because Phase 0b and Phase 2 both need it: a partial run
+    reported in a different shape from a full one is a partial run nobody can
+    compare.
+    """
+    return [
+        Finding(
+            severity=r.severity,
+            code=r.code,
+            message=r.message,
+            action=r.action,
+            numbers=r.numbers,
+            kind=r.kind,
+            margin=r.margin,
+        )
+        for r in results
+        if r.severity != "ok"
+    ]
+
+
 def evaluate(setup: IlluminationSetup) -> Verdict:
     assumed = _assumed_inputs(setup)
     evidence = "measured" if not assumed else "assumed"
@@ -217,13 +239,33 @@ def evaluate(setup: IlluminationSetup) -> Verdict:
                         "would be fiction.",
                     )
                 )
+        # ---- Phase 0b -- the checks whose OWN inputs are present ---------
+        #
+        # Lens 5 found this by being convened on a real proposal (2026-09-15)
+        # and overruled its own SKIP over it. `Check("trap_heating", INFO, (),
+        # ...)` requires NOTHING and reads only `setup.trap_on` -- no
+        # dependence on power, area, exposure or frame count -- so a check
+        # whose entire purpose is to stop the unowned 5 -> 7 heating handoff
+        # from vanishing was silenced by an unrelated missing number, on a
+        # proposal where a 1064 nm trap holds the probe. E3 says lens 7 silent
+        # on heating is not heating cleared, and this was the only thing that
+        # said so per-run.
+        #
+        # The status does not move: BLOCKED, `confidence: none`. `feasibility`
+        # stays UNKNOWN here rather than becoming "N/A" -- a report that could
+        # not be written is not the same as one that was, and only Phase 2 may
+        # claim N/A.
+        # -> kb/decisions/2026-09-15-phase-0-was-all-or-nothing.md
+        partial = [c.run(setup) for c in CHECKS if set(c.requires).issubset(facts)]
         return Verdict(
             status="BLOCKED",
             feasibility="UNKNOWN",
             evidence=evidence,
             confidence="none",
             assumed_inputs=assumed,
-            findings=blocking_findings,
+            findings=blocking_findings + _as_findings(partial),
+            margins={r.code: round(r.margin, 3) for r in partial},
+            metrics={r.code: r.numbers for r in partial},
         )
 
     # ---- Phase 1 -- every check runs -------------------------------------
@@ -243,19 +285,7 @@ def evaluate(setup: IlluminationSetup) -> Verdict:
     feasibility = "N/A"
     bottleneck = None
 
-    findings = [
-        Finding(
-            severity=r.severity,
-            code=r.code,
-            message=r.message,
-            action=r.action,
-            numbers=r.numbers,
-            kind=r.kind,
-            margin=r.margin,
-        )
-        for r in results
-        if r.severity != "ok"
-    ]
+    findings = _as_findings(results)
 
     if assumed:
         findings.append(

@@ -997,7 +997,15 @@ CHECKS: list[Check] = [
     # L4.5: INFO since 2026-09-10 -- a z-to-depth converter, not a gate.
     Check("ri_mismatch", INFO, (), check_ri_mismatch),
     Check("count_in_field", INFO, (), check_count_in_field),
-    Check("depth_window", INFO, (), check_depth_window),
+    # L4.7: `requires` is ("working_distance",) and NOT empty, which is the
+    # distinction the empty tuples above were hiding. Those four handle their
+    # own absences and return `evaluated=False`; this one calls
+    # `free_working_distance_um`, which raises on a `wd_um` of None. Declaring
+    # () said "no requirements" when it meant "I have one and do not check
+    # it", and the all-or-nothing Phase 0 return concealed the difference --
+    # every path into this check went through a gate that had already
+    # returned. Found 2026-09-15 by letting runnable checks run under a block.
+    Check("depth_window", INFO, ("working_distance",), check_depth_window),
     # L4.8: SOFT, and `requires` is empty for the same reason as L4.3/L4.4/L4.6
     # -- a missing input must skip this check, not BLOCK the lens. It returns
     # an INFO-kind result in that case so it is neither graded nor silent.

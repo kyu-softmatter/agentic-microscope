@@ -176,6 +176,29 @@ def check_light_driving(setup: "IlluminationSetup") -> CheckResult:
         )
 
     threshold = setup.light_driving_threshold_w_cm2
+    if threshold is None:
+        # PHOTORESPONSIVE AND NO THRESHOLD. `_missing_inputs` emits
+        # `missing.light_driving_threshold` for this, so the lens BLOCKs -- but
+        # a block no longer discards the runnable checks (Phase 0b,
+        # 2026-09-15), and this one is now reached. It used to divide by None.
+        #
+        # The `requires` tuple cannot express it: the threshold is needed only
+        # when `photoresponsive` is True, and declaring it unconditionally
+        # would block a sample confirmed NOT photoresponsive, which needs no
+        # threshold at all. So the check handles its own absence, the
+        # convention four of lens 4's checks already follow.
+        return _ok(
+            "perturbation.light_driving",
+            INFO,
+            MAX_MARGIN,
+            f"Sample is photoresponsive and no threshold is on record, so "
+            f"{irradiance:.1f} W/cm^2 cannot be compared to anything. "
+            "Unevaluated, not cleared -- see missing.light_driving_threshold.",
+            irradiance_w_cm2=round(irradiance, 2),
+            threshold_w_cm2=None,
+            photoresponsive=True,
+            evaluated=False,
+        )
     margin = threshold / irradiance if irradiance > 0 else MAX_MARGIN
     numbers = {
         "irradiance_w_cm2": round(irradiance, 2),
