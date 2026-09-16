@@ -7,8 +7,22 @@
 #   `.yaml` is this: the parameters without the sentences, for the plan
 #   interpreter and for any re-check.
 #
-# NOT WRITTEN BY ANYTHING YET. The designer's stage-1 runner produces the
-# verdicts; nothing yet serialises them into this shape
+# WRITTEN BY `python -m designer.cli emit` SINCE 2026-09-15. Keep this file as
+# the shape's statement of intent -- the emitter is checked against it, not the
+# other way round. Two keys the emitter adds beyond what is sketched below,
+# both because a reader could not otherwise tell one silence from another:
+#
+#   lenses               the lens-LEVEL answer, one row per lens that ran. A
+#                        BLOCKED lens has NO rows under `verdicts` (nothing
+#                        graded), so without this a refusing lens and a clean
+#                        one look alike.
+#   unevaluated_judgment 4 · 5 · 6 · 8's subagent halves, which stage 1 can
+#                        never convene. Separate from `unevaluated` because
+#                        the causes differ: the roster decided one, and stage
+#                        1 not existing decided the other.
+#
+# And `verdicts` rows carry `subject`: lens 1 judges one channel against its
+# siblings, so a two-colour proposal is two subjects under one lens
 # -> kb/decisions/2026-09-13-the-planning-layer.md §3.
 #
 # TIER 3, AND THAT IS THE WHOLE CONSTRAINT. No device property that no check
@@ -79,11 +93,14 @@ unevaluated: []
 #: every gap the brief declared, each with the rank that says who resolves it.
 #: R2 entries are the calibration queue.
 unresolved: []
-  # - code: missing.<field>
-  #   rank: R2                   # R0 | R1 | R2 | R3
+  # - field: missing.<code>      # or the brief's own gap name
+  #   rank: R2                   # R0 | R1 | R2 | R3, or `unranked` for a code
+  #                              # a gate emitted and no gap claimed
   #   lens: null
   #   action: "what would resolve it"
-  #   predicted_by_brief: false  # false = the brief did not know to ask
+  #   predicted_by_brief: false  # false = the brief did not know to ask. This
+  #                              # is the measure the planning-layer entry set
+  #                              # for itself, so it is a boolean and not prose
 
 # ---------------------------------------------------------------------------
 # NO `instrument_state` KEY, AND THAT IS DELIBERATE (KH, 2026-09-14).

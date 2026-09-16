@@ -51,6 +51,13 @@ CROSS_TIER = {
 class LensRun:
     lens: str
     verdict: Any | None = None
+    #: Lens 1 only, and it is not a convenience. `optics.gate.evaluate` judges
+    #: ONE channel against its siblings, so a two-colour proposal used to be
+    #: judged on channel 0 alone -- the second arm's whole light path went
+    #: unexamined and reported as nothing at all, which reads as a pass. Each
+    #: channel is now its own subject, keyed by name. `verdict` stays channel
+    #: 0's so no ordering is invented over the rest.
+    per_channel: dict[str, Any] = field(default_factory=dict)
     #: The Setup the gate was called on. Kept because a later lens sometimes
     #: needs a number this one computed -- see CROSS_TIER.
     setup: Any | None = None
@@ -85,6 +92,17 @@ class Result:
                     "lens": lens, "state": "not_constructible",
                     "missing": list(nc.missing), "why": nc.why,
                 })
+            elif seat.runs:
+                # CONVENED AND NEVER REACHED, which is a fourth state and not
+                # `absent`. It printed the seat's reason for being convened --
+                # "standing lens (01 §4)" -- as its reason for not running,
+                # which reads as a lens that had nothing to say rather than
+                # one the tier-1 stop cut off before it could speak.
+                out.append({
+                    "lens": lens, "state": "not_reached",
+                    "why": self.stop_reason
+                    or "convened, and the run ended before its tier",
+                })
             else:
                 out.append({"lens": lens, "state": seat.state, "why": seat.why})
         return out
@@ -95,24 +113,42 @@ class Result:
         predict. The second list is a direct measure of the brief's quality."""
         out = [
             {"field": g.field, "rank": g.rank, "consumed_by": list(g.consumed_by),
-             "action": g.action}
+             "action": g.action, "predicted_by_brief": True}
             for g in self.brief.gaps
         ]
         for lens, run in self.runs.items():
             if not run.ran:
                 continue
-            for f in run.verdict.findings:
-                if f.code.startswith("missing."):
+            for verdict in (run.per_channel or {None: run.verdict}).values():
+                for f in verdict.findings:
+                    if not f.code.startswith("missing."):
+                        continue
+                    predicted = _brief_predicted(self.brief, f.code)
                     out.append({
                         "field": f.code, "rank": "unranked", "lens": lens,
                         "action": getattr(f, "action", None),
-                        "note": "emitted by the gate and NOT predicted by the brief"
-                        if not _brief_predicted(self.brief, f.code) else None,
+                        #: A boolean, because this is the measure the
+                        #: planning-layer entry set for itself and a machine
+                        #: reader counts it. The prose beside it is for the
+                        #: person reading `plan.md`.
+                        "predicted_by_brief": predicted,
+                        "note": None if predicted else
+                        "emitted by the gate and NOT predicted by the brief",
                     })
         return out
 
 
 def _brief_predicted(brief: Brief, code: str) -> bool:
+    """Did the brief know to ask for what this code asks for?
+
+    An explicit `answers:` first, because it is the gap's own claim. The
+    substring fallback is a heuristic and is kept only for the gaps that make
+    no claim -- it is wrong in both directions, and the direction that matters
+    is the false surprise: this count is reported as a measure of the brief's
+    quality.
+    """
+    if any(code in g.answers for g in brief.gaps):
+        return True
     tail = code.split(".", 1)[-1]
     return any(tail in g.field or g.field in tail for g in brief.gaps)
 
@@ -149,7 +185,11 @@ def run(brief: Brief) -> Result:
                 result.runs[lens].not_constructible = built
                 continue
             result.runs[lens].setup = built
-            result.runs[lens].verdict = _evaluate(lens, built)
+            if lens == "optics":
+                result.runs[lens].per_channel = _evaluate_channels(built)
+                result.runs[lens].verdict = next(iter(result.runs[lens].per_channel.values()))
+            else:
+                result.runs[lens].verdict = _evaluate(lens, built)
 
         if index == 1:
             stop = _first_hard_failure(result, tier)
@@ -178,12 +218,25 @@ def _sequence(tier: tuple[str, ...]) -> list[str]:
 def _evaluate(lens: str, setup):
     import importlib
 
-    gate = importlib.import_module(f"{lens}.gate")
-    if lens == "optics":
-        # Lens 1 judges a channel against its siblings, for crosstalk.
-        channels = setup
-        return gate.evaluate(channels[0], others=channels[1:])
-    return gate.evaluate(setup)
+    return importlib.import_module(f"{lens}.gate").evaluate(setup)
+
+
+def _evaluate_channels(channels) -> dict:
+    """Lens 1, once per channel, each judged against its siblings.
+
+    Crosstalk is why `evaluate` takes `others`: a channel is judged in the
+    company it keeps. Judging only the first channel therefore does not even
+    get the crosstalk right in one direction -- it asks whether channel 0
+    leaks into the rest and never whether the rest leak into it.
+    """
+    from optics import gate
+
+    return {
+        channel.name: gate.evaluate(
+            channel, others=[c for c in channels if c is not channel]
+        )
+        for channel in channels
+    }
 
 
 def _setups(result: Result) -> dict:
@@ -215,7 +268,11 @@ def _first_hard_failure(result: Result, tier: tuple[str, ...]):
         run = result.runs.get(lens)
         if run is None or not run.ran:
             continue
-        fails = _hard_failures(run.verdict)
-        if fails:
-            return lens, fails[0]
+        #: Every channel, not only the one in `verdict`. A hard failure in the
+        #: second arm of a two-colour proposal stops the run exactly as the
+        #: first arm's does; it had no way to be seen.
+        for verdict in (run.per_channel or {"": run.verdict}).values():
+            fails = _hard_failures(verdict)
+            if fails:
+                return lens, fails[0]
     return None

@@ -53,6 +53,16 @@ class Gap:
     consumed_by: tuple[str, ...] = ()
     why: str | None = None
     action: str | None = None
+    #: The `missing.*` codes this gap answers, where the brief knows them.
+    #:
+    #: Optional, and it exists because the alternative was worse. Matching a
+    #: gap to a code by substring called `target_relative_error` a field the
+    #: brief had not predicted -- it had, under exactly that name, and the
+    #: emitted code is `missing.target_error`. That number is reported as a
+    #: measure of the brief's quality, so a false surprise in it is a false
+    #: accusation. Naming the code is explicit and guesses nothing; the
+    #: substring fallback stays for the gaps that do not.
+    answers: tuple[str, ...] = ()
 
     @property
     def blocks(self) -> bool:
@@ -157,6 +167,7 @@ def load(path: str | Path) -> Brief:
                 consumed_by=tuple(g.get("consumed_by") or ()),
                 why=g.get("why"),
                 action=g.get("action"),
+                answers=tuple(g.get("answers") or ()),
             )
         )
 

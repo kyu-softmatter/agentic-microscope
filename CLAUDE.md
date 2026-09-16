@@ -156,12 +156,29 @@ it cannot run beside them.
 
 ### The experiment designer — the same order, run by code
 
-**Planned 2026-09-13, not built.** Nothing here runs the order above: a human
-runs each CLI by hand and carries lens 2's numbers into lens 3 and lens 7
-([01 §7](docs/01-architecture.md) item 1). `committee/` inspects the wiring
-*between* lenses and never executes them, and `hardware/orchestrator.py` is for
-devices. Read every line below as a contract to build against, not a
-description of what runs
+**Planned 2026-09-13; stage 1 runs as of 2026-09-15.**
+
+```bash
+python -m designer.cli run  config/briefs/active-microrheology.yaml
+python -m designer.cli emit config/briefs/x.yaml --id <slug> --date <date> \
+    --question "..." --out <dir>
+```
+
+`run` prints the nine verdicts and writes nothing. `emit` writes both halves of
+the plan and then **validates the `.md` it just wrote** with the same check
+`knowledge.cli plan-check` runs. `--out` has no default and `kb/plans/` is not
+one: writing there also means running `knowledge.cli write` and reviewing the
+entry, which is a decision and not a side effect (§6).
+
+**Stage 1 is the code half only**, and an emitted plan says so in its own
+header. All nine lenses have a `gate.py`, so the order runs end to end with no
+subagent convened — which makes 4 · 5 · 6 · 8's judgment halves absent on
+*every* plan this emitter writes, and they are written out as `unevaluated`
+rather than omitted (E4). `plan.md`'s Preconditions, Sequence and Stop
+conditions are stage 2 and are emitted empty **with a line saying why**: a
+section empty because nobody wrote it looks exactly like one with nothing in
+it. `committee/` still only inspects the wiring between lenses, and
+`hardware/orchestrator.py` is still for devices
 → [`2026-09-13-the-planning-layer.md`](kb/decisions/2026-09-13-the-planning-layer.md).
 
 **Input — `brief.yaml`.** The goal, the constraints, and every fact with the
@@ -399,10 +416,10 @@ survives a clean checkout).
 pytest -q -rs
 ```
 
-1374 passed, 11 skipped on macOS, of 1,385 (re-measured 2026-09-14; was
-1329/11 of 1,340 on 2026-09-13, and the 45 added since are L2.6, the
-designer's first tests -- which is where the three broken handoffs were found
--- and L4.8, L6.5, L9.6 with their wiring. Windows printed 1195/10 on 2026-09-09 — one
+1405 passed, 11 skipped on macOS, of 1,416 (re-measured 2026-09-15; was
+1374/11 of 1,385 on 2026-09-14, and the 31 added since are the plan emitter's
+-- which is where the next four broken handoffs were found, including one the
+run order already claimed to carry. Windows printed 1195/10 on 2026-09-09 — one
 Windows-only test — and has **not** been re-measured since). Two kinds of
 skip: three whole modules behind `pytest.importorskip("pymmcore_plus")`
 holding 56 tests (counted 2026-09-09, not re-counted today — the dependency is
@@ -518,7 +535,7 @@ Do not duplicate what the repo already records. Pick the right home:
 | `data/*.yaml`, `kb/calibrations/` | a measured constant |
 | `kb/decisions/YYYY-MM-DD-<slug>.md` | a design choice or a scope decision, dated |
 | `kb/plans/YYYY-MM-DD-<slug>.md` | one hardware run, **before** it happens. Copy `_template.md`; `plan-check` refuses a shape a skill would misread. Graduates into `kb/decisions/` once run → [05 §6](docs/05-consensus-gate.md) |
-| `kb/plans/YYYY-MM-DD-<slug>.yaml` | the same run, for a reader that is not a person — the experiment designer's machine half (§2). Same slug as the `.md`, deliberately: one run, one name, two readers. Not written by anything yet |
+| `kb/plans/YYYY-MM-DD-<slug>.yaml` | the same run, for a reader that is not a person — the experiment designer's machine half (§2). Same slug as the `.md`, deliberately: one run, one name, two readers. **Written by `designer.cli emit` since 2026-09-15**; `emit` refuses to overwrite either half, so a re-emission is a decision |
 | `kb/expertise/<id>.md` | durable expert judgment. `Why` and `Falsifying condition` are **mandatory** ([09 §2](docs/09-knowledge-capture.md)) |
 | `kb/sessions/YYYY-MM-DD.md` | the day's narrative. **A failed session gets a *longer* entry, not a shorter one.** Numbers, not adjectives |
 

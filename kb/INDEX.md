@@ -48,7 +48,7 @@ Durable expert judgment. Each carries a `Why` and a falsifier.
 - **[microrheology-standard-conditions](expertise/microrheology-standard-conditions.md)** · 2026-09-07
   What conditions does a microrheology run on this instrument default to, and which of them are choices rather than constants
 
-## `kb/decisions/` — 46 entries
+## `kb/decisions/` — 47 entries
 
 Dated design and scope choices, in the order they were made.
 
@@ -144,6 +144,8 @@ Dated design and scope choices, in the order they were made.
   Which of the operator's parameters can the committee actually decide, and where should the gates that decide the rest get their thresholds?
 - **[2026-09-14-the-three-deferred-gates](decisions/2026-09-14-the-three-deferred-gates.md)** · 2026-09-14
   What arithmetic do L4.8, L6.5 and L9.6 rest on, and what stops L6.5 from being G11 again?
+- **[2026-09-15-the-plan-emitter](decisions/2026-09-15-the-plan-emitter.md)** · 2026-09-15
+  What does the designer write down, and what did writing it find?
 
 ## `kb/literature/` — 1 entries
 

@@ -301,6 +301,9 @@ gaps:
   - field: target_relative_error
     rank: R1
     consumed_by: [L9.2, L9.3]
+    answers: [missing.target_error]   # the code lens 9 emits; the field is
+                                      # named differently, so say so rather
+                                      # than let a substring match decide
     why: "both ends of L9.2's displacement window derive from the precision asked for"
 
   - field: chamber_sealed

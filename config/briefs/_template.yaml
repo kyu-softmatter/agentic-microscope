@@ -315,6 +315,14 @@ gaps:
   - field: <name>
     rank: R1                    # R0 | R1 | R2 | R3
     consumed_by: [L2.6]
+    answers: []                 # optional: the `missing.*` codes this gap
+                                # answers, where the brief knows them. The
+                                # designer otherwise matches gap to code by
+                                # substring, which called
+                                # `target_relative_error` unpredicted because
+                                # the code is `missing.target_error`. That
+                                # count measures the BRIEF's quality, so a
+                                # false surprise in it is a false accusation.
     why: >-
       Why it is missing, and what it costs. R2 entries stop the designer.
     action: "What would resolve it -- an instruction, not a wish."
