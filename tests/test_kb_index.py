@@ -249,6 +249,26 @@ def test_a_status_nobody_anticipated_still_renders(tmp_path):
     assert "withdrawn by operator" in render(entries)
 
 
+def test_an_imported_entry_is_indexed_and_says_where_it_came_from(tmp_path):
+    """`kb/external/` is a section, so an import is reachable from the index.
+
+    An imported number that never reaches `INDEX.md` is one CLAUDE.md §0 tells
+    the reader to start from and would never find. The nesting is deliberate --
+    the path `external/bd/` carries the foreign origin at every citation site,
+    which a frontmatter field alone does not.
+    """
+    write(
+        tmp_path,
+        "external/bd/thread.r2.md",
+        '---\nid: thread.r2\nquestion: "Q"\ndate: 2026-09-15\n'
+        "origin: bd\nevidence_class: simulated\nmay_be_gate_threshold: false\n---\n",
+    )
+    entries, problems = collect(tmp_path)
+    assert not problems
+    assert [entry.section for entry in entries] == ["external"]
+    assert "external/bd/thread.r2.md" in render(entries)
+
+
 def test_a_new_subdirectory_is_reported_rather_than_dropped(tmp_path):
     write(
         tmp_path,

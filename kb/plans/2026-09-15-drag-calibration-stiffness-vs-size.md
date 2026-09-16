@@ -223,6 +223,74 @@ parameters — so the declaration is now true, for this run, on this bias, and f
 exactly the stated reason. ⚠ It is true only for the **parallel** correction and
 only inside the ladder's 3-10 µm span; extrapolating either way re-opens it.
 
+### What Brownian dynamics answered, and the three decisions it hands back
+
+This plan was sent to the simulation agent as a question, not as numbers, and its
+answer landed at
+[`kb/external/bd/trap-stiffness-recovery.r2`](../external/bd/trap-stiffness-recovery.r2.md)
+— `evidence_class: simulated`, `may_be_gate_threshold: false`. **Nothing below is
+a gate threshold here.** Each item is a design motivation and, where the two
+repositories disagree about a convention, a decision this plan leaves to the
+operator rather than settling by itself.
+
+It **refused the headline question**: BD has no wall and one height, so it makes
+no claim about `h0`, about the Faxén separation, or about per-bead error bars.
+The `±0.195 µm` in §Error budget therefore remains **this repository's own toy
+estimate, uncorroborated** — the round did not verify it, and BD returned it
+unverified rather than endorsing it.
+
+**D-1 · The sampling convention differs by exactly 2π, and that is a decision.**
+
+| convention | requirement at a = 4.95 µm | 520 fps against it |
+|---|---|---|
+| this instrument, **G14** (`trapping/checks.py` `check_sampling`, `f_s >= 10 f_c`) | **99 Hz** | passes by **5.3×** |
+| BD's, `10/tau_k` (i.e. `10 f_c * 2*pi`) | **620 Hz** | **16 % short** (8.39 samples per `tau_k`) |
+
+`f_c = 1/(2*pi*tau_k)`, so the two rules are the same rule with and without the
+`2*pi` — neither is wrong and they are not interchangeable. G14 asks the corner
+frequency to be resolved; the BD convention asks the *relaxation* to be sampled
+ten times. **Which one governs this run is the operator's call**, and
+`REQUIRED_SAMPLING_RATIO = 10.0` is not edited here: a constant in that table is
+a claim about every future experiment. If the BD convention is chosen, 620 fps
+needs the ROI height cut further, and lenses 2 and 3 are re-run together (E5).
+
+**D-2 · The localisation budget is already spent at the assumed epsilon, and it
+is a bias.** BD puts a **hard** ceiling at `epsilon <= 7.6 nm`, from
+`(epsilon/l_k)^2 <= 0.05` at `l_k = 33.98 nm`. The assumed 10 nm here is above
+that and is worth ~8 % on `alpha` — and because it is a **bias, not a variance**,
+it does not average down over rungs or segments, which is the direction §Error
+budget's "cancels only if epsilon is size-independent" was already pointing.
+**Proposal, for the operator: promote P8's epsilon from a correction to a hard
+precondition** — the run does not start until the stuck bead's centroid variance
+is measured and is at or under the ceiling the analysis needs. Not done
+unilaterally: a hard gate keyed to an imported number would be exactly the
+`may_be_gate_threshold` violation the entry forbids. What is recorded here is the
+proposal and its basis.
+
+**D-3 · 5 s per rung is short of the point where the simulated precision was
+demonstrated.** `T_obs/tau_k` is **310** at 5 s against the **2000** at which BD
+measured `f_c` to +1.17 % — **6.4× short** — while clearing BD's own soft floor
+of 100. BD's soft requirement is `T_obs >= 32.3 s` per rung. The cost of buying
+it is the reason this is a decision and not an edit: 5 s → 32.3 s is paid at
+**every rung of every size**, six rungs and (P0) at least three sizes, so it is
+~8 min of held bead per size before drive segments, against a drift witness
+(P10) that has to hold for all of it. Cheaper alternatives to weigh first:
+accept the shorter `T_obs` and inflate the stated error on the equipartition
+`alpha`, or take `f_c` from the drive-on blocks of step 9b instead of only 9c.
+
+**D-4 · The simulated error bar is not comparable to a single bead.** BD's
+1.17 % is an **ensemble of 1000 replicas**; one bead at the same `T_obs/tau_k`
+scatters about **32×** more. Any comparison between this run's per-rung scatter
+and that figure is invalid as stated — the entry says so about its own result.
+Recorded here so the number is not read as a target this run has already met.
+
+**What did transfer.** The regimes are different systems and that is the point:
+`k*` 60 358 there against 21 221 here, `l_k/d` 0.004070 against 0.006865 — BD's
+case is stiffer with a smaller fluctuation relative to the bead, i.e. the
+*harder* measurement, so `f_c` recoverability transfers in the favourable
+direction. `tau_p/tau_k` is 8.14e-4 there and 7.30e-5 here, both far under 1e-2:
+**overdamped is genuinely shared**, not assumed to be.
+
 ## Committee verdict
 
 Computational lenses first, judgment lenses fed their numbers (CLAUDE.md §3).
@@ -300,6 +368,11 @@ Checked before anything moves. Each refuses the run on its own.
       witness** of P10. The 2026-09-03 session already used a chamber-stuck
       particle as a piezo ruler. — *checked by:* its centroid variance at zero
       drive, which is epsilon^2
+      ⚠ **Proposed for promotion to a hard stop** — see D-2 above: at the assumed
+      10 nm the localisation budget is already spent, and it is a bias that no
+      amount of averaging removes. Still written as a correction here because the
+      ceiling that motivates it (7.6 nm) is an **imported simulated** number and
+      may not be a gate threshold. Operator's decision.
 - [ ] **P9 · PFS state decided and recorded, and it is OFF during the ladder.**
       PFS servoing fights the piezo z, and `PFSOffset` is **the one remaining
       unmeasured sign convention on a collision device** (SAFETY §2) — it is

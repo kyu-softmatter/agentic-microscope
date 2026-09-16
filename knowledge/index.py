@@ -52,12 +52,17 @@ LINK_KEYS = ("supersedes", "superseded_by", "corrects", "corrected_by")
 
 #: Directory order in the rendered index: what the instrument is, then durable
 #: judgment, then dated choices, then outside numbers, then the daily record.
+#: The outside numbers are two kinds and they are not interchangeable:
+#: `literature` is published and nobody here measured it, `external` came from
+#: another repository of ours and was *computed* there. Neither may sit in
+#: `calibrations/`, whose path already claims "measured on this instrument".
 SECTIONS: tuple[tuple[str, str], ...] = (
     ("systems", "What this instrument is, as measured"),
     ("expertise", "Durable expert judgment. Each carries a `Why` and a falsifier"),
     ("decisions", "Dated design and scope choices, in the order they were made"),
     ("plans", "One hardware run each, before it happens — 05 §6 stage 5"),
     ("literature", "Published values nobody here has measured"),
+    ("external", "Imported from another repository — computed there, not measured here"),
     ("sessions", "The day's narrative"),
 )
 

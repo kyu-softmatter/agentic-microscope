@@ -119,6 +119,13 @@ Published values nobody here has measured.
 - **[literature-index](literature/README.md)** · living, since 2026-08-28 · index
   What published values are filed here, and what may a literature value be used for that a measurement may not?
 
+## `kb/external/` — 1 entries
+
+Imported from another repository — computed there, not measured here.
+
+- **[trap-stiffness-recovery.r2](external/bd/trap-stiffness-recovery.r2.md)** · 2026-09-15
+  What does Brownian dynamics require of an acquisition that is to recover f_c, and what does that license for the drag-calibration plan?
+
 ## `kb/sessions/` — 2 entries
 
 The day's narrative.
