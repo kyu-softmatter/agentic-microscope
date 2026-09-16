@@ -16,7 +16,7 @@ subsystems: [microscope, tweezers]
 
 One optically-driven 5 um PS probe and freely-diffusing 0.5 um PS tracers, imaged simultaneously in two colours. Force is read as F = kappa * (x_bead - x_trap); the probe is steered on a bounded random walk, 0-30 um/s.
 
-Intended quantity: `rheology`. Brief: `config/briefs/active-microrheology.yaml`, sha256 `5761ed9fa325…`.
+Intended quantity: `rheology`. Brief: `config/briefs/active-microrheology.yaml`, sha256 `6337011c0f9d…`.
 
 ## Proposed setting + rationale
 

@@ -360,13 +360,50 @@ gaps:
     rank: R3
     consumed_by: [L5.1]
     why: >-
-      Per-dye, and empty for every proprietary bead colourant here. This is
-      the missing input that made lens 5 a reporting section.
-      ⚠ AND IT IS BOTH ARMS, not only the dim one. Checked 2026-09-13 against
-      data/fluorophores.yaml: Dragon Green has neither ext_coeff nor quantum
-      yield, and ATTO647N has a quantum yield (0.65) but NO ext_coeff either.
-      So the absolute photon budget is uncomputable for the probe as well as
-      the tracer, and every SNR number this proposal produces is relative.
+      ⚠ CORRECTED 2026-09-15. Lens 5, convened on this brief for the first
+      time, checked three claims in the previous text and two were wrong. It
+      is D12 -- prior analysis is a source and verifying its arithmetic is
+      part of treating it as one -- and the whole of it is recorded in
+      kb/decisions/2026-09-15-the-brief-was-wrong-about-the-dye.md. The
+      corrected text follows; the previous text is in that entry, not here.
+
+      NOT per-dye. `light_driving_threshold_w_cm2` is a **per-sample** field:
+      photo/setup.py declares it in the sample-photoresponse block and its own
+      comment says "Sample-specific and not derivable". Its home is
+      `kb/samples/`, which does not exist. A radical scavenger in the buffer
+      moves it without moving any dye constant, which is one of the two
+      reasons the operator gave for demoting this lens.
+
+      ATTO647N IS NOT EMPTY. data/fluorophores.yaml carries
+      `ext_coeff_M1cm1: 150000`, `quantum_yield: 0.65` and `lifetime_ns: 3.5`
+      for it, triple-confirmed in the entry's own note. **DragonGreen is the
+      genuinely empty one** -- no extinction coefficient, no quantum yield, no
+      lifetime, a Bangs proprietary bead dye whose entry says those three are
+      published nowhere and that FITC values must not be substituted.
+
+      THE CONCLUSION SURVIVES AND ITS REASON MOVES. The absolute photon budget
+      is still uncomputable on BOTH arms, but for the probe the missing input
+      is not a dye constant -- it is the irradiance, because
+      kb/calibrations/illumination-power.yaml records no illuminated area at
+      40x. That is `illuminated_area_um2__at_40x` below, rank R2 and
+      measurable, where a per-dye constant for a proprietary colourant is R3
+      and nobody's. Different rank, different resolver, different action: one
+      is a field measurement somebody can make and the other is not.
+
+      AND IT IS NOT WHAT DEMOTED THE LENS, though it is nearer than a flat
+      denial. kb/decisions/2026-09-10-lens-5-becomes-a-reporting-section.md
+      records the operator's own two reasons -- mitigations the irradiance
+      cannot see, and absent sample information being the normal state -- and
+      separately that the lens "had already been hollowed out" because G10 and
+      G20 were both keyed to per-dye constants empty for every dye. So the
+      empty constants retired two gates; the operator's two reasons decided
+      the demotion.
+
+      ⚠ What no version of this gap said: the dye constants reach
+      `available_facts` as `emitted_rate` (via `resolved_emitted_per_s`) and
+      **no check's `requires` names it** -- verified 2026-09-15 against
+      photo/checks.py's CHECKS. So on this lens they are computed, declared,
+      and unread.
 
   - field: sample_temperature_at_focus
     rank: R3

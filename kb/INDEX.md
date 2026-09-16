@@ -48,7 +48,7 @@ Durable expert judgment. Each carries a `Why` and a falsifier.
 - **[microrheology-standard-conditions](expertise/microrheology-standard-conditions.md)** · 2026-09-07
   What conditions does a microrheology run on this instrument default to, and which of them are choices rather than constants
 
-## `kb/decisions/` — 50 entries
+## `kb/decisions/` — 51 entries
 
 Dated design and scope choices, in the order they were made.
 
@@ -150,6 +150,8 @@ Dated design and scope choices, in the order they were made.
   L1.5 exists to explain L1.4's low collection. Why was it silent on the one channel that fails it?
 - **[2026-09-15-stage-2-the-judgment-seam](decisions/2026-09-15-stage-2-the-judgment-seam.md)** · 2026-09-15 · corrected by [2026-09-15-l1-3-read-a-notch-as-an-overlap](decisions/2026-09-15-l1-3-read-a-notch-as-an-overlap.md)
   Code cannot convene a subagent. What can it check either side of one?
+- **[2026-09-15-the-brief-was-wrong-about-the-dye](decisions/2026-09-15-the-brief-was-wrong-about-the-dye.md)** · 2026-09-15
+  The brief's own gap text said ATTO647N has no extinction coefficient. Does it?
 - **[2026-09-15-the-plan-emitter](decisions/2026-09-15-the-plan-emitter.md)** · 2026-09-15 · corrected by [2026-09-15-l1-3-read-a-notch-as-an-overlap](decisions/2026-09-15-l1-3-read-a-notch-as-an-overlap.md)
   What does the designer write down, and what did writing it find?
 

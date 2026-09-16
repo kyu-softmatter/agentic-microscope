@@ -3,7 +3,7 @@ date: '2026-09-15'
 status: planned
 brief:
   ref: config/briefs/active-microrheology.yaml
-  sha256: 5761ed9fa3250e493a82cfc38db8d1b66c9c6e3fcd445804c2e675923ecd2c98
+  sha256: 6337011c0f9dc0967d1a119fd493799461af7aed426deb35eb95854284dadf49
 channels:
 - name: Tracer-DragonGreen
   dye: DragonGreen
