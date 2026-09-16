@@ -1,0 +1,1270 @@
+id: 2026-09-15-active-microrheology
+date: '2026-09-15'
+status: planned
+brief:
+  ref: config/briefs/active-microrheology.yaml
+  sha256: 5761ed9fa3250e493a82cfc38db8d1b66c9c6e3fcd445804c2e675923ecd2c98
+channels:
+- name: Tracer-DragonGreen
+  dye: DragonGreen
+  objective:
+    label: 4-Apo LmbdS 40x WI
+    magnification: 40
+    na: 1.25
+    immersion: water
+    verified_na: true
+  detector: Kinetix22
+  source:
+  - LightEngine
+  - '488'
+  excitation:
+  - MXR00724-EX
+  dichroic: MXR00724-DM
+  emission:
+  - MXR00724-EM
+  - ref: Di01-T405/488/568/647-13x15x0.5
+    side: transmit
+  - ref: DM A561LP
+    side: reflect
+  - OT-EM-750SP
+  - EM-Open
+  port_fraction: 1.0
+- name: Probe-ATTO647N
+  dye: ATTO647N
+  objective:
+    label: 4-Apo LmbdS 40x WI
+    magnification: 40
+    na: 1.25
+    immersion: water
+    verified_na: true
+  detector: Kinetix22
+  source:
+  - LightEngine
+  - '640'
+  excitation:
+  - MXR00724-EX
+  dichroic: MXR00724-DM
+  emission:
+  - MXR00724-EM
+  - ref: Di01-T405/488/568/647-13x15x0.5
+    side: transmit
+  - ref: DM A561LP
+    side: transmit
+  - OT-EM-750SP
+  - EM-Open
+  port_fraction: 1.0
+acquisition:
+  exposure_ms: null
+  task_kind: null
+  roi_width_px: null
+  roi_height_px: null
+  binning: null
+  camera_mode: null
+  fps: null
+  fps_source: undecided
+  fps_usable_max: null
+  duration_s: null
+system:
+  characteristic_length_um: null
+  characteristic_time_s: null
+lenses:
+- lens: 1
+  name: optics
+  subject: Tracer-DragonGreen
+  status: PASS_WITH_CHANGES
+  feasibility: TIGHT
+  evidence: assumed
+  advances: false
+  reporting_only: false
+  deciding_check: collection
+  deciding_addr: L1.4
+- lens: 1
+  name: optics
+  subject: Probe-ATTO647N
+  status: PASS_WITH_CHANGES
+  feasibility: HARD
+  evidence: assumed
+  advances: false
+  reporting_only: false
+  deciding_check: collection.low
+  deciding_addr: L1.4
+- lens: 3
+  name: compute
+  subject: null
+  status: BLOCKED
+  feasibility: UNKNOWN
+  evidence: assumed
+  advances: false
+  reporting_only: false
+  deciding_check: missing.streams
+  deciding_addr: null
+- lens: 4
+  name: sample
+  subject: null
+  status: BLOCKED
+  feasibility: UNKNOWN
+  evidence: assumed
+  advances: false
+  reporting_only: false
+  deciding_check: missing.imaging_depth
+  deciding_addr: null
+- lens: 5
+  name: photo
+  subject: null
+  status: BLOCKED
+  feasibility: UNKNOWN
+  evidence: assumed
+  advances: null
+  reporting_only: true
+  deciding_check: missing.power_at_sample
+  deciding_addr: null
+- lens: 6
+  name: validity
+  subject: null
+  status: FAIL
+  feasibility: INFEASIBLE
+  evidence: assumed
+  advances: false
+  reporting_only: false
+  deciding_check: validity.committee_coverage
+  deciding_addr: L6.1
+- lens: 9
+  name: velocity
+  subject: null
+  status: BLOCKED
+  feasibility: UNKNOWN
+  evidence: assumed
+  advances: false
+  reporting_only: false
+  deciding_check: missing.target_error
+  deciding_addr: null
+verdicts:
+- lens: 1
+  subject: Tracer-DragonGreen
+  addr: L1.1
+  check: excitation.coupling
+  kind: hard
+  status: warn
+  m: 2.202
+  evidence: assumed
+- lens: 1
+  subject: Tracer-DragonGreen
+  addr: L1.2
+  check: blocking
+  kind: hard
+  status: ok
+  m: 2.143
+  evidence: assumed
+- lens: 1
+  subject: Tracer-DragonGreen
+  addr: L1.3
+  check: spectral.separation
+  kind: hard
+  status: ok
+  m: 5.0
+  evidence: assumed
+- lens: 1
+  subject: Tracer-DragonGreen
+  addr: L1.4
+  check: collection
+  kind: soft
+  status: ok
+  m: 1.413
+  evidence: assumed
+- lens: 1
+  subject: Tracer-DragonGreen
+  addr: L1.5
+  check: emission.centering
+  kind: info
+  status: warn
+  m: 0.442
+  evidence: assumed
+- lens: 1
+  subject: Tracer-DragonGreen
+  addr: L1.6
+  check: crosstalk
+  kind: bias
+  status: ok
+  m: 10.0
+  evidence: assumed
+- lens: 1
+  subject: Tracer-DragonGreen
+  addr: L1.7
+  check: path.port
+  kind: info
+  status: ok
+  m: 1.0
+  evidence: assumed
+- lens: 1
+  subject: Probe-ATTO647N
+  addr: L1.1
+  check: excitation.coupling
+  kind: hard
+  status: ok
+  m: 2.969
+  evidence: assumed
+- lens: 1
+  subject: Probe-ATTO647N
+  addr: L1.2
+  check: blocking
+  kind: hard
+  status: ok
+  m: 2.148
+  evidence: assumed
+- lens: 1
+  subject: Probe-ATTO647N
+  addr: L1.3
+  check: spectral.separation
+  kind: hard
+  status: ok
+  m: 6.8
+  evidence: assumed
+- lens: 1
+  subject: Probe-ATTO647N
+  addr: L1.4
+  check: collection.low
+  kind: soft
+  status: fail
+  m: 0.871
+  evidence: assumed
+- lens: 1
+  subject: Probe-ATTO647N
+  addr: L1.5
+  check: emission.peak_clipped
+  kind: info
+  status: warn
+  m: 0.318
+  evidence: assumed
+- lens: 1
+  subject: Probe-ATTO647N
+  addr: L1.6
+  check: crosstalk
+  kind: bias
+  status: ok
+  m: 10.0
+  evidence: assumed
+- lens: 1
+  subject: Probe-ATTO647N
+  addr: L1.7
+  check: path.port
+  kind: info
+  status: ok
+  m: 1.0
+  evidence: assumed
+- lens: 6
+  subject: null
+  addr: L6.1
+  check: validity.committee_coverage
+  kind: hard
+  status: fail
+  m: 0.0
+  evidence: assumed
+- lens: 6
+  subject: null
+  addr: L6.2
+  check: validity.bias_ledger
+  kind: hard
+  status: ok
+  m: 10.0
+  evidence: assumed
+- lens: 6
+  subject: null
+  addr: L6.3
+  check: validity.pixel_calibration
+  kind: hard
+  status: ok
+  m: 10.0
+  evidence: assumed
+- lens: 6
+  subject: null
+  addr: L6.4
+  check: validity.photometric_calibration
+  kind: bias
+  status: info
+  m: 10.0
+  evidence: assumed
+- lens: 6
+  subject: null
+  addr: L6.5
+  check: missing.independence_inputs
+  kind: info
+  status: info
+  m: 10.0
+  evidence: assumed
+unevaluated:
+- lens: detection
+  state: not_constructible
+  missing:
+  - exposure_ms
+  why: detection.setup.Acquisition requires exposure_ms, so the gate is never called
+    and emits no missing.* code for it
+- lens: trapping
+  state: not_constructible
+  missing:
+  - dial_percent
+  why: trapping.dynamics.TrapSetup requires the trap dial; the brief carries no laser
+    setting for this run
+- lens: stability
+  state: undecided
+  why: no acquisition duration, so the ~30 min threshold cannot be applied -- R1,
+    the operator's to answer
+unevaluated_judgment:
+- lens: 4
+  name: sample
+  state: judged
+  agent: sample-optics
+  status: BLOCKED
+  rulings:
+  - code: missing.imaging_depth
+    ruling: upheld
+    basis: 'The finding IS a refusal and the refusal stands. L4.2''s margin is free_WD/imaging_depth
+      and L4.4 takes the same number as the wall distance h, so neither is defined
+      without it; an imaging depth is a physical fact about the preparation, not a
+      setting this lens may propose (rule 2, D2). The brief agrees from the other
+      side: R1, consumed_by [L4.2, L4.4, L4.7]. One thing said more sharply than before:
+      the block is SINGLE-VALUE but its cost is EIGHT checks, because Phase 0 is all-or-nothing,
+      and at least three of the eight do not need the missing number at all.'
+    source: sample/gate.py (_missing_inputs); sample/checks.py; config/briefs/active-microrheology.yaml
+      > gaps[imaging_depth_um]
+  - code: na_feasibility
+    ruling: unevaluated
+    basis: 'No finding exists, so there is nothing to uphold. This is the silence
+      that costs least and is cheapest to end: both inputs are on record and both
+      are measured -- the objective''s NA and immersion from data/objectives.yaml
+      (verified_na: true, cross-checked against the barrel engravings) and IMMERSION_N.
+      The check needs NO imaging depth. The cost of the silence is specific: L4.1
+      is the ONLY place an NA-vs-immersion inconsistency is caught, because Objective.collection_efficiency
+      clamps the impossible case with min(na/n, 1.0) and returns a plausible number
+      regardless. Lens 1 DID run on this packet and published geometric_collection
+      0.3263 through that clamp -- so lens 1''s collection figure currently rests
+      on a consistency nothing in this committee checked.'
+    source: sample/checks.py::check_na_feasibility; data/objectives.yaml; optics/components.py
+      (IMMERSION_N, Objective.collection_efficiency)
+  - code: working_distance
+    ruling: unevaluated
+    basis: 'Genuinely unanswerable -- the imaging depth is its whole denominator.
+      Its NUMERATOR is established, and two previously-unattached items now live here.
+      (1) The correction collar: assumed_inputs says collar_adjusted is False on the
+      40x WI, the only objective on the nosepiece with a collar. Since G18 was retired
+      2026-09-10 the collar condition lives in exactly this check''s budget and in
+      assumed_inputs -- so there is no separate coverslip subject, and an unrecorded
+      collar now rides here INVISIBLY rather than capping a margin. Ask it ALONGSIDE
+      the depth or this lens blocks twice. (2) The coverslip: 170 um against a 170
+      um design, so the geometry is sound and the READING is what is missing -- a
+      thirty-second micrometer measurement. Note the objective is registered at the
+      CONSERVATIVE end of its collar-dependent WD span; that is deliberate and should
+      not be corrected upward.'
+    source: sample/checks.py::check_working_distance; data/objectives.yaml; kb/expertise/coverslip-thickness-in-use.md;
+      kb/decisions/2026-09-10-lens-4-depth-window-and-g18-removed.md
+  - code: depth_in_chamber
+    ruling: unevaluated
+    basis: 'Unanswerable, and missing BOTH inputs -- the depth and chamber_height_um
+      (R1, consumed_by [L4.3, L8.2]). Two non-interchangeable points. First, its ordinary
+      failure mode is easy to misdiagnose: focusing past the far wall gives an EMPTY
+      focal plane, which looks exactly like a DIM one, so an operator who hits it
+      reaches for the light level and lands in lens 5''s dose budget for no reason.
+      Second, this lab''s mount is UNSPACED by default, so there is no designed thickness
+      to look up: the gap is set by drop volume, wetting and the coverslip''s weight,
+      and a squashed drop is a WEDGE. Not cosmetic here -- the probe is steered across
+      the field, so its depth changes as it moves, which is precisely when a height-specific
+      trap calibration stops holding. Ask once and hand the answer to lens 8 too.'
+    source: sample/checks.py::check_depth_in_chamber; kb/expertise/sample-mount-geometry.md;
+      config/briefs/active-microrheology.yaml > gaps[chamber_height_um]
+  - code: wall_drag
+    ruling: unevaluated
+    basis: 'Unanswerable as posed, and beyond the missing depth: the check evaluates
+      ONE scalar radius per run and this proposal has two populations. a=2.5 um trapped
+      lands on geometry.wall_drag.trapped (lens 6''s CORRECTIONS); a=0.25 um untrapped
+      lands on geometry.wall_drag (UNCORRECTABLE). Same physics, opposite dispositions.
+      The intended quantity is rheology FROM THE FREE TRACERS, so the UNCORRECTABLE
+      branch is live, nothing absorbs it, and it is lens 6''s to rule on. Carried
+      forward and still live: the trapped branch''s absorption premise is NOT satisfied
+      -- it holds where gamma comes OUT of a fit and is FALSE where gamma goes IN
+      as 6*pi*eta*a. This brief reads F = kappa*(x_bead - x_trap) and its gap trap_stiffness_for_this_config
+      (R2) says no kappa is established at 40x WI. Direction, which the silence does
+      not remove: gamma up -> D down -> viscosity and moduli read STIFF. A direction,
+      not a size.'
+    source: sample/checks.py::check_wall_drag; docs/06-pitfalls.md D8; kb/decisions/2026-09-11-wall-drag-reaches-the-bias-ledger.md
+  - code: ri_mismatch
+    ruling: unevaluated
+    basis: 'I cannot rule on a result that does not exist -- but this is the silence
+      I most object to. Since 2026-09-10 this check is INFO and gates nothing; it
+      is the mechanical-z to optical-depth CONVERTER, and its matched branch returns
+      before imaging_depth_um is used for anything but a reported field. Both indices
+      are on record -- water immersion into an ordinary aqueous medium (DEFAULT_N_SAMPLE,
+      settled 2026-08-19) -- so the check was FULLY ANSWERABLE TODAY and Phase 0 suppressed
+      it for a number it does not need. What was lost is not a warning but the one
+      POSITIVE statement supporting the proposal: water into water is index-matched,
+      so mechanical z travel IS optical depth, no axial scale error and no depth-dependent
+      mismatch aberration. That is the substance of the documented departure from
+      the standing 100x Oil, and the departure is correct on this lens''s grounds.
+      Against it, the oil objective offers somewhat more GEOMETRIC collection -- but
+      lens 1''s deficit on this packet is SPECTRAL (21% and 13%) and its own filter
+      suggestions recover 1.69x and 2.47x. Do not spend the index match to buy back
+      a few percent of geometry; fix the emission filters.'
+    source: sample/checks.py::check_ri_mismatch; optics/components.py; kb/expertise/sample-medium-refractive-index.md;
+      kb/decisions/2026-08-19-lens-4-scope.md
+  - code: count_in_field
+    ruling: unevaluated
+    basis: 'Unanswerable, and the depth is the least of what is missing: it needs
+      a tracer concentration (R1), the chamber height, and the field width and height
+      -- lens 2''s ROI times lens 2''s pixel, which do not exist because lens 2''s
+      own ROI gaps are open. Three lenses'' gaps meet in this one silence. Two additions
+      no version of this check would have said. (1) MULTIPLE SCATTERING has no model
+      anywhere here, so ''too concentrated'' means distorted signal and not merely
+      mislinking; direction only, indefinitely. (2) The SIGN of any count reasoning
+      is not mine: this check''s premise is total sedimentation onto the coverslip,
+      and with the focal plane near the floor of a thin unspaced preparation settling
+      brings particles INTO the observed volume rather than depleting it. Only lens
+      8 can determine it, and lens 8 did not run. The old 4 -> 6 half is GONE, so
+      whether there are ENOUGH tracers is not inherited by anyone -- said here so
+      this silence is read as clearing neither crowding nor sufficiency.'
+    source: sample/checks.py::check_count_in_field; docs/01-architecture.md §4 (4
+      <-> 8)
+  - code: depth_window
+    ruling: unevaluated
+    basis: 'Still cannot rule -- but this is the check I singled out last time and
+      the objection survives in sharper form. check_depth_window NEVER reads imaging_depth_um:
+      its ceiling comes from the free working distance and the chamber height, its
+      floor from the particle radius via L4.4. So it is the check that ANSWERS the
+      question the block asks -- which depths are allowed -- and Phase 0 suppressed
+      the answer to demand one depth as input. That is D6 exactly. Its ceiling is
+      available today; its floor is not, for the same reason L4.4 is stuck, and the
+      floor scales linearly with radius so the two populations have different windows.
+      The specific risk it exists to catch is the EMPTY window, which no single margin
+      can express: for a 2.5 um-radius probe the wall-drag floor may exceed an unspaced
+      drop''s thickness outright, in which case no depth satisfies both ends while
+      each end is individually satisfiable. ACTIONABLE REQUEST in place of a ruling:
+      re-run this lens twice, once per population, with the radius set explicitly
+      and a chamber height supplied, and the window comes back without anyone having
+      guessed a depth.'
+    source: sample/checks.py::check_depth_window; kb/decisions/2026-09-10-lens-4-depth-window-and-g18-removed.md;
+      CLAUDE.md §2b D6
+  - code: count_sufficiency
+    ruling: unevaluated
+    basis: 'Unanswerable -- it shares L4.6''s inputs exactly and is equally silent
+      by construction, so the two halves cannot disagree about how many particles
+      there are. Its distinct content, which must not be lost in the pile of eight:
+      this is the LOWER bound, the only thing in the repository catching a sample
+      too dilute to measure, and the only such check since G11''s removal. For a two-population
+      microrheology run the dilute direction is the realistic one. One thing I flag
+      as the BRIEF''s to fix, not the gate''s: target_particles_in_field defaults
+      to 1.0, which originates nothing -- below one particle there is no measurement
+      -- but this is an ENSEMBLE tracer measurement and an ensemble raises that threshold
+      in the brief. The brief does not set it. So even once the concentration arrives
+      this check would grade against a definitional floor rather than this experiment''s
+      requirement, and its pass would mean less than it looks like. Ask for the target
+      alongside the concentration.'
+    source: sample/checks.py::check_count_sufficiency; config/briefs/active-microrheology.yaml
+      > goal.intended_quantity, gaps
+  unevaluated:
+  - code: null
+    source: config/briefs/active-microrheology.yaml > facts.lens_9_velocity, gaps[velocity_time_base];
+      kb/decisions/2026-09-11-the-velocity-lens.md
+    why: LENS 9 IS ABSENT FROM cross_lens AND THIS IS STILL LIVE -- named before and
+      not added. Lens 9 owns commanded-motion scale and it reaches this lens twice.
+      (a) The probe's 0-30 um/s steering across the field is what makes an unspaced
+      WEDGE a depth-VARYING quantity rather than a static one, which is the L4.3/L4.7
+      concern. (b) If kappa is recovered as gamma*v/x_eq, lens 9's unverified TIME
+      base multiplies straight into the drag L4.4 bounds -- velocity_time_base is
+      R2 and L9.1 fails on every real configuration. Neither coupling appears in any
+      cross-lens row, so nothing carries it and I am carrying it by hand.
+  - code: null
+    source: CLAUDE.md §3 E4; config/briefs/active-microrheology.yaml > gaps[acquisition_duration_s]
+    why: 'LENS 8 DID NOT RUN, and per E4 that is a HOLE -- its row belongs in lens
+      6''s bias ledger as unevaluated. Recorded as a standing procedural item because
+      what is missing is a convened lens and not a margin: why_absent is ''no acquisition
+      duration'', which makes lens 8''s absence a consequence of an R1 gap and reversible
+      by one answer. Until it is convened, the settling sign in count_in_field, the
+      evaporation of a thin unspaced drop, and room temperature are all unowned.'
+  - code: null
+    source: sample/checks.py (no such check); docs/06-pitfalls.md
+    why: MULTIPLE SCATTERING has no model here and no check emits for it, so it cannot
+      attach to any of the nine. Stated separately so it survives if count_in_field's
+      row is read as being only about a missing concentration. Direction only, indefinitely.
+  - code: null
+    source: kb/decisions/2026-08-19-lens-4-scope.md §3
+    why: 'NO WAVE-OPTICS ABERRATION MODEL exists and I am NOT raising it as a gap
+      -- a closed scope decision, recorded so its absence is visible rather than silent.
+      It costs this proposal nothing in any case: the configuration is index-matched,
+      so the depth-dependent mismatch aberration a model would quantify is zero here.'
+  - code: null
+    source: kb/decisions/2026-09-10-lens-4-depth-window-and-g18-removed.md
+    why: 'NO COVERSLIP OR COLLAR SUBJECT EXISTS among the nine, because G18 was retired
+      2026-09-10 and its condition folded into L4.2''s budget. That is the right design,
+      with a consequence worth stating: an unadjusted correction collar on the 40x
+      WI -- the only objective with one -- now rides invisibly inside working_distance
+      and assumed_inputs, where it used to cap a margin of its own. I attached it
+      to working_distance, but nothing in the packet''s structure would have made
+      me. If a future revision wants the collar rulable, it needs a subject.'
+- lens: 5
+  name: photo
+  state: judged
+  agent: photo-perturbation
+  status: BLOCKED
+  rulings:
+  - code: missing.power_at_sample
+    ruling: upheld
+    basis: 'The finding stands as reported, and it is a refusal I am upholding rather
+      than a defect I am waiving. This proposal is at 40x WI and there is no illuminated
+      area at 40x anywhere: illuminated_area_um2 carries a 20x key for all three engines
+      (LUN-F-XL 603654, Spectra 603654, Aura 948218), nulls 4x and 10x because an
+      area built from a nominal pixel size inherits that tier, and has NO 40x key.
+      With no area there is no W/cm2, and photo/gate.py::_missing_inputs emits this
+      code exactly when resolved_irradiance is None. The power half is marginally
+      better: Spectra Cyan 13.2 mW, Red 9.3 mW at 100%, tier estimated, +-25%, read
+      off rendered vendor plots by eye. Lens 1 agrees from the other side -- both
+      LightEngine power-at-sample entries sit in its assumed_inputs. The only two
+      routes to `overruled` are the percent setting, which is not a physical quantity,
+      or scaling 603,654 um2 by 1/M^2 myself, which would be originating a physical
+      number (rule 2). R2 instructs BLOCK, not default.'
+    source: kb/calibrations/illumination-power.yaml; config/briefs/active-microrheology.yaml
+      gaps.illuminated_area_um2__at_40x; photo/gate.py::_missing_inputs
+  - code: missing.exposure_plan
+    ruling: upheld
+    basis: 'The finding stands and it is not mine to resolve. Exposure and frame count
+      are lens 2''s settings (01 §4); this section only multiplies them into a dose.
+      All three components are R1: exposure_ms (the channel file''s header reasons
+      at 1.5 ms but the body does not carry it, so it is an intent not a decision),
+      target_fps, acquisition_duration_s. Adopting the header''s 1.5 ms would feed
+      a SETTING I proposed into my own gate -- D2 and D7 both forbid it. The departure
+      is not free: the standing condition is 20.0 ms => ~50 fps, and every script
+      in analysis/matlab/ hardcodes frame_time = 0.02, so the number that unblocks
+      my dose report also obliges an analysis change, which is lens 6''s to own.'
+    source: config/briefs/active-microrheology.yaml gaps + departures; kb/expertise/microrheology-standard-conditions.md;
+      docs/01-architecture.md §4
+  - code: light_driving
+    ruling: upheld
+    basis: 'THE SILENCE IS ACCEPTABLE AND EXPENSIVE, and upholding it is not clearing
+      it. Acceptable because it is ENTAILED by the first refusal and not independent
+      of it: L5.1 is registered Check(''light_driving'', INFO, (''irradiance'',),
+      ...) and missing.power_at_sample fires on exactly the condition that irradiance
+      is absent -- had the gate reached Phase 1, check_light_driving would have raised
+      on the f-string in its own photoresponsive-is-None branch. There is no report
+      being withheld, only one that does not exist. What it COSTS is the whole reason
+      this section exists, and three things are absent in different ways. (1) Irradiance
+      at 40x -- ruled above. (2) The threshold: R3, nobody-knows, no entry carries
+      one. (3) The ANSWER to ''does this sample respond to this light at all'', never
+      asked -- photoresponsive is None and appears verbatim in assumed_inputs as ''never
+      asked, so light-driving is unconfirmed rather than cleared''. kb/samples/ does
+      not exist, so there was nowhere to look it up. A 5 um PS probe and 0.5 um PS
+      tracers are not obviously photoresponsive, but ''not obviously'' is not an answer
+      and I will not convert it into one; docs/06 D2''s accident is precisely the
+      unasked question. ASK KH: do either bead population, or the suspending medium,
+      respond to 488 nm or 640 nm at the levels this run will use?'
+    source: photo/checks.py::CHECKS and check_light_driving; docs/06-pitfalls.md D2
+  - code: total_dose
+    ruling: upheld
+    basis: 'The silence is faithful in content and lossy in form. check_total_dose
+      is registered with an EMPTY requires tuple, so nothing stopped it on its own
+      inputs; but its first branch returns evaluated=False when irradiance, exposure
+      or n_frames is None, and all three are None here. So the report it would have
+      produced is the same statement the two refusals already make, which is why I
+      uphold rather than overrule. What is lost is the explicit evaluated: False stamp,
+      and that matters because MAX_MARGIN 10.0 is what the check returns in that branch:
+      a reader seeing the margin without the stamp would read HEADROOM where there
+      is no evaluation (rule 3). One cost is NOT covered by either refusal: frame_interval_ms
+      is also absent and sits in assumed_inputs as ''duty cycle not computed''. Even
+      after a measured 40x irradiance and an exposure plan arrive, the duty cycle
+      -- the part deciding whether the dose lands as a burst or over an hour -- would
+      still be missing. No dose number exists in either direction and none should
+      be quoted from this section.'
+    source: photo/checks.py::check_total_dose and CHECKS; packet verdict.assumed_inputs[frame
+      interval]
+  - code: trap_heating
+    ruling: overruled
+    basis: 'THE SILENCE DOES NOT HOLD FOR THIS PROPOSAL, and I am overruling the SKIP
+      rather than a report -- overruling here TIGHTENS, it does not proceed past anything
+      (this subject is info, not a hard finding at m < 1, so §2 level 4 permits it).
+      The skip is an artifact of the seam, not of a missing input: Check(''trap_heating'',
+      INFO, (), ...) requires NOTHING, and check_trap_heating_ownership branches on
+      setup.trap_on alone -- a field with no dependence on power, area, exposure or
+      frame count. It was silenced only because photo/gate.py::evaluate returns at
+      Phase 0 before results = [c.run(setup) for c in CHECKS]. So a check whose entire
+      purpose is to stop an unowned risk vanishing was suppressed by an unrelated
+      missing number, on a proposal where its trigger is LIVE: a 1064 nm Aresis Tweez
+      300 holding the 5 um probe. CARRIED BY HAND so the handoff does not disappear
+      -- trap heating is docs/06 D6''s, assigned to lens 7, and lens 7 has no heating
+      check and is not getting one; E3 says lens 7 silent on heating is not heating
+      cleared. It is INFO because it has no number, not because it is minor. Two recorded
+      numbers, both the operator''s: 1020 mW at the sample plane at 80% dial through
+      the 20x (measured 2026-09-09; the head was not compressing -- 64 mW at 5% predicts
+      1020 to 0.4%), and the 40x WI estimated to pass the LEAST NIR of the six objectives
+      (0.74x -> 750 mW at 80%) on a curve still falling steeply where the vendor plots
+      end 64 nm short of 1064. dD/D = 2.74 %/K and the trap only heats, so the SIGN
+      of the contamination of any D -- and of the complex modulus this experiment
+      exists to produce -- is known and the size is not. Also unasked: temperature_sensitive
+      is None, and the check''s own text says that for a sample with a transition
+      the trap can move it across the boundary rather than merely biasing a viscosity.
+      TWO ACTIONS, and the first is a CODE FIX not an experiment: run the requires-()
+      INFO checks before the Phase 0 return, or the next BLOCKED verdict loses this
+      notice again in every one of the nine gates that share the pattern.'
+    source: photo/checks.py::check_trap_heating_ownership and CHECKS; photo/gate.py::evaluate
+      (Phase 0 early return); kb/calibrations/illumination-power.yaml (optical_tweezers
+      row); docs/06-pitfalls.md D6; CLAUDE.md E3
+  unevaluated:
+  - code: null
+    action: Ask KH what the beads are suspended in, and whether any component is living
+      or metabolically active.
+    why: C4 PHOTOTOXICITY. 'Not applicable' is what I would like to say and I cannot.
+      Both populations are polystyrene, but the brief names no suspending medium anywhere
+      -- no facts entry for buffer, solvent or any biological component -- and an
+      active-microrheology sample can perfectly well be a cell extract, a protein
+      solution or a gel. C4 has no gate and no code here and needs a literature dose
+      ceiling per cell line, fluorophore and wavelength every time. Unevaluated for
+      want of one sentence from the operator, not dismissed.
+  - code: null
+    source: data/fluorophores.yaml > ATTO647N (note); docs/06-pitfalls.md D3; docs/05-consensus-gate.md
+      §Lens 5
+    why: 'C5 LABEL PERTURBATION (docs/06 D3), raised because no check in photo/ can
+      emit it. ATTO647N labels the driven 5 um probe and its own entry says it is
+      strongly hydrophobic and adsorbs non-specifically onto surfaces and hydrophobic
+      domains. Here the probe''s surface is not incidental: it sets the drag that
+      F = kappa*(x_bead - x_trap) is read through and it is what any wall-drag correction
+      is applied to. Whether the label is internal or surface-conjugated is a chemical
+      fact the brief does not state and I must not assign. SCOPE TENSION, unchanged
+      and a human''s to settle: docs/06''s table gives D3 to lens 5 while docs/05''s
+      owns-list for lens 5 is light level, duty, dose and wavelength and contains
+      no label chemistry -- and this is a perturbation with nothing to do with light.'
+  - code: null
+    source: packet cross_lens (lens 1 verdict); kb/decisions/2026-09-10-lens-5-becomes-a-reporting-section.md;
+      docs/01-architecture.md §4; CLAUDE.md §4 H2
+    why: 'THE 1 <-> 5 CONSTRAINT IS UNEVALUATED ON MY SIDE, which makes the PAIR unevaluated
+      and not cleared (rule 3). Lens 1 came back PASS_WITH_CHANGES/TIGHT with total_collection
+      6.9% green and 4.3% red, collection.low at m=0.871 and emission.centering at
+      m=0.442; and every one of its actions -- widen the emission filter, re-centre
+      it, or pay in exposure -- points at more light or more time at the sample. I
+      cannot answer it: with no irradiance at 40x, no threshold and no photoresponsiveness
+      answer, I have no bound to put against lens 1''s request, so I can neither endorse
+      raising the light nor object to it. Nothing else in the committee will catch
+      it either -- the 2026-09-10 demotion recorded exactly this cost, that H2''s
+      ''lens 5''s gates are the fence'' now has no fence. IF THE LIGHT GOES UP ON
+      LENS 1''S ADVICE, IT GOES UP UNFENCED.'
+  - code: null
+    source: docs/01-architecture.md §4; CLAUDE.md §3 E5/E6; config/briefs/active-microrheology.yaml
+      gaps.photons.signal_e_per_s
+    why: 'THE 2 <-> 5 CONSTRAINT IS UNEVALUATED AND IS NOT IN THE PACKET AT ALL. cross_lens
+      carries the 1 <-> 5 row only, yet missing.exposure_plan -- one of the two findings
+      I was asked to rule on -- is lens 2''s output, and 01 §4 calls 2 <-> 5 the archetypal
+      committee case: raise the frame rate or the exposure and total dose and duty
+      rise with it. Lens 2''s verdict is absent from my packet, so I cannot re-confirm
+      L5.2 against whatever it proposes, and lens 2 is itself BLOCKED. Recorded so
+      the absence of the row is not read as the absence of the constraint.'
+  - code: null
+    source: data/fluorophores.yaml > ATTO647N, > DragonGreen; photo/setup.py; kb/decisions/2026-09-10-lens-5-becomes-a-reporting-section.md;
+      kb/decisions/2026-09-09-g20-saturation-removed.md
+    why: 'A CORRECTION TO THE BRIEF, bearing on my own inputs (D12; null code because
+      my gate never emitted it and rule 2 forbids inventing a subject). gaps.light_driving_threshold_w_cm2
+      states that ''ATTO647N has a quantum yield (0.65) but NO ext_coeff either'',
+      and data/fluorophores.yaml > ATTO647N carries ext_coeff_M1cm1: 150000 (and lifetime_ns
+      3.5, photostability high). So the brief''s conclusion that ''the absolute photon
+      budget is uncomputable for the probe as well as the tracer'' does not follow
+      on the ground it gives. DragonGreen is the genuinely empty one -- no ext_coeff,
+      no quantum yield, no lifetime, and its entry says those three are published
+      nowhere and that FITC values must not be substituted. Two smaller mischaracterisations
+      in the same gap: the threshold is not per-dye, it is a per-SAMPLE field (photo/setup.py,
+      whose comment says ''Sample-specific and not derivable'') whose home is kb/samples/;
+      and it was not ''the missing input that made lens 5 a reporting section''. None
+      of this changes either refusal, and none unblocks anything: since G10 and G20
+      were removed no check in this lens reads a dye constant at all.'
+- lens: 6
+  name: validity
+  state: judged
+  agent: measurement-validity
+  status: FAIL
+  rulings:
+  - code: validity.committee_coverage
+    ruling: upheld
+    basis: 'UPHELD AND IT UNDERSTATES THE HOLE. The finding is `hard` at m=0.0, so
+      §2 precedence level 4 forbids overruling it whatever I thought. It is also right
+      on its merits and for a worse reason than it gives. The gate names five absences;
+      TWO MORE ARE INVISIBLE TO IT, both live here: lens 7 is not_constructible for
+      want of trap_dial_percent while a 1064 nm Tweez 300 holds the probe, and lens
+      8 is undecided because no acquisition duration exists to apply the ~30 min threshold
+      to. True coverage is 7 of 9 absent or without basis. THE WORST IS DETECTION,
+      and specifically the SHAPE of its absence: not_constructible means DetectionSetup
+      was never built, so lens 2 emitted NO missing.* code at all. Everything else
+      in this run produced a harvestable question; the one lens that did not is the
+      one three of my own inputs come through -- the particle count L6.5 would bound,
+      the decided rate that turns a correlation time into frames, and the pixel/ROI
+      pair L4.6 needs. A gap that produces silence instead of a question is the failure
+      the brief''s gaps list exists to catch, and it caught it for lens 7 and not
+      for lens 2.'
+    source: validity/setup.py > STANDING_LENSES; packet-6-validity.yaml > unevaluated_in_scope;
+      CLAUDE.md §3 E2, E4
+  - code: validity.photometric_calibration
+    ruling: overruled
+    basis: 'OVERRULED TO TIGHTEN, NOT TO CLEAR. An info/bias finding at m=10.0, not
+      a hard finding at m<1, so §2 level 4 permits it, and the finding''s own action
+      invites it -- ''this pass is only as good as that classification''. QUANTITY_REQUIREMENTS
+      maps rheology to (''pixel_size'',) alone. For the modulus''s SCALE that is correct
+      and I am not disturbing it: no photometric conversion enters G*, and I make
+      no claim on flat_field or linearity. It is wrong for THIS proposal, because
+      this rheology is read out of TRACKED POSITIONS: the short-lag MSD carries a
+      static localisation-error offset, that offset sits in the same lags a complex
+      modulus is fitted over, and its size is set by the photon budget. Neither arm
+      has one. Two corroborations that this is not theoretical. (1) Lens 2''s Phase
+      0 blocks on precisely those two fields, so the committee already treats them
+      as load-bearing. (2) The analysis DISPOSES of the offset instead of measuring
+      it: msd1d ends MSD = MSD - MSD(1), and analysis/matlab/README.md says in its
+      own words that this ''also removes real signal at short lag -- do not copy it
+      into anything that reports a diffusivity''. An offset subtracted rather than
+      bounded is the definition of a bias nobody is carrying. PROPOSED REGISTRY EDIT
+      for a human: rheology gains `background`, the shape tracking_intensity already
+      has. I do not touch the table.'
+    source: validity/setup.py > QUANTITY_REQUIREMENTS, BIAS_SCOPE; analysis/matlab/README.md;
+      analysis/matlab/dashboard_xy_group_by_power_speed.m:498
+  - code: missing.independence_inputs
+    ruling: upheld
+    basis: THE REFUSAL STANDS AND IS THE RIGHT REFUSAL -- all four inputs are absent,
+      none is mine to supply (rule 2), and reporting nothing rather than 1/sqrt(N_p*N_f)
+      is what G11's removal bought. Since G11 went nothing else carries this, so three
+      things go here by hand. (a) THE ACTION NAMES TWO ROUTES AND BOTH ARE SHUT. The
+      trapped route is tau = gamma/kappa and no kappa is established at 40x WI (trap_stiffness_for_this_config,
+      R2); lens 7 is not_constructible besides. The free route is L2.6's characteristic_time_s,
+      R1, which the brief states is 'in the channel file's header and the number is
+      not anywhere'. Two open routes and an operator question at the end of each.
+      (b) THE ENSEMBLE FORMULA IS THE WRONG ESTIMATOR FOR THE ACTIVE HALF. The precision
+      of a drive-derived modulus is set by how many velocity steps were held and for
+      how long (step_duration_ms, R1, consumed_by L9.3, with the brief's own note
+      that a short step reports a displacement that has not arrived) -- not by N_p
+      x N_f. More frames of an unresolved step buy nothing. Whoever supplies the four
+      fields must say which arm they are for. (c) ROI-vs-STATISTICS (3<->6) IS UNASSESSABLE
+      AND NOW UNOWNED. Lens 3 is BLOCKED on missing.streams and neither ROI dimension
+      exists; with G11 gone roi_speed_tradeoff has no caller, so if a smaller ROI
+      is later chosen to buy frame rate NO gate anywhere will price it against the
+      statistics -- and only this lens ever said so. Recorded pre-emptively, because
+      the brief's stated reason for departing to 40x is that this is 'a two-population
+      experiment needing field'.
+    source: validity/power.py; kb/decisions/2026-09-11-g11-and-g26-removed.md; docs/01-architecture.md
+      §4
+  - code: evidence.assumed
+    ruling: upheld
+    basis: 'UPHELD AS A STATUS AND REJECTED AS AN EXCUSE. `assumed` stands: analysis_script
+      is None and nothing here could advance anyway. But the assumption did not have
+      to be made -- the pipeline that will process this data is mirrored in-repo at
+      analysis/matlab/ and I read it. FIVE MISMATCHES, no gate emits any, and the
+      first is disqualifying. (1) THE TRACKER CANNOT PRODUCE THIS EXPERIMENT''S INTENDED
+      QUANTITY. position_tracking_5um.m thresholds at a fixed img_cut = 300, applies
+      bwareaopen with min_area_px = 20^2, takes centroids, one bead per frame, no
+      linking, no sub-pixel fit. The intended quantity is rheology FROM THE FREE 0.5
+      um TRACERS -- and at 0.1625 um/px a 0.5 um tracer covers a handful of pixels,
+      two orders below the 400 px floor. That tracker returns the 5 um probe in every
+      frame and rejects tracers as specks. This is D9 in its literal form: the analysis
+      path cannot consume the data the run exists to produce, and no exposure, ROI
+      or dose decision changes it. (2) px_to_um = 0.065 IS HARDCODED IN EVERY FILE
+      -- the 100x Oil nominal quotient. This run is 40x WI at 0.1625 um/px (measured),
+      2.5x coarser, and the README states the factor enters displacement LINEARLY
+      and <x^2> QUADRATICALLY, so it lands on D and on G* by different powers. Note
+      what this does to my own L6.3: measured: true reads clean at m=10.0 while the
+      number that will multiply the data is a different objective''s. (3) frame_time
+      = 0.02 IS HARDCODED and never read from metadata, while the departure leaves
+      the period undecided and reasons at 1.5 ms; every frequency axis, PSD and diffusivity
+      comes out wrong by the ratio. Lens 5 flagged it from its side and handed it
+      here; it is mine and I am taking it. (4) EXPOSURE BLUR IS ALREADY DECONVOLVED
+      -- plugflow_fluctuations_passive_moduli_v8.m divides the PSD by H^2 = sinc^2(pi
+      f T_e) with exposure_floor = 0.4. BOTH DIRECTIONS, as C6 requires: when lens
+      2 runs, an L2.4 Savin-Doyle instruction must be RECONCILED with this and not
+      stacked on it, or the blur is corrected twice; and equally the 0.4 floor makes
+      the existing correction deliberately incomplete above the frequency where the
+      sinc collapses, so its presence is not a clearance either. (5) kT IS HARDCODED
+      AT 20 C AND kappa-FROM-DRAG IS NOT IMPLEMENTED AT ALL, and worse: the flow path
+      DETRENDS AWAY the mean displacement, which is exactly the quantity kappa = gamma*v/x_eq
+      needs. The brief''s F = kappa*(x_bead - x_trap) has no implementation here and
+      the pipeline removes its input by design. The hardcoded T is also where lens
+      5''s carried trap-heating bias lands unseen.'
+    source: analysis/matlab/README.md; position_tracking_5um.m; plugflow_fluctuations_passive_moduli_v8.m;
+      CLAUDE.md §6 and §2b D9
+  unevaluated:
+  - code: null
+    source: verdict-4-sample.yaml > wall_drag; validity/setup.py > UNCORRECTABLE,
+      BIAS_SCOPE
+    why: 'LENS 4''S WALL-DRAG CARRY, AND IT IS THE MOST CONSEQUENTIAL THING IN THIS
+      RUN. I cannot rule on it because no check emitted it -- lens 4 BLOCKED, so my
+      ledger received nothing -- but lens 4 handed me the disposition by hand and
+      it is correct on both halves. The live branch is geometry.wall_drag, not .trapped,
+      because the intended quantity comes from the UNTRAPPED tracers; and the trapped
+      branch''s absorption premise fails independently, because this brief reads F
+      = kappa*(x_bead - x_trap) with gamma going IN as 6*pi*eta*a rather than coming
+      OUT of a corner-frequency fit. That is the exact distinction CORRECTIONS'' own
+      comment says a reviewer must make and the registry cannot, so I am making it:
+      THE ABSORPTION ROUTE IS NOT AVAILABLE TO THIS PROPOSAL EITHER WAY. geometry.wall_drag
+      is UNCORRECTABLE by decision, not ignorance, and BIAS_SCOPE scopes it to pixel_size,
+      which rheology requires -- so it damages the intended quantity directly. Consequence:
+      the moment lens 4 has an imaging depth and runs, L6.2 hard-FAILs on this and
+      no declaration can clear it; the only remedies are to image further from the
+      coverslip or to change what is measured.'
+  - code: null
+    source: packet-6-validity.yaml > verdict.margins[validity.bias_ledger], metrics
+    why: 'MY OWN LEDGER''S m = 10.0 IS AN EMPTY LEDGER, NOT A CLEAN ONE, and it emitted
+      no finding so it is not on must_rule_on and I cannot rule on it. bias_findings:
+      0, applicable: 0, uncorrected_codes: [] -- because the four lenses that emit
+      bias-kind findings BLOCKED before Phase 1 and produced none. That is rule 3
+      at the level of a margin. The entry above proves it concretely: an uncorrectable
+      bias on the intended quantity is already identified in prose by lens 4 while
+      the ledger that exists to catch it reports FULL HEADROOM. Anyone reading margins
+      without metrics on this verdict reads the opposite of the truth, and the only
+      reason it does not set the status is that committee_coverage failed first.'
+  - code: null
+    source: CLAUDE.md §3 E4; validity/cli.py (the `stability` rejection, which the
+      code itself calls arbitrary)
+    why: 'LENS 8''S BIAS-LEDGER ROW, RECORDED AS unevaluated AS LENS 4 ASKED. E4:
+      a conditional lens not convened leaves a hole, not a pass. Lens 8 is also unreachable
+      by validity/ by construction -- validity/cli.py rejects `stability` as an upstream
+      name while accepting `trapping`, and its own comment calls that arbitrary and
+      leaves it for the pipeline rework (KH, 2026-09-11). Its state here is `undecided`,
+      a third thing again: not absent by design like lens 7 under no trap, but unable
+      to determine whether it applies, because acquisition_duration_s is an open R1
+      gap. Three things are consequently unowned. DRIFT: analysis/matlab has NO drift
+      correction anywhere, so there is no double-correction risk and no correction
+      at all. EVAPORATION: uncorrectable, chamber_sealed unanswered, and this is a
+      thin unspaced drop. SETTLING: lens 4 says the SIGN of any tracer count reasoning
+      is lens 8''s alone, so L4.6 cannot be read in either direction until it is convened.
+      One answer -- the duration -- moves all of this, and the same answer unblocks
+      L3.5.'
+  - code: null
+    source: packet-6-validity.yaml > unevaluated_in_scope[detection], cross_lens rows
+      1 and 3
+    why: 'LENS 2''S ROW, AND THE TWO CROSS-LENS ROWS THAT DEPEND ON IT, ALL unevaluated.
+      Motion blur and the pixel-size direction both carry verdict: null with the same
+      why_absent, so the two constraints 01 §4 assigns jointly to 2<->6 arrive with
+      nothing on the other side. What I would have ruled on: motion blur is the one
+      bias in my table whose correction EXISTS AND IS ALREADY IMPLEMENTED in the analysis
+      (ruling 4, item 4), so the reconciliation question is live before the bias is
+      even graded; and the pixel-size direction is already decided against the tracking
+      optimum by the 40x departure, 2.5x coarser, which rank 1 accepted for field
+      and which H4 forbids anyone correcting back on SNR grounds. Neither can be closed
+      from here: exposure_ms, task_kind, target_fps and both ROI dimensions are all
+      open, and lens 2''s Phase 0 is all-or-nothing.'
+  - code: null
+    source: verdict-5-photo.yaml > trap_heating; docs/06-pitfalls.md D6; CLAUDE.md
+      §3 E3
+    why: 'LENS 7''S ROW IS A HOLE (E4) AND TRAP HEATING REACHES NO GATE (E3). Lens
+      7 is not_constructible for one dial setting, so nothing in the committee evaluated
+      the trap central to the experiment. I ACCEPT LENS 5''S OVERRULE of its own SKIP
+      without reservation -- it tightens, it is info so §2 level 4 permits it, and
+      it is the single handoff in this run that would otherwise have vanished. But
+      accepting it does not PLACE it anywhere: photo emitted no bias-kind finding,
+      so the heating bias reaches a human reader and no gate, exactly as lens 8''s
+      does, and I cannot convert a prose carry into a ledger row. Where it lands is
+      ruling 4 item 5 -- the analysis hardcodes kT at the lab setpoint and cannot
+      see a focus-plane rise. The sign of the contamination of the modulus this experiment
+      exists to produce is known and its size is not, which is the state E3 sanctions
+      and not a state anything improves. I second lens 5''s first action as a CODE
+      FIX ahead of any experiment: run the requires-() INFO checks before the Phase
+      0 return.'
+  - code: null
+    source: verdict-4-sample.yaml; verdict-5-photo.yaml; docs/05-consensus-gate.md
+    why: 'WHETHER THE TWO JUDGMENT VERDICTS ARE ACCEPTABLE AS REVIEWS -- the one question
+      only this lens asks, and no check emits a code for it. BOTH ARE ACCEPTABLE,
+      and for the right reason rather than because their gates behaved: each REFUSED
+      WHERE A DEFAULT WAS AVAILABLE and said what the default would have cost. Lens
+      5 names the two routes it could have taken to overruled (the percent setting,
+      or scaling the 20x area by 1/M^2) and declines both as rule-2 violations; lens
+      4 declines to propose an imaging depth for the same reason. Both then carried
+      by hand what no check emits, which is what a judgment lens is FOR, and handed
+      those carries to me explicitly rather than leaving them in prose. Three specific
+      acceptances. (1) Lens 4''s Phase 0 objection is correct and I EXTEND it: the
+      block is single-valued and its cost is eight checks, at least three of which
+      need nothing from the missing number -- and check_depth_window never reads imaging_depth_um
+      at all, so the check that ANSWERS ''which depths are allowed'' was suppressed
+      to demand a depth as input. That is D6 inverted. (2) The same defect appears
+      in lens 5 (trap_heating, requires-(), silenced by an unrelated missing number)
+      and in MY OWN gate, whose Phase 0 is likewise all-or-nothing. THREE GATES IN
+      ONE RUN, SAME MECHANISM: an architectural defect, not three incidents, and a
+      human''s to fix. (3) I endorse lens 4''s re-run request -- twice, once per population,
+      radius set explicitly -- and its ri_mismatch reading, that the index match is
+      the substance of the 40x departure and must not be spent to buy back a few percent
+      of geometric collection. I also endorse lens 5''s D12 correction to the brief
+      (ATTO647N does carry an ext_coeff; DragonGreen is the empty one) as a correction
+      to my own inputs, and note it changes nothing about either refusal.'
+  - code: null
+    source: verdict-5-photo.yaml (1<->5 row); packet-5-photo.yaml > cross_lens; CLAUDE.md
+      §4 H2, H1
+    why: 'THE ITEM I REFUSE TO ADVANCE. Lens 5''s row ends ''IF THE LIGHT GOES UP
+      ON LENS 1''S ADVICE, IT GOES UP UNFENCED'', and that is the correct reading:
+      lens 1''s remedy for collection.low at m=0.871 and emission.peak_clipped is
+      more light or more exposure, H2 says the bound on intensity is bleaching and
+      light-driving with ''lens 5''s gates are the fence'', and lens 5 has established
+      that the fence does not exist here -- no irradiance at 40x (R2), no threshold
+      (R3), photoresponsive never asked. I REFUSE TO ADVANCE EITHER OF THOSE TWO REMEDIES,
+      and I am not blocking lens 1''s finding to do it: a soft finding at m<1 stands
+      and I have no power over it. What I can rule is that neither of its two named
+      routes may be taken on this proposal''s current evidence, and that A THIRD ROUTE
+      EXISTS which lens 1 published itself and which costs no light at all: EM-Quad-Multiband
+      recovers 1.69x on the green arm and 2.47x on the red, with FF01-680/42 and FF01-676/29
+      close behind on red. That route is dose-neutral, so it is outside the unfenced
+      region entirely, and lens 4 arrived at the same instruction from the index-match
+      side. One addition neither lens made: THE EXPOSURE BRANCH IS NOT DOSE-NEUTRAL
+      EITHER, and not only for dose -- exposure is the number analysis/matlab hardcodes
+      at 0.02 s and the same T_e that sets the blur deconvolution''s sinc, so ''pay
+      in exposure'' moves the analysis and the existing correction together. Of lens
+      1''s three options, one is free and two are not, and lens 1 could not have known
+      that.'
+  - code: null
+    source: packet-6-validity.yaml > metrics[validity.pixel_calibration]; data/pixel_size.yaml;
+      analysis/matlab/README.md
+    why: 'L6.3''S PROVENANCE QUESTION, which is C2 and which no finding carries here
+      -- the check passed silently at m=10.0 with measured: true and emitted nothing,
+      so there is no code for me to rule on. The boolean is honestly satisfied: data/pixel_size.yaml
+      is measured in all six rows and the 40x 1x row is 0.1625 um/px. The boolean
+      is also not the question. L6.3 says a measured value exists SOMEWHERE; it cannot
+      say this session''s data will be scaled by it, and here I have positive evidence
+      that it will not be (ruling 4 item 2). Two confirmations are outstanding and
+      neither is a measurement: that the acquisition is made with the matching ConfigPixelSize
+      preset attached, and that whatever consumes the positions multiplies by this
+      objective''s value rather than the hardcoded one. Until then no spatial quantity
+      from this run is `measured` in the sense that matters.'
+  - code: null
+    source: data/detectors.yaml > Kinetix22, > Prime95B; analysis/matlab/position_tracking_5um.m;
+      docs/06-pitfalls.md C1
+    why: 'CAMERA POST-PROCESSING AND THE FIXED ADU THRESHOLD -- C3, which has had
+      no gate since G26 was removed. data/detectors.yaml has NO post_processing block
+      for either Kinetix entry, so the despeckle state of the installed camera has
+      never been recorded: that means ''nobody has looked'', never ''it is off''.
+      The Prime95B entry, the one camera whose state WAS checked, records observed_state:
+      enabled with four despeckle features and the note that PVCAM despeckle was enabled
+      in every generation -- which makes the Kinetix''s unrecorded state more pointed,
+      not less. Two things make it bite here. The tracers are dim, single, sub-diffraction
+      objects -- precisely what a despeckle filter erases -- and sub-pixel localisation
+      precision degrades regardless of linearity because the filter correlates pixel
+      noise the estimator assumes independent, feeding straight back into the MSD
+      offset in ruling 2. And the tracker applies a FIXED THRESHOLD, img_cut = 300,
+      while camera_mode is explicitly NOT DECIDED between Sensitivity (12-bit, 1,000
+      e- full well) and Dynamic Range (16-bit, 15,000 e-). A hardcoded ADU cut across
+      an undecided bit depth is not a tuning parameter, it is a different segmentation.
+      Action, five minutes on the next connection: confirm the despeckle items in
+      the camera properties and register the result.'
+  - code: null
+    source: verdict-5-photo.yaml (C5); data/fluorophores.yaml > ATTO647N; docs/06-pitfalls.md
+      D3
+    why: 'LABEL PERTURBATION, handed up by lens 5 because no check in photo/ can emit
+      it, and there is no gate for it anywhere. It belongs in my C5 table with correction
+      ''none -- short of changing the sample'', and on this proposal it is not a generic
+      caution: ATTO647N''s own entry calls it strongly hydrophobic and non-specifically
+      adsorbing, and the labelled probe''s SURFACE is what sets the drag that F =
+      kappa*(x_bead - x_trap) is read through and what any wall-drag correction would
+      be applied to. So a label effect here is not a photometric artefact, it moves
+      the mechanical quantity. Whether the label is internal or surface-conjugated
+      is a chemical fact the brief does not state and neither lens 5 nor I may assign.
+      I also record lens 5''s scope tension as live for a human: docs/06 gives D3
+      to lens 5 while docs/05''s owns-list for lens 5 is light level, duty, dose and
+      wavelength.'
+  - code: null
+    source: verdict-4-sample.yaml (multiple scattering); verdict-5-photo.yaml (C4);
+      config/briefs/active-microrheology.yaml > facts
+    why: TWO SAMPLE-SIDE UNKNOWNS THAT NO CHECK ANYWHERE CAN EMIT, carried so they
+      survive this run. (1) MULTIPLE SCATTERING has no model in the repository, so
+      'too concentrated' means a distorted signal and not merely mislinking -- direction
+      only, indefinitely, and it will not attach to the tracer concentration question
+      when that is answered. (2) THE SUSPENDING MEDIUM IS NAMED NOWHERE IN THE BRIEF.
+      Both bead populations are polystyrene, but an active-microrheology sample can
+      be a protein solution, an extract or a gel, and that one sentence decides phototoxicity
+      (no gate, needs a literature dose ceiling), the photoresponsiveness answer lens
+      5 is missing, whether a trap-driven temperature rise crosses a transition rather
+      than biasing a viscosity, and the viscosity every modulus is referenced to.
+      IT IS THE CHEAPEST OUTSTANDING ITEM IN THE WHOLE RUN AND IT IS UPSTREAM OF FOUR
+      LENSES.
+- lens: 8
+  name: stability
+  state: absent
+  agent: mechanical-env
+  why: 'no packet: this lens''s gate produced no verdict for its agent to interpret
+    -- the gate is `undecided`: no acquisition duration, so the ~30 min threshold
+    cannot be applied -- R1, the operator''s to answer'
+unresolved:
+- field: characteristic_length_um
+  rank: R1
+  consumed_by:
+  - L2.6
+  action: 'Ask KH: what length does this measurement have to resolve, in um?'
+  predicted_by_brief: true
+- field: characteristic_time_s
+  rank: R1
+  consumed_by:
+  - L2.6
+  action: 'Ask KH: what is the shortest time the dynamics have to be followed over?'
+  predicted_by_brief: true
+- field: task_kind
+  rank: R1
+  consumed_by:
+  - L2.1
+  - L2.4
+  action: Ask KH. This one is single-particle tracking on both arms, but the brief
+    may not assume it.
+  predicted_by_brief: true
+- field: roi_width_px
+  rank: R1
+  consumed_by:
+  - L3.1
+  - L3.4
+  - L3.5
+  action: Ask KH for the ROI, or state full frame and its pixel dimensions.
+  predicted_by_brief: true
+- field: roi_height_px
+  rank: R1
+  consumed_by:
+  - L2.4
+  - L2.5
+  - L3.1
+  - L3.4
+  - L3.5
+  action: the same question as roi_width_px
+  predicted_by_brief: true
+- field: target_fps
+  rank: R1
+  consumed_by:
+  - L2.4
+  - L2.5
+  - L3.2
+  action: State the requested rate and mark it requested, or supply achieved_fps from
+    timestamps.
+  predicted_by_brief: true
+- field: circular_buffer_frames
+  rank: R1
+  consumed_by:
+  - L3.4
+  action: Read the MM circular-buffer size on the microscope PC.
+  predicted_by_brief: true
+- field: trap_dial_percent
+  rank: R1
+  consumed_by:
+  - L7.2
+  - L7.3
+  - L7.4
+  - L7.5
+  action: Ask KH for the Tweez main-laser dial setting this run uses.
+  predicted_by_brief: true
+- field: step_duration_ms
+  rank: R1
+  consumed_by:
+  - L9.3
+  action: State how long one velocity step is held before it is resampled.
+  predicted_by_brief: true
+- field: localization_sigma_nm
+  rank: R1
+  consumed_by:
+  - L9.2
+  action: Supply signal and background rates, or measure the localization scatter
+    on a stuck bead.
+  predicted_by_brief: true
+- field: chamber_height_um
+  rank: R1
+  consumed_by:
+  - L4.3
+  - L8.2
+  action: null
+  predicted_by_brief: true
+- field: imaging_depth_um
+  rank: R1
+  consumed_by:
+  - L4.2
+  - L4.4
+  - L4.7
+  action: null
+  predicted_by_brief: true
+- field: particle_radius_um__for_wall_drag
+  rank: R1
+  consumed_by:
+  - L4.4
+  action: null
+  predicted_by_brief: true
+- field: tracer_concentration_per_ml
+  rank: R1
+  consumed_by:
+  - L4.6
+  action: null
+  predicted_by_brief: true
+- field: acquisition_duration_s
+  rank: R1
+  consumed_by:
+  - L3.5
+  - L8.1
+  - L8.3
+  - L8.4
+  action: null
+  predicted_by_brief: true
+- field: free_disk_gb
+  rank: R1
+  consumed_by:
+  - L3.5
+  action: null
+  predicted_by_brief: true
+- field: exposure_ms
+  rank: R1
+  consumed_by:
+  - L2.2
+  - L2.4
+  - L2.5
+  - L3.x
+  action: null
+  predicted_by_brief: true
+- field: camera_mode
+  rank: R1
+  consumed_by:
+  - L2.2
+  - L2.3
+  - L2.5
+  action: null
+  predicted_by_brief: true
+- field: target_relative_error
+  rank: R1
+  consumed_by:
+  - L9.2
+  - L9.3
+  action: null
+  predicted_by_brief: true
+- field: chamber_sealed
+  rank: R1
+  consumed_by:
+  - L8.3
+  action: null
+  predicted_by_brief: true
+- field: photons.signal_e_per_s
+  rank: R2
+  consumed_by:
+  - L2.2
+  - L2.3
+  action: one test frame, photometered -> kb/calibrations/frame-photometry.yaml
+  predicted_by_brief: true
+- field: photons.background_e_per_s
+  rank: R2
+  consumed_by:
+  - L2.3
+  action: the same measurement as photons.signal_e_per_s
+  predicted_by_brief: true
+- field: illuminated_area_um2__at_40x
+  rank: R2
+  consumed_by:
+  - L5.1
+  - L5.2
+  action: establish the illuminated field at 40x, or state the scaling and its basis
+  predicted_by_brief: true
+- field: velocity_time_base
+  rank: R2
+  consumed_by:
+  - L9.1
+  action: drive a known distance at a known commanded velocity and time it independently
+  predicted_by_brief: true
+- field: disk_bandwidth_folder
+  rank: R2
+  consumed_by:
+  - L3.1
+  action: re-measure pointed at the folder MM actually streams into
+  predicted_by_brief: true
+- field: trap_stiffness_for_this_config
+  rank: R2
+  consumed_by:
+  - L7.2
+  - L7.4
+  - L9.2
+  - L9.3
+  action: record the 2026-09-03 measurement's dial and objective, or re-calibrate
+    at 40x WI
+  predicted_by_brief: true
+- field: light_driving_threshold_w_cm2
+  rank: R3
+  consumed_by:
+  - L5.1
+  action: null
+  predicted_by_brief: true
+- field: sample_temperature_at_focus
+  rank: R3
+  consumed_by: []
+  action: null
+  predicted_by_brief: true
+- field: vibration
+  rank: R3
+  consumed_by: []
+  action: null
+  predicted_by_brief: true
+- field: missing.streams
+  rank: unranked
+  lens: compute
+  action: Supply at least one Stream (label, width, height, fps, bit depth) -- one
+    per camera actually running.
+  predicted_by_brief: false
+  note: emitted by the gate and NOT predicted by the brief
+- field: missing.buffer_frames
+  rank: unranked
+  lens: compute
+  action: Read CircularBufferFrameCount from Micro-Manager, or supply ram_budget_mb
+    to derive it.
+  predicted_by_brief: true
+  note: null
+- field: missing.capacity_inputs
+  rank: unranked
+  lens: compute
+  action: Supply acquisition_duration_s and free_disk_gb.
+  predicted_by_brief: false
+  note: emitted by the gate and NOT predicted by the brief
+- field: missing.imaging_depth
+  rank: unranked
+  lens: sample
+  action: Supply imaging_depth_um -- how far past the coverslip the focal plane must
+    reach.
+  predicted_by_brief: true
+  note: null
+- field: missing.power_at_sample
+  rank: unranked
+  lens: photo
+  action: 'Supply power_mw_at_sample and illuminated_area_um2 for this evaluation.
+    Both exist on this instrument as of 2026-09-09 and neither is filled in automatically:
+    power for nine lines at three objectives in data/light_sources.yaml, and 603654
+    um^2 at 20x for all three engines, which put about the camera field on the sample.
+    Together they give 1.1-7.7 W/cm^2 at 100 % level -- see kb/calibrations/illumination-power.yaml,
+    which also carries the per-line level linearity, since below about 30 % the percent
+    setting is not proportional to power. The area is 20x only; other objectives rest
+    on a `nominal` pixel size.'
+  predicted_by_brief: false
+  note: emitted by the gate and NOT predicted by the brief
+- field: missing.exposure_plan
+  rank: unranked
+  lens: photo
+  action: Supply exposure_ms and n_frames.
+  predicted_by_brief: false
+  note: emitted by the gate and NOT predicted by the brief
+- field: missing.independence_inputs
+  rank: unranked
+  lens: validity
+  action: Supply the correlation time -- lens 7's tau = gamma/kappa for a trapped
+    bead, or the experiment's characteristic time (lens 2's L2.6 asks for it) for
+    a free one -- with the particle and frame counts and the rate they were taken
+    at.
+  predicted_by_brief: false
+  note: emitted by the gate and NOT predicted by the brief
+- field: missing.target_error
+  rank: unranked
+  lens: velocity
+  action: State target_relative_error, e.g. 0.05 for 5% on kappa. It comes from the
+    experiment, not the instrument (docs/04 §9).
+  predicted_by_brief: true
+  note: null
+- field: missing.drag
+  rank: unranked
+  lens: velocity
+  action: Supply particle_radius_um and viscosity_pa_s.
+  predicted_by_brief: true
+  note: null
+- field: missing.stiffness
+  rank: unranked
+  lens: velocity
+  action: 'Run lens 7 and pass its stiffness in pN/um. A measured kappa exists for
+    this bench: 3.65-4.5 pN/um, 2026-09-03.'
+  predicted_by_brief: true
+  note: null
+- field: missing.localization_sigma
+  rank: unranked
+  lens: velocity
+  action: Run lens 2 and pass its 1-sigma localization precision in nm.
+  predicted_by_brief: true
+  note: null
+- field: missing.step_duration
+  rank: unranked
+  lens: velocity
+  action: Supply step_duration_ms -- the time the stage or trap holds one velocity
+    before changing it.
+  predicted_by_brief: true
+  note: null
+stopped_after: null
+stop_reason: null

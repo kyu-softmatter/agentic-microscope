@@ -280,6 +280,26 @@ def test_a_blocked_lens_still_names_what_decided_it(result, identity):
     assert compute["deciding_check"] == "missing.streams"
 
 
+def test_a_reporting_section_is_not_recorded_as_refusing(result, identity):
+    """`photo/gate.py`'s `advances` returns None with the comment "Consumers
+    must not read this as False; a reporting section neither advances nor
+    refuses" -- and this emitter is a consumer. In `plan.yaml` a bare `null`
+    in a column of `false` reads as the same thing, so the gate's own
+    `reporting_only` flag travels beside it."""
+    doc = emit_mod.plan_yaml(result, identity)
+    photo = next(r for r in doc["lenses"] if r["name"] == "photo")
+    optics = next(r for r in doc["lenses"] if r["name"] == "optics")
+
+    assert photo["advances"] is None
+    assert photo["reporting_only"] is True
+    assert optics["advances"] is False
+    assert optics["reporting_only"] is False
+
+    assert "reports only, neither advances nor refuses" in emit_mod.plan_md(
+        result, identity
+    )
+
+
 def test_the_brief_is_pinned_by_content(tmp_path, result, identity):
     """A plan whose brief has moved underneath it is not this plan, and a path
     alone cannot tell you that."""

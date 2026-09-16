@@ -153,6 +153,13 @@ Dated design and scope choices, in the order they were made.
 - **[2026-09-15-the-plan-emitter](decisions/2026-09-15-the-plan-emitter.md)** · 2026-09-15 · corrected by [2026-09-15-l1-3-read-a-notch-as-an-overlap](decisions/2026-09-15-l1-3-read-a-notch-as-an-overlap.md)
   What does the designer write down, and what did writing it find?
 
+## `kb/plans/` — 1 entries
+
+One hardware run each, before it happens — 05 §6 stage 5.
+
+- **[2026-09-15-active-microrheology](plans/2026-09-15-active-microrheology.md)** · 2026-09-15 · planned
+  Can the active-microrheology proposal be configured as written, and what must be answered first?
+
 ## `kb/literature/` — 1 entries
 
 Published values nobody here has measured.

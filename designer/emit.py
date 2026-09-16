@@ -222,6 +222,7 @@ def _lens_rows(result: Result) -> list[dict]:
             code = v.bottleneck or next(
                 (f.code for f in v.findings if f.code.startswith("missing.")), None
             )
+            as_dict = v.to_dict()
             rows.append({
                 "lens": LENS_NUMBER[lens],
                 "name": lens,
@@ -234,7 +235,16 @@ def _lens_rows(result: Result) -> list[dict]:
                 #: docs/05's criterion: feasibility >= TIGHT and evidence
                 #: measured and no hard gate below 1. `assumed` computes and
                 #: reports; only `measured` authorises (§3).
+                #:
+                #: ⚠ `null` for lens 5 and that is not `false`. `photo/gate.py`
+                #: says so in its own comment -- "Consumers must not read this
+                #: as False; a reporting section neither advances nor refuses"
+                #: -- and this emitter is a consumer. In a column of `false` a
+                #: bare `null` reads as the same thing, so `reporting_only`
+                #: travels beside it, taken from the gate's own field rather
+                #: than from a list of lens numbers here.
                 "advances": v.advances,
+                "reporting_only": bool(as_dict.get("reporting_only")),
                 "deciding_check": code,
                 "deciding_addr": addresses.get((lens, code), (None, None))[0] if code else None,
             })
@@ -414,9 +424,14 @@ def _committee_table(result: Result) -> list[str]:
             deciding = f"`{addr or code}`" if code else "—"
             m = verdict.margins.get(code) if code else None
             label = _lens_label(lens) + (f" · {subject}" if subject else "")
+            if verdict.advances:
+                note = " (advances)"
+            elif verdict.advances is None:
+                note = " · reports only, neither advances nor refuses"
+            else:
+                note = ""
             lines.append(
-                f"| {label} | `{verdict.status}`"
-                f"{' (advances)' if verdict.advances else ''} | {deciding} | "
+                f"| {label} | `{verdict.status}`{note} | {deciding} | "
                 f"{'—' if m is None else f'{m:.2f}'} | `{verdict.evidence}` |"
             )
     return lines

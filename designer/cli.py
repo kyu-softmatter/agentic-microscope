@@ -120,13 +120,22 @@ def cmd_packets(args: argparse.Namespace) -> int:
     return 0
 
 
-def _load_judgments(paths, packets) -> tuple[dict, int]:
-    """Read every returned verdict and refuse the ones that are not reviews."""
+def _load_judgments(paths, result) -> tuple[dict, int]:
+    """Read every returned verdict and refuse the ones that are not reviews.
+
+    ⚠ THE PACKET ROSTER IS REBUILT AFTER EVERY ACCEPTED VERDICT, because E2
+    makes it grow: lens 6 has no packet until lenses 4 · 5 · 8 have returned,
+    so a roster built once before the loop has no lens-6 entry and refuses a
+    lens-6 verdict with "no packet in this run". That is what it did the first
+    time a real lens-6 verdict was handed to it -- the library half enforced
+    E2 correctly and this half built the roster once and never looked again.
+    """
     from . import judgment as judgment_mod
 
     accepted: dict = {}
     refused = 0
     for path in paths or ():
+        packets = judgment_mod.build_packets(result, judgments=accepted)
         parsed = judgment_mod.read_judgment(path)
         lens = parsed.lens if isinstance(parsed.lens, str) else next(
             (name for name, pk in packets.items() if pk.number == parsed.lens), None
@@ -163,17 +172,13 @@ def cmd_emit(args: argparse.Namespace) -> int:
 
     rows = None
     if args.judgment:
-        accepted, refused = _load_judgments(
-            args.judgment, judgment_mod.build_packets(result)
-        )
+        accepted, refused = _load_judgments(args.judgment, result)
         if refused:
             print()
             print("nothing written. A refused judgment is not a missing one -- "
                   "writing the plan without it would record a review that did "
                   "not happen.")
             return 1
-        # Lens 6's packet only exists once the others have returned (E2), so
-        # the roster is rebuilt here rather than reused from above.
         packets = judgment_mod.build_packets(result, judgments=accepted)
         rows = judgment_mod.judgment_rows(packets, accepted, result)
         print()

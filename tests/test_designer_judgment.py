@@ -530,6 +530,83 @@ def test_lens_6_returning_before_the_others_is_refused(result):
     assert late == []
 
 
+# --------------------------------------------- the CLI's own E2 obligation
+
+
+def test_the_cli_rebuilds_the_roster_as_verdicts_arrive(tmp_path, real):
+    """Found by handing it a real lens-6 verdict for the first time.
+
+    E2 makes the packet roster GROW: lens 6 has no packet until the others
+    have returned. `cmd_emit` built the roster ONCE before its loop, so a
+    lens-6 verdict was refused with "no packet in this run" -- the library
+    half enforced E2 correctly and this half built the roster once and never
+    looked again. Ordering the arguments differently cannot fix it; the
+    rebuild has to happen per verdict.
+    """
+    import yaml
+
+    from designer.cli import _load_judgments
+
+    packets = judgment_mod.build_packets(real)
+    paths = []
+    for lens, packet in packets.items():
+        path = tmp_path / f"{lens}.yaml"
+        j = _judgment(packet)
+        path.write_text(yaml.safe_dump({
+            "lens": packet.number, "agent": packet.agent, "status": "BLOCKED",
+            "rulings": [{"code": r.code, "ruling": r.ruling, "basis": r.basis}
+                        for r in j.rulings],
+            "unevaluated": [],
+        }), encoding="utf-8")
+        paths.append(path)
+
+    # Lens 6's packet does not exist yet, so its verdict has to be written
+    # against the roster the first two produce.
+    later = judgment_mod.build_packets(
+        real, judgments={lens: _judgment(p) for lens, p in packets.items()}
+    )
+    six = later["validity"]
+    six_path = tmp_path / "validity.yaml"
+    six_path.write_text(yaml.safe_dump({
+        "lens": 6, "agent": six.agent, "status": "FAIL",
+        "rulings": [{"code": s.code,
+                     "ruling": "upheld" if s.kind == "hard" and (s.m or 0) < 1.0
+                     else "overruled",
+                     "basis": "fixture"} for s in six.must_rule_on],
+        "unevaluated": [],
+    }), encoding="utf-8")
+
+    accepted, refused = _load_judgments([*paths, six_path], real)
+    assert refused == 0, "lens 6 must be accepted once the others are in hand"
+    assert set(accepted) == {"sample", "photo", "validity"}
+
+
+def test_the_cli_still_refuses_lens_6_arriving_first(tmp_path, real):
+    """The rebuild must not become a way past E2: submitted first, lens 6 has
+    no packet at all, and that refusal is the rule doing its job."""
+    import yaml
+
+    from designer.cli import _load_judgments
+
+    later = judgment_mod.build_packets(
+        real,
+        judgments={
+            lens: _judgment(p)
+            for lens, p in judgment_mod.build_packets(real).items()
+        },
+    )
+    six = later["validity"]
+    path = tmp_path / "validity.yaml"
+    path.write_text(yaml.safe_dump({
+        "lens": 6, "agent": six.agent, "status": "FAIL",
+        "rulings": [], "unevaluated": [],
+    }), encoding="utf-8")
+
+    accepted, refused = _load_judgments([path], real)
+    assert refused == 1
+    assert accepted == {}
+
+
 # ------------------------------------------------- what the plan then says
 
 
