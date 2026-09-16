@@ -432,12 +432,23 @@ settled 2026-09-09 after this repository had argued itself into the opposite.
   so the guard protected one directory and no worktree and was one `git add -A`
   from being committed by accident. Per-machine overrides go in
   `.claude/settings.local.json`, which is ignored.
-  ⚠ Two limits, because a guard read as wider than it is is worse than none.
-  The `Edit(...)` rules do not stop a **script** from writing those paths — a
-  `Bash` line or a `Write` reaches `kb/calibrations/` untouched, which is how
-  `calibration.cli drag-slope --out` is meant to work. And the allow list is
-  short on purpose: the other seven lens CLIs and `calibration.cli` are **not**
-  in it, so they prompt.
+  `SAFETY.md` and `.mcp.json` are denied to **`Write` as well as `Edit`** since
+  2026-09-16 — nothing in this repository writes either file programmatically,
+  so there is no cost to closing that half.
+  ⚠ **Three limits, because a guard read as wider than it is is worse than
+  none.**
+  1. **The `Bash` half cannot be expressed and is not attempted.** A `Bash`
+     rule matches the *command text*, not what the command touches, so the only
+     available form is a glob like `Bash(*SAFETY.md*)` — which would also refuse
+     every `grep SAFETY.md` while a redirect written any other way walks
+     straight through. A rule that blocks reading and misses writing is worse
+     than the absence of one. What covers that path is review and §10's
+     conventions, not a permission.
+  2. **`kb/calibrations/` is `Edit`-denied only, on purpose.** A measurement
+     tool has to be able to write there — `calibration.cli drag-slope --out` is
+     the intended path, and it goes through Python rather than a tool rule.
+  3. **The allow list is short on purpose.** The other seven lens CLIs and
+     `calibration.cli` are **not** in it, so they prompt.
 - **No MCP tool has reached a device.** Do not write as though one has.
 - `hardware/lunf_power.py` is complete as transport and **refuses to transmit** —
   the LUN-F-XL DAC word format is undocumented and a guessed byte goes into a

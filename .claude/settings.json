@@ -23,8 +23,10 @@
       "Bash(*ALLOW_MOTION=1*)",
       "Bash(*ALLOW_LASER=1*)",
       "Edit(./.mcp.json)",
+      "Write(./.mcp.json)",
       "Edit(./kb/calibrations/**)",
-      "Edit(./SAFETY.md)"
+      "Edit(./SAFETY.md)",
+      "Write(./SAFETY.md)"
     ]
   }
 }
