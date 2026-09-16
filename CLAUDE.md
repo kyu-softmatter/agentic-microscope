@@ -606,6 +606,20 @@ advice without a source.
 - **State what is *not* true alongside what is.** Keep that when editing README,
   SAFETY or `docs/`: no claim without its date, its evidence tier, and its
   limit.
+- **Of a check, ask what it can *see* — not only whether it runs.** A tool that
+  cannot match its target returns the same output as a clean result, and a
+  passing check is the one nobody asks that question of. Three instances in one
+  day, 2026-09-16: a `grep` that could not match a traceback reported a bug
+  already fixed; a Hangul scan whose regex could not match Hangul read as
+  "already English"; and `plans._check_citations` read inline links only, so a
+  reference-style citation would have passed **inside the rule added to catch
+  unresolved citations**. The first two cost a message. The third was committed,
+  so it would have reported clean indefinitely.
+  **The remedy is to refuse what the check cannot see, not to widen it**:
+  widening extends the field of view once, refusing keeps coverage equal to the
+  claim from then on. `tests/test_kb_plans.py::test_a_reference_style_link_is_refused_not_ignored`
+  is that, and `knowledge/sidecar.check`'s docstring is the same discipline
+  applied to a scope that is *still* narrower than it sounds.
 - **Cite a file, not a line number.** Line references into `kb/systems/current.md`
   drift on every edit above them; name the section or the YAML key instead.
 
