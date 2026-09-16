@@ -45,9 +45,37 @@ def identity():
     return Identity(id="2026-09-15-t", date="2026-09-15", question="Does it?", title="T")
 
 
+#: A brief whose lens 1 really does fail `hard`, for the tier-1 stop.
+#:
+#: `active-microrheology` used to serve this, on L1.3 at m=0.00 -- and that
+#: verdict was wrong: the emission support hull of a penta-band filter read a
+#: notch as a passband (2026-09-15). `demo-probe-tracer-2color` fails L1.2
+#: `blocking.insufficient` at m=0.023 instead, which is a real leak: its
+#: emission path transmits **0.77** at the excitation line.
+STOPS_IN_TIER_1 = """
+meta:
+  id: stops-in-tier-1
+  date: 2026-09-15
+  channel_config: config/channels/demo-probe-tracer-2color.yaml
+goal: {intended_quantity: msd, in_operator_words: "stop in tier 1"}
+facts:
+  lens_1_optics:
+    detector: {value: Kinetix22, count: 1, source: "test", evidence: measured}
+    objective: {value: "4-Apo LmbdS 40x WI", source: "test", evidence: measured}
+gaps: []
+"""
+
+
 @pytest.fixture
 def result():
     return run_mod.run(brief_mod.load(BRIEF))
+
+
+@pytest.fixture
+def stopped(tmp_path):
+    path = tmp_path / "stops.yaml"
+    path.write_text(textwrap.dedent(STOPS_IN_TIER_1), encoding="utf-8")
+    return run_mod.run(brief_mod.load(path))
 
 
 def _minimal(tmp_path):
@@ -120,22 +148,23 @@ def test_the_four_judgment_lenses_are_written_as_holes(tmp_path, result, identit
     assert "the judgment half of this lens is a subagent" in body
 
 
-def test_a_lens_the_stop_cut_off_says_so_rather_than_repeating_its_seat(result):
+def test_a_lens_the_stop_cut_off_says_so_rather_than_repeating_its_seat(stopped):
     """It printed the seat's reason for being CONVENED as its reason for not
     running -- "standing lens (01 §4)" -- which reads as a lens that had
     nothing to say rather than one the tier-1 stop reached before."""
-    states = {row["lens"]: row for row in result.unevaluated}
+    states = {row["lens"]: row for row in stopped.unevaluated}
 
-    assert result.stopped_after == "tier 1"
+    assert stopped.stopped_after == "tier 1"
+    assert "blocking.insufficient" in stopped.stop_reason
     assert states["validity"]["state"] == "not_reached"
     assert "hard` gate at m < 1" in states["validity"]["why"]
 
 
-def test_the_table_and_the_list_agree_about_every_lens(result, identity):
+def test_the_table_and_the_list_agree_about_every_lens(stopped, identity):
     """One run described two ways on one page is the defect this catches: the
     table read the seat and the list read `unevaluated`, so a `not_reached`
     lens was `convened` four lines higher up."""
-    body = emit_mod.plan_md(result, identity)
+    body = emit_mod.plan_md(stopped, identity)
     table = [line for line in body.splitlines() if line.startswith("| 6 validity")]
 
     assert len(table) == 1
@@ -162,6 +191,10 @@ def test_every_channel_is_judged_not_only_the_first(result):
     reads as a pass."""
     per_channel = result.runs["optics"].per_channel
     assert set(per_channel) == {"Tracer-DragonGreen", "Probe-ATTO647N"}
+    #: And the two arms genuinely differ, so judging one is not judging both:
+    #: only the red arm fails L1.4 (collection 0.871 against 1.0).
+    assert per_channel["Probe-ATTO647N"].bottleneck == "collection.low"
+    assert per_channel["Tracer-DragonGreen"].bottleneck == "collection"
 
 
 def test_each_channel_gets_its_own_row_in_both_halves(result, identity):
@@ -214,8 +247,9 @@ def test_the_checks_are_enumerated_from_margins_not_metrics(result, identity):
     optics_rows = [r for r in doc["verdicts"] if r["lens"] == 1]
 
     codes = {r["check"] for r in optics_rows}
-    assert "spectral.overlap" in codes
+    assert "spectral.separation" in codes
     assert "resolution_nm" not in codes
+    assert "depth_of_field_nm" not in codes
     assert {"L1.1", "L1.3"} <= {r["addr"] for r in optics_rows}
 
 

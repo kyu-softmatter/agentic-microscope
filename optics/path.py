@@ -174,19 +174,43 @@ class Channel:
         Negative means the excitation and detection bands overlap, which no
         filter can fix — the dye/filter pairing itself is wrong.
 
-        Must be weighted by the source spectrum, not just the passive path.
-        A single narrow excitation filter makes the two nearly the same, which
-        is why this went unnoticed: but a dichroic shared by several laser
-        lines (one multiband element reflecting at all of them) has a passive
-        support spanning every line at once. Without the source line to pick
-        out which reflection notch is actually lit, the "excitation band"
-        looks hundreds of nm wide and falsely overlaps every dye's emission.
-        Same pattern as :meth:`excitation_blocking_od`.
+        **Both sides must be weighted, and for the same reason.** The passive
+        support of a multiband element spans every one of its bands at once,
+        so taking it for "the band in use" reads a notch as a passband and
+        invents an overlap.
+
+        *Excitation*, fixed 2026-08-10: a dichroic shared by several laser
+        lines reflects at all of them, so without the source line to pick out
+        which notch is actually lit the excitation band looks hundreds of nm
+        wide and falsely overlaps every dye's emission.
+
+        *Emission*, fixed 2026-09-15 — the identical defect, left in place by
+        the first repair. `MXR00724-EM` is a **penta-band** emitter (420–460 ·
+        510–531 · 589–623 · 677–711 · 768–849, and 5e-6 at 488 nm), so on the
+        green channel the path's support hull runs 420–529 while the dye emits
+        into 510–529 alone. ``em[0]`` was therefore 420, the bottom of a band
+        on the *far side* of the 488 line, and the headroom came out −66 nm on
+        a path that attenuates the excitation by **1.9e-11**. The dye's own
+        emission spectrum is what picks out which passband the light actually
+        arrives in, exactly as the source spectrum does on the other side.
+
+        Both are the pattern in :meth:`excitation_blocking_od`.
+
+        ⚠ **This measures separation, not attenuation.** A path whose emission
+        filter genuinely transmits the excitation line still reports a clean
+        headroom here, and is caught by L1.2 ``excitation_blocking_od`` — which
+        owns that mechanism, and does catch it: `demo-probe-tracer-2color`
+        transmits 0.77 at its excitation line and fails L1.2 at m=0.023.
+        Keeping the two mechanisms in two checks is the point of L1.3 having
+        its own number.
         """
         path = self.excitation_transmission()
         delivered = self.source.spectrum * path if self.source is not None else path
         ex = delivered.support(0.5)
-        em = self.emission_transmission().support(0.5)
+
+        # The band the DYE arrives in, not every band the path can pass.
+        detected = self.emission_transmission() * self.dye.emission
+        em = detected.support(0.5)
         if not ex or not em:
             return float("nan")
         return em[0] - ex[1]

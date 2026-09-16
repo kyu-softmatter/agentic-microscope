@@ -3,6 +3,7 @@ id: 2026-09-15-stage-2-the-judgment-seam
 question: "Code cannot convene a subagent. What can it check either side of one?"
 date: 2026-09-15
 status: current
+corrected_by: [2026-09-15-l1-3-read-a-notch-as-an-overlap]
 ---
 
 # 2026-09-15 · Stage 2, and the thing it refuses to pretend
@@ -120,12 +121,21 @@ its gate produced no verdict.
 
 ## What this could not be exercised on
 
-**The only real brief in the repository never reaches stage 2.**
-`config/briefs/active-microrheology.yaml` stops in tier 1 — both channels FAIL
-L1.3 `spectral.overlap` at m=0.00, and §2 precedence level 1 stops the run and
-returns a revision. `designer.cli packets` on it prints *"no packets"* and the
-four reasons, and **exits 0**: a run with nothing for stage 2 is an answer, not
-an error.
+⚠ **CORRECTED THE SAME DAY.** What follows was true when written and is not
+now: L1.3 was reading the support hull of a penta-band emission filter and
+calling a notch an overlap
+([`2026-09-15-l1-3-read-a-notch-as-an-overlap.md`](2026-09-15-l1-3-read-a-notch-as-an-overlap.md)).
+`config/briefs/active-microrheology.yaml` **does** reach stage 2: lens 1
+returns `PASS_WITH_CHANGES` and `designer.cli packets` writes real packets from
+it. The `no packets` path below is still correct behaviour and is still tested
+— it just no longer describes this brief.
+
+~~**The only real brief in the repository never reaches stage 2.**~~
+`config/briefs/active-microrheology.yaml` stopped in tier 1 — both channels
+FAILing L1.3 `spectral.overlap` at m=0.00, and §2 precedence level 1 stops the
+run and returns a revision. `designer.cli packets` on a brief that stops there
+prints *"no packets"* and the reasons, and **exits 0**: a run with nothing for
+stage 2 is an answer, not an error.
 
 So the seam is exercised on a synthetic fixture in
 `tests/test_designer_judgment.py`. That is stated rather than hidden: D1 forbids

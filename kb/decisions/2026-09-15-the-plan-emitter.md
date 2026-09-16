@@ -3,6 +3,7 @@ id: 2026-09-15-the-plan-emitter
 question: "What does the designer write down, and what did writing it find?"
 date: 2026-09-15
 status: current
+corrected_by: [2026-09-15-l1-3-read-a-notch-as-an-overlap]
 ---
 
 # 2026-09-15 · The plan emitter, and the four holes it found
@@ -83,6 +84,13 @@ as the first arm's does, and it had no way to be seen.
 
 Both channels of `active-microrheology` FAIL L1.3 `spectral.overlap` at m=0.00.
 Only one of those two failures was visible before today.
+
+⚠ **And neither failure was real** -- L1.3 was reading the support hull of a
+penta-band emission filter and calling a notch an overlap
+([`2026-09-15-l1-3-read-a-notch-as-an-overlap.md`](2026-09-15-l1-3-read-a-notch-as-an-overlap.md),
+same day). The sentence above still stands as written: the per-channel change
+is what made the red arm's verdict visible at all, and so is how BOTH were
+found to be wrong rather than one.
 
 ## R4 · Two states that were printed as one
 

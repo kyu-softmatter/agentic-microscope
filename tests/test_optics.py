@@ -15,6 +15,7 @@ import numpy as np
 import pytest
 
 from optics import Channel, Objective, Spectrum, build_channel, evaluate
+from optics.build import build_channels
 from optics.components import Detector, Element, find_filter
 from optics.path import ablate
 from optics.spectra import GRID
@@ -546,3 +547,85 @@ def test_build_channel_rejects_an_unknown_side():
                 "emission": [{"ref": "DM A561LP", "side": "sideways"}],
             }
         )
+
+
+# ------------------------------------------- L1.3: separation, not attenuation --
+#
+# The emission half of the 2026-08-10 repair, left undone for five weeks.
+# `Channel.stokes_headroom_nm` weights the EXCITATION by the source line so a
+# shared multiband dichroic is not mistaken for a 240 nm-wide passband; the
+# emission side had the identical defect and no weighting, so a multiband
+# EMITTER's support hull was mistaken for the band in use.
+#
+# The excitation-side twin of these is
+# tests/test_recommend.py::test_stokes_headroom_uses_the_source_line_not_the_whole_shared_dichroic
+
+
+def test_the_emission_filter_this_rests_on_is_multiband():
+    """The data fact the rest of these depend on. If `MXR00724-EM` ever stops
+    being a penta-band emitter, these tests are asserting nothing."""
+    el = find_filter("MXR00724-EM")
+    v = el.transmission.values
+    above = v >= 0.5 * v.max()
+    bands = np.sum(above[1:] & ~above[:-1]) + int(above[0])
+
+    assert bands >= 4, "a penta-band emitter, not a single passband"
+    assert el.transmission.at(488) < 1e-4, "488 nm sits in a notch"
+
+
+def _active_channels():
+    return build_channels("config/channels/active-microrheology-probe-tracer.yaml")
+
+
+def test_a_notch_is_not_an_overlap():
+    """The failure this fixes. On the green channel the path's support hull runs
+    420-529 because the emitter's 420-460 band is also open, while the dye emits
+    into 510-529 alone -- so `em[0]` was 420, the bottom of a band on the FAR
+    SIDE of the 488 line, and the headroom came out -66 nm on a path that
+    attenuates the excitation by 1.9e-11."""
+    green = _active_channels()[0]
+
+    hull = green.emission_transmission().support(0.5)
+    assert hull[0] < 486 < hull[1], "the hull really does span the excitation line"
+    assert green.emission_transmission().at(488) < 1e-9, "and the line is blocked"
+
+    assert green.stokes_headroom_nm() > 0
+
+
+def test_both_arms_of_the_real_proposal_clear_l1_3():
+    """It stopped the lab's only real brief in tier 1 on both channels, at
+    m=0.00, for a reason that was not true -- `python -m designer.cli run` gets
+    past tier 1 because of this."""
+    for channel in _active_channels():
+        verdict = evaluate(channel, others=[c for c in _active_channels()
+                                            if c.name != channel.name])
+        assert not any(
+            f.code == "spectral.overlap" for f in verdict.findings
+        ), channel.name
+
+
+def test_a_single_band_emission_filter_is_unaffected():
+    """The signature of a correct repair of this kind: where the emitter has
+    one passband, the hull and the dye-weighted band are the same band, so the
+    number does not move. Four configs and eight channels behave this way."""
+    for channel in build_channels("config/channels/proposed-2color.yaml"):
+        assert channel.stokes_headroom_nm() >= 20.0
+
+
+def test_a_path_that_really_passes_its_excitation_is_still_caught():
+    """THE GUARD ON THE GUARD. L1.3 measures separation; L1.2 measures
+    attenuation. A "fix" that conflated them would let a real leak through, so
+    this pins the split: `demo-probe-tracer-2color` transmits 0.77 at its own
+    excitation line, now reports a clean Stokes headroom, and must still FAIL.
+    """
+    channels = build_channels("config/channels/demo-probe-tracer-2color.yaml")
+    for channel in channels:
+        assert channel.emission_transmission().at(
+            channel.source.spectrum.peak_nm()
+        ) > 0.5, "this path really does pass its own excitation"
+        assert channel.stokes_headroom_nm() > 0, "and L1.3 no longer objects"
+
+        verdict = evaluate(channel, others=[c for c in channels
+                                            if c.name != channel.name])
+        assert verdict.status == "FAIL"
+        assert any(f.code == "blocking.insufficient" for f in verdict.findings)

@@ -442,12 +442,12 @@ survives a clean checkout).
 pytest -q -rs
 ```
 
-1432 passed, 11 skipped on macOS, of 1,443 (re-measured 2026-09-15; was
-1374/11 of 1,385 on 2026-09-14, and the 58 added since are the plan emitter's
-and stage 2's seam -- the emitter is where the next four broken handoffs were
-found, one of them a number the run order already claimed to carry. Windows
-printed 1195/10 on 2026-09-09 — one Windows-only test — and has **not** been
-re-measured since). Two kinds of
+1438 passed, 11 skipped on macOS, of 1,449 (re-measured 2026-09-15; was
+1374/11 of 1,385 on 2026-09-14, and the 64 added since are the plan emitter's,
+stage 2's seam, and L1.3 -- the emitter is where the next four broken handoffs
+were found, one of them a number the run order already claimed to carry.
+Windows printed 1195/10 on 2026-09-09 — one Windows-only test — and has **not**
+been re-measured since). Two kinds of
 skip: three whole modules behind `pytest.importorskip("pymmcore_plus")`
 holding 56 tests (counted 2026-09-09, not re-counted today — the dependency is
 absent here, so they skip at import and cannot be collected) that need a

@@ -23,12 +23,12 @@ from designer import run as run_mod
 from designer.emit import Identity
 from designer.judgment import Judgment, Ruling
 
-#: A brief that reaches tier 2 and tier 3. Synthetic, and that is the honest
-#: shape of this fixture: the only real brief in the repository stops in tier
-#: 1 on a `hard` L1.3 at m=0.00, so no judgment lens is reached and stage 2
-#: has nothing to do. D1 forbids inventing an EXPERIMENT; a fixture that
-#: exercises a code path is not one, and this file does not pretend it is a
-#: proposal anybody would run.
+#: A brief that reaches tier 2 and tier 3, built to drive the seam's edge
+#: cases -- lens 8 `absent` under the 30-minute threshold, lens 6 `awaiting`,
+#: lenses 4 and 5 with verdicts. The REAL brief reaches stage 2 too, as of the
+#: L1.3 repair (kb/decisions/2026-09-15-l1-3-read-a-notch-as-an-overlap.md),
+#: and `test_the_real_brief_reaches_stage_2` below is what says so -- this
+#: fixture is here for the states that brief does not happen to produce.
 REACHES_TIER_2 = """
 meta: {id: reaches-tier-2, date: 2026-09-15}
 goal: {intended_quantity: msd, in_operator_words: "reach tier 2"}
@@ -95,6 +95,27 @@ def _judgment(packet, *, rulings=None, status="PASS", unevaluated=(), lens=None)
         rulings=tuple(rulings),
         unevaluated=tuple(unevaluated),
     )
+
+
+# ----------------------------------------------- the real brief, end to end
+
+
+def test_the_real_brief_reaches_stage_2():
+    """It did not until the L1.3 repair on 2026-09-15.
+
+    Both channels FAILed `spectral.overlap` at m=0.00 and precedence level 1
+    stopped the run in tier 1, so this file's only subject was a synthetic
+    fixture. The falsifier that entry set for itself is partly retired here:
+    a real proposal now produces real packets.
+    """
+    result = run_mod.run(brief_mod.load("config/briefs/active-microrheology.yaml"))
+    assert result.stopped_after is None
+
+    packets = judgment_mod.build_packets(result)
+    assert packets, "a real brief must reach at least one judgment lens"
+    for packet in packets.values():
+        assert packet.must_rule_on
+        assert packet.verdict is not None
 
 
 # ------------------------------------------------------- what is handed over
