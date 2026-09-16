@@ -225,8 +225,6 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--quantum-yield", type=float, default=None)
     c.add_argument("--lifetime-ns", type=float, default=None)
     c.add_argument(
-    )
-    c.add_argument(
         "--excitation-coupling", type=float, default=None,
         help="transmission-weighted mean absorption over the delivered band "
         "(lens 1's excitation_efficiency/source_delivery). Without it the "
