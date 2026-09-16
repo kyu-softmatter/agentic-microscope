@@ -727,8 +727,30 @@ observation in every row.
   equipartition `alpha = kT/var(x)` on the residuals of the same data as an
   independent cross-check.
 - **`D:\codes` hardcodes `px_to_um = 0.065`** in every MATLAB file, 0.73 % from
-  the recorded 0.06453, and `alpha ∝ 1/pixel_size` propagates it. Not this
-  repository's file to edit; lens 6 owns settings-versus-analysis mismatches.
+  the recorded 0.06453. Not this repository's file to edit; lens 6 owns
+  settings-versus-analysis mismatches.
+  **Worked out here rather than left as "it propagates", because it propagates
+  into three quantities and the answer is different for each.** The mismatch is
+  a *common multiplicative constant* on every length this run measures, so:
+
+  | quantity | how `px_to_um` enters | error it contributes |
+  |---|---|---|
+  | **per-rung scatter on `gamma`** — what P7 measures, and what D-7's 4.48 % tolerance is compared against | `sigma(c·x)/mean(c·x) = sigma(x)/mean(x)` | **exactly zero.** A common factor cancels in a relative spread, identically |
+  | absolute `alpha` from the drag slope, one size | `x_eq ∝ px`, so `alpha ∝ 1/px` | **−0.72 %** |
+  | equipartition `alpha = kT/var(x)` | `var ∝ px²`, so `alpha ∝ 1/px²` | **−1.44 %** — twice the naive figure |
+  | `alpha(a)` across sizes | common to every size | cancels, as §Error budget already says |
+
+  Both survivors sit well under the ~8 % that `epsilon` contributes as a **bias**
+  (D-2), so this is not what limits the run. ⚠ **Derived here, one line of
+  arithmetic — not imported and not an operator ruling.** It is checkable in the
+  table above and should be re-derived rather than trusted.
+
+  **So the pixel size is not a reason to move the data.** The reason is the next
+  bullet and it stands alone: `alpha = gamma*v/x_eq` is implemented nowhere in
+  `D:\codes`, and `creepx` detrends the mean displacement away by design — the
+  existing analysis discards exactly this run's signal, whatever pixel size it
+  uses. That plus "not this repository's to edit" is the whole case for P7 being
+  a data transfer.
 - **The wall fit is a second thing to write:** `gamma(dz) = gamma_0/(1 - 9a/(16(dz+h0)))`
   by least squares over the rungs, with `gamma` at each rung formed as
   `slope x alpha_equipartition` and `alpha` corrected for epsilon (P8) and for
