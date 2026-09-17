@@ -122,12 +122,14 @@ One hardware run each, before it happens — 05 §6 stage 5.
 - **[2026-09-15-drag-calibration-stiffness-vs-size](plans/2026-09-15-drag-calibration-stiffness-vs-size.md)** · 2026-09-15 · planned
   How does the trap stiffness of this instrument depend on particle size, and how large is the near-wall drag correction, measured by Stokes drag at one laser power
 
-## `kb/literature/` — 1 entries
+## `kb/literature/` — 2 entries
 
 Published values nobody here has measured.
 
 - **[literature-index](literature/README.md)** · living, since 2026-08-28 · index
   What published values are filed here, and what may a literature value be used for that a measurement may not?
+- **[lifetime-ns-tritc](literature/lifetime-ns-tritc.md)** · 2026-09-16
+  What fluorescence lifetime should be assumed for TRITC so that G20 can say whether emission is still linear in power, and under what conditions was the published value obtained
 
 ## `kb/external/` — 4 entries
 
