@@ -118,7 +118,8 @@ design, not a gap.
 | **31 deterministic gates** | G1–G32 less the vacant `G10`, each classified `hard` / `bias` / `soft` by what its failure costs. **28 are implemented** — `G2`–`G4` carry a threshold and a default verdict in [04](docs/04-decision-engine.md) and appear in no Python file; `G10` was removed on 2026-09-09 and its number is not reused → [below](#two-more-axes-and-the-questions-neither-working-repo-asks) → [05 §2](docs/05-consensus-gate.md) |
 | **Provenance on every input** | `measured` vs `assumed`, with a separate `advances` axis that only `measured` can satisfy. Literature values compute but never advance → [`kb/literature/`](kb/literature/) |
 | **2,343 prior acquisitions** | normalized out of Micro-Manager metadata into transferable physical quantities, across two schema generations |
-| **1,225 tests, 1,162 on CI** | offline; the instrument is not required to run any of them. The badge covers 1,162 — of the rest, 56 need a Micro-Manager device-adapter install and 7 need `opencv-python`, and `PYTEST_CI_EMULATE=ci` reproduces the runner's environment here → [running the tests](#running-the-tests) |
+| **1,274 tests** | offline; the instrument is not required to run any of them. Measured on macOS 2026-09-16: 1,274 passed, 11 skipped, of 1,282 collected. A further 56 need a Micro-Manager device-adapter install and do not collect at all where it is absent — that count is from 2026-09-09 and has **not** been re-counted. `PYTEST_CI_EMULATE=ci` reproduces the runner's environment here → [running the tests](#running-the-tests) |
+| **A question crossing to the simulation agent, nine rounds** | and back, with four numbers corrected that neither side would have caught alone — including one of this repository's own. **Running, not planned** → [below](#toward-a-model-to-experiment-loop) |
 | **A 28-device instrument** | what Micro-Manager loads from `single_cam_red_noDMD.cfg` — Ti2-E and its 14 sub-devices, one Kinetix, seven CSU-W1 devices, two Lumencor engines, NIDAQ hub + LUN-F blanking, serial manager. Tweezers and piezo sit outside those 28 → [above](#agentic-microscope) |
 | **Hardware drivers** | microscope (pymmcore-plus), optical tweezers (TCP), piezo stage (vendor DLL), trap patterns, piezo waveforms, and a shared-clock orchestrator |
 | **First light on real hardware** | piezo and optical tweezers each driven from this repository, **separately** — 2026-08-27. **All three subsystems together on one clock — 2026-09-03**, with per-frame timestamps; κ = 3.65–4.5 pN/µm from three independent routes |
@@ -385,6 +386,28 @@ the gates are not built to catch and a human reviewer usually is.
 Worked examples, written before the runs and checked with
 `python -m knowledge.cli plan-check`:
 [`kb/plans/`](kb/plans/).
+
+**A plan is prose because the operator reads it**, which made it the one
+artefact where a physical number could live with nothing checking it — hard
+rule 2 had no mechanical enforcement at all until 2026-09-16, and a blur
+coefficient that was exactly twice too large survived two rounds of adversarial
+review by two agents *because it looked like prose.* So a plan now has a
+structured half beside it, `kb/plans/<slug>.json`, and `plan-check` refuses:
+
+- a citation that resolves to nothing, or any citation of the generated index;
+- a number in the settings table with no entry in the structured block;
+- a `threshold` sourced from `kb/external/` — rule 3, held at the boundary
+  where provenance still exists, since a gate receives a bare float;
+- **a table column that does not name what computes it.** Each declares one of
+  `computed_by` (a `module.function`, *imported and called*) · `imported_from` ·
+  `measured_in` · `declared_in` · `unbacked`. **Never a formula** — a formula in
+  a field is one more number in prose, and a dotted path either resolves or it
+  does not.
+
+⚠ **Six of the drag-calibration plan's sixteen value columns are `unbacked`**,
+each saying what would back it. That is the finding rather than a gap in the
+schema: the plan's derived tables are largely arithmetic that no code performs,
+which is the soil the wrong coefficient grew in.
 
 ---
 
@@ -1307,10 +1330,56 @@ run queries first.
 The two architectures match because the second was built from the first's
 lessons: hard gates that return `BLOCKED` naming the one missing input, a
 deterministic core under a thin agent layer, and a knowledge base read before
-every decision and written after every verdict. **Neither is finished, and
-coupling two moving targets would be a mistake** — so this is future work, with
-a stated order of preconditions.
+every decision and written after every verdict.
 → [07 Phase 6](docs/07-roadmap.md#phase-6--joining-the-simulation-agent)
+
+### It ran — 2026-09-15/16, nine rounds
+
+This section said "future work, with a stated order of preconditions" until
+those two days. **A question crossed, nine times**, over a third private
+repository that carries a schema and a validator and nothing else:
+[`sim-exp-bridge`](https://github.com/kyu-softmatter/sim-exp-bridge).
+
+**Neither plan crosses.** What crosses is a question card — a claim, the single
+observable that answers it, the precision needed, the dimensional primitives in
+the units they were measured in, and an assumption declaration. Each side then
+re-derives its own numbers through its own gates. Three wire rules carry most of
+it: only the simulation side nondimensionalises, a number travels in the unit it
+was measured in, and **primitives cross where composites do not** — `3πηd` and
+`6πηa` are the same formula, so shipping the product is where a factor of two
+enters with nobody lying.
+
+**Four numbers were corrected, and each was found by the side that did not
+write it:**
+
+| | what was wrong | found by |
+|---|---|---|
+| **the blur coefficient** | `2·D·t_exp/3` is the **free-particle** MSD term. In a trap the exposure-averaged variance is `u/3`, exactly half — every entry of one table column, for two rounds | the simulation side, checking against exact Ornstein-Uhlenbeck data |
+| **`f_c` to +1.17 %** | measured the **estimator**, not the physics. Withdrawn and deliberately **not replaced**: recoverability is unknown until the Lorentzian fit is fixed | the simulation side, auditing its own earlier answer |
+| **one bead vs 1000** | the ratio was `√1000 = 32×`. Measured: 21.1× and 15.5× | the simulation side, about its own error bars |
+| **the wall is not a missing runner** | at fixed height the wall's whole effect is a scalar on `gamma`, which enters no dimensionless group a trapped-bead case carries — so **no runner can learn it**, and five rounds had recorded it as a capability gap that would expire | both sides, independently |
+
+**And a falsifier fired.** Round 1 pre-registered it: *if the scatter exceeds
+~0.4 µm once finite `T_obs`, motion blur and localisation noise are included,
+the ladder does not produce a trapping height.* Round 8 measured 0.433–0.450 µm.
+The criterion was written before the evidence existed, which is the only reason
+it could decide anything — and it fired **on simulated evidence**, so the plan
+starts the redesign and refuses to record the ladder as dead.
+
+**What the exchange is not allowed to do.** An imported number lands in
+[`kb/external/bd/`](kb/external/) — the path carries the foreignness, because
+plans cite by path — with `evidence_class: simulated` and
+`may_be_gate_threshold: false`. **No gate clears against one.** When the
+simulation side withdrew its own sampling requirement in favour of this
+instrument's `G14`, the constant did not move: what a foreign round establishes
+is the *ranking* of constraints, never a threshold that would claim something
+about every future experiment
+→ [`kb/decisions/2026-09-15-numbers-from-another-repository.md`](kb/decisions/2026-09-15-numbers-from-another-repository.md).
+
+⚠ **The preconditions this section used to list are still not all met**, and the
+loop ran anyway rather than waiting for them. What made that safe is not that
+the risks went away — it is that every number crossing is refused a gate, so a
+wrong one costs a round rather than an experiment.
 
 ### Two more axes, and the questions neither working repo asks
 
@@ -2134,13 +2203,18 @@ scope. For now this produces offline recommendations only.
 ```console
 $ pip install -r requirements.txt -r requirements-mcp.txt
 $ pytest -q -rs
-1162 passed, 10 skipped
+1274 passed, 11 skipped
 ```
 
-That count is **Windows**. macOS and Linux report `1161 passed, 11 skipped` —
-one Windows-only segment-lifetime test in
-[`tests/test_runtime_shmview.py`](tests/test_runtime_shmview.py) skips there,
-so the badge's three platforms do not all print the same number.
+That count is **macOS, measured 2026-09-16**, of 1,282 collected. Windows
+reports one more passed and one fewer skipped — a Windows-only segment-lifetime
+test in [`tests/test_runtime_shmview.py`](tests/test_runtime_shmview.py) skips
+elsewhere — but **that has not been re-measured since 2026-09-09**, so the
+badge's three platforms are not claimed to print the same number here.
+
+The 56 tests behind `pytest.importorskip("pymmcore_plus")` do not appear in
+either figure: without the dependency their three modules do not collect at
+all. That 56 is also a 2026-09-09 count and has not been re-counted.
 
 **Which interpreter?** This is the question that cost a filesystem search on
 every cold start (to-do item 11), and the answer is now printable rather than
