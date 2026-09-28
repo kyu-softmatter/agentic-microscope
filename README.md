@@ -3,6 +3,8 @@
 [![tests](https://github.com/kyu-softmatter/agentic-microscope/actions/workflows/tests.yml/badge.svg)](https://github.com/kyu-softmatter/agentic-microscope/actions/workflows/tests.yml)
 [![licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
 
+> **Rebuild:** this agent is being rebuilt as [`microscope_agent/`](https://github.com/kyu-softmatter/soft-matter-agents/tree/main/microscope_agent) in [soft-matter-agents](https://github.com/kyu-softmatter/soft-matter-agents), the four-agent system (microscope, simulation, librarian, bridge).
+
 An agent that turns a research goal into a microscope configuration that is
 checked against what the instrument can physically do — and refuses when the
 evidence for a setting does not exist.
